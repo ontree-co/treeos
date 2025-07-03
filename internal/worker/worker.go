@@ -101,6 +101,8 @@ func (w *Worker) processOperation(operationID string) {
 		operationErr = w.processStartOperation(&op)
 	case database.OpTypeRecreateContainer:
 		operationErr = w.processRecreateOperation(&op)
+	case database.OpTypeUpdateImage:
+		operationErr = w.processUpdateImageOperation(&op)
 	default:
 		operationErr = fmt.Errorf("unknown operation type: %s", op.OperationType)
 	}
@@ -185,6 +187,75 @@ func (w *Worker) processRecreateOperation(op *database.DockerOperation) error {
 	w.updateOperationStatus(op.ID, database.StatusInProgress, 95, "Starting new container", "")
 	if err := w.dockerSvc.StartApp(op.AppName); err != nil {
 		return fmt.Errorf("failed to start app: %w", err)
+	}
+
+	return nil
+}
+
+func (w *Worker) processUpdateImageOperation(op *database.DockerOperation) error {
+	log.Printf("Updating image for app: %s", op.AppName)
+
+	// Update progress
+	w.updateOperationStatus(op.ID, database.StatusInProgress, 10, "Checking for image updates", "")
+
+	// Check if updates are available
+	updateStatus, err := w.dockerSvc.CheckImageUpdate(op.AppName)
+	if err != nil {
+		return fmt.Errorf("failed to check for updates: %w", err)
+	}
+
+	if !updateStatus.UpdateAvailable {
+		w.updateOperationStatus(op.ID, database.StatusInProgress, 100, "Image is already up to date", "")
+		return nil
+	}
+
+	// Get current container status
+	app, err := w.dockerSvc.GetAppDetails(op.AppName)
+	if err != nil {
+		return fmt.Errorf("failed to get app details: %w", err)
+	}
+
+	wasRunning := app.Status == "running"
+
+	// Pull the latest image
+	w.updateOperationStatus(op.ID, database.StatusInProgress, 20, "Pulling latest image", "")
+
+	progressCallback := func(progress int, message string) {
+		// Scale progress from 20-70 for image pulling
+		scaledProgress := 20 + (progress * 50 / 100)
+		w.updateOperationStatus(op.ID, database.StatusInProgress, scaledProgress, message, "")
+	}
+
+	if err := w.dockerSvc.PullImagesWithProgress(op.AppName, progressCallback); err != nil {
+		return fmt.Errorf("failed to pull latest image: %w", err)
+	}
+
+	// If container exists, we need to recreate it
+	if app.Status != "not_created" {
+		// Stop existing container
+		w.updateOperationStatus(op.ID, database.StatusInProgress, 75, "Stopping current container", "")
+		if err := w.dockerSvc.StopApp(op.AppName); err != nil {
+			log.Printf("Warning: failed to stop app %s: %v", op.AppName, err)
+		}
+
+		// Remove existing container
+		w.updateOperationStatus(op.ID, database.StatusInProgress, 80, "Removing old container", "")
+		if err := w.dockerSvc.DeleteApp(op.AppName); err != nil {
+			log.Printf("Warning: failed to delete app %s: %v", op.AppName, err)
+		}
+
+		// Start new container with updated image
+		w.updateOperationStatus(op.ID, database.StatusInProgress, 90, "Starting container with updated image", "")
+		if err := w.dockerSvc.StartApp(op.AppName); err != nil {
+			return fmt.Errorf("failed to start app with updated image: %w", err)
+		}
+	}
+
+	// Final status
+	if wasRunning {
+		w.updateOperationStatus(op.ID, database.StatusInProgress, 100, "Container updated and running", "")
+	} else {
+		w.updateOperationStatus(op.ID, database.StatusInProgress, 100, "Image updated successfully", "")
 	}
 
 	return nil

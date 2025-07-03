@@ -1,5 +1,13 @@
 {{define "content"}}
 <style>
+    /* HTMX indicator styles */
+    .htmx-indicator {
+        display: none;
+    }
+    .htmx-request .htmx-indicator {
+        display: inline-block;
+    }
+    
     /* Two-step confirmation button styles */
     .confirm-action {
         transition: all 0.3s ease;
@@ -109,7 +117,18 @@
 <!-- Container Controls -->
 <div class="row mb-3">
     <div class="col-12">
-        <div id="operation-status" class="mb-2"></div>
+        <div id="operation-status" class="mb-2">
+            {{if .ActiveOperationID}}
+                <div hx-get="/api/docker/operations/{{.ActiveOperationID}}" 
+                     hx-trigger="load, every 2s" 
+                     hx-swap="innerHTML">
+                    <div class="alert alert-info">
+                        <span class="spinner-border spinner-border-sm" role="status"></span>
+                        Operation in progress...
+                    </div>
+                </div>
+            {{end}}
+        </div>
         <div id="app-controls" class="btn-group" role="group">
             {{if eq .App.Status "running"}}
                 <form method="post" action="/apps/{{.App.Name}}/stop" class="d-inline">
@@ -171,6 +190,17 @@
                         <th>Image:</th>
                         <td>
                             <code>{{.App.Config.Container.Image}}</code>
+                            <button type="button" 
+                                    class="btn btn-sm btn-outline-primary ms-2"
+                                    hx-get="/apps/{{.App.Name}}/check-update"
+                                    hx-target="#update-status"
+                                    hx-indicator="#update-spinner">
+                                <i>🔍</i> Check for Updates
+                            </button>
+                            <span id="update-spinner" class="htmx-indicator spinner-border spinner-border-sm ms-2" role="status">
+                                <span class="visually-hidden">Checking...</span>
+                            </span>
+                            <span id="update-status" class="ms-2"></span>
                         </td>
                     </tr>
                     <tr>

@@ -360,6 +360,21 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 		session.Save(r, w)
 	}
 
+	// Check for active operations for this app
+	var activeOperationID string
+	db := database.GetDB()
+	err = db.QueryRow(`
+		SELECT id 
+		FROM docker_operations 
+		WHERE app_name = ? 
+		AND status IN (?, ?)
+		ORDER BY created_at DESC
+		LIMIT 1
+	`, appName, database.StatusPending, database.StatusInProgress).Scan(&activeOperationID)
+	if err != nil && err != sql.ErrNoRows {
+		log.Printf("Failed to check for active operations: %v", err)
+	}
+
 	// Prepare template data
 	data := s.baseTemplateData(user)
 	data["App"] = app
@@ -367,6 +382,7 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 	data["ContainerInfo"] = containerInfo
 	data["Messages"] = messages
 	data["CSRFToken"] = ""
+	data["ActiveOperationID"] = activeOperationID
 
 	// Render template
 	tmpl, ok := s.templates["app_detail"]
@@ -563,5 +579,123 @@ func (s *Server) handleAppDelete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Redirect back to app detail page
+	http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
+}
+
+
+// handleAppCheckUpdate checks if a newer version of the Docker image is available
+func (s *Server) handleAppCheckUpdate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Extract app name from URL
+	path := strings.TrimPrefix(r.URL.Path, "/apps/")
+	path = strings.TrimSuffix(path, "/check-update")
+	appName := path
+
+	if appName == "" {
+		http.Error(w, "App name required", http.StatusBadRequest)
+		return
+	}
+
+	// Check for image updates
+	if s.dockerSvc == nil {
+		s.renderUpdateStatus(w, &updateStatusData{
+			Error: "Docker service not available",
+		})
+		return
+	}
+
+	updateStatus, err := s.dockerSvc.CheckImageUpdate(appName)
+	if err != nil {
+		log.Printf("Failed to check image update for %s: %v", appName, err)
+		s.renderUpdateStatus(w, &updateStatusData{
+			Error: fmt.Sprintf("Failed to check for updates: %v", err),
+		})
+		return
+	}
+
+	// Render the update status partial
+	data := &updateStatusData{
+		AppName:         appName,
+		UpdateAvailable: updateStatus.UpdateAvailable,
+		CurrentImageID:  updateStatus.CurrentImageID,
+	}
+	
+	if updateStatus.Error != "" {
+		data.Error = updateStatus.Error
+	}
+
+	s.renderUpdateStatus(w, data)
+}
+
+// updateStatusData holds data for the update status template
+type updateStatusData struct {
+	AppName         string
+	UpdateAvailable bool
+	CurrentImageID  string
+	Error           string
+}
+
+// renderUpdateStatus renders the update status partial template
+func (s *Server) renderUpdateStatus(w http.ResponseWriter, data *updateStatusData) {
+	// Create a simple template for the update status
+	tmplStr := `{{if .Error}}<span class="text-danger">{{.Error}}</span>{{else if .UpdateAvailable}}<span class="text-warning">Update available</span> <form method="post" action="/apps/{{.AppName}}/update" class="d-inline"><button type="submit" class="btn btn-sm btn-warning confirm-action" data-action="Update Image" data-confirm-text="Confirm Update?"><i>⬇️</i> Update Now</button></form>{{else}}<span class="text-success">Up to date</span>{{end}}`
+	
+	tmpl, err := template.New("updateStatus").Parse(tmplStr)
+	if err != nil {
+		http.Error(w, "Template error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := tmpl.Execute(w, data); err != nil {
+		http.Error(w, "Template execution error", http.StatusInternalServerError)
+	}
+}
+
+// handleAppUpdate initiates the Docker image update process
+func (s *Server) handleAppUpdate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Extract app name from URL
+	path := strings.TrimPrefix(r.URL.Path, "/apps/")
+	path = strings.TrimSuffix(path, "/update")
+	appName := path
+
+	if appName == "" {
+		http.Error(w, "App name required", http.StatusBadRequest)
+		return
+	}
+
+	// Create a Docker operation for the update
+	if s.dockerSvc == nil {
+		http.Error(w, "Docker service not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	// Create the operation in the database
+	operationID, err := s.createDockerOperation(database.OpTypeUpdateImage, appName, nil)
+	if err != nil {
+		log.Printf("Failed to create docker operation: %v", err)
+		session, _ := s.sessionStore.Get(r, "ontree-session")
+		session.AddFlash("Failed to start update operation", "error")
+		session.Save(r, w)
+		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
+		return
+	}
+
+	// Queue the operation for background processing
+	s.worker.EnqueueOperation(operationID)
+
+	// Redirect back to app detail page (which will show the progress)
+	session, _ := s.sessionStore.Get(r, "ontree-session")
+	session.AddFlash("Image update started", "success")
+	session.Save(r, w)
 	http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
 }

@@ -246,3 +246,94 @@ func (s *Service) PullImagesWithProgress(appName string, progressCallback Progre
 
 	return nil
 }
+
+// ImageUpdateStatus represents the result of checking for image updates
+type ImageUpdateStatus struct {
+	UpdateAvailable bool   `json:"updateAvailable"`
+	CurrentImageID  string `json:"currentImageId"`
+	Error           string `json:"error,omitempty"`
+}
+
+// CheckImageUpdate checks if a newer version of the image is available
+func (s *Service) CheckImageUpdate(appName string) (*ImageUpdateStatus, error) {
+	ctx := context.Background()
+	ctx, span := telemetry.StartSpan(ctx, "docker.check_image_update")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.String("app.name", appName),
+	)
+
+	// Get app details to find the image
+	app, err := s.GetAppDetails(appName)
+	if err != nil {
+		span.RecordError(err)
+		return nil, fmt.Errorf("failed to get app details: %w", err)
+	}
+
+	if app.Config == nil || app.Config.Container.Image == "" {
+		return nil, fmt.Errorf("no image configured for app: %s", appName)
+	}
+	imageName := app.Config.Container.Image
+	span.SetAttributes(
+		attribute.String("image.name", imageName),
+	)
+
+	// Get current image ID if container exists
+	var currentImageID string
+	containerName := fmt.Sprintf("ontree-%s", appName)
+	if containerInfo, err := s.client.dockerClient.ContainerInspect(ctx, containerName); err == nil {
+		currentImageID = containerInfo.Image
+		span.SetAttributes(
+			attribute.String("current.image.id", currentImageID),
+		)
+	}
+
+	// Try to pull the image and check if it's newer
+	reader, err := s.client.dockerClient.ImagePull(ctx, imageName, image.PullOptions{})
+	if err != nil {
+		span.RecordError(err)
+		return &ImageUpdateStatus{
+			UpdateAvailable: false,
+			CurrentImageID:  currentImageID,
+			Error:           err.Error(),
+		}, nil
+	}
+	defer reader.Close()
+
+	// Parse the JSON stream to check if updates are available
+	decoder := json.NewDecoder(reader)
+	updateAvailable := false
+	for {
+		var event map[string]interface{}
+		if err := decoder.Decode(&event); err != nil {
+			if err == io.EOF {
+				break
+			}
+			continue
+		}
+
+		if status, ok := event["status"].(string); ok {
+			// If Docker is downloading layers, an update is available
+			if strings.Contains(status, "Downloading") || 
+			   strings.Contains(status, "Extracting") ||
+			   strings.Contains(status, "Downloaded newer image") {
+				updateAvailable = true
+			}
+			// If image is up to date, no update needed
+			if strings.Contains(status, "Image is up to date") {
+				updateAvailable = false
+				break
+			}
+		}
+	}
+
+	span.SetAttributes(
+		attribute.Bool("update.available", updateAvailable),
+	)
+
+	return &ImageUpdateStatus{
+		UpdateAvailable: updateAvailable,
+		CurrentImageID:  currentImageID,
+	}, nil
+}
