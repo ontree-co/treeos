@@ -11,6 +11,7 @@ import (
 	"syscall"
 
 	"ontree-node/internal/config"
+	"ontree-node/internal/database"
 )
 
 func main() {
@@ -28,6 +29,13 @@ func main() {
 		}
 		return
 	}
+
+	// Initialize database
+	if err := database.Initialize(cfg.DatabasePath); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to initialize database: %v\n", err)
+		os.Exit(1)
+	}
+	defer database.Close()
 
 	fmt.Println("Starting server...")
 	fmt.Printf("Configuration: %s\n", cfg)
