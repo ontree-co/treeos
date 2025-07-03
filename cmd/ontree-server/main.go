@@ -9,9 +9,18 @@ import (
 	"runtime"
 	"strconv"
 	"syscall"
+
+	"ontree-node/internal/config"
 )
 
 func main() {
+	// Load configuration
+	cfg, err := config.Load()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to load configuration: %v\n", err)
+		os.Exit(1)
+	}
+
 	if len(os.Args) > 1 && os.Args[1] == "setup-dirs" {
 		if err := setupDirs(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -21,6 +30,7 @@ func main() {
 	}
 
 	fmt.Println("Starting server...")
+	fmt.Printf("Configuration: %s\n", cfg)
 }
 
 func setupDirs() error {
@@ -39,20 +49,20 @@ func setupDirs() error {
 }
 
 func getAppsDir() string {
-	// Check for environment variable override
-	if dir := os.Getenv("ONTREE_APPS_DIR"); dir != "" {
-		return dir
+	// Load configuration to get the apps directory
+	cfg, err := config.Load()
+	if err != nil {
+		// Fall back to platform defaults if config fails to load
+		switch runtime.GOOS {
+		case "linux":
+			return "/opt/ontree/apps"
+		case "darwin":
+			return "./apps"
+		default:
+			return "./apps"
+		}
 	}
-	
-	// Platform-specific defaults
-	switch runtime.GOOS {
-	case "linux":
-		return "/opt/ontree/apps"
-	case "darwin":
-		return "./apps"
-	default:
-		return "./apps"
-	}
+	return cfg.AppsDir
 }
 
 func setupLinuxDirs(appsDir string) error {
