@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"ontree-node/internal/config"
+	"ontree-node/internal/docker"
 	"github.com/gorilla/sessions"
 )
 
@@ -17,6 +18,7 @@ type Server struct {
 	config       *config.Config
 	templates    map[string]*template.Template
 	sessionStore *sessions.CookieStore
+	dockerClient *docker.Client
 }
 
 // New creates a new server instance
@@ -43,6 +45,15 @@ func New(cfg *config.Config) (*Server, error) {
 	// Load templates
 	if err := s.loadTemplates(); err != nil {
 		return nil, fmt.Errorf("failed to load templates: %w", err)
+	}
+
+	// Initialize Docker client
+	dockerClient, err := docker.NewClient()
+	if err != nil {
+		log.Printf("Warning: Failed to initialize Docker client: %v", err)
+		// Continue without Docker support
+	} else {
+		s.dockerClient = dockerClient
 	}
 
 	return s, nil
@@ -121,6 +132,20 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	// Get user from context
 	user := getUserFromContext(r.Context())
 
+	// Scan for applications
+	var apps []interface{}
+	if s.dockerClient != nil {
+		dockerApps, err := s.dockerClient.ScanApps(s.config.AppsDir)
+		if err != nil {
+			log.Printf("Error scanning apps: %v", err)
+		} else {
+			// Convert to interface{} slice for template
+			for _, app := range dockerApps {
+				apps = append(apps, app)
+			}
+		}
+	}
+
 	// Prepare template data
 	data := struct {
 		User        interface{}
@@ -132,7 +157,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	}{
 		User:        user,
 		UserInitial: getUserInitial(user.Username),
-		Apps:        nil, // No apps yet
+		Apps:        apps,
 		AppsDir:     s.config.AppsDir,
 		Messages:    nil,
 		CSRFToken:   "", // No CSRF yet

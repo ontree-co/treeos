@@ -63,6 +63,30 @@ svg {
     font-weight: 500;
 }
 
+/* System Vitals Styles */
+.vitals-content {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 20px;
+}
+
+.vital-item {
+    text-align: center;
+    flex: 1;
+}
+
+.vital-label {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-right: 10px;
+}
+
+.vital-value {
+    font-size: 2rem;
+    font-weight: 700;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .vital-card {
@@ -71,5 +95,14 @@ svg {
     
     svg {
         height: 120px;
+    }
+    
+    .vitals-content {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .vital-item {
+        width: 100%;
     }
 }
