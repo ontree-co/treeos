@@ -1,0 +1,9 @@
+version: '3.8'
+services:
+  test-nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "8090:80"
+    volumes:
+      - ./mnt/html:/usr/share/nginx/html

@@ -141,6 +141,14 @@ func (s *Server) loadTemplates() error {
 	}
 	s.templates["app_detail"] = tmpl
 
+	// Load app create template
+	appCreateTemplate := filepath.Join("templates", "dashboard", "app_create.html")
+	tmpl, err = template.ParseFiles(baseTemplate, appCreateTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse app create template: %w", err)
+	}
+	s.templates["app_create"] = tmpl
+
 	return nil
 }
 
@@ -246,7 +254,9 @@ func (s *Server) routeApps(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	
 	// Route based on the path pattern
-	if strings.HasSuffix(path, "/start") {
+	if path == "/apps/create" {
+		s.handleAppCreate(w, r)
+	} else if strings.HasSuffix(path, "/start") {
 		s.handleAppStart(w, r)
 	} else if strings.HasSuffix(path, "/stop") {
 		s.handleAppStop(w, r)

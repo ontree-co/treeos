@@ -1,0 +1,224 @@
+{{ define "content" }}
+<div class="row">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/">Dashboard</a></li>
+                <li class="breadcrumb-item active">Create New App</li>
+            </ol>
+        </nav>
+        
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>📦 Create New Application</h1>
+            <div>
+                <a href="/" class="btn btn-outline-secondary">
+                    ← Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Introduction Section -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="alert alert-info">
+            <h5>💡 Understanding docker-compose.yml</h5>
+            <p class="mb-2">
+                The <code>docker-compose.yml</code> is the heart of your application's configuration on OnTree.
+                It tells Docker what image to use, what ports to open, and what folders to make persistent.
+            </p>
+            <p class="mb-2">
+                The <strong>App Name</strong> you provide in the form below <strong>must</strong> be identical to the service name
+                in your docker-compose configuration.
+            </p>
+            <p class="mb-0">
+                <strong>Volume Mounting:</strong> To ensure your app's data is self-contained and easy to back up,
+                all volumes should be mapped to the app's <code>mnt</code> folder. Use relative paths like 
+                <code>./mnt/data:/app/backend/data</code> instead of absolute paths.
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- Example Section -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">📋 Example: Installing Open WebUI</h5>
+            </div>
+            <div class="card-body">
+                <pre class="bg-light p-3 rounded mb-3"><code>version: '3.8'
+
+# The service name MUST match the 'App Name' field below.
+services:
+  open_webui:
+    # The Docker image to pull from a registry.
+    image: ghcr.io/open-webui/open-webui:ollama
+    
+    # Ensures the container restarts automatically if it stops.
+    restart: unless-stopped
+    
+    # Map ports from the host machine to the container.
+    # HOST_PORT:CONTAINER_PORT
+    ports:
+      - "8080:8080"
+    
+    # Map folders from the host to the container.
+    # Use relative paths for simplicity and security.
+    volumes:
+      - ./mnt/data:/app/backend/data
+    
+    # Environment variables for the container (optional)
+    environment:
+      # Example: OLLAMA_BASE_URL: http://192.168.1.10:11434</code></pre>
+                
+                <div class="alert alert-warning">
+                    <strong>Important:</strong> The service name in the YAML must exactly match the App Name you enter below.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Creation Form -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">🚀 Create Your Application</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" action="/apps/create">
+                    {{ if .Errors }}
+                        <div class="alert alert-danger">
+                            <ul class="mb-0">
+                                {{ range .Errors }}
+                                <li>{{ . }}</li>
+                                {{ end }}
+                            </ul>
+                        </div>
+                    {{ end }}
+                    
+                    <!-- App Name Field -->
+                    <div class="mb-4">
+                        <label for="app_name" class="form-label">
+                            <strong>App Name</strong>
+                        </label>
+                        <input type="text" class="form-control" id="app_name" name="app_name" 
+                               value="{{ .FormData.app_name }}" placeholder="my-awesome-app" required
+                               pattern="^[a-zA-Z0-9_-]+$" maxlength="50">
+                        <div class="form-text">
+                            A unique name for the application. This will be the folder name. Use only letters, numbers, hyphens, and underscores.
+                        </div>
+                    </div>
+                    
+                    <!-- Docker Compose Content Field -->
+                    <div class="mb-4">
+                        <label for="compose_content" class="form-label">
+                            <strong>docker-compose.yml Content</strong>
+                        </label>
+                        <textarea class="form-control font-monospace" id="compose_content" name="compose_content" 
+                                  rows="20" required placeholder="version: '3.8'
+services:
+  my-awesome-app:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - &quot;8080:80&quot;
+    volumes:
+      - ./mnt/data:/usr/share/nginx/html
+    environment:
+      # Add environment variables here if needed">{{ .FormData.compose_content }}</textarea>
+                        <div class="form-text">
+                            Paste the full docker-compose.yml configuration for your new application here.
+                        </div>
+                    </div>
+                    
+                    <!-- Form Actions -->
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            🚀 Create Application
+                        </button>
+                        <a href="/" class="btn btn-outline-secondary btn-lg">
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Additional Examples -->
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">🌐 Simple Nginx Example</h6>
+            </div>
+            <div class="card-body">
+                <pre class="bg-light p-2 rounded small"><code>version: '3.8'
+services:
+  my-website:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./mnt/html:/usr/share/nginx/html</code></pre>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">🐍 Python App Example</h6>
+            </div>
+            <div class="card-body">
+                <pre class="bg-light p-2 rounded small"><code>version: '3.8'
+services:
+  python-app:
+    image: python:3.11-slim
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mnt/app:/app
+      - ./mnt/data:/data
+    environment:
+      FLASK_ENV: production
+      DEBUG: "false"</code></pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Custom styles for the form */
+.form-control:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.font-monospace {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.9em;
+}
+
+.invalid-feedback {
+    font-size: 0.9em;
+}
+
+pre code {
+    font-size: 0.85em;
+    line-height: 1.4;
+}
+
+.alert h5 {
+    margin-bottom: 0.75rem;
+}
+</style>
+{{ end }}
