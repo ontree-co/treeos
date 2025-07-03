@@ -115,78 +115,78 @@ func (w *Worker) processOperation(operationID string) {
 
 func (w *Worker) processStartOperation(op *database.DockerOperation) error {
 	log.Printf("Starting app: %s", op.AppName)
-	
+
 	// Update progress
 	w.updateOperationStatus(op.ID, database.StatusInProgress, 10, "Checking container status", "")
-	
+
 	// Get app details
 	app, err := w.dockerSvc.GetAppDetails(op.AppName)
 	if err != nil {
 		return fmt.Errorf("failed to get app details: %w", err)
 	}
-	
+
 	// Check if we need to pull images
 	if app.Status == "not_created" {
 		w.updateOperationStatus(op.ID, database.StatusInProgress, 20, "Pulling Docker images", "")
-		
+
 		// Create a progress callback
 		progressCallback := func(progress int, message string) {
 			// Scale progress from 20-80 for image pulling
 			scaledProgress := 20 + (progress * 60 / 100)
 			w.updateOperationStatus(op.ID, database.StatusInProgress, scaledProgress, message, "")
 		}
-		
+
 		// Pull images with progress
 		if err := w.dockerSvc.PullImagesWithProgress(op.AppName, progressCallback); err != nil {
 			return fmt.Errorf("failed to pull images: %w", err)
 		}
 	}
-	
+
 	// Start the container
 	w.updateOperationStatus(op.ID, database.StatusInProgress, 90, "Starting container", "")
 	if err := w.dockerSvc.StartApp(op.AppName); err != nil {
 		return fmt.Errorf("failed to start app: %w", err)
 	}
-	
+
 	return nil
 }
 
 func (w *Worker) processRecreateOperation(op *database.DockerOperation) error {
 	log.Printf("Recreating app: %s", op.AppName)
-	
+
 	// Update progress
 	w.updateOperationStatus(op.ID, database.StatusInProgress, 10, "Stopping existing container", "")
-	
+
 	// Stop existing container
 	if err := w.dockerSvc.StopApp(op.AppName); err != nil {
 		log.Printf("Warning: failed to stop app %s: %v", op.AppName, err)
 	}
-	
+
 	// Remove existing container
 	w.updateOperationStatus(op.ID, database.StatusInProgress, 20, "Removing container", "")
 	if err := w.dockerSvc.DeleteApp(op.AppName); err != nil {
 		log.Printf("Warning: failed to delete app %s: %v", op.AppName, err)
 	}
-	
+
 	// Pull latest images
 	w.updateOperationStatus(op.ID, database.StatusInProgress, 30, "Pulling Docker images", "")
-	
+
 	progressCallback := func(progress int, message string) {
 		// Scale progress from 30-90 for image pulling
 		scaledProgress := 30 + (progress * 60 / 100)
 		w.updateOperationStatus(op.ID, database.StatusInProgress, scaledProgress, message, "")
 	}
-	
+
 	if err := w.dockerSvc.PullImagesWithProgress(op.AppName, progressCallback); err != nil {
 		return fmt.Errorf("failed to pull images: %w", err)
 	}
-	
+
 	// Start new container
 	w.updateOperationStatus(op.ID, database.StatusInProgress, 95, "Starting new container", "")
 	if err := w.dockerSvc.StartApp(op.AppName); err != nil {
 		return fmt.Errorf("failed to start app: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -196,7 +196,7 @@ func (w *Worker) updateOperationStatus(operationID, status string, progress int,
 		SET status = ?, progress = ?, progress_message = ?, error_message = ?, updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?
 	`
-	
+
 	if status == database.StatusCompleted || status == database.StatusFailed {
 		query = `
 			UPDATE docker_operations 
@@ -205,7 +205,7 @@ func (w *Worker) updateOperationStatus(operationID, status string, progress int,
 			WHERE id = ?
 		`
 	}
-	
+
 	_, err := w.db.Exec(query, status, progress, progressMessage, errorMessage, operationID)
 	if err != nil {
 		log.Printf("Failed to update operation status: %v", err)

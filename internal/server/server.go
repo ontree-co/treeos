@@ -9,12 +9,12 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/gorilla/sessions"
 	"ontree-node/internal/config"
 	"ontree-node/internal/database"
 	"ontree-node/internal/docker"
 	"ontree-node/internal/templates"
 	"ontree-node/internal/worker"
-	"github.com/gorilla/sessions"
 )
 
 // Server represents the HTTP server
@@ -34,7 +34,7 @@ func New(cfg *config.Config) (*Server, error) {
 	// Create session store with secure key
 	// In production, this should be loaded from environment or config
 	sessionKey := []byte("your-32-byte-session-key-here!!") // TODO: Load from config
-	
+
 	s := &Server{
 		config:       cfg,
 		templates:    make(map[string]*template.Template),
@@ -114,7 +114,7 @@ func (s *Server) Shutdown() {
 func (s *Server) loadTemplates() error {
 	// Load base template
 	baseTemplate := filepath.Join("templates", "layouts", "base.html")
-	
+
 	// Load dashboard template
 	dashboardTemplate := filepath.Join("templates", "dashboard", "index.html")
 	tmpl, err := template.ParseFiles(baseTemplate, dashboardTemplate)
@@ -250,7 +250,7 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/apps/", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeApps))))
 	mux.HandleFunc("/templates", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleTemplates))))
 	mux.HandleFunc("/templates/", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeTemplates))))
-	
+
 	// API routes
 	mux.HandleFunc("/api/system-vitals", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleSystemVitals))))
 	mux.HandleFunc("/api/docker/operations/", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleDockerOperationStatus))))
@@ -295,21 +295,11 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Prepare template data
-	data := struct {
-		User        interface{}
-		UserInitial string
-		Apps        []interface{}
-		AppsDir     string
-		Messages    []interface{}
-		CSRFToken   string
-	}{
-		User:        user,
-		UserInitial: getUserInitial(user.Username),
-		Apps:        apps,
-		AppsDir:     s.config.AppsDir,
-		Messages:    nil,
-		CSRFToken:   "", // No CSRF yet
-	}
+	data := s.baseTemplateData(user)
+	data["Apps"] = apps
+	data["AppsDir"] = s.config.AppsDir
+	data["Messages"] = nil
+	data["CSRFToken"] = "" // No CSRF yet
 
 	// Render template
 	tmpl, ok := s.templates["dashboard"]
@@ -334,10 +324,33 @@ func getUserInitial(username string) string {
 	return strings.ToUpper(string(username[0]))
 }
 
+// baseTemplateData creates the common data structure for base template
+func (s *Server) baseTemplateData(user *database.User) map[string]interface{} {
+	data := make(map[string]interface{})
+
+	if user != nil {
+		data["User"] = user
+		data["UserInitial"] = getUserInitial(user.Username)
+
+		// PostHog configuration
+		if s.config.PostHogAPIKey != "" {
+			data["PostHogEnabled"] = true
+			data["PostHogAPIKey"] = s.config.PostHogAPIKey
+			data["PostHogHost"] = s.config.PostHogHost
+		}
+	}
+
+	// Version info (placeholder for now)
+	data["Version"] = "1.0.0"
+	data["VersionAge"] = "latest"
+
+	return data
+}
+
 // routeApps routes all /apps/* requests to the appropriate handler
 func (s *Server) routeApps(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
-	
+
 	// Route based on the path pattern
 	if path == "/apps/create" {
 		s.handleAppCreate(w, r)

@@ -72,7 +72,7 @@ func main() {
 func setupDirs() error {
 	// Determine the apps directory path based on platform
 	appsDir := getAppsDir()
-	
+
 	// Platform-specific behavior
 	switch runtime.GOOS {
 	case "linux":
@@ -106,20 +106,20 @@ func setupLinuxDirs(appsDir string) error {
 	if os.Geteuid() != 0 {
 		return fmt.Errorf("This command must be run as root (use sudo)")
 	}
-	
+
 	fmt.Printf("Setting up directories for Linux (apps_dir=%s)\n", appsDir)
-	
+
 	// Create parent directory first
 	parentDir := filepath.Dir(appsDir)
 	if err := os.MkdirAll(parentDir, 0755); err != nil {
 		return fmt.Errorf("failed to create parent directory %s: %w", parentDir, err)
 	}
-	
+
 	// Create apps directory
 	if err := os.MkdirAll(appsDir, 0775); err != nil {
 		return fmt.Errorf("failed to create apps directory %s: %w", appsDir, err)
 	}
-	
+
 	// Try to set ownership to ontreenode:ontreenode
 	uid, gid, err := getOntreenodeIDs()
 	if err != nil {
@@ -132,17 +132,17 @@ func setupLinuxDirs(appsDir string) error {
 		uid, _ = strconv.Atoi(currentUser.Uid)
 		gid, _ = strconv.Atoi(currentUser.Gid)
 	}
-	
+
 	// Set ownership
 	if err := os.Chown(appsDir, uid, gid); err != nil {
 		return fmt.Errorf("failed to set ownership on %s: %w", appsDir, err)
 	}
-	
+
 	// Set permissions to 0775 (group-writable)
 	if err := os.Chmod(appsDir, 0775); err != nil {
 		return fmt.Errorf("failed to set permissions on %s: %w", appsDir, err)
 	}
-	
+
 	// If running under sudo, add the sudo user to the group
 	if sudoUser := os.Getenv("SUDO_USER"); sudoUser != "" {
 		groupName := "ontreenode"
@@ -156,7 +156,7 @@ func setupLinuxDirs(appsDir string) error {
 				}
 			}
 		}
-		
+
 		// Add user to group
 		cmd := exec.Command("usermod", "-a", "-G", groupName, sudoUser)
 		if err := cmd.Run(); err != nil {
@@ -165,26 +165,26 @@ func setupLinuxDirs(appsDir string) error {
 			fmt.Printf("Added %s to %s group\n", sudoUser, groupName)
 		}
 	}
-	
+
 	// Verify write permissions by creating a test file
 	testFile := filepath.Join(appsDir, ".test_write")
 	if err := os.WriteFile(testFile, []byte("test"), 0644); err != nil {
 		return fmt.Errorf("failed to verify write permissions in %s: %w", appsDir, err)
 	}
 	os.Remove(testFile)
-	
+
 	fmt.Printf("✓ Successfully created %s with correct permissions\n", appsDir)
 	return nil
 }
 
 func setupMacOSDirs(appsDir string) error {
 	fmt.Printf("Setting up directories for macOS (apps_dir=%s)\n", appsDir)
-	
+
 	// Create apps directory
 	if err := os.MkdirAll(appsDir, 0755); err != nil {
 		return fmt.Errorf("failed to create apps directory %s: %w", appsDir, err)
 	}
-	
+
 	fmt.Printf("✓ Successfully created %s\n", appsDir)
 	return nil
 }
@@ -195,16 +195,16 @@ func getOntreenodeIDs() (int, int, error) {
 	if err != nil {
 		return 0, 0, err
 	}
-	
+
 	uid, err := strconv.Atoi(u.Uid)
 	if err != nil {
 		return 0, 0, err
 	}
-	
+
 	gid, err := strconv.Atoi(u.Gid)
 	if err != nil {
 		return 0, 0, err
 	}
-	
+
 	return uid, gid, nil
 }

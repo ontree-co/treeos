@@ -6,12 +6,11 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"ontree-node/internal/database"
+	"ontree-node/internal/system"
 	"os"
 	"path/filepath"
 	"strings"
-	"ontree-node/internal/database"
-	"ontree-node/internal/docker"
-	"ontree-node/internal/system"
 	"time"
 )
 
@@ -202,9 +201,15 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		if nextURL, ok := next.(string); ok && nextURL != "" {
 			delete(session.Values, "next")
 			session.Save(r, w)
+			// Add login=success query param for PostHog tracking
+			if strings.Contains(nextURL, "?") {
+				nextURL += "&login=success"
+			} else {
+				nextURL += "?login=success"
+			}
 			http.Redirect(w, r, nextURL, http.StatusFound)
 		} else {
-			http.Redirect(w, r, "/", http.StatusFound)
+			http.Redirect(w, r, "/?login=success", http.StatusFound)
 		}
 		return
 	}
@@ -230,14 +235,14 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 // handleLogout handles user logout
 func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 	session, _ := s.sessionStore.Get(r, "ontree-session")
-	
+
 	// Clear session
 	session.Values["user_id"] = nil
 	session.Options.MaxAge = -1
 	session.Save(r, w)
 
 	log.Printf("User logged out")
-	
+
 	http.Redirect(w, r, "/login", http.StatusFound)
 }
 
@@ -277,22 +282,22 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	
+
 	appName := strings.TrimPrefix(path, "/apps/")
 	if appName == "" {
 		http.NotFound(w, r)
 		return
 	}
-	
+
 	// Get user from context
 	user := getUserFromContext(r.Context())
-	
+
 	// Get app details
 	if s.dockerClient == nil {
 		http.Error(w, "Docker client not available", http.StatusServiceUnavailable)
 		return
 	}
-	
+
 	app, err := s.dockerClient.GetAppDetails(s.config.AppsDir, appName)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
@@ -302,7 +307,7 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Failed to get app details: %v", err), http.StatusInternalServerError)
 		return
 	}
-	
+
 	// Read docker-compose.yml content
 	composePath := filepath.Join(app.Path, "docker-compose.yml")
 	composeContent, err := os.ReadFile(composePath)
@@ -310,17 +315,17 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Failed to read docker-compose.yml: %v", err)
 		composeContent = []byte("Failed to read docker-compose.yml")
 	}
-	
+
 	// Get container details if it exists
 	var containerInfo map[string]interface{}
 	if app.Status != "not_created" && app.Status != "error" {
 		containerInfo = s.getContainerInfo(appName)
 	}
-	
+
 	// Get flash messages from session
 	session, _ := s.sessionStore.Get(r, "ontree-session")
 	var messages []interface{}
-	
+
 	// Get error messages
 	if flashes := session.Flashes("error"); len(flashes) > 0 {
 		for _, flash := range flashes {
@@ -330,7 +335,7 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 	}
-	
+
 	// Get success messages
 	if flashes := session.Flashes("success"); len(flashes) > 0 {
 		for _, flash := range flashes {
@@ -340,7 +345,7 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 	}
-	
+
 	// Get info messages
 	if flashes := session.Flashes("info"); len(flashes) > 0 {
 		for _, flash := range flashes {
@@ -350,37 +355,26 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 	}
-	
+
 	if len(messages) > 0 {
 		session.Save(r, w)
 	}
-	
+
 	// Prepare template data
-	data := struct {
-		User           interface{}
-		UserInitial    string
-		App            *docker.App
-		ComposeContent string
-		ContainerInfo  map[string]interface{}
-		Messages       []interface{}
-		CSRFToken      string
-	}{
-		User:           user,
-		UserInitial:    getUserInitial(user.Username),
-		App:            app,
-		ComposeContent: string(composeContent),
-		ContainerInfo:  containerInfo,
-		Messages:       messages,
-		CSRFToken:      "",
-	}
-	
+	data := s.baseTemplateData(user)
+	data["App"] = app
+	data["ComposeContent"] = string(composeContent)
+	data["ContainerInfo"] = containerInfo
+	data["Messages"] = messages
+	data["CSRFToken"] = ""
+
 	// Render template
 	tmpl, ok := s.templates["app_detail"]
 	if !ok {
 		http.Error(w, "Template not found", http.StatusInternalServerError)
 		return
 	}
-	
+
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
 		log.Printf("Error rendering template: %v", err)
@@ -392,11 +386,11 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 // getContainerInfo retrieves detailed container information
 func (s *Server) getContainerInfo(appName string) map[string]interface{} {
 	info := make(map[string]interface{})
-	
+
 	// For now, return basic info
 	// This will be expanded when we implement container management
 	info["name"] = fmt.Sprintf("ontree-%s", appName)
-	
+
 	return info
 }
 
@@ -406,7 +400,7 @@ func (s *Server) handleAppStart(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	
+
 	// Extract app name from URL path
 	path := r.URL.Path
 	parts := strings.Split(path, "/")
@@ -414,15 +408,15 @@ func (s *Server) handleAppStart(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	
+
 	appName := parts[2]
-	
+
 	// Check if Docker is available
 	if s.dockerSvc == nil || s.worker == nil {
 		http.Error(w, "Docker service not available", http.StatusServiceUnavailable)
 		return
 	}
-	
+
 	// Create a background operation
 	operationID, err := s.createDockerOperation(database.OpTypeStartContainer, appName, nil)
 	if err != nil {
@@ -433,15 +427,15 @@ func (s *Server) handleAppStart(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
 		return
 	}
-	
+
 	// Enqueue the operation
 	s.worker.EnqueueOperation(operationID)
-	
+
 	// Set flash message with operation ID
 	session, _ := s.sessionStore.Get(r, "ontree-session")
 	session.AddFlash(fmt.Sprintf("Starting application... <div id=\"operation-status\" hx-get=\"/api/docker/operations/%s\" hx-trigger=\"load\" hx-swap=\"innerHTML\"></div>", operationID), "info")
 	session.Save(r, w)
-	
+
 	// Redirect back to app detail page
 	http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
 }
@@ -452,7 +446,7 @@ func (s *Server) handleAppStop(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	
+
 	// Extract app name from URL path
 	path := r.URL.Path
 	parts := strings.Split(path, "/")
@@ -460,15 +454,15 @@ func (s *Server) handleAppStop(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	
+
 	appName := parts[2]
-	
+
 	// Stop the container
 	if s.dockerClient == nil {
 		http.Error(w, "Docker client not available", http.StatusServiceUnavailable)
 		return
 	}
-	
+
 	err := s.dockerClient.StopApp(appName)
 	if err != nil {
 		log.Printf("Failed to stop app %s: %v", appName, err)
@@ -481,7 +475,7 @@ func (s *Server) handleAppStop(w http.ResponseWriter, r *http.Request) {
 		session.AddFlash("Application stopped successfully", "success")
 		session.Save(r, w)
 	}
-	
+
 	// Redirect back to app detail page
 	http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
 }
@@ -492,7 +486,7 @@ func (s *Server) handleAppRecreate(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	
+
 	// Extract app name from URL path
 	path := r.URL.Path
 	parts := strings.Split(path, "/")
@@ -500,15 +494,15 @@ func (s *Server) handleAppRecreate(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	
+
 	appName := parts[2]
-	
+
 	// Check if Docker is available
 	if s.dockerSvc == nil || s.worker == nil {
 		http.Error(w, "Docker service not available", http.StatusServiceUnavailable)
 		return
 	}
-	
+
 	// Create a background operation
 	operationID, err := s.createDockerOperation(database.OpTypeRecreateContainer, appName, nil)
 	if err != nil {
@@ -519,15 +513,15 @@ func (s *Server) handleAppRecreate(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
 		return
 	}
-	
+
 	// Enqueue the operation
 	s.worker.EnqueueOperation(operationID)
-	
+
 	// Set flash message with operation ID
 	session, _ := s.sessionStore.Get(r, "ontree-session")
 	session.AddFlash(fmt.Sprintf("Recreating application... <div id=\"operation-status\" hx-get=\"/api/docker/operations/%s\" hx-trigger=\"load\" hx-swap=\"innerHTML\"></div>", operationID), "info")
 	session.Save(r, w)
-	
+
 	// Redirect back to app detail page
 	http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
 }
@@ -538,7 +532,7 @@ func (s *Server) handleAppDelete(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	
+
 	// Extract app name from URL path
 	path := r.URL.Path
 	parts := strings.Split(path, "/")
@@ -546,15 +540,15 @@ func (s *Server) handleAppDelete(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	
+
 	appName := parts[2]
-	
+
 	// Delete the container
 	if s.dockerClient == nil {
 		http.Error(w, "Docker client not available", http.StatusServiceUnavailable)
 		return
 	}
-	
+
 	err := s.dockerClient.DeleteAppContainer(appName)
 	if err != nil {
 		log.Printf("Failed to delete app container %s: %v", appName, err)
@@ -567,7 +561,7 @@ func (s *Server) handleAppDelete(w http.ResponseWriter, r *http.Request) {
 		session.AddFlash("Container deleted successfully", "success")
 		session.Save(r, w)
 	}
-	
+
 	// Redirect back to app detail page
 	http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
 }

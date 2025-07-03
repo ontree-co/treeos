@@ -18,14 +18,14 @@ func NewClient() (*Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Docker client: %w", err)
 	}
-	
+
 	// Test connection
 	ctx := context.Background()
 	_, err = cli.Ping(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to Docker daemon: %w", err)
 	}
-	
+
 	return &Client{
 		dockerClient: cli,
 	}, nil

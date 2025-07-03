@@ -76,7 +76,7 @@ func (s *Service) GetTemplateContent(template *Template) (string, error) {
 func (s *Service) ProcessTemplateContent(content string, appName string) string {
 	// Replace the service name in the compose file with the app name
 	lines := strings.Split(content, "\n")
-	
+
 	// For now, we'll do a simple replacement of the first service name
 	// In a real implementation, we'd parse the YAML properly
 	for i, line := range lines {
@@ -86,6 +86,6 @@ func (s *Service) ProcessTemplateContent(content string, appName string) string 
 			break
 		}
 	}
-	
+
 	return strings.Join(lines, "\n")
 }

@@ -131,3 +131,18 @@
     </div>
 </div>
 {{end}}
+
+{{define "extra_js"}}
+{{if .PostHogEnabled}}
+<script>
+// Track page load if this is the first page after login
+if (window.location.search.includes('login=success') || document.referrer.includes('/login')) {
+    if (typeof posthog !== 'undefined') {
+        posthog.capture('user_logged_in', {
+            timestamp: new Date().toISOString()
+        });
+    }
+}
+</script>
+{{end}}
+{{end}}

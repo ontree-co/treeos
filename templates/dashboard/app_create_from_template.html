@@ -128,3 +128,30 @@
 }
 </style>
 {{end}}
+
+{{define "extra_js"}}
+{{if .PostHogEnabled}}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            // Track template app creation
+            if (typeof posthog !== 'undefined') {
+                const appName = document.getElementById('name').value;
+                const autoStart = document.getElementById('auto_start').checked;
+                
+                posthog.capture('app_created_from_template', {
+                    template_id: '{{.Template.ID}}',
+                    template_name: '{{.Template.Name}}',
+                    app_name: appName,
+                    auto_start: autoStart,
+                    timestamp: new Date().toISOString()
+                });
+            }
+        });
+    }
+});
+</script>
+{{end}}
+{{end}}

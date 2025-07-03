@@ -14,12 +14,16 @@ import (
 type Config struct {
 	// AppsDir is the directory where applications are stored
 	AppsDir string `toml:"apps_dir"`
-	
+
 	// DatabasePath is the path to the SQLite database file
 	DatabasePath string `toml:"database_path"`
-	
+
 	// ListenAddr is the address and port for the web server
 	ListenAddr string `toml:"listen_addr"`
+
+	// PostHog analytics configuration
+	PostHogAPIKey string `toml:"posthog_api_key"`
+	PostHogHost   string `toml:"posthog_host"`
 }
 
 // defaultConfig returns the default configuration based on the platform
@@ -27,8 +31,9 @@ func defaultConfig() *Config {
 	config := &Config{
 		DatabasePath: "ontree.db",
 		ListenAddr:   ":8081",
+		PostHogHost:  "https://app.posthog.com",
 	}
-	
+
 	// Platform-specific defaults for AppsDir
 	switch runtime.GOOS {
 	case "linux":
@@ -38,7 +43,7 @@ func defaultConfig() *Config {
 	default:
 		config.AppsDir = "./apps"
 	}
-	
+
 	return config
 }
 
@@ -46,7 +51,7 @@ func defaultConfig() *Config {
 func Load() (*Config, error) {
 	// Start with default configuration
 	config := defaultConfig()
-	
+
 	// Try to load from config.toml if it exists
 	configPath := "config.toml"
 	if _, err := os.Stat(configPath); err == nil {
@@ -54,20 +59,28 @@ func Load() (*Config, error) {
 			return nil, fmt.Errorf("failed to decode config file: %w", err)
 		}
 	}
-	
+
 	// Override with environment variables if set
 	if appsDir := os.Getenv("ONTREE_APPS_DIR"); appsDir != "" {
 		config.AppsDir = appsDir
 	}
-	
+
 	if dbPath := os.Getenv("DATABASE_PATH"); dbPath != "" {
 		config.DatabasePath = dbPath
 	}
-	
+
 	if listenAddr := os.Getenv("LISTEN_ADDR"); listenAddr != "" {
 		config.ListenAddr = listenAddr
 	}
-	
+
+	if postHogAPIKey := os.Getenv("POSTHOG_API_KEY"); postHogAPIKey != "" {
+		config.PostHogAPIKey = postHogAPIKey
+	}
+
+	if postHogHost := os.Getenv("POSTHOG_HOST"); postHogHost != "" {
+		config.PostHogHost = postHogHost
+	}
+
 	// Ensure AppsDir is absolute
 	if !filepath.IsAbs(config.AppsDir) {
 		absPath, err := filepath.Abs(config.AppsDir)
@@ -76,7 +89,7 @@ func Load() (*Config, error) {
 		}
 		config.AppsDir = absPath
 	}
-	
+
 	return config, nil
 }
 

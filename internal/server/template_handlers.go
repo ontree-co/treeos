@@ -26,19 +26,10 @@ func (s *Server) handleTemplates(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Prepare template data
-	data := struct {
-		User        interface{}
-		UserInitial string
-		Templates   interface{}
-		Messages    []interface{}
-		CSRFToken   string
-	}{
-		User:        user,
-		UserInitial: getUserInitial(user.Username),
-		Templates:   templates,
-		Messages:    nil,
-		CSRFToken:   "", // No CSRF yet
-	}
+	data := s.baseTemplateData(user)
+	data["Templates"] = templates
+	data["Messages"] = nil
+	data["CSRFToken"] = "" // No CSRF yet
 
 	// Render template
 	tmpl, ok := s.templates["app_templates"]
@@ -58,7 +49,7 @@ func (s *Server) handleTemplates(w http.ResponseWriter, r *http.Request) {
 // routeTemplates handles all /templates/* routes
 func (s *Server) routeTemplates(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
-	
+
 	// Parse template ID from path like /templates/openwebui/create
 	parts := strings.Split(strings.TrimPrefix(path, "/templates/"), "/")
 	if len(parts) >= 2 && parts[1] == "create" {
@@ -84,19 +75,10 @@ func (s *Server) handleCreateFromTemplate(w http.ResponseWriter, r *http.Request
 	switch r.Method {
 	case http.MethodGet:
 		// Show the form
-		data := struct {
-			User        interface{}
-			UserInitial string
-			Template    interface{}
-			Messages    []interface{}
-			CSRFToken   string
-		}{
-			User:        user,
-			UserInitial: getUserInitial(user.Username),
-			Template:    template,
-			Messages:    nil,
-			CSRFToken:   "", // No CSRF yet
-		}
+		data := s.baseTemplateData(user)
+		data["Template"] = template
+		data["Messages"] = nil
+		data["CSRFToken"] = "" // No CSRF yet
 
 		tmpl, ok := s.templates["app_create_from_template"]
 		if !ok {
@@ -149,7 +131,7 @@ func (s *Server) handleCreateFromTemplate(w http.ResponseWriter, r *http.Request
 		if autoStart && s.worker != nil {
 			metadata := map[string]string{
 				"template_id": template.ID,
-				"auto_start": "true",
+				"auto_start":  "true",
 			}
 			operationID, err := s.createDockerOperation("start_container", appName, metadata)
 			if err != nil {

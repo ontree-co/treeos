@@ -23,7 +23,7 @@ func checkPassword(password, hash string) error {
 // authenticateUser verifies username and password
 func (s *Server) authenticateUser(username, password string) (*database.User, error) {
 	db := database.GetDB()
-	
+
 	user := &database.User{}
 	err := db.QueryRow(`
 		SELECT id, username, password, email, first_name, last_name, 
@@ -34,19 +34,19 @@ func (s *Server) authenticateUser(username, password string) (*database.User, er
 		&user.FirstName, &user.LastName, &user.IsStaff, &user.IsSuperuser,
 		&user.IsActive, &user.DateJoined, &user.LastLogin,
 	)
-	
+
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("invalid username or password")
 		}
 		return nil, err
 	}
-	
+
 	// Check password
 	if err := checkPassword(password, user.Password); err != nil {
 		return nil, fmt.Errorf("invalid username or password")
 	}
-	
+
 	// Update last login
 	now := time.Now()
 	_, err = db.Exec("UPDATE users SET last_login = ? WHERE id = ?", now, user.ID)
@@ -55,14 +55,14 @@ func (s *Server) authenticateUser(username, password string) (*database.User, er
 		fmt.Printf("Failed to update last_login: %v\n", err)
 	}
 	user.LastLogin = sql.NullTime{Time: now, Valid: true}
-	
+
 	return user, nil
 }
 
 // getUserByID retrieves a user by ID
 func (s *Server) getUserByID(id int) (*database.User, error) {
 	db := database.GetDB()
-	
+
 	user := &database.User{}
 	err := db.QueryRow(`
 		SELECT id, username, password, email, first_name, last_name, 
@@ -73,11 +73,11 @@ func (s *Server) getUserByID(id int) (*database.User, error) {
 		&user.FirstName, &user.LastName, &user.IsStaff, &user.IsSuperuser,
 		&user.IsActive, &user.DateJoined, &user.LastLogin,
 	)
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return user, nil
 }
 
@@ -87,24 +87,24 @@ func (s *Server) createUser(username, password, email string, isStaff, isSuperus
 	if err != nil {
 		return nil, fmt.Errorf("failed to hash password: %w", err)
 	}
-	
+
 	db := database.GetDB()
 	now := time.Now()
-	
+
 	result, err := db.Exec(`
 		INSERT INTO users (username, password, email, is_staff, is_superuser, is_active, date_joined)
 		VALUES (?, ?, ?, ?, ?, 1, ?)
 	`, username, hashedPassword, email, isStaff, isSuperuser, now)
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
-	
+
 	id, err := result.LastInsertId()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user ID: %w", err)
 	}
-	
+
 	return &database.User{
 		ID:          int(id),
 		Username:    username,

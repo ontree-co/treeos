@@ -261,6 +261,15 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (button.classList.contains('confirming')) {
                 // Second click - submit the form
+                // Track app action if PostHog is available
+                {{if .PostHogEnabled}}
+                if (typeof posthog !== 'undefined' && form.action.includes('/start')) {
+                    posthog.capture('app_started', {
+                        app_name: '{{.App.Name}}',
+                        timestamp: new Date().toISOString()
+                    });
+                }
+                {{end}}
                 form.submit();
             } else {
                 // First click - enter confirmation mode

@@ -8,7 +8,7 @@ import (
 // routePatterns routes all /patterns/* requests to the appropriate handler
 func (s *Server) routePatterns(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
-	
+
 	// Route based on the path pattern
 	switch {
 	case path == "/patterns" || path == "/patterns/":
@@ -34,13 +34,13 @@ func (s *Server) routePatterns(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handlePatternsIndex(w http.ResponseWriter, r *http.Request) {
 	// Get user from context if authenticated
 	user := getUserFromContext(r.Context())
-	
+
 	// Handle when user is not authenticated
 	userInitial := "?"
 	if user != nil && user.Username != "" {
 		userInitial = getUserInitial(user.Username)
 	}
-	
+
 	// Prepare template data
 	data := struct {
 		User        interface{}
@@ -55,17 +55,17 @@ func (s *Server) handlePatternsIndex(w http.ResponseWriter, r *http.Request) {
 		CSRFToken:   "", // No CSRF yet
 		Messages:    nil,
 	}
-	
+
 	// Render template
 	tmpl, ok := s.templates["patterns_index"]
 	if !ok {
 		http.Error(w, "Template not found", http.StatusInternalServerError)
 		return
 	}
-	
+
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
-		http.Error(w, "Error rendering template: " + err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Error rendering template: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
@@ -73,13 +73,13 @@ func (s *Server) handlePatternsIndex(w http.ResponseWriter, r *http.Request) {
 // handlePatternsComponents handles the components pattern page
 func (s *Server) handlePatternsComponents(w http.ResponseWriter, r *http.Request) {
 	user := getUserFromContext(r.Context())
-	
+
 	// Handle when user is not authenticated
 	userInitial := "?"
 	if user != nil && user.Username != "" {
 		userInitial = getUserInitial(user.Username)
 	}
-	
+
 	// Sample data for components demonstration
 	data := struct {
 		User        interface{}
@@ -99,7 +99,7 @@ func (s *Server) handlePatternsComponents(w http.ResponseWriter, r *http.Request
 			Title   string
 			Content string
 		}
-		Messages    []interface{}
+		Messages []interface{}
 	}{
 		User:        user,
 		UserInitial: userInitial,
@@ -136,16 +136,16 @@ func (s *Server) handlePatternsComponents(w http.ResponseWriter, r *http.Request
 			{Title: "Another Card", Content: "Cards are flexible content containers."},
 		},
 	}
-	
+
 	tmpl, ok := s.templates["patterns_components"]
 	if !ok {
 		http.Error(w, "Template not found", http.StatusInternalServerError)
 		return
 	}
-	
+
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
-		http.Error(w, "Error rendering template: " + err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Error rendering template: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
@@ -153,13 +153,13 @@ func (s *Server) handlePatternsComponents(w http.ResponseWriter, r *http.Request
 // handlePatternsForms handles the forms pattern page
 func (s *Server) handlePatternsForms(w http.ResponseWriter, r *http.Request) {
 	user := getUserFromContext(r.Context())
-	
+
 	// Handle when user is not authenticated
 	userInitial := "?"
 	if user != nil && user.Username != "" {
 		userInitial = getUserInitial(user.Username)
 	}
-	
+
 	data := struct {
 		User        interface{}
 		UserInitial string
@@ -172,16 +172,16 @@ func (s *Server) handlePatternsForms(w http.ResponseWriter, r *http.Request) {
 		Title:       "Forms - Pattern Library",
 		CSRFToken:   "",
 	}
-	
+
 	tmpl, ok := s.templates["patterns_forms"]
 	if !ok {
 		http.Error(w, "Template not found", http.StatusInternalServerError)
 		return
 	}
-	
+
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
-		http.Error(w, "Error rendering template: " + err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Error rendering template: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
@@ -189,13 +189,13 @@ func (s *Server) handlePatternsForms(w http.ResponseWriter, r *http.Request) {
 // handlePatternsTypography handles the typography pattern page
 func (s *Server) handlePatternsTypography(w http.ResponseWriter, r *http.Request) {
 	user := getUserFromContext(r.Context())
-	
+
 	// Handle when user is not authenticated
 	userInitial := "?"
 	if user != nil && user.Username != "" {
 		userInitial = getUserInitial(user.Username)
 	}
-	
+
 	data := struct {
 		User        interface{}
 		UserInitial string
@@ -208,16 +208,16 @@ func (s *Server) handlePatternsTypography(w http.ResponseWriter, r *http.Request
 		Title:       "Typography - Pattern Library",
 		CSRFToken:   "",
 	}
-	
+
 	tmpl, ok := s.templates["patterns_typography"]
 	if !ok {
 		http.Error(w, "Template not found", http.StatusInternalServerError)
 		return
 	}
-	
+
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
-		http.Error(w, "Error rendering template: " + err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Error rendering template: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
@@ -225,13 +225,13 @@ func (s *Server) handlePatternsTypography(w http.ResponseWriter, r *http.Request
 // handlePatternsPartials handles the partials pattern page
 func (s *Server) handlePatternsPartials(w http.ResponseWriter, r *http.Request) {
 	user := getUserFromContext(r.Context())
-	
+
 	// Handle when user is not authenticated
 	userInitial := "?"
 	if user != nil && user.Username != "" {
 		userInitial = getUserInitial(user.Username)
 	}
-	
+
 	data := struct {
 		User        interface{}
 		UserInitial string
@@ -246,7 +246,7 @@ func (s *Server) handlePatternsPartials(w http.ResponseWriter, r *http.Request) 
 			Status string
 			Text   string
 		}
-		Messages    []interface{}
+		Messages []interface{}
 	}{
 		User:        user,
 		UserInitial: userInitial,
@@ -270,16 +270,16 @@ func (s *Server) handlePatternsPartials(w http.ResponseWriter, r *http.Request) 
 			{Status: "error", Text: "Error"},
 		},
 	}
-	
+
 	tmpl, ok := s.templates["patterns_partials"]
 	if !ok {
 		http.Error(w, "Template not found", http.StatusInternalServerError)
 		return
 	}
-	
+
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
-		http.Error(w, "Error rendering template: " + err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Error rendering template: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
@@ -287,13 +287,13 @@ func (s *Server) handlePatternsPartials(w http.ResponseWriter, r *http.Request) 
 // handlePatternsLayouts handles the layouts pattern page
 func (s *Server) handlePatternsLayouts(w http.ResponseWriter, r *http.Request) {
 	user := getUserFromContext(r.Context())
-	
+
 	// Handle when user is not authenticated
 	userInitial := "?"
 	if user != nil && user.Username != "" {
 		userInitial = getUserInitial(user.Username)
 	}
-	
+
 	data := struct {
 		User        interface{}
 		UserInitial string
@@ -306,16 +306,16 @@ func (s *Server) handlePatternsLayouts(w http.ResponseWriter, r *http.Request) {
 		Title:       "Layouts - Pattern Library",
 		CSRFToken:   "",
 	}
-	
+
 	tmpl, ok := s.templates["patterns_layouts"]
 	if !ok {
 		http.Error(w, "Template not found", http.StatusInternalServerError)
 		return
 	}
-	
+
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
-		http.Error(w, "Error rendering template: " + err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Error rendering template: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
@@ -323,13 +323,13 @@ func (s *Server) handlePatternsLayouts(w http.ResponseWriter, r *http.Request) {
 // handlePatternsStyleGuide handles the style guide pattern page
 func (s *Server) handlePatternsStyleGuide(w http.ResponseWriter, r *http.Request) {
 	user := getUserFromContext(r.Context())
-	
+
 	// Handle when user is not authenticated
 	userInitial := "?"
 	if user != nil && user.Username != "" {
 		userInitial = getUserInitial(user.Username)
 	}
-	
+
 	data := struct {
 		User        interface{}
 		UserInitial string
@@ -350,7 +350,7 @@ func (s *Server) handlePatternsStyleGuide(w http.ResponseWriter, r *http.Request
 			Emoji string
 			Name  string
 		}
-		Messages    []interface{}
+		Messages []interface{}
 	}{
 		User:        user,
 		UserInitial: userInitial,
@@ -392,16 +392,16 @@ func (s *Server) handlePatternsStyleGuide(w http.ResponseWriter, r *http.Request
 			{Emoji: "🔒", Name: "Security"},
 		},
 	}
-	
+
 	tmpl, ok := s.templates["patterns_style_guide"]
 	if !ok {
 		http.Error(w, "Template not found", http.StatusInternalServerError)
 		return
 	}
-	
+
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
-		http.Error(w, "Error rendering template: " + err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Error rendering template: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 }

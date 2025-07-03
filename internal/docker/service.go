@@ -24,7 +24,7 @@ func NewService(appsDir string) (*Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return &Service{
 		client:  client,
 		appsDir: appsDir,
@@ -164,7 +164,7 @@ func (s *Service) PullImagesWithProgress(appName string, progressCallback Progre
 		span.RecordError(err)
 		return fmt.Errorf("failed to get app details: %w", err)
 	}
-	
+
 	if app.Config == nil || app.Config.Container.Image == "" {
 		return fmt.Errorf("no image configured for app: %s", appName)
 	}
@@ -172,7 +172,7 @@ func (s *Service) PullImagesWithProgress(appName string, progressCallback Progre
 	span.SetAttributes(
 		attribute.String("image.name", imageName),
 	)
-	
+
 	// Start pulling the image
 	reader, err := s.client.dockerClient.ImagePull(ctx, imageName, image.PullOptions{})
 	if err != nil {
@@ -180,12 +180,12 @@ func (s *Service) PullImagesWithProgress(appName string, progressCallback Progre
 		return fmt.Errorf("failed to pull image: %w", err)
 	}
 	defer reader.Close()
-	
+
 	// Parse the JSON stream for progress updates
 	decoder := json.NewDecoder(reader)
 	var totalProgress int
 	layerProgress := make(map[string]int)
-	
+
 	for {
 		var event map[string]interface{}
 		if err := decoder.Decode(&event); err != nil {
@@ -194,16 +194,16 @@ func (s *Service) PullImagesWithProgress(appName string, progressCallback Progre
 			}
 			return fmt.Errorf("failed to decode progress: %w", err)
 		}
-		
+
 		// Extract progress information
 		if status, ok := event["status"].(string); ok {
 			id, _ := event["id"].(string)
-			
+
 			// Handle different status messages
 			switch {
 			case strings.HasPrefix(status, "Pulling from"):
 				progressCallback(0, fmt.Sprintf("Pulling image %s", imageName))
-			
+
 			case status == "Downloading":
 				if progressDetail, ok := event["progressDetail"].(map[string]interface{}); ok {
 					if current, ok := progressDetail["current"].(float64); ok {
@@ -212,7 +212,7 @@ func (s *Service) PullImagesWithProgress(appName string, progressCallback Progre
 						}
 					}
 				}
-				
+
 				// Calculate overall progress
 				if len(layerProgress) > 0 {
 					sum := 0
@@ -222,27 +222,27 @@ func (s *Service) PullImagesWithProgress(appName string, progressCallback Progre
 					totalProgress = sum / len(layerProgress)
 					progressCallback(totalProgress, fmt.Sprintf("Downloading layers... %d%%", totalProgress))
 				}
-			
+
 			case status == "Download complete":
 				layerProgress[id] = 100
-			
+
 			case status == "Extracting":
 				progressCallback(90, "Extracting layers...")
-			
+
 			case strings.Contains(status, "Pull complete"):
 				progressCallback(95, "Finalizing...")
-			
+
 			case strings.Contains(status, "Downloaded newer image"):
 				progressCallback(100, "Image pull completed")
-			
+
 			case strings.Contains(status, "Image is up to date"):
 				progressCallback(100, "Image is up to date")
 			}
 		}
 	}
-	
+
 	// Ensure we report 100% completion
 	progressCallback(100, "Image ready")
-	
+
 	return nil
 }
