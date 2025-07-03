@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"ontree-node/internal/database"
+	"ontree-node/internal/system"
 	"time"
 )
 
@@ -233,4 +234,32 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 	log.Printf("User logged out")
 	
 	http.Redirect(w, r, "/login", http.StatusFound)
+}
+
+// handleSystemVitals returns system vitals as an HTML partial
+func (s *Server) handleSystemVitals(w http.ResponseWriter, r *http.Request) {
+	vitals, err := system.GetVitals()
+	if err != nil {
+		log.Printf("Failed to get system vitals: %v", err)
+		http.Error(w, "Failed to get system vitals", http.StatusInternalServerError)
+		return
+	}
+
+	// Return HTML partial with the vitals data
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	fmt.Fprintf(w, `
+<div class="vitals-content">
+	<div class="vital-item">
+		<span class="vital-label">CPU:</span>
+		<span class="vital-value">%.1f%%</span>
+	</div>
+	<div class="vital-item">
+		<span class="vital-label">Mem:</span>
+		<span class="vital-value">%.1f%%</span>
+	</div>
+	<div class="vital-item">
+		<span class="vital-label">Disk:</span>
+		<span class="vital-value">%.1f%%</span>
+	</div>
+</div>`, vitals.CPUPercent, vitals.MemPercent, vitals.DiskPercent)
 }

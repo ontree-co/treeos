@@ -96,6 +96,9 @@ func (s *Server) Start() error {
 
 	// Protected routes (auth required)
 	mux.HandleFunc("/", s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleDashboard)))
+	
+	// API routes
+	mux.HandleFunc("/api/system-vitals", s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleSystemVitals)))
 
 	// Start server
 	addr := s.config.ListenAddr
