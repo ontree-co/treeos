@@ -9,19 +9,35 @@ import (
 	"strings"
 
 	"ontree-node/internal/config"
+	"github.com/gorilla/sessions"
 )
 
 // Server represents the HTTP server
 type Server struct {
-	config    *config.Config
-	templates map[string]*template.Template
+	config       *config.Config
+	templates    map[string]*template.Template
+	sessionStore *sessions.CookieStore
 }
 
 // New creates a new server instance
 func New(cfg *config.Config) (*Server, error) {
+	// Create session store with secure key
+	// In production, this should be loaded from environment or config
+	sessionKey := []byte("your-32-byte-session-key-here!!") // TODO: Load from config
+	
 	s := &Server{
-		config:    cfg,
-		templates: make(map[string]*template.Template),
+		config:       cfg,
+		templates:    make(map[string]*template.Template),
+		sessionStore: sessions.NewCookieStore(sessionKey),
+	}
+
+	// Configure session store
+	s.sessionStore.Options = &sessions.Options{
+		Path:     "/",
+		MaxAge:   86400 * 7, // 7 days
+		HttpOnly: true,
+		Secure:   false, // Set to true in production with HTTPS
+		SameSite: http.SameSiteLaxMode,
 	}
 
 	// Load templates
@@ -45,6 +61,22 @@ func (s *Server) loadTemplates() error {
 	}
 	s.templates["dashboard"] = tmpl
 
+	// Load setup template
+	setupTemplate := filepath.Join("templates", "dashboard", "setup.html")
+	tmpl, err = template.ParseFiles(baseTemplate, setupTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse setup template: %w", err)
+	}
+	s.templates["setup"] = tmpl
+
+	// Load login template
+	loginTemplate := filepath.Join("templates", "dashboard", "login.html")
+	tmpl, err = template.ParseFiles(baseTemplate, loginTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse login template: %w", err)
+	}
+	s.templates["login"] = tmpl
+
 	return nil
 }
 
@@ -57,8 +89,13 @@ func (s *Server) Start() error {
 	fs := http.FileServer(http.Dir("static"))
 	mux.Handle("/static/", http.StripPrefix("/static/", fs))
 
-	// Dashboard route
-	mux.HandleFunc("/", s.handleDashboard)
+	// Public routes (no auth required)
+	mux.HandleFunc("/setup", s.SetupRequiredMiddleware(s.handleSetup))
+	mux.HandleFunc("/login", s.SetupRequiredMiddleware(s.handleLogin))
+	mux.HandleFunc("/logout", s.handleLogout)
+
+	// Protected routes (auth required)
+	mux.HandleFunc("/", s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleDashboard)))
 
 	// Start server
 	addr := s.config.ListenAddr
@@ -78,19 +115,24 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get user from context
+	user := getUserFromContext(r.Context())
+
 	// Prepare template data
 	data := struct {
-		User      interface{}
-		Apps      []interface{}
-		AppsDir   string
-		Messages  []interface{}
-		CSRFToken string
+		User        interface{}
+		UserInitial string
+		Apps        []interface{}
+		AppsDir     string
+		Messages    []interface{}
+		CSRFToken   string
 	}{
-		User:      nil, // No authentication yet
-		Apps:      nil, // No apps yet
-		AppsDir:   s.config.AppsDir,
-		Messages:  nil,
-		CSRFToken: "", // No CSRF yet
+		User:        user,
+		UserInitial: getUserInitial(user.Username),
+		Apps:        nil, // No apps yet
+		AppsDir:     s.config.AppsDir,
+		Messages:    nil,
+		CSRFToken:   "", // No CSRF yet
 	}
 
 	// Render template

@@ -1,0 +1,78 @@
+{{define "title"}}Setup - OnTree Node{{end}}
+
+{{define "content"}}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h2 class="card-title text-center mb-4">Welcome to OnTree</h2>
+                <p class="text-muted text-center mb-4">
+                    Let's set up your OnTree node. Create an admin account to get started.
+                </p>
+
+                {{if .Errors}}
+                    <div class="alert alert-danger">
+                        <ul class="mb-0">
+                            {{range .Errors}}
+                                <li>{{.}}</li>
+                            {{end}}
+                        </ul>
+                    </div>
+                {{end}}
+
+                <form method="POST" action="/setup">
+                    <h5 class="mb-3">Admin Account</h5>
+                    
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="username" name="username" 
+                               value="{{.FormData.username}}" required autofocus>
+                        <small class="form-text text-muted">This will be your admin username</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="password" name="password" 
+                               required minlength="8">
+                        <small class="form-text text-muted">Choose a strong password for the admin account</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="password2" class="form-label">Confirm Password</label>
+                        <input type="password" class="form-control" id="password2" name="password2" 
+                               required minlength="8">
+                    </div>
+
+                    <hr class="my-4">
+
+                    <h5 class="mb-3">Node Configuration</h5>
+
+                    <div class="mb-3">
+                        <label for="node_name" class="form-label">Node Name</label>
+                        <input type="text" class="form-control" id="node_name" name="node_name" 
+                               value="{{.FormData.node_name}}" placeholder="OnTree Node">
+                        <small class="form-text text-muted">Name for this OnTree node instance</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="node_description" class="form-label">Node Description (Optional)</label>
+                        <textarea class="form-control" id="node_description" name="node_description" 
+                                  rows="3" placeholder="Optional description of this node's purpose">{{.FormData.node_description}}</textarea>
+                        <small class="form-text text-muted">Optional description of this node's purpose</small>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">Complete Setup</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="text-center mt-4 text-muted">
+            <small>
+                OnTree Node - Container Management System
+            </small>
+        </div>
+    </div>
+</div>
+{{end}}

@@ -1,0 +1,42 @@
+{{define "title"}}Login - OnTree Node{{end}}
+
+{{define "content"}}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-4">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h2 class="card-title text-center mb-4">Welcome Back</h2>
+                
+                {{if .Error}}
+                    <div class="alert alert-danger">
+                        {{.Error}}
+                    </div>
+                {{end}}
+
+                <form method="POST" action="/login">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="username" name="username" 
+                               value="{{.Username}}" required autofocus>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">Login</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="text-center mt-4 text-muted">
+            <small>
+                OnTree Node - Container Management System
+            </small>
+        </div>
+    </div>
+</div>
+{{end}}

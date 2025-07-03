@@ -26,7 +26,7 @@ type Config struct {
 func defaultConfig() *Config {
 	config := &Config{
 		DatabasePath: "ontree.db",
-		ListenAddr:   ":8080",
+		ListenAddr:   ":8081",
 	}
 	
 	// Platform-specific defaults for AppsDir
