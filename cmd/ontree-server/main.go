@@ -12,6 +12,7 @@ import (
 
 	"ontree-node/internal/config"
 	"ontree-node/internal/database"
+	"ontree-node/internal/server"
 )
 
 func main() {
@@ -37,8 +38,17 @@ func main() {
 	}
 	defer database.Close()
 
-	fmt.Println("Starting server...")
-	fmt.Printf("Configuration: %s\n", cfg)
+	// Create and start server
+	srv, err := server.New(cfg)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to create server: %v\n", err)
+		os.Exit(1)
+	}
+
+	if err := srv.Start(); err != nil {
+		fmt.Fprintf(os.Stderr, "Server error: %v\n", err)
+		os.Exit(1)
+	}
 }
 
 func setupDirs() error {

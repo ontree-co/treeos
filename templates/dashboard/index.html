@@ -1,0 +1,133 @@
+{{define "content"}}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">Server Dashboard</h1>
+    </div>
+</div>
+
+<!-- System Vitals Section -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card funky-gradient-card">
+            <div class="card-body">
+                <h2 class="card-title mb-3">
+                    System Status
+                </h2>
+                
+                <!-- HTMX system status container -->
+                <div id="system-status-container"
+                     class="d-flex align-items-center justify-content-center"
+                     style="min-height: 150px;"
+                     hx-get="/api/system-vitals"
+                     hx-trigger="load, every 30s"
+                     hx-swap="innerHTML">
+                    <!-- Loading placeholder -->
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading system status...</span>
+                        </div>
+                        <p class="mt-2 text-muted mb-0">Loading system status...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Application Management Section -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Application Management</h5>
+                <div>
+                    <a href="/templates" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-collection"></i> Templates
+                    </a>
+                    <a href="/apps/create" class="btn btn-primary btn-sm">
+                        <i>+</i> Create New App
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                {{if .Apps}}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Application</th>
+                                    <th>Status</th>
+                                    <th>Image</th>
+                                    <th>Ports</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{range .Apps}}
+                                <tr>
+                                    <td>
+                                        <strong>{{.Name}}</strong>
+                                        {{if .Config.Container.Image}}
+                                            <br><small class="text-muted">{{.Config.Container.Image}}</small>
+                                        {{end}}
+                                    </td>
+                                    <td>
+                                        {{if eq .Status "running"}}
+                                            <span class="badge bg-success">Running</span>
+                                        {{else if eq .Status "exited"}}
+                                            <span class="badge bg-warning">Stopped</span>
+                                        {{else if eq .Status "not_created"}}
+                                            <span class="badge bg-secondary">Not Created</span>
+                                        {{else if eq .Status "error"}}
+                                            <span class="badge bg-danger">Error</span>
+                                        {{else}}
+                                            <span class="badge bg-info">{{.Status}}</span>
+                                        {{end}}
+                                    </td>
+                                    <td>
+                                        {{if .Config}}
+                                            <code class="small">{{.Config.Container.Image}}</code>
+                                        {{else}}
+                                            <span class="text-muted">-</span>
+                                        {{end}}
+                                    </td>
+                                    <td>
+                                        {{if .Config.Ports}}
+                                            {{range $host, $container := .Config.Ports}}
+                                                <span class="badge bg-light text-dark">{{$host}}:{{$container}}</span>
+                                            {{end}}
+                                        {{else}}
+                                            <span class="text-muted">-</span>
+                                        {{end}}
+                                    </td>
+                                    <td>
+                                        {{if ne .Status "error"}}
+                                            <a href="/apps/{{.Name}}" class="btn btn-sm btn-outline-primary">
+                                                Manage
+                                            </a>
+                                        {{else}}
+                                            <span class="text-muted small">{{.Error}}</span>
+                                        {{end}}
+                                    </td>
+                                </tr>
+                                {{end}}
+                            </tbody>
+                        </table>
+                    </div>
+                {{else}}
+                    <div class="alert alert-info">
+                        <h6><i>📦</i> No Applications Found</h6>
+                        <p class="mb-2">
+                            No applications have been discovered in the apps directory 
+                            (<code>{{.AppsDir}}</code>).
+                        </p>
+                        <p class="mb-0">
+                            Create your first application using the "Create New App" button above.
+                        </p>
+                    </div>
+                {{end}}
+            </div>
+        </div>
+    </div>
+</div>
+{{end}}
