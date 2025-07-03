@@ -5,7 +5,11 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 	"ontree-node/internal/database"
+	"ontree-node/internal/docker"
 	"ontree-node/internal/system"
 	"time"
 )
@@ -262,4 +266,97 @@ func (s *Server) handleSystemVitals(w http.ResponseWriter, r *http.Request) {
 		<span class="vital-value">%.1f%%</span>
 	</div>
 </div>`, vitals.CPUPercent, vitals.MemPercent, vitals.DiskPercent)
+}
+
+// handleAppDetail handles the application detail page
+func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
+	// Extract app name from URL path
+	path := r.URL.Path
+	if !strings.HasPrefix(path, "/apps/") {
+		http.NotFound(w, r)
+		return
+	}
+	
+	appName := strings.TrimPrefix(path, "/apps/")
+	if appName == "" {
+		http.NotFound(w, r)
+		return
+	}
+	
+	// Get user from context
+	user := getUserFromContext(r.Context())
+	
+	// Get app details
+	if s.dockerClient == nil {
+		http.Error(w, "Docker client not available", http.StatusServiceUnavailable)
+		return
+	}
+	
+	app, err := s.dockerClient.GetAppDetails(s.config.AppsDir, appName)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			http.NotFound(w, r)
+			return
+		}
+		http.Error(w, fmt.Sprintf("Failed to get app details: %v", err), http.StatusInternalServerError)
+		return
+	}
+	
+	// Read docker-compose.yml content
+	composePath := filepath.Join(app.Path, "docker-compose.yml")
+	composeContent, err := os.ReadFile(composePath)
+	if err != nil {
+		log.Printf("Failed to read docker-compose.yml: %v", err)
+		composeContent = []byte("Failed to read docker-compose.yml")
+	}
+	
+	// Get container details if it exists
+	var containerInfo map[string]interface{}
+	if app.Status != "not_created" && app.Status != "error" {
+		containerInfo = s.getContainerInfo(appName)
+	}
+	
+	// Prepare template data
+	data := struct {
+		User           interface{}
+		UserInitial    string
+		App            *docker.App
+		ComposeContent string
+		ContainerInfo  map[string]interface{}
+		Messages       []interface{}
+		CSRFToken      string
+	}{
+		User:           user,
+		UserInitial:    getUserInitial(user.Username),
+		App:            app,
+		ComposeContent: string(composeContent),
+		ContainerInfo:  containerInfo,
+		Messages:       nil,
+		CSRFToken:      "",
+	}
+	
+	// Render template
+	tmpl, ok := s.templates["app_detail"]
+	if !ok {
+		http.Error(w, "Template not found", http.StatusInternalServerError)
+		return
+	}
+	
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
+		log.Printf("Error rendering template: %v", err)
+		http.Error(w, "Error rendering template", http.StatusInternalServerError)
+		return
+	}
+}
+
+// getContainerInfo retrieves detailed container information
+func (s *Server) getContainerInfo(appName string) map[string]interface{} {
+	info := make(map[string]interface{})
+	
+	// For now, return basic info
+	// This will be expanded when we implement container management
+	info["name"] = fmt.Sprintf("ontree-%s", appName)
+	
+	return info
 }

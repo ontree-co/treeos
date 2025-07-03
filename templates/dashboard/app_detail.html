@@ -1,0 +1,290 @@
+{{define "content"}}
+<style>
+    /* Two-step confirmation button styles */
+    .confirm-action {
+        transition: all 0.3s ease;
+        position: relative;
+    }
+    
+    .confirm-action.confirming {
+        padding-right: 3rem !important;
+    }
+    
+    .confirm-action.confirming.btn-warning {
+        background-color: #dc3545 !important;
+        border-color: #dc3545 !important;
+    }
+    
+    .confirm-action.confirming.btn-danger {
+        background-color: #a71d2a !important;
+        border-color: #a71d2a !important;
+    }
+    
+    .confirm-action.confirming.btn-info {
+        background-color: #fd7e14 !important;
+        border-color: #fd7e14 !important;
+    }
+    
+    .cancel-confirm {
+        position: absolute;
+        right: 0.5rem;
+        top: 50%;
+        transform: translateY(-50%);
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        border-radius: 4px;
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .cancel-confirm:hover {
+        background: rgba(255, 255, 255, 0.3);
+        border-color: rgba(255, 255, 255, 0.6);
+    }
+    
+    /* Mobile-friendly sizing */
+    @media (max-width: 576px) {
+        .btn-group {
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        
+        .btn-group .btn {
+            flex: 1 1 auto;
+            min-width: 120px;
+        }
+    }
+</style>
+<div class="row">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/">Dashboard</a></li>
+                <li class="breadcrumb-item active">{{.App.Name}}</li>
+            </ol>
+        </nav>
+        
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>
+                <i>📦</i> {{.App.Name}}
+            </h1>
+            
+            <a href="/" class="btn btn-outline-secondary">
+                ← Back to Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Container Status -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Container Status</h5>
+                <div class="d-flex align-items-center">
+                    <span class="me-3">Status:</span>
+                    {{if eq .App.Status "running"}}
+                        <span class="badge bg-success">Running</span>
+                    {{else if eq .App.Status "exited"}}
+                        <span class="badge bg-warning">Stopped</span>
+                    {{else if eq .App.Status "not_created"}}
+                        <span class="badge bg-secondary">Not Created</span>
+                    {{else if eq .App.Status "error"}}
+                        <span class="badge bg-danger">Error</span>
+                    {{else}}
+                        <span class="badge bg-info">{{.App.Status}}</span>
+                    {{end}}
+                    {{if .ContainerInfo.name}}
+                        <span class="ms-3 text-muted">Container: <code>{{.ContainerInfo.name}}</code></span>
+                    {{end}}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Container Controls -->
+<div class="row mb-3">
+    <div class="col-12">
+        <div id="operation-status" class="mb-2"></div>
+        <div id="app-controls" class="btn-group" role="group">
+            {{if eq .App.Status "running"}}
+                <form method="post" action="/apps/{{.App.Name}}/stop" class="d-inline">
+                    <button type="submit" class="btn btn-warning confirm-action" 
+                            data-action="Stop"
+                            data-confirm-text="Confirm Stop?">
+                        <i>⏹️</i> Stop
+                    </button>
+                </form>
+            {{else if ne .App.Status "not_created"}}
+                <form method="post" action="/apps/{{.App.Name}}/start" class="d-inline">
+                    <button type="submit" class="btn btn-success">
+                        <i>▶️</i> Start
+                    </button>
+                </form>
+            {{else}}
+                <form method="post" action="/apps/{{.App.Name}}/start" class="d-inline">
+                    <button type="submit" class="btn btn-primary">
+                        <i>🚀</i> Create & Start
+                    </button>
+                </form>
+            {{end}}
+            
+            {{if ne .App.Status "not_created"}}
+                <form method="post" action="/apps/{{.App.Name}}/delete" class="d-inline">
+                    <button type="submit" class="btn btn-danger confirm-action" 
+                            data-action="Delete Container"
+                            data-confirm-text="Confirm Delete?">
+                        <i>🗑️</i> Delete Container
+                    </button>
+                </form>
+                
+                <form method="post" action="/apps/{{.App.Name}}/recreate" class="d-inline">
+                    <button type="submit" class="btn btn-info confirm-action" 
+                            data-action="Recreate"
+                            data-confirm-text="Confirm Recreate?">
+                        <i>🔄</i> Recreate
+                    </button>
+                </form>
+            {{end}}
+        </div>
+    </div>
+</div>
+
+<!-- Application Information -->
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Application Information</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <tr>
+                        <th>Name:</th>
+                        <td><code>ontree-{{.App.Name}}</code></td>
+                    </tr>
+                    <tr>
+                        <th>Image:</th>
+                        <td>
+                            <code>{{.App.Config.Container.Image}}</code>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>App Directory:</th>
+                        <td><code>{{.App.Path}}</code></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Network & Ports</h5>
+            </div>
+            <div class="card-body">
+                {{if .App.Config.Ports}}
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Host Port</th>
+                                <th>Container Port</th>
+                                <th>Access</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{range $host, $container := .App.Config.Ports}}
+                            <tr>
+                                <td><code>{{$host}}</code></td>
+                                <td><code>{{$container}}</code></td>
+                                <td>
+                                    {{if eq $.App.Status "running"}}
+                                        <a href="http://localhost:{{$host}}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                            Open
+                                        </a>
+                                    {{else}}
+                                        <span class="text-muted">Not running</span>
+                                    {{end}}
+                                </td>
+                            </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                {{else}}
+                    <p class="text-muted mb-0">No port mappings configured.</p>
+                {{end}}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Configuration File -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Configuration (docker-compose.yml)</h5>
+                <a href="/apps/{{.App.Name}}/edit" class="btn btn-sm btn-outline-primary">
+                    <i>✏️</i> Edit
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="position-relative">
+                    <pre class="bg-light p-3 rounded"><code>{{.ComposeContent}}</code></pre>
+                    <small class="text-muted">File: <code>{{.App.Path}}/docker-compose.yml</code></small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Two-step confirmation system
+    const confirmButtons = document.querySelectorAll('.confirm-action');
+    
+    confirmButtons.forEach(button => {
+        let timeout;
+        const form = button.closest('form');
+        const originalHtml = button.innerHTML;
+        const originalClasses = button.className;
+        const confirmText = button.dataset.confirmText || 'Confirm?';
+        const icon = button.querySelector('i')?.textContent || '';
+        
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            if (button.classList.contains('confirming')) {
+                // Second click - submit the form
+                form.submit();
+            } else {
+                // First click - enter confirmation mode
+                button.classList.add('confirming');
+                button.innerHTML = `${icon} ${confirmText}<span class="cancel-confirm">✗</span>`;
+                
+                // Add cancel button listener
+                const cancelBtn = button.querySelector('.cancel-confirm');
+                cancelBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    resetButton();
+                });
+                
+                // Auto-reset after 5 seconds
+                timeout = setTimeout(resetButton, 5000);
+            }
+        });
+        
+        function resetButton() {
+            clearTimeout(timeout);
+            button.classList.remove('confirming');
+            button.innerHTML = originalHtml;
+        }
+    });
+});
+</script>
+{{end}}

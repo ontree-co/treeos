@@ -88,6 +88,14 @@ func (s *Server) loadTemplates() error {
 	}
 	s.templates["login"] = tmpl
 
+	// Load app detail template
+	appDetailTemplate := filepath.Join("templates", "dashboard", "app_detail.html")
+	tmpl, err = template.ParseFiles(baseTemplate, appDetailTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse app detail template: %w", err)
+	}
+	s.templates["app_detail"] = tmpl
+
 	return nil
 }
 
@@ -107,6 +115,7 @@ func (s *Server) Start() error {
 
 	// Protected routes (auth required)
 	mux.HandleFunc("/", s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleDashboard)))
+	mux.HandleFunc("/apps/", s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleAppDetail)))
 	
 	// API routes
 	mux.HandleFunc("/api/system-vitals", s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleSystemVitals)))
@@ -114,7 +123,7 @@ func (s *Server) Start() error {
 	// Start server
 	addr := s.config.ListenAddr
 	if addr == "" {
-		addr = ":8080"
+		addr = ":8082"
 	}
 
 	log.Printf("Starting server on %s", addr)
