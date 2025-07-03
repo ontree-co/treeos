@@ -12,6 +12,7 @@ import (
 	"ontree-node/internal/config"
 	"ontree-node/internal/database"
 	"ontree-node/internal/docker"
+	"ontree-node/internal/templates"
 	"ontree-node/internal/worker"
 	"github.com/gorilla/sessions"
 )
@@ -25,6 +26,7 @@ type Server struct {
 	dockerSvc    *docker.Service
 	db           *sql.DB
 	worker       *worker.Worker
+	templateSvc  *templates.Service
 }
 
 // New creates a new server instance
@@ -84,6 +86,10 @@ func New(cfg *config.Config) (*Server, error) {
 		// Start workers (using 2 workers for now)
 		s.worker.Start(2)
 	}
+
+	// Initialize template service
+	templatesPath := filepath.Join("templates", "compose")
+	s.templateSvc = templates.NewService(templatesPath)
 
 	return s, nil
 }
@@ -149,6 +155,22 @@ func (s *Server) loadTemplates() error {
 	}
 	s.templates["app_create"] = tmpl
 
+	// Load app templates list template
+	appTemplatesTemplate := filepath.Join("templates", "dashboard", "app_templates.html")
+	tmpl, err = template.ParseFiles(baseTemplate, appTemplatesTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse app templates template: %w", err)
+	}
+	s.templates["app_templates"] = tmpl
+
+	// Load app create from template template
+	appCreateFromTemplate := filepath.Join("templates", "dashboard", "app_create_from_template.html")
+	tmpl, err = template.ParseFiles(baseTemplate, appCreateFromTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse app create from template template: %w", err)
+	}
+	s.templates["app_create_from_template"] = tmpl
+
 	return nil
 }
 
@@ -169,6 +191,8 @@ func (s *Server) Start() error {
 	// Protected routes (auth required)
 	mux.HandleFunc("/", s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleDashboard)))
 	mux.HandleFunc("/apps/", s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeApps)))
+	mux.HandleFunc("/templates", s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleTemplates)))
+	mux.HandleFunc("/templates/", s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeTemplates)))
 	
 	// API routes
 	mux.HandleFunc("/api/system-vitals", s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleSystemVitals)))
@@ -177,7 +201,7 @@ func (s *Server) Start() error {
 	// Start server
 	addr := s.config.ListenAddr
 	if addr == "" {
-		addr = ":8082"
+		addr = ":8083"
 	}
 
 	log.Printf("Starting server on %s", addr)

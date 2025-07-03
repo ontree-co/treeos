@@ -1,0 +1,14 @@
+{
+  "templates": [
+    {
+      "id": "openwebui",
+      "name": "Open WebUI (with Ollama)",
+      "description": "A user-friendly web interface for running and managing AI language models locally. Includes Ollama for running LLMs.",
+      "category": "AI Tools",
+      "icon": "bi-robot",
+      "filename": "openwebui.yml",
+      "port": "3000",
+      "documentation_url": "https://github.com/open-webui/open-webui"
+    }
+  ]
+}

@@ -1,0 +1,108 @@
+{{define "title"}}Application Templates - OnTree{{end}}
+
+{{define "content"}}
+<div class="row">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/">Dashboard</a></li>
+                <li class="breadcrumb-item active">Application Templates</li>
+            </ol>
+        </nav>
+        
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="bi bi-collection"></i> Application Templates</h1>
+            <div>
+                <a href="/apps/create" class="btn btn-outline-secondary">
+                    <i class="bi bi-code-slash"></i> Create from Scratch
+                </a>
+                <a href="/" class="btn btn-outline-secondary">
+                    ← Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="alert alert-info">
+            <h5><i class="bi bi-lightbulb"></i> Quick Start with Templates</h5>
+            <p class="mb-0">
+                Select a pre-configured template below to quickly deploy popular applications. 
+                Each template includes optimized settings and can be customized after creation.
+            </p>
+        </div>
+    </div>
+</div>
+
+{{if .Templates}}
+<div class="row">
+    {{range .Templates}}
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card h-100 template-card">
+            <div class="card-body d-flex flex-column">
+                <div class="d-flex align-items-center mb-3">
+                    <i class="{{.Icon}} fs-2 text-primary me-3"></i>
+                    <div>
+                        <h5 class="card-title mb-0">{{.Name}}</h5>
+                        <small class="text-muted">{{.Category}}</small>
+                    </div>
+                </div>
+                
+                <p class="card-text flex-grow-1">{{.Description}}</p>
+                
+                {{if .Port}}
+                <p class="text-muted small mb-3">
+                    <i class="bi bi-ethernet"></i> Default port: {{.Port}}
+                </p>
+                {{end}}
+                
+                <div class="d-flex gap-2">
+                    <a href="/templates/{{.ID}}/create" class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i> Use Template
+                    </a>
+                    {{if .DocumentationURL}}
+                    <a href="{{.DocumentationURL}}" target="_blank" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-box-arrow-up-right"></i> Docs
+                    </a>
+                    {{end}}
+                </div>
+            </div>
+        </div>
+    </div>
+    {{end}}
+</div>
+{{else}}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="bi bi-folder-x fs-1 text-muted mb-3"></i>
+                <h4>No Templates Available</h4>
+                <p class="text-muted">No application templates are currently available.</p>
+                <a href="/apps/create" class="btn btn-primary">
+                    Create App from Scratch
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{{end}}
+
+<style>
+.template-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+}
+
+.template-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.template-card .card-body {
+    min-height: 250px;
+}
+</style>
+{{end}}

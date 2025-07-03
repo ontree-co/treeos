@@ -1,0 +1,14 @@
+version: '3.8'
+services:
+  openwebui:
+    image: ghcr.io/open-webui/open-webui:ollama
+    restart: unless-stopped
+    ports:
+      - "4000:8080"
+    volumes:
+      - ./mnt/data:/app/backend/data
+      - ./mnt/nobackup-ollama:/root/.ollama
+    environment:
+      # OpenWebUI environment variables
+      # You can customize these as needed
+      # OLLAMA_API_BASE_URL: http://localhost:11434/api
