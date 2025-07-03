@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"os/user"
@@ -13,6 +15,7 @@ import (
 	"ontree-node/internal/config"
 	"ontree-node/internal/database"
 	"ontree-node/internal/server"
+	"ontree-node/internal/telemetry"
 )
 
 func main() {
@@ -29,6 +32,20 @@ func main() {
 			os.Exit(1)
 		}
 		return
+	}
+
+	// Initialize telemetry
+	ctx := context.Background()
+	shutdown, err := telemetry.InitializeFromEnv(ctx)
+	if err != nil {
+		log.Printf("Warning: Failed to initialize telemetry: %v", err)
+		// Continue without telemetry
+	} else {
+		defer func() {
+			if err := shutdown(ctx); err != nil {
+				log.Printf("Error shutting down telemetry: %v", err)
+			}
+		}()
 	}
 
 	// Initialize database

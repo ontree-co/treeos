@@ -241,23 +241,23 @@ func (s *Server) Start() error {
 	mux.Handle("/static/", http.StripPrefix("/static/", fs))
 
 	// Public routes (no auth required)
-	mux.HandleFunc("/setup", s.SetupRequiredMiddleware(s.handleSetup))
-	mux.HandleFunc("/login", s.SetupRequiredMiddleware(s.handleLogin))
-	mux.HandleFunc("/logout", s.handleLogout)
+	mux.HandleFunc("/setup", s.TracingMiddleware(s.SetupRequiredMiddleware(s.handleSetup)))
+	mux.HandleFunc("/login", s.TracingMiddleware(s.SetupRequiredMiddleware(s.handleLogin)))
+	mux.HandleFunc("/logout", s.TracingMiddleware(s.handleLogout))
 
 	// Protected routes (auth required)
-	mux.HandleFunc("/", s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleDashboard)))
-	mux.HandleFunc("/apps/", s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeApps)))
-	mux.HandleFunc("/templates", s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleTemplates)))
-	mux.HandleFunc("/templates/", s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeTemplates)))
+	mux.HandleFunc("/", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleDashboard))))
+	mux.HandleFunc("/apps/", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeApps))))
+	mux.HandleFunc("/templates", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleTemplates))))
+	mux.HandleFunc("/templates/", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeTemplates))))
 	
 	// API routes
-	mux.HandleFunc("/api/system-vitals", s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleSystemVitals)))
-	mux.HandleFunc("/api/docker/operations/", s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleDockerOperationStatus)))
+	mux.HandleFunc("/api/system-vitals", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleSystemVitals))))
+	mux.HandleFunc("/api/docker/operations/", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleDockerOperationStatus))))
 
 	// Pattern library routes (no auth required - public access)
-	mux.HandleFunc("/patterns", s.routePatterns)
-	mux.HandleFunc("/patterns/", s.routePatterns)
+	mux.HandleFunc("/patterns", s.TracingMiddleware(s.routePatterns))
+	mux.HandleFunc("/patterns/", s.TracingMiddleware(s.routePatterns))
 
 	// Start server
 	addr := s.config.ListenAddr

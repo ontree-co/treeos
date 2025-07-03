@@ -4,7 +4,12 @@ import (
 	"database/sql"
 	"net/http"
 	"ontree-node/internal/database"
+	"ontree-node/internal/telemetry"
 	"strings"
+
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // SetupRequiredMiddleware checks if initial setup is complete
@@ -109,4 +114,59 @@ func (s *Server) AuthRequiredMiddleware(next http.HandlerFunc) http.HandlerFunc 
 
 		next(w, r)
 	}
+}
+
+// TracingMiddleware adds OpenTelemetry tracing to HTTP requests
+func (s *Server) TracingMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Start a new span for this request
+		ctx, span := telemetry.StartSpan(r.Context(), r.URL.Path,
+			trace.WithSpanKind(trace.SpanKindServer),
+			trace.WithAttributes(
+				attribute.String("http.method", r.Method),
+				attribute.String("http.target", r.URL.String()),
+				attribute.String("http.host", r.Host),
+				attribute.String("http.scheme", r.URL.Scheme),
+				attribute.String("net.transport", "tcp"),
+			),
+		)
+		defer span.End()
+
+		// Create a response writer wrapper to capture status code
+		rw := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+
+		// Pass the request with the new context
+		next(rw, r.WithContext(ctx))
+
+		// Set response attributes
+		span.SetAttributes(
+			attribute.Int("http.status_code", rw.statusCode),
+			attribute.Int("http.response_content_length", rw.written),
+		)
+
+		// Set span status based on HTTP status code
+		if rw.statusCode >= 400 {
+			span.SetStatus(codes.Error, http.StatusText(rw.statusCode))
+		} else {
+			span.SetStatus(codes.Ok, "")
+		}
+	}
+}
+
+// responseWriter wraps http.ResponseWriter to capture status code and bytes written
+type responseWriter struct {
+	http.ResponseWriter
+	statusCode int
+	written    int
+}
+
+func (rw *responseWriter) WriteHeader(code int) {
+	rw.statusCode = code
+	rw.ResponseWriter.WriteHeader(code)
+}
+
+func (rw *responseWriter) Write(b []byte) (int, error) {
+	n, err := rw.ResponseWriter.Write(b)
+	rw.written += n
+	return n, err
 }
