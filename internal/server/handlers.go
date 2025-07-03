@@ -316,6 +316,34 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 		containerInfo = s.getContainerInfo(appName)
 	}
 	
+	// Get flash messages from session
+	session, _ := s.sessionStore.Get(r, "ontree-session")
+	var messages []interface{}
+	
+	// Get error messages
+	if flashes := session.Flashes("error"); len(flashes) > 0 {
+		for _, flash := range flashes {
+			messages = append(messages, map[string]string{
+				"Type": "danger",
+				"Text": flash.(string),
+			})
+		}
+	}
+	
+	// Get success messages
+	if flashes := session.Flashes("success"); len(flashes) > 0 {
+		for _, flash := range flashes {
+			messages = append(messages, map[string]string{
+				"Type": "success",
+				"Text": flash.(string),
+			})
+		}
+	}
+	
+	if len(messages) > 0 {
+		session.Save(r, w)
+	}
+	
 	// Prepare template data
 	data := struct {
 		User           interface{}
@@ -331,7 +359,7 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 		App:            app,
 		ComposeContent: string(composeContent),
 		ContainerInfo:  containerInfo,
-		Messages:       nil,
+		Messages:       messages,
 		CSRFToken:      "",
 	}
 	
@@ -359,4 +387,166 @@ func (s *Server) getContainerInfo(appName string) map[string]interface{} {
 	info["name"] = fmt.Sprintf("ontree-%s", appName)
 	
 	return info
+}
+
+// handleAppStart handles starting an application container
+func (s *Server) handleAppStart(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	
+	// Extract app name from URL path
+	path := r.URL.Path
+	parts := strings.Split(path, "/")
+	if len(parts) < 4 || parts[1] != "apps" || parts[3] != "start" {
+		http.NotFound(w, r)
+		return
+	}
+	
+	appName := parts[2]
+	
+	// Start the container
+	if s.dockerClient == nil {
+		http.Error(w, "Docker client not available", http.StatusServiceUnavailable)
+		return
+	}
+	
+	err := s.dockerClient.StartApp(s.config.AppsDir, appName)
+	if err != nil {
+		log.Printf("Failed to start app %s: %v", appName, err)
+		// Set flash message in session
+		session, _ := s.sessionStore.Get(r, "ontree-session")
+		session.AddFlash(fmt.Sprintf("Failed to start application: %v", err), "error")
+		session.Save(r, w)
+	} else {
+		log.Printf("Successfully started app: %s", appName)
+		// Set success message
+		session, _ := s.sessionStore.Get(r, "ontree-session")
+		session.AddFlash("Application started successfully", "success")
+		session.Save(r, w)
+	}
+	
+	// Redirect back to app detail page
+	http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
+}
+
+// handleAppStop handles stopping an application container
+func (s *Server) handleAppStop(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	
+	// Extract app name from URL path
+	path := r.URL.Path
+	parts := strings.Split(path, "/")
+	if len(parts) < 4 || parts[1] != "apps" || parts[3] != "stop" {
+		http.NotFound(w, r)
+		return
+	}
+	
+	appName := parts[2]
+	
+	// Stop the container
+	if s.dockerClient == nil {
+		http.Error(w, "Docker client not available", http.StatusServiceUnavailable)
+		return
+	}
+	
+	err := s.dockerClient.StopApp(appName)
+	if err != nil {
+		log.Printf("Failed to stop app %s: %v", appName, err)
+		session, _ := s.sessionStore.Get(r, "ontree-session")
+		session.AddFlash(fmt.Sprintf("Failed to stop application: %v", err), "error")
+		session.Save(r, w)
+	} else {
+		log.Printf("Successfully stopped app: %s", appName)
+		session, _ := s.sessionStore.Get(r, "ontree-session")
+		session.AddFlash("Application stopped successfully", "success")
+		session.Save(r, w)
+	}
+	
+	// Redirect back to app detail page
+	http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
+}
+
+// handleAppRecreate handles recreating an application container
+func (s *Server) handleAppRecreate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	
+	// Extract app name from URL path
+	path := r.URL.Path
+	parts := strings.Split(path, "/")
+	if len(parts) < 4 || parts[1] != "apps" || parts[3] != "recreate" {
+		http.NotFound(w, r)
+		return
+	}
+	
+	appName := parts[2]
+	
+	// Recreate the container
+	if s.dockerClient == nil {
+		http.Error(w, "Docker client not available", http.StatusServiceUnavailable)
+		return
+	}
+	
+	err := s.dockerClient.RecreateApp(s.config.AppsDir, appName)
+	if err != nil {
+		log.Printf("Failed to recreate app %s: %v", appName, err)
+		session, _ := s.sessionStore.Get(r, "ontree-session")
+		session.AddFlash(fmt.Sprintf("Failed to recreate application: %v", err), "error")
+		session.Save(r, w)
+	} else {
+		log.Printf("Successfully recreated app: %s", appName)
+		session, _ := s.sessionStore.Get(r, "ontree-session")
+		session.AddFlash("Application recreated successfully", "success")
+		session.Save(r, w)
+	}
+	
+	// Redirect back to app detail page
+	http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
+}
+
+// handleAppDelete handles deleting an application container
+func (s *Server) handleAppDelete(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	
+	// Extract app name from URL path
+	path := r.URL.Path
+	parts := strings.Split(path, "/")
+	if len(parts) < 4 || parts[1] != "apps" || parts[3] != "delete" {
+		http.NotFound(w, r)
+		return
+	}
+	
+	appName := parts[2]
+	
+	// Delete the container
+	if s.dockerClient == nil {
+		http.Error(w, "Docker client not available", http.StatusServiceUnavailable)
+		return
+	}
+	
+	err := s.dockerClient.DeleteAppContainer(appName)
+	if err != nil {
+		log.Printf("Failed to delete app container %s: %v", appName, err)
+		session, _ := s.sessionStore.Get(r, "ontree-session")
+		session.AddFlash(fmt.Sprintf("Failed to delete container: %v", err), "error")
+		session.Save(r, w)
+	} else {
+		log.Printf("Successfully deleted app container: %s", appName)
+		session, _ := s.sessionStore.Get(r, "ontree-session")
+		session.AddFlash("Container deleted successfully", "success")
+		session.Save(r, w)
+	}
+	
+	// Redirect back to app detail page
+	http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
 }

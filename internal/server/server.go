@@ -115,7 +115,7 @@ func (s *Server) Start() error {
 
 	// Protected routes (auth required)
 	mux.HandleFunc("/", s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleDashboard)))
-	mux.HandleFunc("/apps/", s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleAppDetail)))
+	mux.HandleFunc("/apps/", s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeApps)))
 	
 	// API routes
 	mux.HandleFunc("/api/system-vitals", s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleSystemVitals)))
@@ -193,4 +193,23 @@ func getUserInitial(username string) string {
 		return "?"
 	}
 	return strings.ToUpper(string(username[0]))
+}
+
+// routeApps routes all /apps/* requests to the appropriate handler
+func (s *Server) routeApps(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Path
+	
+	// Route based on the path pattern
+	if strings.HasSuffix(path, "/start") {
+		s.handleAppStart(w, r)
+	} else if strings.HasSuffix(path, "/stop") {
+		s.handleAppStop(w, r)
+	} else if strings.HasSuffix(path, "/recreate") {
+		s.handleAppRecreate(w, r)
+	} else if strings.HasSuffix(path, "/delete") {
+		s.handleAppDelete(w, r)
+	} else {
+		// Default to app detail page
+		s.handleAppDetail(w, r)
+	}
 }
