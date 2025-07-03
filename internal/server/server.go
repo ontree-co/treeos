@@ -171,6 +171,63 @@ func (s *Server) loadTemplates() error {
 	}
 	s.templates["app_create_from_template"] = tmpl
 
+	// Load pattern library templates
+	// Pattern library index
+	patternsIndexTemplate := filepath.Join("templates", "pattern_library", "index.html")
+	tmpl, err = template.ParseFiles(baseTemplate, patternsIndexTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse patterns index template: %w", err)
+	}
+	s.templates["patterns_index"] = tmpl
+
+	// Pattern library components
+	patternsComponentsTemplate := filepath.Join("templates", "pattern_library", "components.html")
+	tmpl, err = template.ParseFiles(baseTemplate, patternsComponentsTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse patterns components template: %w", err)
+	}
+	s.templates["patterns_components"] = tmpl
+
+	// Pattern library forms
+	patternsFormsTemplate := filepath.Join("templates", "pattern_library", "forms.html")
+	tmpl, err = template.ParseFiles(baseTemplate, patternsFormsTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse patterns forms template: %w", err)
+	}
+	s.templates["patterns_forms"] = tmpl
+
+	// Pattern library typography
+	patternsTypographyTemplate := filepath.Join("templates", "pattern_library", "typography.html")
+	tmpl, err = template.ParseFiles(baseTemplate, patternsTypographyTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse patterns typography template: %w", err)
+	}
+	s.templates["patterns_typography"] = tmpl
+
+	// Pattern library partials
+	patternsPartialsTemplate := filepath.Join("templates", "pattern_library", "partials.html")
+	tmpl, err = template.ParseFiles(baseTemplate, patternsPartialsTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse patterns partials template: %w", err)
+	}
+	s.templates["patterns_partials"] = tmpl
+
+	// Pattern library layouts
+	patternsLayoutsTemplate := filepath.Join("templates", "pattern_library", "layouts.html")
+	tmpl, err = template.ParseFiles(baseTemplate, patternsLayoutsTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse patterns layouts template: %w", err)
+	}
+	s.templates["patterns_layouts"] = tmpl
+
+	// Pattern library style guide
+	patternsStyleGuideTemplate := filepath.Join("templates", "pattern_library", "style_guide.html")
+	tmpl, err = template.ParseFiles(baseTemplate, patternsStyleGuideTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse patterns style guide template: %w", err)
+	}
+	s.templates["patterns_style_guide"] = tmpl
+
 	return nil
 }
 
@@ -197,6 +254,10 @@ func (s *Server) Start() error {
 	// API routes
 	mux.HandleFunc("/api/system-vitals", s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleSystemVitals)))
 	mux.HandleFunc("/api/docker/operations/", s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleDockerOperationStatus)))
+
+	// Pattern library routes (no auth required - public access)
+	mux.HandleFunc("/patterns", s.routePatterns)
+	mux.HandleFunc("/patterns/", s.routePatterns)
 
 	// Start server
 	addr := s.config.ListenAddr

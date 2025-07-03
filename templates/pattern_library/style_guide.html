@@ -1,0 +1,314 @@
+{{define "content"}}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <nav aria-label="breadcrumb" class="mb-4">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="/patterns">Pattern Library</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Style Guide</li>
+                </ol>
+            </nav>
+
+            <div class="page-header mb-4">
+                <h1 class="h2">🎨 Style Guide</h1>
+                <p class="text-muted">Colors, spacing, icons, and design principles for OnTree</p>
+            </div>
+
+            <!-- Color Palette -->
+            <section class="mb-5">
+                <h2 class="h4 mb-3">Color Palette</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="h6 text-muted mb-3">Bootstrap Theme Colors</h3>
+                        <div class="row g-3 mb-4">
+                            {{range .Colors}}
+                            <div class="col-md-4">
+                                <div class="p-4 text-white bg-{{.Class}} rounded">
+                                    <h4 class="h6 mb-1">{{.Name}}</h4>
+                                    <code class="text-white">{{.Hex}}</code>
+                                </div>
+                            </div>
+                            {{end}}
+                            <div class="col-md-4">
+                                <div class="p-4 text-dark bg-light border rounded">
+                                    <h4 class="h6 mb-1">Light</h4>
+                                    <code>#f8f9fa</code>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="p-4 text-white bg-dark rounded">
+                                    <h4 class="h6 mb-1">Dark</h4>
+                                    <code class="text-white">#212529</code>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h3 class="h6 text-muted mb-3">Background Colors</h3>
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <div class="p-3 bg-light rounded">
+                                    <code>.bg-light</code>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="p-3 bg-white border rounded">
+                                    <code>.bg-white</code>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="p-3 bg-body-secondary rounded">
+                                    <code>.bg-body-secondary</code>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="p-3 text-white bg-dark rounded">
+                                    <code class="text-white">.bg-dark</code>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h3 class="h6 text-muted mt-4 mb-3">Usage</h3>
+                        <pre class="bg-light p-3 rounded"><code>&lt;div class="bg-primary text-white"&gt;Primary background&lt;/div&gt;
+&lt;div class="text-primary"&gt;Primary text&lt;/div&gt;
+&lt;div class="border border-primary"&gt;Primary border&lt;/div&gt;</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Spacing -->
+            <section class="mb-5">
+                <h2 class="h4 mb-3">Spacing</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="h6 text-muted mb-3">Padding & Margin Scale</h3>
+                        <div class="mb-4">
+                            {{range .Spacing}}
+                            <div class="mb-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="bg-primary text-white {{.Class}} me-3">{{.Name}}</div>
+                                    <code>{{.Class}}</code>
+                                    <span class="text-muted ms-2">({{.Size}})</span>
+                                </div>
+                            </div>
+                            {{end}}
+                        </div>
+
+                        <h3 class="h6 text-muted mb-3">Common Spacing Patterns</h3>
+                        <ul>
+                            <li><code>mb-3</code> - Standard margin bottom between sections</li>
+                            <li><code>p-3</code> - Standard padding for cards and containers</li>
+                            <li><code>gap-2</code> - Standard gap for flex/grid layouts</li>
+                            <li><code>py-5</code> - Large vertical padding for hero sections</li>
+                        </ul>
+
+                        <h3 class="h6 text-muted mt-4 mb-3">Usage</h3>
+                        <pre class="bg-light p-3 rounded"><code>&lt;div class="p-3"&gt;Padding all sides&lt;/div&gt;
+&lt;div class="px-4"&gt;Padding horizontal&lt;/div&gt;
+&lt;div class="py-2"&gt;Padding vertical&lt;/div&gt;
+&lt;div class="mt-3 mb-4"&gt;Margin top and bottom&lt;/div&gt;</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Icons -->
+            <section class="mb-5">
+                <h2 class="h4 mb-3">Icons</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="h6 text-muted mb-3">Emoji Icons System</h3>
+                        <p class="mb-4">OnTree uses emoji icons for simplicity and universal support. No icon fonts required!</p>
+                        
+                        <div class="row g-3">
+                            {{range .Icons}}
+                            <div class="col-6 col-md-3">
+                                <div class="text-center p-3 bg-light rounded">
+                                    <div class="mb-2" style="font-size: 2rem;">{{.Emoji}}</div>
+                                    <div class="small">{{.Name}}</div>
+                                </div>
+                            </div>
+                            {{end}}
+                            <div class="col-6 col-md-3">
+                                <div class="text-center p-3 bg-light rounded">
+                                    <div class="mb-2" style="font-size: 2rem;">✅</div>
+                                    <div class="small">Success</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="text-center p-3 bg-light rounded">
+                                    <div class="mb-2" style="font-size: 2rem;">❌</div>
+                                    <div class="small">Error</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="text-center p-3 bg-light rounded">
+                                    <div class="mb-2" style="font-size: 2rem;">⚠️</div>
+                                    <div class="small">Warning</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="text-center p-3 bg-light rounded">
+                                    <div class="mb-2" style="font-size: 2rem;">ℹ️</div>
+                                    <div class="small">Info</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="text-center p-3 bg-light rounded">
+                                    <div class="mb-2" style="font-size: 2rem;">🔄</div>
+                                    <div class="small">Refresh/Sync</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="text-center p-3 bg-light rounded">
+                                    <div class="mb-2" style="font-size: 2rem;">➕</div>
+                                    <div class="small">Add/Create</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="text-center p-3 bg-light rounded">
+                                    <div class="mb-2" style="font-size: 2rem;">🗑️</div>
+                                    <div class="small">Delete</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h3 class="h6 text-muted mt-4 mb-3">Usage Guidelines</h3>
+                        <ul>
+                            <li>Use emojis consistently throughout the interface</li>
+                            <li>Always include text labels for accessibility</li>
+                            <li>Use <code>aria-label</code> for icon-only buttons</li>
+                            <li>Emojis scale naturally with font size</li>
+                        </ul>
+
+                        <h3 class="h6 text-muted mt-4 mb-3">Examples</h3>
+                        <pre class="bg-light p-3 rounded"><code>&lt;button class="btn btn-primary"&gt;
+    &lt;span class="me-1"&gt;➕&lt;/span&gt; Add New
+&lt;/button&gt;
+
+&lt;span class="badge bg-success"&gt;✅ Success&lt;/span&gt;</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Border Radius -->
+            <section class="mb-5">
+                <h2 class="h4 mb-3">Border Radius</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <div class="bg-primary text-white p-4 text-center">
+                                    <code class="text-white">.rounded-0</code>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="bg-primary text-white p-4 rounded text-center">
+                                    <code class="text-white">.rounded</code>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="bg-primary text-white p-4 rounded-3 text-center">
+                                    <code class="text-white">.rounded-3</code>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="bg-primary text-white p-4 rounded-circle text-center" style="width: 100px; height: 100px; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+                                    <code class="text-white small">.rounded-circle</code>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Shadows -->
+            <section class="mb-5">
+                <h2 class="h4 mb-3">Shadows</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <div class="p-4 bg-white rounded text-center">
+                                    No shadow
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="p-4 bg-white rounded shadow-sm text-center">
+                                    <code>.shadow-sm</code>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="p-4 bg-white rounded shadow text-center">
+                                    <code>.shadow</code>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Gradients -->
+            <section class="mb-5">
+                <h2 class="h4 mb-3">Gradients</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="h6 text-muted mb-3">Special Elements</h3>
+                        <div class="p-5 text-white rounded mb-3" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                            <h4 class="h5">Purple Gradient</h4>
+                            <p class="mb-0">Used for premium features or special announcements</p>
+                        </div>
+                        <div class="p-5 text-white rounded" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                            <h4 class="h5">Pink Gradient</h4>
+                            <p class="mb-0">Used for alerts or important notifications</p>
+                        </div>
+
+                        <h3 class="h6 text-muted mt-4 mb-3">CSS</h3>
+                        <pre class="bg-light p-3 rounded"><code>.gradient-purple {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.gradient-pink {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Design Principles -->
+            <section class="mb-5">
+                <h2 class="h4 mb-3">Design Principles</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <h3 class="h5 mb-3">🎯 Clarity</h3>
+                                <p>Every element should have a clear purpose. Remove unnecessary decoration and focus on functionality.</p>
+                            </div>
+                            <div class="col-md-6">
+                                <h3 class="h5 mb-3">🧩 Consistency</h3>
+                                <p>Use the same patterns throughout the application. Consistent spacing, colors, and interactions.</p>
+                            </div>
+                            <div class="col-md-6">
+                                <h3 class="h5 mb-3">♿ Accessibility</h3>
+                                <p>Ensure proper contrast ratios, keyboard navigation, and screen reader support for all users.</p>
+                            </div>
+                            <div class="col-md-6">
+                                <h3 class="h5 mb-3">📱 Responsiveness</h3>
+                                <p>Design mobile-first and ensure all interfaces work well on any screen size.</p>
+                            </div>
+                        </div>
+
+                        <h3 class="h5 mt-4 mb-3">Component Guidelines</h3>
+                        <ul>
+                            <li><strong>Cards:</strong> Use for grouping related content with subtle shadows</li>
+                            <li><strong>Buttons:</strong> Primary actions in blue, destructive in red, secondary in gray</li>
+                            <li><strong>Forms:</strong> Clear labels, helpful placeholders, and validation feedback</li>
+                            <li><strong>Tables:</strong> Zebra striping for readability, hover states for interactivity</li>
+                            <li><strong>Alerts:</strong> Use sparingly for important messages with appropriate colors</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+{{end}}

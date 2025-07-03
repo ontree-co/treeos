@@ -1,0 +1,303 @@
+{{define "content"}}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <nav aria-label="breadcrumb" class="mb-4">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="/patterns">Pattern Library</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Layouts</li>
+                </ol>
+            </nav>
+
+            <div class="page-header mb-4">
+                <h1 class="h2">📐 Layouts</h1>
+                <p class="text-muted">Page layouts and structural patterns used throughout OnTree</p>
+            </div>
+
+            <!-- Dashboard Layout -->
+            <section class="mb-5">
+                <h2 class="h4 mb-3">Dashboard Layout</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="h6 text-muted mb-3">Structure</h3>
+                        <div class="border rounded p-3 mb-3" style="min-height: 400px;">
+                            <div class="row g-3">
+                                <!-- Sidebar -->
+                                <div class="col-md-3">
+                                    <div class="bg-light border rounded p-3">
+                                        <h4 class="h6 mb-3">Sidebar Navigation</h4>
+                                        <nav class="nav flex-column">
+                                            <a class="nav-link active" href="#">🏠 Dashboard</a>
+                                            <a class="nav-link" href="#">📦 Applications</a>
+                                            <a class="nav-link" href="#">🎨 Templates</a>
+                                            <a class="nav-link" href="#">⚙️ Settings</a>
+                                        </nav>
+                                    </div>
+                                </div>
+                                <!-- Main Content -->
+                                <div class="col-md-9">
+                                    <div class="border rounded p-3">
+                                        <h4 class="h6 mb-3">Main Content Area</h4>
+                                        <div class="row g-3">
+                                            <div class="col-md-4">
+                                                <div class="bg-light border rounded p-3 text-center">
+                                                    <h5 class="h6">Widget 1</h5>
+                                                    <p class="mb-0">System Vitals</p>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="bg-light border rounded p-3 text-center">
+                                                    <h5 class="h6">Widget 2</h5>
+                                                    <p class="mb-0">Quick Stats</p>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="bg-light border rounded p-3 text-center">
+                                                    <h5 class="h6">Widget 3</h5>
+                                                    <p class="mb-0">Actions</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mt-3">
+                                            <div class="bg-light border rounded p-4">
+                                                <h5 class="h6">Application List</h5>
+                                                <p class="mb-0">Table or card grid of applications</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h3 class="h6 text-muted mt-4 mb-3">Key Features</h3>
+                        <ul>
+                            <li>Responsive sidebar that collapses on mobile</li>
+                            <li>Fixed header with user menu</li>
+                            <li>Scrollable main content area</li>
+                            <li>Widget-based dashboard with real-time updates</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Form Page Layout -->
+            <section class="mb-5">
+                <h2 class="h4 mb-3">Form Page Layout</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="h6 text-muted mb-3">Structure</h3>
+                        <div class="border rounded p-4">
+                            <!-- Page Header -->
+                            <div class="mb-4">
+                                <nav aria-label="breadcrumb">
+                                    <ol class="breadcrumb">
+                                        <li class="breadcrumb-item"><a href="#">Dashboard</a></li>
+                                        <li class="breadcrumb-item"><a href="#">Applications</a></li>
+                                        <li class="breadcrumb-item active">Create New</li>
+                                    </ol>
+                                </nav>
+                                <h1 class="h3">Create New Application</h1>
+                                <p class="text-muted">Deploy a new containerized application</p>
+                            </div>
+
+                            <!-- Form Content -->
+                            <div class="row">
+                                <div class="col-lg-8">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <h2 class="h5 mb-3">Application Details</h2>
+                                            <form>
+                                                <div class="mb-3">
+                                                    <label class="form-label">Application Name</label>
+                                                    <input type="text" class="form-control" placeholder="my-app">
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label">Docker Compose Configuration</label>
+                                                    <textarea class="form-control font-monospace" rows="8"></textarea>
+                                                </div>
+                                                <div class="d-flex gap-2">
+                                                    <button type="submit" class="btn btn-primary">Create Application</button>
+                                                    <a href="#" class="btn btn-outline-secondary">Cancel</a>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-lg-4">
+                                    <div class="card bg-light">
+                                        <div class="card-body">
+                                            <h3 class="h6 mb-3">💡 Tips</h3>
+                                            <ul class="small mb-0">
+                                                <li>Use lowercase names</li>
+                                                <li>Avoid special characters</li>
+                                                <li>Keep names short and descriptive</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h3 class="h6 text-muted mt-4 mb-3">Pattern Notes</h3>
+                        <ul>
+                            <li>Main form content in 8-column layout</li>
+                            <li>Sidebar with help text in 4-column layout</li>
+                            <li>Clear form actions at the bottom</li>
+                            <li>Breadcrumb navigation for context</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- List/Table Layout -->
+            <section class="mb-5">
+                <h2 class="h4 mb-3">List/Table Layout</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="h6 text-muted mb-3">Structure</h3>
+                        <div class="border rounded p-4">
+                            <!-- Page Header with Actions -->
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <div>
+                                    <h1 class="h3 mb-1">Applications</h1>
+                                    <p class="text-muted mb-0">Manage your containerized applications</p>
+                                </div>
+                                <div>
+                                    <button class="btn btn-primary">
+                                        <span class="me-1">➕</span> Create New
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Filters/Search -->
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <input type="search" class="form-control" placeholder="Search applications...">
+                                </div>
+                                <div class="col-md-3">
+                                    <select class="form-select">
+                                        <option>All Status</option>
+                                        <option>Running</option>
+                                        <option>Stopped</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <select class="form-select">
+                                        <option>Sort by Name</option>
+                                        <option>Sort by Status</option>
+                                        <option>Sort by Created</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Table -->
+                            <div class="bg-light border rounded p-4">
+                                <p class="text-center text-muted mb-0">Application Table/List Goes Here</p>
+                            </div>
+
+                            <!-- Pagination -->
+                            <nav class="mt-3">
+                                <ul class="pagination justify-content-center mb-0">
+                                    <li class="page-item disabled"><a class="page-link" href="#">Previous</a></li>
+                                    <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                                    <li class="page-item"><a class="page-link" href="#">2</a></li>
+                                    <li class="page-item"><a class="page-link" href="#">3</a></li>
+                                    <li class="page-item"><a class="page-link" href="#">Next</a></li>
+                                </ul>
+                            </nav>
+                        </div>
+
+                        <h3 class="h6 text-muted mt-4 mb-3">Components</h3>
+                        <ul>
+                            <li>Header with title and primary action</li>
+                            <li>Search and filter controls</li>
+                            <li>Responsive table or card grid</li>
+                            <li>Pagination for large datasets</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Empty State Layout -->
+            <section class="mb-5">
+                <h2 class="h4 mb-3">Empty State Layout</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="h6 text-muted mb-3">Full Page Empty State</h3>
+                        <div class="border rounded p-5">
+                            <div class="text-center py-5">
+                                <div class="mb-4">
+                                    <span style="font-size: 5rem; opacity: 0.5;">📦</span>
+                                </div>
+                                <h2 class="h4 mb-3">No Applications Yet</h2>
+                                <p class="text-muted mb-4 mx-auto" style="max-width: 400px;">
+                                    Get started by creating your first application. You can deploy any 
+                                    containerized app using Docker Compose.
+                                </p>
+                                <div class="d-flex gap-2 justify-content-center">
+                                    <a href="#" class="btn btn-primary">
+                                        <span class="me-1">➕</span> Create Application
+                                    </a>
+                                    <a href="#" class="btn btn-outline-secondary">
+                                        Browse Templates
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h3 class="h6 text-muted mt-4 mb-3">Guidelines</h3>
+                        <ul>
+                            <li>Large, muted icon or illustration</li>
+                            <li>Clear heading explaining the state</li>
+                            <li>Helpful description with next steps</li>
+                            <li>Primary action button to resolve the empty state</li>
+                            <li>Optional secondary actions</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Error Page Layout -->
+            <section class="mb-5">
+                <h2 class="h4 mb-3">Error Page Layout</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="h6 text-muted mb-3">404 Error Page</h3>
+                        <div class="border rounded p-5">
+                            <div class="text-center py-5">
+                                <h1 class="display-1 fw-bold text-muted">404</h1>
+                                <h2 class="h3 mb-3">Page Not Found</h2>
+                                <p class="text-muted mb-4">
+                                    The page you're looking for doesn't exist or has been moved.
+                                </p>
+                                <div class="d-flex gap-2 justify-content-center">
+                                    <a href="/" class="btn btn-primary">Go to Dashboard</a>
+                                    <button class="btn btn-outline-secondary" onclick="history.back()">Go Back</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h3 class="h6 text-muted mt-4 mb-3">Other Error States</h3>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="border rounded p-4 text-center">
+                                    <h4 class="h1 fw-bold text-muted mb-2">500</h4>
+                                    <h5 class="h6">Server Error</h5>
+                                    <p class="small text-muted mb-0">Something went wrong on our end.</p>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="border rounded p-4 text-center">
+                                    <h4 class="h1 fw-bold text-muted mb-2">403</h4>
+                                    <h5 class="h6">Access Denied</h5>
+                                    <p class="small text-muted mb-0">You don't have permission to view this.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+{{end}}

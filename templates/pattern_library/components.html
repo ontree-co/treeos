@@ -1,0 +1,173 @@
+{{define "content"}}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <nav aria-label="breadcrumb" class="mb-4">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="/patterns">Pattern Library</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Components</li>
+                </ol>
+            </nav>
+
+            <div class="page-header mb-4">
+                <h1 class="h2">🧩 Components</h1>
+                <p class="text-muted">Basic UI building blocks used throughout OnTree</p>
+            </div>
+
+            <!-- Alerts Section -->
+            <section class="mb-5">
+                <h2 class="h4 mb-3">Alerts</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="h6 text-muted mb-3">Examples</h3>
+                        {{range .Alerts}}
+                        <div class="alert alert-{{.Type}} mb-2" role="alert">
+                            {{.Message}}
+                        </div>
+                        {{end}}
+
+                        <h3 class="h6 text-muted mt-4 mb-3">Code</h3>
+                        <pre class="bg-light p-3 rounded"><code>&lt;div class="alert alert-success" role="alert"&gt;
+    Success! This is a success alert.
+&lt;/div&gt;</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Buttons Section -->
+            <section class="mb-5">
+                <h2 class="h4 mb-3">Buttons</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="h6 text-muted mb-3">Standard Buttons</h3>
+                        <div class="mb-3">
+                            {{range .Buttons}}
+                            <button type="button" class="btn btn-{{.Type}} me-2 mb-2">{{.Text}}</button>
+                            {{end}}
+                        </div>
+
+                        <h3 class="h6 text-muted mb-3">Button Sizes</h3>
+                        <div class="mb-3">
+                            <button type="button" class="btn btn-primary btn-lg me-2">Large</button>
+                            <button type="button" class="btn btn-primary me-2">Default</button>
+                            <button type="button" class="btn btn-primary btn-sm">Small</button>
+                        </div>
+
+                        <h3 class="h6 text-muted mb-3">Outline Buttons</h3>
+                        <div class="mb-3">
+                            <button type="button" class="btn btn-outline-primary me-2">Primary</button>
+                            <button type="button" class="btn btn-outline-secondary me-2">Secondary</button>
+                            <button type="button" class="btn btn-outline-success me-2">Success</button>
+                            <button type="button" class="btn btn-outline-danger me-2">Danger</button>
+                        </div>
+
+                        <h3 class="h6 text-muted mt-4 mb-3">Code</h3>
+                        <pre class="bg-light p-3 rounded"><code>&lt;button type="button" class="btn btn-primary"&gt;Primary&lt;/button&gt;
+&lt;button type="button" class="btn btn-secondary"&gt;Secondary&lt;/button&gt;
+&lt;button type="button" class="btn btn-success"&gt;Success&lt;/button&gt;</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Cards Section -->
+            <section class="mb-5">
+                <h2 class="h4 mb-3">Cards</h2>
+                <div class="row g-3">
+                    {{range .Cards}}
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">{{.Title}}</h5>
+                                <p class="card-text">{{.Content}}</p>
+                                <a href="#" class="btn btn-primary btn-sm">Action</a>
+                            </div>
+                        </div>
+                    </div>
+                    {{end}}
+                </div>
+
+                <div class="card mt-3">
+                    <div class="card-body">
+                        <h3 class="h6 text-muted mb-3">Code</h3>
+                        <pre class="bg-light p-3 rounded"><code>&lt;div class="card"&gt;
+    &lt;div class="card-body"&gt;
+        &lt;h5 class="card-title"&gt;Card Title&lt;/h5&gt;
+        &lt;p class="card-text"&gt;Card content goes here.&lt;/p&gt;
+        &lt;a href="#" class="btn btn-primary btn-sm"&gt;Action&lt;/a&gt;
+    &lt;/div&gt;
+&lt;/div&gt;</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Progress Bars Section -->
+            <section class="mb-5">
+                <h2 class="h4 mb-3">Progress Bars</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="h6 text-muted mb-3">Examples</h3>
+                        
+                        <div class="mb-3">
+                            <div class="progress mb-2">
+                                <div class="progress-bar" role="progressbar" style="width: 25%">25%</div>
+                            </div>
+                            <div class="progress mb-2">
+                                <div class="progress-bar bg-success" role="progressbar" style="width: 50%">50%</div>
+                            </div>
+                            <div class="progress mb-2">
+                                <div class="progress-bar bg-warning" role="progressbar" style="width: 75%">75%</div>
+                            </div>
+                            <div class="progress">
+                                <div class="progress-bar bg-danger" role="progressbar" style="width: 100%">100%</div>
+                            </div>
+                        </div>
+
+                        <h3 class="h6 text-muted mb-3">Striped & Animated</h3>
+                        <div class="progress mb-3">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 60%">60%</div>
+                        </div>
+
+                        <h3 class="h6 text-muted mt-4 mb-3">Code</h3>
+                        <pre class="bg-light p-3 rounded"><code>&lt;div class="progress"&gt;
+    &lt;div class="progress-bar" role="progressbar" style="width: 50%"&gt;50%&lt;/div&gt;
+&lt;/div&gt;</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Badges Section -->
+            <section class="mb-5">
+                <h2 class="h4 mb-3">Badges</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="h6 text-muted mb-3">Examples</h3>
+                        
+                        <div class="mb-3">
+                            <span class="badge bg-primary me-2">Primary</span>
+                            <span class="badge bg-secondary me-2">Secondary</span>
+                            <span class="badge bg-success me-2">Success</span>
+                            <span class="badge bg-danger me-2">Danger</span>
+                            <span class="badge bg-warning text-dark me-2">Warning</span>
+                            <span class="badge bg-info text-dark me-2">Info</span>
+                            <span class="badge bg-light text-dark me-2">Light</span>
+                            <span class="badge bg-dark">Dark</span>
+                        </div>
+
+                        <h3 class="h6 text-muted mb-3">Pill Badges</h3>
+                        <div class="mb-3">
+                            <span class="badge rounded-pill bg-primary me-2">Primary</span>
+                            <span class="badge rounded-pill bg-secondary me-2">Secondary</span>
+                            <span class="badge rounded-pill bg-success me-2">Success</span>
+                            <span class="badge rounded-pill bg-danger me-2">Danger</span>
+                        </div>
+
+                        <h3 class="h6 text-muted mt-4 mb-3">Code</h3>
+                        <pre class="bg-light p-3 rounded"><code>&lt;span class="badge bg-primary"&gt;Primary&lt;/span&gt;
+&lt;span class="badge rounded-pill bg-success"&gt;Success&lt;/span&gt;</code></pre>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+{{end}}

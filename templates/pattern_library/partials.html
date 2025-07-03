@@ -1,0 +1,349 @@
+{{define "content"}}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <nav aria-label="breadcrumb" class="mb-4">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="/patterns">Pattern Library</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Partials</li>
+                </ol>
+            </nav>
+
+            <div class="page-header mb-4">
+                <h1 class="h2">🔧 Partials</h1>
+                <p class="text-muted">Reusable template components used throughout OnTree</p>
+            </div>
+
+            <!-- Breadcrumbs -->
+            <section class="mb-5">
+                <h2 class="h4 mb-3">Breadcrumbs</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="h6 text-muted mb-3">Example</h3>
+                        <nav aria-label="breadcrumb">
+                            <ol class="breadcrumb">
+                                {{range .Breadcrumbs}}
+                                {{if eq .URL "#"}}
+                                <li class="breadcrumb-item active" aria-current="page">{{.Name}}</li>
+                                {{else}}
+                                <li class="breadcrumb-item"><a href="{{.URL}}">{{.Name}}</a></li>
+                                {{end}}
+                                {{end}}
+                            </ol>
+                        </nav>
+
+                        <h3 class="h6 text-muted mt-4 mb-3">Code</h3>
+                        <pre class="bg-light p-3 rounded"><code>&lt;nav aria-label="breadcrumb"&gt;
+    &lt;ol class="breadcrumb"&gt;
+        &lt;li class="breadcrumb-item"&gt;&lt;a href="/"&gt;Dashboard&lt;/a&gt;&lt;/li&gt;
+        &lt;li class="breadcrumb-item"&gt;&lt;a href="/apps"&gt;Apps&lt;/a&gt;&lt;/li&gt;
+        &lt;li class="breadcrumb-item active" aria-current="page"&gt;My App&lt;/li&gt;
+    &lt;/ol&gt;
+&lt;/nav&gt;</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Status Badges -->
+            <section class="mb-5">
+                <h2 class="h4 mb-3">Status Badges</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="h6 text-muted mb-3">Container Status Badges</h3>
+                        <div class="mb-3">
+                            {{range .StatusBadges}}
+                            {{if eq .Status "running"}}
+                            <span class="badge bg-success me-2">🟢 {{.Text}}</span>
+                            {{else if eq .Status "stopped"}}
+                            <span class="badge bg-secondary me-2">⏹️ {{.Text}}</span>
+                            {{else if eq .Status "error"}}
+                            <span class="badge bg-danger me-2">🔴 {{.Text}}</span>
+                            {{end}}
+                            {{end}}
+                            <span class="badge bg-warning text-dark me-2">⚠️ Starting</span>
+                            <span class="badge bg-info text-dark me-2">🔄 Restarting</span>
+                        </div>
+
+                        <h3 class="h6 text-muted mb-3">Operation Status</h3>
+                        <div class="mb-3">
+                            <span class="badge bg-primary me-2">⏳ Pending</span>
+                            <span class="badge bg-info me-2">🔄 In Progress</span>
+                            <span class="badge bg-success me-2">✅ Completed</span>
+                            <span class="badge bg-danger me-2">❌ Failed</span>
+                        </div>
+
+                        <h3 class="h6 text-muted mt-4 mb-3">Code</h3>
+                        <pre class="bg-light p-3 rounded"><code>&lt;span class="badge bg-success"&gt;🟢 Running&lt;/span&gt;
+&lt;span class="badge bg-secondary"&gt;⏹️ Stopped&lt;/span&gt;
+&lt;span class="badge bg-danger"&gt;🔴 Error&lt;/span&gt;</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Alert Boxes -->
+            <section class="mb-5">
+                <h2 class="h4 mb-3">Alert Boxes</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="h6 text-muted mb-3">With Icons</h3>
+                        <div class="alert alert-success d-flex align-items-center" role="alert">
+                            <span class="me-2">✅</span>
+                            <div>Application started successfully!</div>
+                        </div>
+                        <div class="alert alert-danger d-flex align-items-center" role="alert">
+                            <span class="me-2">❌</span>
+                            <div>Failed to connect to Docker daemon.</div>
+                        </div>
+                        <div class="alert alert-warning d-flex align-items-center" role="alert">
+                            <span class="me-2">⚠️</span>
+                            <div>Container is using 90% of available memory.</div>
+                        </div>
+                        <div class="alert alert-info d-flex align-items-center" role="alert">
+                            <span class="me-2">ℹ️</span>
+                            <div>New image version available for this application.</div>
+                        </div>
+
+                        <h3 class="h6 text-muted mt-4 mb-3">Code</h3>
+                        <pre class="bg-light p-3 rounded"><code>&lt;div class="alert alert-success d-flex align-items-center" role="alert"&gt;
+    &lt;span class="me-2"&gt;✅&lt;/span&gt;
+    &lt;div&gt;Application started successfully!&lt;/div&gt;
+&lt;/div&gt;</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Progress Bars -->
+            <section class="mb-5">
+                <h2 class="h4 mb-3">Progress Bars</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="h6 text-muted mb-3">Docker Pull Progress</h3>
+                        <div class="mb-3">
+                            <div class="small text-muted mb-1">Pulling nginx:latest</div>
+                            <div class="progress mb-2" style="height: 20px;">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 45%">45%</div>
+                            </div>
+                            <div class="small text-muted">45 MB / 100 MB</div>
+                        </div>
+
+                        <h3 class="h6 text-muted mb-3">System Resource Usage</h3>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <div class="small text-muted mb-1">CPU Usage</div>
+                                <div class="progress">
+                                    <div class="progress-bar bg-info" role="progressbar" style="width: 35%">35%</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="small text-muted mb-1">Memory Usage</div>
+                                <div class="progress">
+                                    <div class="progress-bar bg-warning" role="progressbar" style="width: 67%">67%</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="small text-muted mb-1">Disk Usage</div>
+                                <div class="progress">
+                                    <div class="progress-bar bg-danger" role="progressbar" style="width: 89%">89%</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h3 class="h6 text-muted mt-4 mb-3">Code</h3>
+                        <pre class="bg-light p-3 rounded"><code>&lt;div class="small text-muted mb-1"&gt;Pulling nginx:latest&lt;/div&gt;
+&lt;div class="progress mb-2" style="height: 20px;"&gt;
+    &lt;div class="progress-bar progress-bar-striped progress-bar-animated" 
+         role="progressbar" style="width: 45%"&gt;45%&lt;/div&gt;
+&lt;/div&gt;
+&lt;div class="small text-muted"&gt;45 MB / 100 MB&lt;/div&gt;</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Page Headers -->
+            <section class="mb-5">
+                <h2 class="h4 mb-3">Page Headers</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <div class="page-header mb-4">
+                            <div class="row align-items-center">
+                                <div class="col">
+                                    <h1 class="h2">📦 Application Name</h1>
+                                    <p class="text-muted mb-0">Manage your containerized application</p>
+                                </div>
+                                <div class="col-auto">
+                                    <button class="btn btn-primary">
+                                        <span class="me-1">➕</span> Create New
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h3 class="h6 text-muted mt-4 mb-3">Code</h3>
+                        <pre class="bg-light p-3 rounded"><code>&lt;div class="page-header mb-4"&gt;
+    &lt;div class="row align-items-center"&gt;
+        &lt;div class="col"&gt;
+            &lt;h1 class="h2"&gt;📦 Application Name&lt;/h1&gt;
+            &lt;p class="text-muted mb-0"&gt;Description&lt;/p&gt;
+        &lt;/div&gt;
+        &lt;div class="col-auto"&gt;
+            &lt;button class="btn btn-primary"&gt;Action&lt;/button&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+&lt;/div&gt;</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Empty States -->
+            <section class="mb-5">
+                <h2 class="h4 mb-3">Empty States</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <div class="text-center py-5">
+                            <div class="mb-3">
+                                <span style="font-size: 3rem;">📦</span>
+                            </div>
+                            <h3 class="h5 mb-2">No Applications Found</h3>
+                            <p class="text-muted mb-4">You haven't created any applications yet.</p>
+                            <a href="/apps/create" class="btn btn-primary">
+                                <span class="me-1">➕</span> Create Your First App
+                            </a>
+                        </div>
+
+                        <h3 class="h6 text-muted mt-4 mb-3">Code</h3>
+                        <pre class="bg-light p-3 rounded"><code>&lt;div class="text-center py-5"&gt;
+    &lt;div class="mb-3"&gt;
+        &lt;span style="font-size: 3rem;"&gt;📦&lt;/span&gt;
+    &lt;/div&gt;
+    &lt;h3 class="h5 mb-2"&gt;No Applications Found&lt;/h3&gt;
+    &lt;p class="text-muted mb-4"&gt;You haven't created any applications yet.&lt;/p&gt;
+    &lt;a href="/apps/create" class="btn btn-primary"&gt;
+        &lt;span class="me-1"&gt;➕&lt;/span&gt; Create Your First App
+    &lt;/a&gt;
+&lt;/div&gt;</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Cards -->
+            <section class="mb-5">
+                <h2 class="h4 mb-3">Application Cards</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="h6 text-muted mb-3">Example</h3>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h5 class="card-title mb-0">nginx-app</h5>
+                                            <span class="badge bg-success">🟢 Running</span>
+                                        </div>
+                                        <p class="text-muted small mb-3">Web server container</p>
+                                        <div class="small text-muted mb-3">
+                                            <div>Port: 8080 → 80</div>
+                                            <div>Image: nginx:latest</div>
+                                        </div>
+                                        <div class="d-flex gap-2">
+                                            <a href="/apps/nginx-app" class="btn btn-sm btn-primary">Manage</a>
+                                            <button class="btn btn-sm btn-outline-secondary">Stop</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h5 class="card-title mb-0">postgres-db</h5>
+                                            <span class="badge bg-secondary">⏹️ Stopped</span>
+                                        </div>
+                                        <p class="text-muted small mb-3">PostgreSQL database</p>
+                                        <div class="small text-muted mb-3">
+                                            <div>Port: 5432 → 5432</div>
+                                            <div>Image: postgres:14</div>
+                                        </div>
+                                        <div class="d-flex gap-2">
+                                            <a href="/apps/postgres-db" class="btn btn-sm btn-primary">Manage</a>
+                                            <button class="btn btn-sm btn-outline-success">Start</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Data Tables -->
+            <section class="mb-5">
+                <h2 class="h4 mb-3">Data Tables</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="h6 text-muted mb-3">Application List Table</h3>
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Status</th>
+                                        <th>Image</th>
+                                        <th>Ports</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>
+                                            <div class="fw-medium">nginx-app</div>
+                                            <div class="small text-muted">Web server</div>
+                                        </td>
+                                        <td><span class="badge bg-success">🟢 Running</span></td>
+                                        <td><code>nginx:latest</code></td>
+                                        <td>8080 → 80</td>
+                                        <td>
+                                            <a href="/apps/nginx-app" class="btn btn-sm btn-outline-primary">Manage</a>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div class="fw-medium">postgres-db</div>
+                                            <div class="small text-muted">Database</div>
+                                        </td>
+                                        <td><span class="badge bg-secondary">⏹️ Stopped</span></td>
+                                        <td><code>postgres:14</code></td>
+                                        <td>5432 → 5432</td>
+                                        <td>
+                                            <a href="/apps/postgres-db" class="btn btn-sm btn-outline-primary">Manage</a>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <h3 class="h6 text-muted mt-4 mb-3">Code</h3>
+                        <pre class="bg-light p-3 rounded"><code>&lt;div class="table-responsive"&gt;
+    &lt;table class="table table-hover"&gt;
+        &lt;thead&gt;
+            &lt;tr&gt;
+                &lt;th&gt;Name&lt;/th&gt;
+                &lt;th&gt;Status&lt;/th&gt;
+                &lt;th&gt;Actions&lt;/th&gt;
+            &lt;/tr&gt;
+        &lt;/thead&gt;
+        &lt;tbody&gt;
+            &lt;tr&gt;
+                &lt;td&gt;nginx-app&lt;/td&gt;
+                &lt;td&gt;&lt;span class="badge bg-success"&gt;🟢 Running&lt;/span&gt;&lt;/td&gt;
+                &lt;td&gt;&lt;a href="#" class="btn btn-sm btn-outline-primary"&gt;Manage&lt;/a&gt;&lt;/td&gt;
+            &lt;/tr&gt;
+        &lt;/tbody&gt;
+    &lt;/table&gt;
+&lt;/div&gt;</code></pre>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+{{end}}

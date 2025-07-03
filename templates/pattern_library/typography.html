@@ -1,0 +1,231 @@
+{{define "content"}}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <nav aria-label="breadcrumb" class="mb-4">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="/patterns">Pattern Library</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Typography</li>
+                </ol>
+            </nav>
+
+            <div class="page-header mb-4">
+                <h1 class="h2">📖 Typography</h1>
+                <p class="text-muted">Font families, headings, body text, and other typographic elements</p>
+            </div>
+
+            <!-- Font Families -->
+            <section class="mb-5">
+                <h2 class="h4 mb-3">Font Families</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <div class="mb-4">
+                            <h3 class="h6 text-muted mb-2">Primary Font</h3>
+                            <p class="mb-2" style="font-family: 'IBM Plex Sans', sans-serif; font-size: 1.25rem;">IBM Plex Sans - Used for all body text and UI elements</p>
+                            <p class="text-muted small">The quick brown fox jumps over the lazy dog</p>
+                        </div>
+
+                        <div>
+                            <h3 class="h6 text-muted mb-2">Monospace Font</h3>
+                            <p class="mb-2" style="font-family: 'IBM Plex Mono', monospace; font-size: 1.25rem;">IBM Plex Mono - Used for code and technical content</p>
+                            <p class="text-muted small font-monospace">The quick brown fox jumps over the lazy dog</p>
+                        </div>
+
+                        <h3 class="h6 text-muted mt-4 mb-3">CSS</h3>
+                        <pre class="bg-light p-3 rounded"><code>body {
+    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+code, pre {
+    font-family: 'IBM Plex Mono', 'Courier New', monospace;
+}</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Headings -->
+            <section class="mb-5">
+                <h2 class="h4 mb-3">Headings</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <h1>h1. Heading Level 1</h1>
+                        <h2>h2. Heading Level 2</h2>
+                        <h3>h3. Heading Level 3</h3>
+                        <h4>h4. Heading Level 4</h4>
+                        <h5>h5. Heading Level 5</h5>
+                        <h6>h6. Heading Level 6</h6>
+
+                        <h3 class="h6 text-muted mt-4 mb-3">Display Headings</h3>
+                        <h1 class="display-1">Display 1</h1>
+                        <h1 class="display-2">Display 2</h1>
+                        <h1 class="display-3">Display 3</h1>
+                        <h1 class="display-4">Display 4</h1>
+                        <h1 class="display-5">Display 5</h1>
+                        <h1 class="display-6">Display 6</h1>
+
+                        <h3 class="h6 text-muted mt-4 mb-3">Code</h3>
+                        <pre class="bg-light p-3 rounded"><code>&lt;h1&gt;Heading Level 1&lt;/h1&gt;
+&lt;h2&gt;Heading Level 2&lt;/h2&gt;
+&lt;h3&gt;Heading Level 3&lt;/h3&gt;
+
+&lt;h1 class="display-1"&gt;Display 1&lt;/h1&gt;</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Body Text -->
+            <section class="mb-5">
+                <h2 class="h4 mb-3">Body Text</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="h6 text-muted mb-3">Paragraph</h3>
+                        <p>This is a standard paragraph. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+                        
+                        <h3 class="h6 text-muted mb-3">Lead Paragraph</h3>
+                        <p class="lead">This is a lead paragraph. It stands out from regular paragraphs with larger text size and lighter weight.</p>
+
+                        <h3 class="h6 text-muted mb-3">Inline Text Elements</h3>
+                        <p>You can use the mark tag to <mark>highlight</mark> text.</p>
+                        <p><del>This line of text is meant to be treated as deleted text.</del></p>
+                        <p><s>This line of text is meant to be treated as no longer accurate.</s></p>
+                        <p><ins>This line of text is meant to be treated as an addition to the document.</ins></p>
+                        <p><u>This line of text will render as underlined.</u></p>
+                        <p><small>This line of text is meant to be treated as fine print.</small></p>
+                        <p><strong>This line rendered as bold text.</strong></p>
+                        <p><em>This line rendered as italicized text.</em></p>
+
+                        <h3 class="h6 text-muted mt-4 mb-3">Code</h3>
+                        <pre class="bg-light p-3 rounded"><code>&lt;p&gt;Standard paragraph text&lt;/p&gt;
+&lt;p class="lead"&gt;Lead paragraph text&lt;/p&gt;
+&lt;mark&gt;highlighted&lt;/mark&gt;
+&lt;strong&gt;bold text&lt;/strong&gt;
+&lt;em&gt;italicized text&lt;/em&gt;</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Lists -->
+            <section class="mb-5">
+                <h2 class="h4 mb-3">Lists</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <h3 class="h6 text-muted mb-3">Unordered List</h3>
+                                <ul>
+                                    <li>First item</li>
+                                    <li>Second item</li>
+                                    <li>Third item
+                                        <ul>
+                                            <li>Nested item</li>
+                                            <li>Another nested</li>
+                                        </ul>
+                                    </li>
+                                    <li>Fourth item</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-4">
+                                <h3 class="h6 text-muted mb-3">Ordered List</h3>
+                                <ol>
+                                    <li>First item</li>
+                                    <li>Second item</li>
+                                    <li>Third item
+                                        <ol>
+                                            <li>Nested item</li>
+                                            <li>Another nested</li>
+                                        </ol>
+                                    </li>
+                                    <li>Fourth item</li>
+                                </ol>
+                            </div>
+                            <div class="col-md-4">
+                                <h3 class="h6 text-muted mb-3">Unstyled List</h3>
+                                <ul class="list-unstyled">
+                                    <li>No bullets</li>
+                                    <li>Clean look</li>
+                                    <li>Third item</li>
+                                    <li>Fourth item</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <h3 class="h6 text-muted mt-4 mb-3">Code</h3>
+                        <pre class="bg-light p-3 rounded"><code>&lt;ul&gt;
+    &lt;li&gt;Item 1&lt;/li&gt;
+    &lt;li&gt;Item 2&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;ul class="list-unstyled"&gt;
+    &lt;li&gt;No bullets&lt;/li&gt;
+&lt;/ul&gt;</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Code -->
+            <section class="mb-5">
+                <h2 class="h4 mb-3">Code</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="h6 text-muted mb-3">Inline Code</h3>
+                        <p>For example, <code>&lt;section&gt;</code> should be wrapped as inline.</p>
+
+                        <h3 class="h6 text-muted mb-3">Code Block</h3>
+                        <pre><code>// Sample code block
+function greet(name) {
+    return `Hello, ${name}!`;
+}
+
+console.log(greet('World'));</code></pre>
+
+                        <h3 class="h6 text-muted mb-3">Variables</h3>
+                        <p><var>y</var> = <var>m</var><var>x</var> + <var>b</var></p>
+
+                        <h3 class="h6 text-muted mb-3">User Input</h3>
+                        <p>To switch directories, type <kbd>cd</kbd> followed by the name of the directory.</p>
+                        <p>To edit settings, press <kbd><kbd>ctrl</kbd> + <kbd>,</kbd></kbd></p>
+
+                        <h3 class="h6 text-muted mb-3">Sample Output</h3>
+                        <samp>This text is meant to be treated as sample output from a computer program.</samp>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Blockquotes -->
+            <section class="mb-5">
+                <h2 class="h4 mb-3">Blockquotes</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <blockquote class="blockquote">
+                            <p>A well-known quote, contained in a blockquote element.</p>
+                        </blockquote>
+
+                        <figure>
+                            <blockquote class="blockquote">
+                                <p>A well-known quote, contained in a blockquote element.</p>
+                            </blockquote>
+                            <figcaption class="blockquote-footer">
+                                Someone famous in <cite title="Source Title">Source Title</cite>
+                            </figcaption>
+                        </figure>
+
+                        <h3 class="h6 text-muted mt-4 mb-3">Code</h3>
+                        <pre class="bg-light p-3 rounded"><code>&lt;blockquote class="blockquote"&gt;
+    &lt;p&gt;A well-known quote.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;figure&gt;
+    &lt;blockquote class="blockquote"&gt;
+        &lt;p&gt;A well-known quote.&lt;/p&gt;
+    &lt;/blockquote&gt;
+    &lt;figcaption class="blockquote-footer"&gt;
+        Someone famous in &lt;cite&gt;Source Title&lt;/cite&gt;
+    &lt;/figcaption&gt;
+&lt;/figure&gt;</code></pre>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+{{end}}

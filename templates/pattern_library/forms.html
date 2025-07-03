@@ -1,0 +1,252 @@
+{{define "content"}}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <nav aria-label="breadcrumb" class="mb-4">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="/patterns">Pattern Library</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Forms</li>
+                </ol>
+            </nav>
+
+            <div class="page-header mb-4">
+                <h1 class="h2">📝 Forms</h1>
+                <p class="text-muted">Form elements, validation states, and form layouts</p>
+            </div>
+
+            <!-- Basic Form Elements -->
+            <section class="mb-5">
+                <h2 class="h4 mb-3">Basic Form Elements</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <form>
+                            <div class="mb-3">
+                                <label for="exampleInput" class="form-label">Text Input</label>
+                                <input type="text" class="form-control" id="exampleInput" placeholder="Enter text">
+                                <div class="form-text">Helper text for this input field.</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="exampleEmail" class="form-label">Email Input</label>
+                                <input type="email" class="form-control" id="exampleEmail" placeholder="name@example.com">
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="examplePassword" class="form-label">Password</label>
+                                <input type="password" class="form-control" id="examplePassword">
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="exampleSelect" class="form-label">Select</label>
+                                <select class="form-select" id="exampleSelect">
+                                    <option selected>Choose...</option>
+                                    <option value="1">Option 1</option>
+                                    <option value="2">Option 2</option>
+                                    <option value="3">Option 3</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="exampleTextarea" class="form-label">Textarea</label>
+                                <textarea class="form-control" id="exampleTextarea" rows="3" placeholder="Enter longer text..."></textarea>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="formFile" class="form-label">File Input</label>
+                                <input class="form-control" type="file" id="formFile">
+                            </div>
+                        </form>
+
+                        <h3 class="h6 text-muted mt-4 mb-3">Code</h3>
+                        <pre class="bg-light p-3 rounded"><code>&lt;div class="mb-3"&gt;
+    &lt;label for="exampleInput" class="form-label"&gt;Text Input&lt;/label&gt;
+    &lt;input type="text" class="form-control" id="exampleInput" placeholder="Enter text"&gt;
+    &lt;div class="form-text"&gt;Helper text for this input field.&lt;/div&gt;
+&lt;/div&gt;</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Validation States -->
+            <section class="mb-5">
+                <h2 class="h4 mb-3">Validation States</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <form>
+                            <div class="mb-3">
+                                <label for="validInput" class="form-label">Valid Input</label>
+                                <input type="text" class="form-control is-valid" id="validInput" value="Looks good!">
+                                <div class="valid-feedback">
+                                    Great! This field is valid.
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="invalidInput" class="form-label">Invalid Input</label>
+                                <input type="text" class="form-control is-invalid" id="invalidInput">
+                                <div class="invalid-feedback">
+                                    Please provide a valid value.
+                                </div>
+                            </div>
+                        </form>
+
+                        <h3 class="h6 text-muted mt-4 mb-3">Code</h3>
+                        <pre class="bg-light p-3 rounded"><code>&lt;input type="text" class="form-control is-valid" value="Looks good!"&gt;
+&lt;div class="valid-feedback"&gt;Great! This field is valid.&lt;/div&gt;
+
+&lt;input type="text" class="form-control is-invalid"&gt;
+&lt;div class="invalid-feedback"&gt;Please provide a valid value.&lt;/div&gt;</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Checkboxes and Radios -->
+            <section class="mb-5">
+                <h2 class="h4 mb-3">Checkboxes and Radios</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="h6 text-muted mb-3">Checkboxes</h3>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="" id="defaultCheck1" checked>
+                                <label class="form-check-label" for="defaultCheck1">
+                                    Default checkbox (checked)
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="" id="defaultCheck2">
+                                <label class="form-check-label" for="defaultCheck2">
+                                    Second default checkbox
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="" id="defaultCheck3" disabled>
+                                <label class="form-check-label" for="defaultCheck3">
+                                    Disabled checkbox
+                                </label>
+                            </div>
+                        </div>
+
+                        <h3 class="h6 text-muted mb-3">Radio Buttons</h3>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="exampleRadios" id="exampleRadio1" value="option1" checked>
+                                <label class="form-check-label" for="exampleRadio1">
+                                    Default radio
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="exampleRadios" id="exampleRadio2" value="option2">
+                                <label class="form-check-label" for="exampleRadio2">
+                                    Second default radio
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="exampleRadios" id="exampleRadio3" value="option3" disabled>
+                                <label class="form-check-label" for="exampleRadio3">
+                                    Disabled radio
+                                </label>
+                            </div>
+                        </div>
+
+                        <h3 class="h6 text-muted mb-3">Switches</h3>
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault">
+                            <label class="form-check-label" for="flexSwitchCheckDefault">Default switch</label>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckChecked" checked>
+                            <label class="form-check-label" for="flexSwitchCheckChecked">Checked switch</label>
+                        </div>
+
+                        <h3 class="h6 text-muted mt-4 mb-3">Code</h3>
+                        <pre class="bg-light p-3 rounded"><code>&lt;div class="form-check"&gt;
+    &lt;input class="form-check-input" type="checkbox" id="defaultCheck1"&gt;
+    &lt;label class="form-check-label" for="defaultCheck1"&gt;
+        Default checkbox
+    &lt;/label&gt;
+&lt;/div&gt;</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Form Layouts -->
+            <section class="mb-5">
+                <h2 class="h4 mb-3">Form Layouts</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="h6 text-muted mb-3">Horizontal Form</h3>
+                        <form>
+                            <div class="row mb-3">
+                                <label for="inputEmail3" class="col-sm-2 col-form-label">Email</label>
+                                <div class="col-sm-10">
+                                    <input type="email" class="form-control" id="inputEmail3">
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <label for="inputPassword3" class="col-sm-2 col-form-label">Password</label>
+                                <div class="col-sm-10">
+                                    <input type="password" class="form-control" id="inputPassword3">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-sm-10 offset-sm-2">
+                                    <button type="submit" class="btn btn-primary">Sign in</button>
+                                </div>
+                            </div>
+                        </form>
+
+                        <h3 class="h6 text-muted mt-4 mb-3">Inline Form</h3>
+                        <form class="row row-cols-lg-auto g-3 align-items-center">
+                            <div class="col-12">
+                                <input type="text" class="form-control" placeholder="Username">
+                            </div>
+                            <div class="col-12">
+                                <input type="password" class="form-control" placeholder="Password">
+                            </div>
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-primary">Submit</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Input Groups -->
+            <section class="mb-5">
+                <h2 class="h4 mb-3">Input Groups</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <div class="input-group mb-3">
+                            <span class="input-group-text">@</span>
+                            <input type="text" class="form-control" placeholder="Username">
+                        </div>
+
+                        <div class="input-group mb-3">
+                            <input type="text" class="form-control" placeholder="Recipient's username">
+                            <span class="input-group-text">@example.com</span>
+                        </div>
+
+                        <div class="input-group mb-3">
+                            <span class="input-group-text">$</span>
+                            <input type="text" class="form-control" placeholder="Amount">
+                            <span class="input-group-text">.00</span>
+                        </div>
+
+                        <div class="input-group">
+                            <input type="text" class="form-control" placeholder="Search...">
+                            <button class="btn btn-primary" type="button">Search</button>
+                        </div>
+
+                        <h3 class="h6 text-muted mt-4 mb-3">Code</h3>
+                        <pre class="bg-light p-3 rounded"><code>&lt;div class="input-group"&gt;
+    &lt;span class="input-group-text"&gt;@&lt;/span&gt;
+    &lt;input type="text" class="form-control" placeholder="Username"&gt;
+&lt;/div&gt;</code></pre>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+{{end}}
