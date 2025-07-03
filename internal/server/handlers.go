@@ -3,6 +3,7 @@ package server
 import (
 	"database/sql"
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 	"os"
@@ -323,9 +324,9 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 	// Get error messages
 	if flashes := session.Flashes("error"); len(flashes) > 0 {
 		for _, flash := range flashes {
-			messages = append(messages, map[string]string{
+			messages = append(messages, map[string]interface{}{
 				"Type": "danger",
-				"Text": flash.(string),
+				"Text": template.HTML(flash.(string)),
 			})
 		}
 	}
@@ -333,9 +334,19 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 	// Get success messages
 	if flashes := session.Flashes("success"); len(flashes) > 0 {
 		for _, flash := range flashes {
-			messages = append(messages, map[string]string{
+			messages = append(messages, map[string]interface{}{
 				"Type": "success",
-				"Text": flash.(string),
+				"Text": template.HTML(flash.(string)),
+			})
+		}
+	}
+	
+	// Get info messages
+	if flashes := session.Flashes("info"); len(flashes) > 0 {
+		for _, flash := range flashes {
+			messages = append(messages, map[string]interface{}{
+				"Type": "info",
+				"Text": template.HTML(flash.(string)),
 			})
 		}
 	}
@@ -406,26 +417,30 @@ func (s *Server) handleAppStart(w http.ResponseWriter, r *http.Request) {
 	
 	appName := parts[2]
 	
-	// Start the container
-	if s.dockerClient == nil {
-		http.Error(w, "Docker client not available", http.StatusServiceUnavailable)
+	// Check if Docker is available
+	if s.dockerSvc == nil || s.worker == nil {
+		http.Error(w, "Docker service not available", http.StatusServiceUnavailable)
 		return
 	}
 	
-	err := s.dockerClient.StartApp(s.config.AppsDir, appName)
+	// Create a background operation
+	operationID, err := s.createDockerOperation(database.OpTypeStartContainer, appName, nil)
 	if err != nil {
-		log.Printf("Failed to start app %s: %v", appName, err)
-		// Set flash message in session
+		log.Printf("Failed to create operation for app %s: %v", appName, err)
 		session, _ := s.sessionStore.Get(r, "ontree-session")
-		session.AddFlash(fmt.Sprintf("Failed to start application: %v", err), "error")
+		session.AddFlash("Failed to start application: unable to create operation", "error")
 		session.Save(r, w)
-	} else {
-		log.Printf("Successfully started app: %s", appName)
-		// Set success message
-		session, _ := s.sessionStore.Get(r, "ontree-session")
-		session.AddFlash("Application started successfully", "success")
-		session.Save(r, w)
+		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
+		return
 	}
+	
+	// Enqueue the operation
+	s.worker.EnqueueOperation(operationID)
+	
+	// Set flash message with operation ID
+	session, _ := s.sessionStore.Get(r, "ontree-session")
+	session.AddFlash(fmt.Sprintf("Starting application... <div id=\"operation-status\" hx-get=\"/api/docker/operations/%s\" hx-trigger=\"load\" hx-swap=\"innerHTML\"></div>", operationID), "info")
+	session.Save(r, w)
 	
 	// Redirect back to app detail page
 	http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
@@ -488,24 +503,30 @@ func (s *Server) handleAppRecreate(w http.ResponseWriter, r *http.Request) {
 	
 	appName := parts[2]
 	
-	// Recreate the container
-	if s.dockerClient == nil {
-		http.Error(w, "Docker client not available", http.StatusServiceUnavailable)
+	// Check if Docker is available
+	if s.dockerSvc == nil || s.worker == nil {
+		http.Error(w, "Docker service not available", http.StatusServiceUnavailable)
 		return
 	}
 	
-	err := s.dockerClient.RecreateApp(s.config.AppsDir, appName)
+	// Create a background operation
+	operationID, err := s.createDockerOperation(database.OpTypeRecreateContainer, appName, nil)
 	if err != nil {
-		log.Printf("Failed to recreate app %s: %v", appName, err)
+		log.Printf("Failed to create operation for app %s: %v", appName, err)
 		session, _ := s.sessionStore.Get(r, "ontree-session")
-		session.AddFlash(fmt.Sprintf("Failed to recreate application: %v", err), "error")
+		session.AddFlash("Failed to recreate application: unable to create operation", "error")
 		session.Save(r, w)
-	} else {
-		log.Printf("Successfully recreated app: %s", appName)
-		session, _ := s.sessionStore.Get(r, "ontree-session")
-		session.AddFlash("Application recreated successfully", "success")
-		session.Save(r, w)
+		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
+		return
 	}
+	
+	// Enqueue the operation
+	s.worker.EnqueueOperation(operationID)
+	
+	// Set flash message with operation ID
+	session, _ := s.sessionStore.Get(r, "ontree-session")
+	session.AddFlash(fmt.Sprintf("Recreating application... <div id=\"operation-status\" hx-get=\"/api/docker/operations/%s\" hx-trigger=\"load\" hx-swap=\"innerHTML\"></div>", operationID), "info")
+	session.Save(r, w)
 	
 	// Redirect back to app detail page
 	http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)

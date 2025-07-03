@@ -44,6 +44,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Failed to create server: %v\n", err)
 		os.Exit(1)
 	}
+	defer srv.Shutdown()
 
 	if err := srv.Start(); err != nil {
 		fmt.Fprintf(os.Stderr, "Server error: %v\n", err)

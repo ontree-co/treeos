@@ -38,6 +38,14 @@ func Initialize(dbPath string) error {
 	return nil
 }
 
+// New creates and initializes a new database connection
+func New(dbPath string) (*sql.DB, error) {
+	if err := Initialize(dbPath); err != nil {
+		return nil, err
+	}
+	return db, nil
+}
+
 func Close() error {
 	if db != nil {
 		return db.Close()

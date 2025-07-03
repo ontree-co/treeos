@@ -1,6 +1,7 @@
 package server
 
 import (
+	"database/sql"
 	"fmt"
 	"html/template"
 	"log"
@@ -9,7 +10,9 @@ import (
 	"strings"
 
 	"ontree-node/internal/config"
+	"ontree-node/internal/database"
 	"ontree-node/internal/docker"
+	"ontree-node/internal/worker"
 	"github.com/gorilla/sessions"
 )
 
@@ -19,6 +22,9 @@ type Server struct {
 	templates    map[string]*template.Template
 	sessionStore *sessions.CookieStore
 	dockerClient *docker.Client
+	dockerSvc    *docker.Service
+	db           *sql.DB
+	worker       *worker.Worker
 }
 
 // New creates a new server instance
@@ -47,6 +53,13 @@ func New(cfg *config.Config) (*Server, error) {
 		return nil, fmt.Errorf("failed to load templates: %w", err)
 	}
 
+	// Initialize database
+	db, err := database.New(cfg.DatabasePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize database: %w", err)
+	}
+	s.db = db
+
 	// Initialize Docker client
 	dockerClient, err := docker.NewClient()
 	if err != nil {
@@ -56,7 +69,39 @@ func New(cfg *config.Config) (*Server, error) {
 		s.dockerClient = dockerClient
 	}
 
+	// Initialize Docker service
+	dockerSvc, err := docker.NewService(cfg.AppsDir)
+	if err != nil {
+		log.Printf("Warning: Failed to initialize Docker service: %v", err)
+		// Continue without Docker support
+	} else {
+		s.dockerSvc = dockerSvc
+	}
+
+	// Initialize worker if Docker is available
+	if s.dockerSvc != nil && s.db != nil {
+		s.worker = worker.New(s.db, s.dockerSvc)
+		// Start workers (using 2 workers for now)
+		s.worker.Start(2)
+	}
+
 	return s, nil
+}
+
+// Shutdown gracefully shuts down the server
+func (s *Server) Shutdown() {
+	if s.worker != nil {
+		s.worker.Stop()
+	}
+	if s.dockerSvc != nil {
+		s.dockerSvc.Close()
+	}
+	if s.dockerClient != nil {
+		s.dockerClient.Close()
+	}
+	if s.db != nil {
+		s.db.Close()
+	}
 }
 
 // loadTemplates loads all HTML templates
@@ -119,6 +164,7 @@ func (s *Server) Start() error {
 	
 	// API routes
 	mux.HandleFunc("/api/system-vitals", s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleSystemVitals)))
+	mux.HandleFunc("/api/docker/operations/", s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleDockerOperationStatus)))
 
 	// Start server
 	addr := s.config.ListenAddr
