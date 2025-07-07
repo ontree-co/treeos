@@ -64,6 +64,75 @@
             min-width: 120px;
         }
     }
+    
+    /* Log viewer styles */
+    .log-entry {
+        margin-bottom: 0.25rem;
+        line-height: 1.4;
+    }
+    
+    .log-entry .timestamp {
+        color: #6c757d;
+        margin-right: 0.5rem;
+    }
+    
+    .log-entry .level {
+        font-weight: bold;
+        margin-right: 0.5rem;
+    }
+    
+    .log-entry.log-debug .level {
+        color: #6c757d;
+    }
+    
+    .log-entry.log-info .level {
+        color: #0d6efd;
+    }
+    
+    .log-entry.log-warning .level {
+        color: #ffc107;
+    }
+    
+    .log-entry.log-error .level {
+        color: #dc3545;
+    }
+    
+    .log-entry .message {
+        color: #212529;
+    }
+    
+    .log-entry .details {
+        margin-left: 2rem;
+        margin-top: 0.25rem;
+        padding: 0.25rem 0.5rem;
+        background: rgba(0, 0, 0, 0.05);
+        border-radius: 3px;
+        font-size: 0.8125rem;
+    }
+    
+    .log-entry .details code {
+        color: #e83e8c;
+        background: none;
+        padding: 0;
+    }
+    
+    .logs-content-wrapper {
+        scrollbar-width: thin;
+        scrollbar-color: #6c757d #f8f9fa;
+    }
+    
+    .logs-content-wrapper::-webkit-scrollbar {
+        width: 8px;
+    }
+    
+    .logs-content-wrapper::-webkit-scrollbar-track {
+        background: #f8f9fa;
+    }
+    
+    .logs-content-wrapper::-webkit-scrollbar-thumb {
+        background-color: #6c757d;
+        border-radius: 4px;
+    }
 </style>
 <div class="row">
     <div class="col-12">
@@ -169,6 +238,29 @@
                     </button>
                 </form>
             {{end}}
+        </div>
+    </div>
+</div>
+
+<!-- Operation Logs -->
+<div class="row mb-3" id="operation-logs-container" style="display: none;">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">
+                    <i>📋</i> Operation Logs
+                </h6>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleLogs()">
+                    <span id="logs-toggle-text">Hide</span>
+                </button>
+            </div>
+            <div class="card-body" id="logs-panel">
+                <div class="logs-content-wrapper" style="max-height: 400px; overflow-y: auto; background: #f8f9fa; padding: 1rem; border-radius: 4px; font-family: monospace; font-size: 0.875rem;">
+                    <div id="logs-content">
+                        <div class="text-muted">No logs available yet...</div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -324,6 +416,123 @@ document.addEventListener('DOMContentLoaded', function() {
             button.innerHTML = originalHtml;
         }
     });
+    
+    // Log viewer functionality
+    let currentOperationId = null;
+    let logsVisible = false;
+    let logPollingInterval = null;
+    
+    function toggleLogs() {
+        const container = document.getElementById('operation-logs-container');
+        const toggleText = document.getElementById('logs-toggle-text');
+        const panel = document.getElementById('logs-panel');
+        
+        if (logsVisible) {
+            panel.style.display = 'none';
+            toggleText.textContent = 'Show';
+            logsVisible = false;
+            stopLogPolling();
+        } else {
+            panel.style.display = 'block';
+            toggleText.textContent = 'Hide';
+            logsVisible = true;
+            if (currentOperationId) {
+                startLogPolling(currentOperationId);
+            }
+        }
+    }
+    
+    function showLogsForOperation(operationId) {
+        currentOperationId = operationId;
+        const container = document.getElementById('operation-logs-container');
+        container.style.display = 'block';
+        
+        if (!logsVisible) {
+            toggleLogs();
+        }
+        
+        startLogPolling(operationId);
+    }
+    
+    function startLogPolling(operationId) {
+        // Clear any existing interval
+        stopLogPolling();
+        
+        // Load logs immediately
+        loadLogs(operationId);
+        
+        // Set up polling every 2 seconds
+        logPollingInterval = setInterval(() => {
+            loadLogs(operationId);
+        }, 2000);
+    }
+    
+    function stopLogPolling() {
+        if (logPollingInterval) {
+            clearInterval(logPollingInterval);
+            logPollingInterval = null;
+        }
+    }
+    
+    function loadLogs(operationId) {
+        const logsContent = document.getElementById('logs-content');
+        const wrapper = logsContent.parentElement;
+        
+        fetch(`/api/docker/operations/${operationId}/logs`)
+            .then(response => response.text())
+            .then(html => {
+                // Check if we should auto-scroll
+                const shouldScroll = wrapper.scrollHeight - wrapper.scrollTop <= wrapper.clientHeight + 50;
+                
+                // Update content
+                logsContent.innerHTML = html;
+                
+                // Auto-scroll to bottom if we were near the bottom
+                if (shouldScroll) {
+                    wrapper.scrollTop = wrapper.scrollHeight;
+                }
+                
+                // Check if operation is complete to stop polling
+                if (html.includes('<!-- Operation complete, polling stopped -->')) {
+                    stopLogPolling();
+                }
+            })
+            .catch(error => {
+                console.error('Failed to load logs:', error);
+                logsContent.innerHTML = '<div class="text-danger">Failed to load logs</div>';
+            });
+    }
+    
+    // Listen for operation status updates
+    document.addEventListener('htmx:afterSwap', function(evt) {
+        // Check if this is an operation status update
+        if (evt.detail.target.id === 'operation-status') {
+            // Look for operation ID in the response
+            const operationDiv = evt.detail.target.querySelector('[hx-get*="/api/docker/operations/"]');
+            if (operationDiv) {
+                const hxGet = operationDiv.getAttribute('hx-get');
+                const match = hxGet.match(/\/api\/docker\/operations\/([^\/]+)/);
+                if (match && match[1]) {
+                    showLogsForOperation(match[1]);
+                }
+            } else {
+                // Operation might be complete, stop polling
+                stopLogPolling();
+            }
+        }
+    });
+    
+    // Clean up on page unload
+    window.addEventListener('beforeunload', function() {
+        stopLogPolling();
+    });
+    
+    // Check if there's an active operation on page load
+    {{if .ActiveOperationID}}
+    document.addEventListener('DOMContentLoaded', function() {
+        showLogsForOperation('{{.ActiveOperationID}}');
+    });
+    {{end}}
 });
 </script>
 {{end}}
