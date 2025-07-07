@@ -58,8 +58,24 @@ build-all: embed-assets
 .PHONY: test
 test:
 	@echo "Running unit and integration tests..."
-	@$(GOTEST) -v -race -coverprofile=coverage.out ./internal/... ./cmd/... 2>/dev/null || true
+	@$(GOTEST) -v -coverprofile=coverage.out ./internal/... ./cmd/...
 	@echo "Tests complete"
+
+# Run tests with race detector
+.PHONY: test-race
+test-race:
+	@echo "Running tests with race detector..."
+	@$(GOTEST) -v -race ./internal/... ./cmd/...
+	@echo "Race tests complete"
+
+# Run tests and generate coverage report
+.PHONY: test-coverage
+test-coverage:
+	@echo "Running tests with coverage..."
+	@$(GOTEST) -v -coverprofile=coverage.out -covermode=atomic ./internal/... ./cmd/...
+	@echo "Generating coverage report..."
+	@$(GO) tool cover -html=coverage.out -o coverage.html
+	@echo "Coverage report generated: coverage.html"
 
 # Run Playwright E2E tests
 .PHONY: test-e2e
@@ -102,6 +118,23 @@ fmt:
 	@echo "Formatting code..."
 	$(GO) fmt ./...
 	@echo "Formatting complete"
+
+# Run go vet
+.PHONY: vet
+vet:
+	@echo "Running go vet..."
+	$(GO) vet ./...
+	@echo "Vet complete"
+
+# Install development tools
+.PHONY: install-tools
+install-tools:
+	@echo "Installing development tools..."
+	@echo "Installing golangci-lint..."
+	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+	@echo "Installing goose for migrations..."
+	@go install github.com/pressly/goose/v3/cmd/goose@latest
+	@echo "Development tools installed"
 
 # Check for module updates
 .PHONY: mod-check
@@ -174,11 +207,15 @@ help:
 	@echo "  build           - Build the application for current platform"
 	@echo "  build-all       - Cross-compile for darwin/arm64 and linux/amd64"
 	@echo "  test            - Run unit and integration tests"
+	@echo "  test-race       - Run tests with race detector"
+	@echo "  test-coverage   - Run tests and generate coverage report"
 	@echo "  test-e2e        - Run Playwright E2E tests"
 	@echo "  lint            - Run golangci-lint"
 	@echo "  clean           - Remove build artifacts"
 	@echo "  run             - Build and run the application"
 	@echo "  fmt             - Format Go code"
+	@echo "  vet             - Run go vet"
+	@echo "  install-tools   - Install development tools"
 	@echo "  deps            - Download and tidy dependencies"
 	@echo "  coverage        - Generate test coverage report"
 	@echo "  install         - Install binary to GOPATH/bin"
