@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 	"sync"
@@ -40,6 +41,44 @@ func (w *Worker) Start(numWorkers int) {
 	for i := 0; i < numWorkers; i++ {
 		w.workerWg.Add(1)
 		go w.worker(i)
+	}
+	
+	// Pick up any pending operations on startup
+	go w.pickupPendingOperations()
+}
+
+// pickupPendingOperations finds and enqueues any pending operations from the database
+func (w *Worker) pickupPendingOperations() {
+	// Wait a moment for workers to be ready
+	time.Sleep(1 * time.Second)
+	
+	query := `
+		SELECT id FROM docker_operations 
+		WHERE status = ? 
+		ORDER BY created_at ASC
+	`
+	
+	rows, err := w.db.Query(query, database.StatusPending)
+	if err != nil {
+		log.Printf("Failed to query pending operations: %v", err)
+		return
+	}
+	defer rows.Close()
+	
+	count := 0
+	for rows.Next() {
+		var operationID string
+		if err := rows.Scan(&operationID); err != nil {
+			log.Printf("Failed to scan operation ID: %v", err)
+			continue
+		}
+		
+		w.EnqueueOperation(operationID)
+		count++
+	}
+	
+	if count > 0 {
+		log.Printf("Picked up %d pending operations on startup", count)
 	}
 }
 
@@ -80,21 +119,35 @@ func (w *Worker) worker(id int) {
 func (w *Worker) processOperation(operationID string) {
 	log.Printf("Processing operation: %s", operationID)
 
+	// Create logger for this operation
+	logger := NewOperationLogger(w.db, operationID)
+
 	// Get operation details from database
 	var op database.DockerOperation
+	var metadataStr string
 	err := w.db.QueryRow(
 		"SELECT id, operation_type, app_name, status, metadata FROM docker_operations WHERE id = ?",
-		operationID).Scan(&op.ID, &op.OperationType, &op.AppName, &op.Status, &op.Metadata)
+		operationID).Scan(&op.ID, &op.OperationType, &op.AppName, &op.Status, &metadataStr)
+	if err == nil {
+		op.Metadata = json.RawMessage(metadataStr)
+	}
 	if err != nil {
 		log.Printf("Failed to get operation %s: %v", operationID, err)
 		return
 	}
 
+	// Log operation start
+	logger.LogInfo(fmt.Sprintf("Operation started: %s for app '%s'", op.OperationType, op.AppName))
+
 	// Skip if not pending
 	if op.Status != database.StatusPending {
+		logger.LogWarning(fmt.Sprintf("Operation %s is not pending (status: %s), skipping", operationID, op.Status))
 		log.Printf("Operation %s is not pending (status: %s), skipping", operationID, op.Status)
 		return
 	}
+
+	// Log worker assignment
+	logger.LogInfo(fmt.Sprintf("Worker picked up operation %s", operationID))
 
 	// Update status to in_progress
 	w.updateOperationStatus(operationID, database.StatusInProgress, 0, "Starting operation", "")
@@ -103,63 +156,92 @@ func (w *Worker) processOperation(operationID string) {
 	var operationErr error
 	switch op.OperationType {
 	case database.OpTypeStartContainer:
-		operationErr = w.processStartOperation(&op)
+		operationErr = w.processStartOperation(&op, logger)
 	case database.OpTypeRecreateContainer:
-		operationErr = w.processRecreateOperation(&op)
+		operationErr = w.processRecreateOperation(&op, logger)
 	case database.OpTypeUpdateImage:
-		operationErr = w.processUpdateImageOperation(&op)
+		operationErr = w.processUpdateImageOperation(&op, logger)
 	default:
 		operationErr = fmt.Errorf("unknown operation type: %s", op.OperationType)
+		logger.LogError(fmt.Sprintf("Unknown operation type: %s", op.OperationType))
 	}
 
 	// Update final status
 	if operationErr != nil {
+		logger.LogError(fmt.Sprintf("Operation failed: %v", operationErr))
 		w.updateOperationStatus(operationID, database.StatusFailed, 0, "", operationErr.Error())
 	} else {
+		logger.LogInfo("Operation completed successfully")
 		w.updateOperationStatus(operationID, database.StatusCompleted, 100, "Operation completed successfully", "")
 	}
 }
 
-func (w *Worker) processStartOperation(op *database.DockerOperation) error {
+func (w *Worker) processStartOperation(op *database.DockerOperation, logger *OperationLogger) error {
 	log.Printf("Starting app: %s", op.AppName)
+	logger.LogInfo("Starting container creation process")
 
 	// Update progress
 	w.updateOperationStatus(op.ID, database.StatusInProgress, 10, "Checking container status", "")
+	logger.LogInfo("Checking container status...")
 
 	// Get app details
 	app, err := w.dockerSvc.GetAppDetails(op.AppName)
 	if err != nil {
+		logger.LogError(fmt.Sprintf("Failed to get app details: %v", err))
 		return fmt.Errorf("failed to get app details: %w", err)
+	}
+
+	logger.LogInfo(fmt.Sprintf("App status: %s", app.Status))
+	if app.Config != nil && app.Config.Container.Image != "" {
+		logger.LogInfo(fmt.Sprintf("Container image: %s", app.Config.Container.Image))
 	}
 
 	// Check if we need to pull images
 	if app.Status == "not_created" {
+		logger.LogInfo("Container not found, will create new container")
 		w.updateOperationStatus(op.ID, database.StatusInProgress, 20, "Pulling Docker images", "")
+
+		// Log the pull command equivalent
+		if app.Config != nil && app.Config.Container.Image != "" {
+			logger.LogCommand("Pulling Docker image", fmt.Sprintf("docker pull %s", app.Config.Container.Image))
+		}
 
 		// Create a progress callback
 		progressCallback := func(progress int, message string) {
 			// Scale progress from 20-80 for image pulling
 			scaledProgress := 20 + (progress * 60 / 100)
 			w.updateOperationStatus(op.ID, database.StatusInProgress, scaledProgress, message, "")
+			logger.LogInfo(message)
 		}
 
 		// Pull images with progress
+		logger.LogInfo("Starting image pull...")
 		if err := w.dockerSvc.PullImagesWithProgress(op.AppName, progressCallback); err != nil {
+			logger.LogError(fmt.Sprintf("Failed to pull images: %v", err))
 			return fmt.Errorf("failed to pull images: %w", err)
 		}
+		logger.LogInfo("Image pull completed successfully")
+	} else {
+		logger.LogInfo(fmt.Sprintf("Container already exists with status: %s", app.Status))
 	}
 
 	// Start the container
 	w.updateOperationStatus(op.ID, database.StatusInProgress, 90, "Starting container", "")
+	logger.LogInfo("Starting container...")
+	logger.LogCommand("Starting container", fmt.Sprintf("docker start ontree-%s", op.AppName))
+	
 	if err := w.dockerSvc.StartApp(op.AppName); err != nil {
+		logger.LogError(fmt.Sprintf("Failed to start container: %v", err))
 		return fmt.Errorf("failed to start app: %w", err)
 	}
 
+	logger.LogInfo("Container started successfully")
 	return nil
 }
 
-func (w *Worker) processRecreateOperation(op *database.DockerOperation) error {
+func (w *Worker) processRecreateOperation(op *database.DockerOperation, logger *OperationLogger) error {
 	log.Printf("Recreating app: %s", op.AppName)
+	logger.LogInfo("Starting container recreation process")
 
 	// Update progress
 	w.updateOperationStatus(op.ID, database.StatusInProgress, 10, "Stopping existing container", "")
@@ -197,8 +279,9 @@ func (w *Worker) processRecreateOperation(op *database.DockerOperation) error {
 	return nil
 }
 
-func (w *Worker) processUpdateImageOperation(op *database.DockerOperation) error {
+func (w *Worker) processUpdateImageOperation(op *database.DockerOperation, logger *OperationLogger) error {
 	log.Printf("Updating image for app: %s", op.AppName)
+	logger.LogInfo("Starting image update process")
 
 	// Update progress
 	w.updateOperationStatus(op.ID, database.StatusInProgress, 10, "Checking for image updates", "")
