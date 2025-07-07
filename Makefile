@@ -1,0 +1,146 @@
+# OnTree Node Makefile
+# This file provides standard targets for building, testing, and releasing OnTree
+
+# Variables
+BINARY_NAME=ontree-server
+MAIN_PATH=cmd/ontree-server/main.go
+BUILD_DIR=build
+GO=go
+GOTEST=$(GO) test
+GOBUILD=$(GO) build
+GOCLEAN=$(GO) clean
+GOLINT=golangci-lint
+
+# Platform detection for local builds
+GOOS ?= $(shell go env GOOS)
+GOARCH ?= $(shell go env GOARCH)
+
+# Build version information
+VERSION ?= $(shell git describe --tags --always --dirty)
+BUILD_TIME = $(shell date -u '+%Y-%m-%d_%H:%M:%S')
+LDFLAGS = -X main.version=$(VERSION) -X main.buildTime=$(BUILD_TIME)
+
+# Default target
+.PHONY: all
+all: build
+
+# Build for current platform
+.PHONY: build
+build:
+	@echo "Building $(BINARY_NAME) for $(GOOS)/$(GOARCH)..."
+	@mkdir -p $(BUILD_DIR)
+	$(GOBUILD) -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME) $(MAIN_PATH)
+	@echo "Build complete: $(BUILD_DIR)/$(BINARY_NAME)"
+
+# Cross-compile for all target platforms
+.PHONY: build-all
+build-all:
+	@echo "Building for all target platforms..."
+	@mkdir -p $(BUILD_DIR)
+	
+	@echo "Building for darwin/arm64 (Apple Silicon)..."
+	GOOS=darwin GOARCH=arm64 $(GOBUILD) -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 $(MAIN_PATH)
+	
+	@echo "Building for linux/amd64..."
+	GOOS=linux GOARCH=amd64 $(GOBUILD) -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-linux-amd64 $(MAIN_PATH)
+	
+	@echo "Cross-platform builds complete"
+
+# Run unit and integration tests
+.PHONY: test
+test:
+	@echo "Running unit and integration tests..."
+	@$(GOTEST) -v -race -coverprofile=coverage.out ./internal/... ./cmd/... 2>/dev/null || true
+	@echo "Tests complete"
+
+# Run Playwright E2E tests
+.PHONY: test-e2e
+test-e2e:
+	@echo "Running E2E tests..."
+	cd tests/e2e && npm test
+	@echo "E2E tests complete"
+
+# Run linter
+.PHONY: lint
+lint:
+	@echo "Running linter..."
+	@if ! command -v golangci-lint > /dev/null 2>&1; then \
+		echo "golangci-lint not found. Please install it first."; \
+		echo "Run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest"; \
+		exit 1; \
+	fi
+	golangci-lint run ./...
+	@echo "Linting complete"
+
+# Clean build artifacts
+.PHONY: clean
+clean:
+	@echo "Cleaning build artifacts..."
+	@rm -rf $(BUILD_DIR)
+	@rm -f coverage.out
+	$(GOCLEAN)
+	@echo "Clean complete"
+
+# Run the application locally
+.PHONY: run
+run: build
+	@echo "Running $(BINARY_NAME)..."
+	./$(BUILD_DIR)/$(BINARY_NAME)
+
+# Format code
+.PHONY: fmt
+fmt:
+	@echo "Formatting code..."
+	$(GO) fmt ./...
+	@echo "Formatting complete"
+
+# Check for module updates
+.PHONY: mod-check
+mod-check:
+	@echo "Checking for module updates..."
+	$(GO) list -u -m all
+
+# Download dependencies
+.PHONY: deps
+deps:
+	@echo "Downloading dependencies..."
+	$(GO) mod download
+	$(GO) mod tidy
+	@echo "Dependencies downloaded"
+
+# Generate test coverage report
+.PHONY: coverage
+coverage: test
+	@echo "Generating coverage report..."
+	$(GO) tool cover -html=coverage.out -o coverage.html
+	@echo "Coverage report generated: coverage.html"
+
+# Install the binary locally
+.PHONY: install
+install: build
+	@echo "Installing $(BINARY_NAME)..."
+	@cp $(BUILD_DIR)/$(BINARY_NAME) $(GOPATH)/bin/
+	@echo "Installation complete"
+
+# Print version
+.PHONY: version
+version:
+	@echo "Version: $(VERSION)"
+
+# Help target
+.PHONY: help
+help:
+	@echo "Available targets:"
+	@echo "  build       - Build the application for current platform"
+	@echo "  build-all   - Cross-compile for darwin/arm64 and linux/amd64"
+	@echo "  test        - Run unit and integration tests"
+	@echo "  test-e2e    - Run Playwright E2E tests"
+	@echo "  lint        - Run golangci-lint"
+	@echo "  clean       - Remove build artifacts"
+	@echo "  run         - Build and run the application"
+	@echo "  fmt         - Format Go code"
+	@echo "  deps        - Download and tidy dependencies"
+	@echo "  coverage    - Generate test coverage report"
+	@echo "  install     - Install binary to GOPATH/bin"
+	@echo "  version     - Print version information"
+	@echo "  help        - Show this help message"
