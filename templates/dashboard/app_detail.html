@@ -512,8 +512,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Check if operation is complete to stop polling
                 if (html.includes('<!-- Operation complete, polling stopped -->')) {
                     stopLogPolling();
-                    // Trigger button refresh
-                    htmx.trigger('body', 'operation-complete');
+                    
+                    // Small delay to ensure HTMX is ready
+                    setTimeout(() => {
+                        const controlsDiv = document.getElementById('app-controls');
+                        if (controlsDiv && htmx) {
+                            // Process HTMX on the element first
+                            htmx.process(controlsDiv);
+                            // Then trigger the event
+                            htmx.trigger(controlsDiv, 'operation-complete');
+                        }
+                    }, 100);
                 }
             })
             .catch(error => {
@@ -548,9 +557,15 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Check if there's an active operation on page load
     {{if .ActiveOperationID}}
-    document.addEventListener('DOMContentLoaded', function() {
+    // Check if DOM is already loaded
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            showLogsForOperation('{{.ActiveOperationID}}');
+        });
+    } else {
+        // DOM is already loaded, call directly
         showLogsForOperation('{{.ActiveOperationID}}');
-    });
+    }
     {{end}}
 });
 </script>

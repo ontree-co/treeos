@@ -336,43 +336,15 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 		containerInfo = s.getContainerInfo(appName)
 	}
 
-	// Get flash messages from session
+	// Clear any flash messages from session without displaying them
 	session, _ := s.sessionStore.Get(r, "ontree-session")
+	session.Flashes("error")
+	session.Flashes("success")
+	session.Flashes("info")
+	session.Save(r, w)
+	
+	// Don't pass messages to the template
 	var messages []interface{}
-
-	// Get error messages
-	if flashes := session.Flashes("error"); len(flashes) > 0 {
-		for _, flash := range flashes {
-			messages = append(messages, map[string]interface{}{
-				"Type": "danger",
-				"Text": template.HTML(flash.(string)),
-			})
-		}
-	}
-
-	// Get success messages
-	if flashes := session.Flashes("success"); len(flashes) > 0 {
-		for _, flash := range flashes {
-			messages = append(messages, map[string]interface{}{
-				"Type": "success",
-				"Text": template.HTML(flash.(string)),
-			})
-		}
-	}
-
-	// Get info messages
-	if flashes := session.Flashes("info"); len(flashes) > 0 {
-		for _, flash := range flashes {
-			messages = append(messages, map[string]interface{}{
-				"Type": "info",
-				"Text": template.HTML(flash.(string)),
-			})
-		}
-	}
-
-	if len(messages) > 0 {
-		session.Save(r, w)
-	}
 
 	// Check for active operations for this app
 	// Only consider operations created in the last 5 minutes to avoid showing stale operations
