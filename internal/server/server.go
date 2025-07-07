@@ -344,6 +344,9 @@ func (s *Server) baseTemplateData(user *database.User) map[string]interface{} {
 	data["Version"] = "1.0.0"
 	data["VersionAge"] = "latest"
 
+	// Messages field is required by base template
+	data["Messages"] = nil
+
 	return data
 }
 
