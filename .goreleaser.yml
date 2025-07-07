@@ -1,0 +1,104 @@
+# GoReleaser configuration for OnTree
+# This file configures the release process for multi-architecture builds
+
+project_name: ontree-node
+
+
+before:
+  hooks:
+    # Ensure go modules are downloaded
+    - go mod download
+
+builds:
+  - id: ontree-node
+    main: ./cmd/ontree-server
+    binary: ontree-node
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: darwin
+        goarch: amd64
+      - goos: linux
+        goarch: arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+      - -X main.builtBy=goreleaser
+
+archives:
+  - id: default
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    format_overrides:
+      - goos: windows
+        format: zip
+    # Only include the binaries, no additional files
+    meta: true
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+      - '^ci:'
+      - Merge pull request
+      - Merge branch
+  groups:
+    - title: Features
+      regexp: "^feat"
+      order: 0
+    - title: Bug Fixes
+      regexp: "^fix"
+      order: 1
+    - title: Other Changes
+      order: 999
+
+release:
+  # GitHub repository configuration
+  # These will be set via environment variables in the CI pipeline
+  # For local testing, the release step is skipped in snapshot mode
+  draft: false
+  prerelease: auto
+  name_template: "{{.ProjectName}}-v{{.Version}}"
+  mode: append
+  footer: |
+    ## Installation
+    
+    Download the appropriate binary for your platform from the assets below.
+    
+    ### Linux (AMD64)
+    ```bash
+    wget https://github.com/[owner]/[repo]/releases/download/{{ .Tag }}/ontree-node_{{ .Version }}_linux_x86_64.tar.gz
+    tar -xzf ontree-node_{{ .Version }}_linux_x86_64.tar.gz
+    sudo mv ontree-node /usr/local/bin/
+    ```
+    
+    ### macOS (ARM64)
+    ```bash
+    wget https://github.com/[owner]/[repo]/releases/download/{{ .Tag }}/ontree-node_{{ .Version }}_darwin_arm64.tar.gz
+    tar -xzf ontree-node_{{ .Version }}_darwin_arm64.tar.gz
+    sudo mv ontree-node /usr/local/bin/
+    ```
