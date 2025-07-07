@@ -131,6 +131,37 @@ install: build
 	@cp $(BUILD_DIR)/$(BINARY_NAME) $(GOPATH)/bin/
 	@echo "Installation complete"
 
+# Database migrations
+.PHONY: migrate
+migrate:
+	@echo "Running database migrations..."
+	@$(GO) run -mod=mod github.com/pressly/goose/v3/cmd/goose@latest -dir migrations sqlite3 ./ontree.db up
+	@echo "Migrations complete"
+
+# Check migration status
+.PHONY: migrate-status
+migrate-status:
+	@echo "Checking migration status..."
+	@$(GO) run -mod=mod github.com/pressly/goose/v3/cmd/goose@latest -dir migrations sqlite3 ./ontree.db status
+
+# Rollback last migration
+.PHONY: migrate-down
+migrate-down:
+	@echo "Rolling back last migration..."
+	@$(GO) run -mod=mod github.com/pressly/goose/v3/cmd/goose@latest -dir migrations sqlite3 ./ontree.db down
+	@echo "Rollback complete"
+
+# Create a new migration
+.PHONY: migrate-create
+migrate-create:
+	@if [ -z "$(name)" ]; then \
+		echo "Error: Please provide a migration name using 'make migrate-create name=your_migration_name'"; \
+		exit 1; \
+	fi
+	@echo "Creating new migration: $(name)..."
+	@$(GO) run -mod=mod github.com/pressly/goose/v3/cmd/goose@latest -dir migrations create $(name) sql
+	@echo "Migration created"
+
 # Print version
 .PHONY: version
 version:
@@ -140,16 +171,20 @@ version:
 .PHONY: help
 help:
 	@echo "Available targets:"
-	@echo "  build       - Build the application for current platform"
-	@echo "  build-all   - Cross-compile for darwin/arm64 and linux/amd64"
-	@echo "  test        - Run unit and integration tests"
-	@echo "  test-e2e    - Run Playwright E2E tests"
-	@echo "  lint        - Run golangci-lint"
-	@echo "  clean       - Remove build artifacts"
-	@echo "  run         - Build and run the application"
-	@echo "  fmt         - Format Go code"
-	@echo "  deps        - Download and tidy dependencies"
-	@echo "  coverage    - Generate test coverage report"
-	@echo "  install     - Install binary to GOPATH/bin"
-	@echo "  version     - Print version information"
-	@echo "  help        - Show this help message"
+	@echo "  build           - Build the application for current platform"
+	@echo "  build-all       - Cross-compile for darwin/arm64 and linux/amd64"
+	@echo "  test            - Run unit and integration tests"
+	@echo "  test-e2e        - Run Playwright E2E tests"
+	@echo "  lint            - Run golangci-lint"
+	@echo "  clean           - Remove build artifacts"
+	@echo "  run             - Build and run the application"
+	@echo "  fmt             - Format Go code"
+	@echo "  deps            - Download and tidy dependencies"
+	@echo "  coverage        - Generate test coverage report"
+	@echo "  install         - Install binary to GOPATH/bin"
+	@echo "  migrate         - Run database migrations"
+	@echo "  migrate-status  - Check migration status"
+	@echo "  migrate-down    - Rollback last migration"
+	@echo "  migrate-create  - Create new migration (use: make migrate-create name=NAME)"
+	@echo "  version         - Print version information"
+	@echo "  help            - Show this help message"

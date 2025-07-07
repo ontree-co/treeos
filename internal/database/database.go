@@ -30,6 +30,8 @@ func Initialize(dbPath string) error {
 		return fmt.Errorf("failed to ping database: %w", err)
 	}
 
+	// For now, keep the old createTables() for backward compatibility
+	// Once migrations are fully tested, this can be removed
 	if err := createTables(); err != nil {
 		return fmt.Errorf("failed to create tables: %w", err)
 	}
