@@ -1,5 +1,5 @@
 [Unit]
-Description=Gunicorn for {{ app_name }}
+Description=OnTree Node Service
 After=network.target
 
 [Service]
@@ -7,9 +7,10 @@ User={{ app_user }}
 Group={{ app_user }}
 WorkingDirectory={{ app_path }}
 Environment="PORT={{ app_port }}"
-Environment="PATH={{ app_path }}/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-Environment="VIRTUAL_ENV={{ app_path }}/venv"
-ExecStart={{ app_path }}/venv/bin/python {{ app_path }}/manage.py runprod
+Environment="DATABASE_PATH={{ app_path }}/ontree.db"
+Environment="STATIC_PATH={{ app_path }}/static"
+Environment="TEMPLATES_PATH={{ app_path }}/templates"
+ExecStart={{ app_path }}/{{ binary_name }}
 Restart=always
 RestartSec=10
 
