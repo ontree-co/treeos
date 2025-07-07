@@ -50,6 +50,15 @@ type DockerOperation struct {
 	CompletedAt     sql.NullTime
 }
 
+type DockerOperationLog struct {
+	ID          int
+	OperationID string
+	Timestamp   time.Time
+	Level       string
+	Message     string
+	Details     sql.NullString
+}
+
 const (
 	// Operation Types
 	OpTypePullImage         = "pull_image"
@@ -63,4 +72,10 @@ const (
 	StatusInProgress = "in_progress"
 	StatusCompleted  = "completed"
 	StatusFailed     = "failed"
+
+	// Log Levels
+	LogLevelDebug   = "debug"
+	LogLevelInfo    = "info"
+	LogLevelWarning = "warning"
+	LogLevelError   = "error"
 )

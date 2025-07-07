@@ -95,9 +95,19 @@ func createTables() error {
 			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			completed_at DATETIME
 		)`,
+		`CREATE TABLE IF NOT EXISTS docker_operation_logs (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			operation_id TEXT NOT NULL,
+			timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+			level TEXT NOT NULL,
+			message TEXT NOT NULL,
+			details TEXT,
+			FOREIGN KEY (operation_id) REFERENCES docker_operations(id)
+		)`,
 		`CREATE INDEX IF NOT EXISTS idx_system_vital_logs_timestamp ON system_vital_logs(timestamp)`,
 		`CREATE INDEX IF NOT EXISTS idx_docker_operations_status_created ON docker_operations(status, created_at)`,
 		`CREATE INDEX IF NOT EXISTS idx_docker_operations_app_created ON docker_operations(app_name, created_at)`,
+		`CREATE INDEX IF NOT EXISTS idx_docker_operation_logs_operation_timestamp ON docker_operation_logs(operation_id, timestamp)`,
 	}
 
 	for _, query := range queries {
