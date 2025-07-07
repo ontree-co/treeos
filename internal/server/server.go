@@ -253,7 +253,7 @@ func (s *Server) Start() error {
 
 	// API routes
 	mux.HandleFunc("/api/system-vitals", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleSystemVitals))))
-	mux.HandleFunc("/api/docker/operations/", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleDockerOperationStatus))))
+	mux.HandleFunc("/api/docker/operations/", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeDockerOperations))))
 
 	// Pattern library routes (no auth required - public access)
 	mux.HandleFunc("/patterns", s.TracingMiddleware(s.routePatterns))
@@ -372,5 +372,18 @@ func (s *Server) routeApps(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// Default to app detail page
 		s.handleAppDetail(w, r)
+	}
+}
+
+// routeDockerOperations routes /api/docker/operations/* requests
+func (s *Server) routeDockerOperations(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Path
+
+	// Route based on the path pattern
+	if strings.HasSuffix(path, "/logs") {
+		s.handleDockerOperationLogs(w, r)
+	} else {
+		// Default to operation status
+		s.handleDockerOperationStatus(w, r)
 	}
 }
