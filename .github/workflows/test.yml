@@ -45,3 +45,50 @@ jobs:
         flags: unittests
         name: codecov-umbrella
       if: always()
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    - name: Install dependencies
+      run: make deps
+
+    - name: Build application
+      run: make build
+
+    - name: Install Playwright
+      working-directory: ./tests/e2e
+      run: |
+        npm ci
+        npx playwright install --with-deps chromium
+
+    - name: Run E2E tests
+      run: |
+        # Copy the built binary to where the E2E tests expect it
+        cp build/ontree-server ./ontree-server
+        chmod +x ./ontree-server
+        
+        # Run the E2E tests
+        cd tests/e2e && npm test
+
+    - name: Upload test artifacts
+      uses: actions/upload-artifact@v3
+      if: failure()
+      with:
+        name: playwright-report
+        path: tests/e2e/playwright-report/
+        retention-days: 7
