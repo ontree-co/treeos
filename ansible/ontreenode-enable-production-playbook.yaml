@@ -1,0 +1,229 @@
+---
+# OnTreeNode Enable Production Playbook
+# This playbook deploys the OnTreeNode Django application from a private GitHub repository.
+# It creates a dedicated user, installs dependencies, sets up SSH keys for Git access,
+# clones the repo, creates a Python virtual environment, sets up the apps directory,
+# and runs the app as a systemd service using the new manage.py commands.
+# Prerequisites:
+# - Deploy key must be present in 1Password as "ontreenode-github-deploy-key"
+# - Public key must be added to GitHub repository as a deploy key
+# - Target servers must have sudo access and internet connectivity
+# Usage: ansible-playbook -i inventory.ini ontreenode-enable-production-playbook.yaml
+
+- name: Deploy and enable OnTreeNode production service
+  hosts: ontreenodes
+  become: yes
+
+  vars:
+    repo_url: "git@github.com:stefanmunz/ontreenode.git" # SSH URL for private repo access
+    repo_branch: "main"
+    app_name: "ontreenode"
+    app_user: "ontree"
+    app_root_dir: "/opt/ontree"
+    app_path: "{{ app_root_dir }}/{{ app_name }}"
+    python_version: "python3.12"
+    app_port: 3000
+    ansible_common_remote_group: "{{ app_user }}"
+
+  handlers:
+    - name: reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: yes
+
+  tasks:
+    # Phase 1: System Preparation
+    - name: Update package cache
+      ansible.builtin.package:
+        update_cache: yes
+
+    - name: Install system dependencies
+      ansible.builtin.package:
+        name:
+          - acl
+          - git
+          - "{{ python_version }}"
+          - python3-pip
+          - python3-venv
+        state: present
+      register: package_install
+      failed_when: package_install.failed
+
+    - name: Create dedicated application user
+      ansible.builtin.user:
+        name: "{{ app_user }}"
+        system: yes
+        shell: /bin/bash
+        home: "/home/{{ app_user }}"
+        create_home: yes
+        comment: "User for {{ app_name }} application"
+
+    - name: Create application directory
+      ansible.builtin.file:
+        path: "{{ app_path }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: "0775"
+
+    # Phase 2: SSH Key Deployment for Git Access
+    - name: Create .ssh directory for app user
+      ansible.builtin.file:
+        path: "/home/{{ app_user }}/.ssh"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: "0700"
+
+    - name: Retrieve SSH private key from 1Password
+      set_fact:
+        ssh_private_key: '{{ lookup(''pipe'', ''op read "op://OnTree/ontreenode-github-deploy-key/private key"'') }}'
+
+    - name: Retrieve SSH public key from 1Password
+      set_fact:
+        ssh_public_key: '{{ lookup(''pipe'', ''op read "op://OnTree/ontreenode-github-deploy-key/public key"'') }}'
+
+    - name: Debug - Check SSH key format (first 50 chars)
+      debug:
+        msg: "Key starts with: {{ ssh_private_key[:50] }}..."
+      when: ssh_private_key is defined
+
+    - name: Deploy SSH private key for GitHub access
+      ansible.builtin.copy:
+        content: "{{ ssh_private_key }}\n"
+        dest: "/home/{{ app_user }}/.ssh/id_ed25519"
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: "0600"
+
+    - name: Deploy SSH public key for GitHub access
+      ansible.builtin.copy:
+        content: "{{ ssh_public_key }}\n"
+        dest: "/home/{{ app_user }}/.ssh/id_ed25519.pub"
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: "0644"
+
+    - name: Add GitHub to known_hosts
+      ansible.builtin.known_hosts:
+        name: github.com
+        key: "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl"
+        path: "/home/{{ app_user }}/.ssh/known_hosts"
+        state: present
+      become_user: "{{ app_user }}"
+
+    # Phase 3: Code Deployment
+    - name: Stop ontreenode service before updating code
+      ansible.builtin.systemd:
+        name: "{{ app_name }}"
+        state: stopped
+      ignore_errors: yes # Service might not exist on first run
+
+    - name: Check if repository exists
+      ansible.builtin.stat:
+        path: "{{ app_path }}/.git"
+      register: git_repo_exists
+
+    - name: Clone repository if it doesn't exist
+      ansible.builtin.git:
+        repo: "{{ repo_url }}"
+        dest: "{{ app_path }}"
+        version: "{{ repo_branch }}"
+      become_user: "{{ app_user }}"
+      when: not git_repo_exists.stat.exists
+      async: 30
+      poll: 5
+
+    - name: Fetch latest changes from remote
+      ansible.builtin.command:
+        cmd: git fetch origin {{ repo_branch }}
+        chdir: "{{ app_path }}"
+      become_user: "{{ app_user }}"
+      when: git_repo_exists.stat.exists
+
+    - name: Reset to latest main branch (discard local changes)
+      ansible.builtin.command:
+        cmd: git reset --hard origin/{{ repo_branch }}
+        chdir: "{{ app_path }}"
+      become_user: "{{ app_user }}"
+      when: git_repo_exists.stat.exists
+
+    - name: Clean untracked files and directories
+      ansible.builtin.command:
+        cmd: git clean -fd
+        chdir: "{{ app_path }}"
+      become_user: "{{ app_user }}"
+      when: git_repo_exists.stat.exists
+
+    # Phase 3: Port Availability Check
+    - name: Check if port {{ app_port }} is available
+      ansible.builtin.wait_for:
+        port: "{{ app_port }}"
+        state: stopped
+        timeout: 5
+      register: port_check
+      ignore_errors: yes
+
+    - name: Fail if port is already in use
+      ansible.builtin.fail:
+        msg: "Port {{ app_port }} is already in use. This might be the development version of {{ app_name }} still running. Please stop it with 'systemctl stop {{ app_name }}-dev' or choose a different port."
+      when: port_check.failed
+
+    # Phase 4: Application Configuration
+    - name: Create Python virtual environment
+      ansible.builtin.command:
+        cmd: "{{ python_version }} -m venv venv"
+        chdir: "{{ app_path }}"
+        creates: "{{ app_path }}/venv"
+      become_user: "{{ app_user }}"
+
+    - name: Install Python dependencies
+      ansible.builtin.pip:
+        requirements: "{{ app_path }}/requirements.txt"
+        virtualenv: "{{ app_path }}/venv"
+        virtualenv_command: "{{ python_version }} -m venv"
+      become_user: "{{ app_user }}"
+
+    - name: Create OnTree apps directory structure
+      ansible.builtin.command:
+        cmd: "{{ app_path }}/venv/bin/python {{ app_path }}/manage.py setup_dirs"
+      become: yes
+      become_user: root
+      register: setup_dirs_result
+      changed_when: "'Setup completed successfully' in setup_dirs_result.stdout"
+      failed_when: setup_dirs_result.rc != 0
+
+    - name: Create systemd service file
+      ansible.builtin.template:
+        src: ontreenode.service.j2
+        dest: "/etc/systemd/system/{{ app_name }}.service"
+        owner: root
+        group: root
+        mode: "0644"
+      notify: reload systemd
+
+    # Phase 4: Service Management
+    - name: Enable and restart application service
+      ansible.builtin.systemd:
+        name: "{{ app_name }}"
+        enabled: yes
+        state: restarted
+        daemon_reload: yes
+
+    - name: Check service health
+      ansible.builtin.uri:
+        url: "http://localhost:{{ app_port }}/"
+        method: GET
+        status_code: [200, 301, 302]
+        timeout: 5
+      register: health_check
+      retries: 3
+      delay: 10
+      until: health_check.status in [200, 301, 302]
+
+    - name: Display production deployment status
+      ansible.builtin.debug:
+        msg:
+          - "✅ Production deployment completed!"
+          - "{{ app_name }} service is running on {{ inventory_hostname }}:{{ app_port }}"
+          - ""
+          - "To switch to development mode, run: ansible-playbook -i inventory.ini ontreenode-allow-local-development-playbook.yaml"

@@ -1,0 +1,121 @@
+---
+- name: Install Caddy Web Server
+  hosts: myhosts
+  become: yes
+  vars:
+    caddy_user: caddy
+    caddy_group: caddy
+    caddy_config_dir: /etc/caddy
+    caddy_config_file: /etc/caddy/Caddyfile
+    caddy_example_domain: example.com
+
+  tasks:
+    - name: Install required dependencies
+      ansible.builtin.apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - debian-keyring
+          - debian-archive-keyring
+          - curl
+          - gnupg
+        state: present
+        update_cache: yes
+
+    - name: Add Caddy official GPG key
+      ansible.builtin.apt_key:
+        url: https://dl.cloudsmith.io/public/caddy/stable/gpg.key
+        state: present
+
+    - name: Add Caddy repository
+      ansible.builtin.apt_repository:
+        repo: "deb [arch=amd64] https://dl.cloudsmith.io/public/caddy/stable/deb/debian any-version main"
+        state: present
+        filename: caddy-stable
+
+    - name: Install Caddy
+      ansible.builtin.apt:
+        name: caddy
+        state: present
+        update_cache: yes
+
+    - name: Ensure Caddy service is started and enabled
+      ansible.builtin.systemd:
+        name: caddy
+        state: started
+        enabled: yes
+
+    - name: Create basic Caddyfile if it doesn't exist
+      ansible.builtin.copy:
+        content: |
+          # Default Caddyfile configuration
+          {{ caddy_example_domain }} {
+            root * /usr/share/caddy
+            file_server
+            log {
+              output file /var/log/caddy/access.log
+              format console
+            }
+          }
+        dest: "{{ caddy_config_file }}"
+        owner: "{{ caddy_user }}"
+        group: "{{ caddy_group }}"
+        mode: "0644"
+        force: no # Don't overwrite if file exists
+
+    - name: Create a test HTML file
+      ansible.builtin.copy:
+        content: |
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>Welcome to Caddy!</title>
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                line-height: 1.6;
+                color: #333;
+                max-width: 800px;
+                margin: 0 auto;
+                padding: 2em;
+              }
+              h1 {
+                color: #2a76dd;
+              }
+            </style>
+          </head>
+          <body>
+            <h1>Welcome to Caddy!</h1>
+            <p>If you see this page, Caddy is successfully installed and working.</p>
+            <p>This is a default page served by Caddy. Replace this with your own content.</p>
+            <p>For more information about Caddy, visit <a href="https://caddyserver.com">caddyserver.com</a>.</p>
+          </body>
+          </html>
+        dest: /usr/share/caddy/index.html
+        owner: "{{ caddy_user }}"
+        group: "{{ caddy_group }}"
+        mode: "0644"
+        force: no # Don't overwrite if file exists
+
+    - name: Check if Caddy is running
+      ansible.builtin.command: systemctl is-active caddy
+      register: caddy_status
+      changed_when: false
+      failed_when: false
+
+    - name: Display Caddy status
+      ansible.builtin.debug:
+        msg: "Caddy is {{ caddy_status.stdout }}"
+
+    - name: Show installation completion message
+      ansible.builtin.debug:
+        msg: |
+          Caddy has been installed successfully!
+          - Service is running: {{ caddy_status.stdout == 'active' }}
+          - Config file: {{ caddy_config_file }}
+          - Default document root: /usr/share/caddy
+
+          Remember to:
+          1. Update the Caddyfile with your actual domain
+          2. Configure proper TLS if needed
+          3. Restart Caddy after config changes: sudo systemctl restart caddy

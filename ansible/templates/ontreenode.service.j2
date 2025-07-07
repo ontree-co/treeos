@@ -1,0 +1,17 @@
+[Unit]
+Description=Gunicorn for {{ app_name }}
+After=network.target
+
+[Service]
+User={{ app_user }}
+Group={{ app_user }}
+WorkingDirectory={{ app_path }}
+Environment="PORT={{ app_port }}"
+Environment="PATH={{ app_path }}/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="VIRTUAL_ENV={{ app_path }}/venv"
+ExecStart={{ app_path }}/venv/bin/python {{ app_path }}/manage.py runprod
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
