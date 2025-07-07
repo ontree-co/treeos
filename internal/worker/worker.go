@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"time"
 
 	"ontree-node/internal/database"
 	"ontree-node/internal/docker"
@@ -32,6 +33,10 @@ func New(db *sql.DB, dockerSvc *docker.Service) *Worker {
 }
 
 func (w *Worker) Start(numWorkers int) {
+	// Start cleanup goroutine for stale operations
+	w.workerWg.Add(1)
+	go w.cleanupStaleOperations()
+	
 	for i := 0; i < numWorkers; i++ {
 		w.workerWg.Add(1)
 		go w.worker(i)
@@ -280,5 +285,44 @@ func (w *Worker) updateOperationStatus(operationID, status string, progress int,
 	_, err := w.db.Exec(query, status, progress, progressMessage, errorMessage, operationID)
 	if err != nil {
 		log.Printf("Failed to update operation status: %v", err)
+	}
+}
+
+// cleanupStaleOperations runs periodically to mark old pending operations as failed
+func (w *Worker) cleanupStaleOperations() {
+	defer w.workerWg.Done()
+	log.Printf("Stale operation cleanup started")
+
+	ticker := time.NewTicker(1 * time.Minute)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			// Mark operations older than 5 minutes as failed
+			query := `
+				UPDATE docker_operations 
+				SET status = ?, 
+				    error_message = 'Operation timed out - worker may have been unavailable', 
+				    updated_at = CURRENT_TIMESTAMP,
+				    completed_at = CURRENT_TIMESTAMP
+				WHERE status IN (?, ?)
+				AND created_at <= datetime('now', '-5 minutes')
+			`
+			
+			result, err := w.db.Exec(query, database.StatusFailed, database.StatusPending, database.StatusInProgress)
+			if err != nil {
+				log.Printf("Failed to cleanup stale operations: %v", err)
+				continue
+			}
+			
+			if affected, _ := result.RowsAffected(); affected > 0 {
+				log.Printf("Marked %d stale operations as failed", affected)
+			}
+
+		case <-w.ctx.Done():
+			log.Printf("Stale operation cleanup stopping")
+			return
+		}
 	}
 }

@@ -111,6 +111,7 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 			Errors    []string
 			FormData  map[string]string
 			CSRFToken string
+			Messages  []interface{}
 		}{
 			User:   nil,
 			Errors: errors,
@@ -120,6 +121,7 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 				"node_description": nodeDescription,
 			},
 			CSRFToken: "",
+			Messages: nil,
 		}
 
 		tmpl := s.templates["setup"]
@@ -134,6 +136,7 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 		Errors    []string
 		FormData  map[string]string
 		CSRFToken string
+		Messages  []interface{}
 	}{
 		User:   nil,
 		Errors: nil,
@@ -141,6 +144,7 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 			"node_name": "OnTree Node",
 		},
 		CSRFToken: "",
+		Messages: nil,
 	}
 
 	tmpl := s.templates["setup"]
@@ -361,6 +365,7 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check for active operations for this app
+	// Only consider operations created in the last 5 minutes to avoid showing stale operations
 	var activeOperationID string
 	db := database.GetDB()
 	err = db.QueryRow(`
@@ -368,6 +373,7 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 		FROM docker_operations 
 		WHERE app_name = ? 
 		AND status IN (?, ?)
+		AND created_at > datetime('now', '-5 minutes')
 		ORDER BY created_at DESC
 		LIMIT 1
 	`, appName, database.StatusPending, database.StatusInProgress).Scan(&activeOperationID)
