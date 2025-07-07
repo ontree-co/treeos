@@ -21,6 +21,8 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version: ${{ matrix.go-version }}
+        cache: true
+        cache-dependency-path: go.sum
 
     - name: Install dependencies
       run: make deps
@@ -47,6 +49,8 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version: '1.21'
+        cache: true
+        cache-dependency-path: go.sum
 
     - name: Install dependencies
       run: make deps
@@ -72,6 +76,8 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version: '1.21'
+        cache: true
+        cache-dependency-path: go.sum
 
     - name: Install dependencies
       run: make deps
@@ -91,6 +97,8 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version: '1.21'
+        cache: true
+        cache-dependency-path: go.sum
 
     - name: Set up Node.js
       uses: actions/setup-node@v4
