@@ -40,6 +40,19 @@
         msg: "ℹ Production service was already stopped"
       when: stop_result is not changed and service_status.status.ActiveState | default('inactive') != 'active'
 
+    - name: Verify service is actually stopped
+      ansible.builtin.systemd:
+        name: "{{ app_name }}"
+      register: final_status
+      failed_when: false
+
+    - name: Ensure service is completely stopped
+      ansible.builtin.assert:
+        that:
+          - final_status.status.ActiveState | default('inactive') != 'active'
+        fail_msg: "ERROR: Service {{ app_name }} is still running after stop attempt"
+        success_msg: "✓ Confirmed: {{ app_name }} service is not running"
+
     - name: Wait for port {{ app_port }} to become available
       ansible.builtin.wait_for:
         port: "{{ app_port }}"
