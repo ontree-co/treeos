@@ -11,6 +11,7 @@ import (
 
 	"github.com/gorilla/sessions"
 	"ontree-node/internal/config"
+	"ontree-node/internal/embeds"
 	"ontree-node/internal/database"
 	"ontree-node/internal/docker"
 	"ontree-node/internal/templates"
@@ -117,7 +118,7 @@ func (s *Server) loadTemplates() error {
 
 	// Load dashboard template
 	dashboardTemplate := filepath.Join("templates", "dashboard", "index.html")
-	tmpl, err := template.ParseFiles(baseTemplate, dashboardTemplate)
+	tmpl, err := embeds.ParseTemplate(baseTemplate, dashboardTemplate)
 	if err != nil {
 		return fmt.Errorf("failed to parse dashboard template: %w", err)
 	}
@@ -125,7 +126,7 @@ func (s *Server) loadTemplates() error {
 
 	// Load setup template
 	setupTemplate := filepath.Join("templates", "dashboard", "setup.html")
-	tmpl, err = template.ParseFiles(baseTemplate, setupTemplate)
+	tmpl, err = embeds.ParseTemplate(baseTemplate, setupTemplate)
 	if err != nil {
 		return fmt.Errorf("failed to parse setup template: %w", err)
 	}
@@ -133,7 +134,7 @@ func (s *Server) loadTemplates() error {
 
 	// Load login template
 	loginTemplate := filepath.Join("templates", "dashboard", "login.html")
-	tmpl, err = template.ParseFiles(baseTemplate, loginTemplate)
+	tmpl, err = embeds.ParseTemplate(baseTemplate, loginTemplate)
 	if err != nil {
 		return fmt.Errorf("failed to parse login template: %w", err)
 	}
@@ -141,7 +142,7 @@ func (s *Server) loadTemplates() error {
 
 	// Load app detail template
 	appDetailTemplate := filepath.Join("templates", "dashboard", "app_detail.html")
-	tmpl, err = template.ParseFiles(baseTemplate, appDetailTemplate)
+	tmpl, err = embeds.ParseTemplate(baseTemplate, appDetailTemplate)
 	if err != nil {
 		return fmt.Errorf("failed to parse app detail template: %w", err)
 	}
@@ -149,7 +150,7 @@ func (s *Server) loadTemplates() error {
 
 	// Load app create template
 	appCreateTemplate := filepath.Join("templates", "dashboard", "app_create.html")
-	tmpl, err = template.ParseFiles(baseTemplate, appCreateTemplate)
+	tmpl, err = embeds.ParseTemplate(baseTemplate, appCreateTemplate)
 	if err != nil {
 		return fmt.Errorf("failed to parse app create template: %w", err)
 	}
@@ -157,7 +158,7 @@ func (s *Server) loadTemplates() error {
 
 	// Load app templates list template
 	appTemplatesTemplate := filepath.Join("templates", "dashboard", "app_templates.html")
-	tmpl, err = template.ParseFiles(baseTemplate, appTemplatesTemplate)
+	tmpl, err = embeds.ParseTemplate(baseTemplate, appTemplatesTemplate)
 	if err != nil {
 		return fmt.Errorf("failed to parse app templates template: %w", err)
 	}
@@ -165,7 +166,7 @@ func (s *Server) loadTemplates() error {
 
 	// Load app create from template template
 	appCreateFromTemplate := filepath.Join("templates", "dashboard", "app_create_from_template.html")
-	tmpl, err = template.ParseFiles(baseTemplate, appCreateFromTemplate)
+	tmpl, err = embeds.ParseTemplate(baseTemplate, appCreateFromTemplate)
 	if err != nil {
 		return fmt.Errorf("failed to parse app create from template template: %w", err)
 	}
@@ -174,7 +175,7 @@ func (s *Server) loadTemplates() error {
 	// Load pattern library templates
 	// Pattern library index
 	patternsIndexTemplate := filepath.Join("templates", "pattern_library", "index.html")
-	tmpl, err = template.ParseFiles(baseTemplate, patternsIndexTemplate)
+	tmpl, err = embeds.ParseTemplate(baseTemplate, patternsIndexTemplate)
 	if err != nil {
 		return fmt.Errorf("failed to parse patterns index template: %w", err)
 	}
@@ -182,7 +183,7 @@ func (s *Server) loadTemplates() error {
 
 	// Pattern library components
 	patternsComponentsTemplate := filepath.Join("templates", "pattern_library", "components.html")
-	tmpl, err = template.ParseFiles(baseTemplate, patternsComponentsTemplate)
+	tmpl, err = embeds.ParseTemplate(baseTemplate, patternsComponentsTemplate)
 	if err != nil {
 		return fmt.Errorf("failed to parse patterns components template: %w", err)
 	}
@@ -190,7 +191,7 @@ func (s *Server) loadTemplates() error {
 
 	// Pattern library forms
 	patternsFormsTemplate := filepath.Join("templates", "pattern_library", "forms.html")
-	tmpl, err = template.ParseFiles(baseTemplate, patternsFormsTemplate)
+	tmpl, err = embeds.ParseTemplate(baseTemplate, patternsFormsTemplate)
 	if err != nil {
 		return fmt.Errorf("failed to parse patterns forms template: %w", err)
 	}
@@ -198,7 +199,7 @@ func (s *Server) loadTemplates() error {
 
 	// Pattern library typography
 	patternsTypographyTemplate := filepath.Join("templates", "pattern_library", "typography.html")
-	tmpl, err = template.ParseFiles(baseTemplate, patternsTypographyTemplate)
+	tmpl, err = embeds.ParseTemplate(baseTemplate, patternsTypographyTemplate)
 	if err != nil {
 		return fmt.Errorf("failed to parse patterns typography template: %w", err)
 	}
@@ -206,7 +207,7 @@ func (s *Server) loadTemplates() error {
 
 	// Pattern library partials
 	patternsPartialsTemplate := filepath.Join("templates", "pattern_library", "partials.html")
-	tmpl, err = template.ParseFiles(baseTemplate, patternsPartialsTemplate)
+	tmpl, err = embeds.ParseTemplate(baseTemplate, patternsPartialsTemplate)
 	if err != nil {
 		return fmt.Errorf("failed to parse patterns partials template: %w", err)
 	}
@@ -214,7 +215,7 @@ func (s *Server) loadTemplates() error {
 
 	// Pattern library layouts
 	patternsLayoutsTemplate := filepath.Join("templates", "pattern_library", "layouts.html")
-	tmpl, err = template.ParseFiles(baseTemplate, patternsLayoutsTemplate)
+	tmpl, err = embeds.ParseTemplate(baseTemplate, patternsLayoutsTemplate)
 	if err != nil {
 		return fmt.Errorf("failed to parse patterns layouts template: %w", err)
 	}
@@ -222,7 +223,7 @@ func (s *Server) loadTemplates() error {
 
 	// Pattern library style guide
 	patternsStyleGuideTemplate := filepath.Join("templates", "pattern_library", "style_guide.html")
-	tmpl, err = template.ParseFiles(baseTemplate, patternsStyleGuideTemplate)
+	tmpl, err = embeds.ParseTemplate(baseTemplate, patternsStyleGuideTemplate)
 	if err != nil {
 		return fmt.Errorf("failed to parse patterns style guide template: %w", err)
 	}
@@ -236,8 +237,12 @@ func (s *Server) Start() error {
 	// Set up routes
 	mux := http.NewServeMux()
 
-	// Static file serving
-	fs := http.FileServer(http.Dir("static"))
+	// Static file serving using embedded files
+	staticFS, err := embeds.StaticFS()
+	if err != nil {
+		return fmt.Errorf("failed to get static filesystem: %w", err)
+	}
+	fs := http.FileServer(http.FS(staticFS))
 	mux.Handle("/static/", http.StripPrefix("/static/", fs))
 
 	// Public routes (no auth required)

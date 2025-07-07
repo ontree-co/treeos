@@ -26,15 +26,23 @@ all: build
 
 # Build for current platform
 .PHONY: build
-build:
+build: embed-assets
 	@echo "Building $(BINARY_NAME) for $(GOOS)/$(GOARCH)..."
 	@mkdir -p $(BUILD_DIR)
 	$(GOBUILD) -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME) $(MAIN_PATH)
 	@echo "Build complete: $(BUILD_DIR)/$(BINARY_NAME)"
 
+# Prepare embedded assets
+.PHONY: embed-assets
+embed-assets:
+	@echo "Preparing embedded assets..."
+	@cp -r static internal/embeds/
+	@cp -r templates internal/embeds/
+	@echo "Assets prepared for embedding"
+
 # Cross-compile for all target platforms
 .PHONY: build-all
-build-all:
+build-all: embed-assets
 	@echo "Building for all target platforms..."
 	@mkdir -p $(BUILD_DIR)
 	
@@ -78,6 +86,7 @@ clean:
 	@echo "Cleaning build artifacts..."
 	@rm -rf $(BUILD_DIR)
 	@rm -f coverage.out
+	@rm -rf internal/embeds/static internal/embeds/templates
 	$(GOCLEAN)
 	@echo "Clean complete"
 

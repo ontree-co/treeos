@@ -3,9 +3,11 @@ package templates
 import (
 	"encoding/json"
 	"fmt"
-	"os"
+	"io/fs"
 	"path/filepath"
 	"strings"
+	
+	"ontree-node/internal/embeds"
 )
 
 type Template struct {
@@ -34,8 +36,13 @@ func NewService(templatesPath string) *Service {
 }
 
 func (s *Service) GetAvailableTemplates() ([]Template, error) {
+	templateFS, err := embeds.TemplateFS()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get template filesystem: %w", err)
+	}
+
 	jsonPath := filepath.Join(s.templatesPath, "templates.json")
-	data, err := os.ReadFile(jsonPath)
+	data, err := fs.ReadFile(templateFS, jsonPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read templates.json: %w", err)
 	}
@@ -64,8 +71,13 @@ func (s *Service) GetTemplateByID(id string) (*Template, error) {
 }
 
 func (s *Service) GetTemplateContent(template *Template) (string, error) {
+	templateFS, err := embeds.TemplateFS()
+	if err != nil {
+		return "", fmt.Errorf("failed to get template filesystem: %w", err)
+	}
+
 	yamlPath := filepath.Join(s.templatesPath, template.Filename)
-	content, err := os.ReadFile(yamlPath)
+	content, err := fs.ReadFile(templateFS, yamlPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to read template file %s: %w", template.Filename, err)
 	}

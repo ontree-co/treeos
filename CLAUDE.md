@@ -53,5 +53,14 @@ Fixed issue where old pending operations would show spinner indefinitely:
 - **Database**: SQLite
 - **Container Management**: Docker API
 - **Background Jobs**: Worker pool pattern
+- **Asset Embedding**: Static files and templates are embedded into the binary using Go's embed package
+
+## Build Process
+
+### Asset Embedding (2025-07-07)
+The application now embeds all static assets (CSS, fonts) and HTML templates directly into the binary:
+- Assets are copied to `internal/embeds/` during build via `make embed-assets`
+- The binary is self-contained and can run without the `static/` and `templates/` directories
+- This makes deployment simpler and supports the goal of single-binary distribution
 
 See subdirectory CLAUDE.md files for component-specific documentation.
