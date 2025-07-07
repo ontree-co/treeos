@@ -8,6 +8,8 @@ import (
 	"github.com/pressly/goose/v3"
 )
 
+// TODO: Fix embed path - SQL files are in /migrations not here
+//
 //go:embed *.sql
 var embedMigrations embed.FS
 

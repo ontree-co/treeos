@@ -8,12 +8,13 @@ import (
 	"net/http"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/gorilla/sessions"
 	"ontree-node/internal/config"
-	"ontree-node/internal/embeds"
 	"ontree-node/internal/database"
 	"ontree-node/internal/docker"
+	"ontree-node/internal/embeds"
 	"ontree-node/internal/templates"
 	"ontree-node/internal/worker"
 )
@@ -271,7 +272,17 @@ func (s *Server) Start() error {
 	}
 
 	log.Printf("Starting server on %s", addr)
-	return http.ListenAndServe(addr, mux)
+	
+	// Create server with proper timeouts
+	server := &http.Server{
+		Addr:         addr,
+		Handler:      mux,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+	
+	return server.ListenAndServe()
 }
 
 // handleDashboard handles the dashboard page

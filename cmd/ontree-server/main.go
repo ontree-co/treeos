@@ -1,3 +1,4 @@
+// Package main is the entry point for the OnTree server application
 package main
 
 import (
@@ -53,7 +54,11 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Failed to initialize database: %v\n", err)
 		os.Exit(1)
 	}
-	defer database.Close()
+	defer func() {
+		if err := database.Close(); err != nil {
+			log.Printf("Failed to close database: %v", err)
+		}
+	}()
 
 	// Create and start server
 	srv, err := server.New(cfg)
@@ -129,8 +134,14 @@ func setupLinuxDirs(appsDir string) error {
 		if err != nil {
 			return fmt.Errorf("failed to get current user: %w", err)
 		}
-		uid, _ = strconv.Atoi(currentUser.Uid)
-		gid, _ = strconv.Atoi(currentUser.Gid)
+		uid, err = strconv.Atoi(currentUser.Uid)
+		if err != nil {
+			return fmt.Errorf("failed to parse UID: %w", err)
+		}
+		gid, err = strconv.Atoi(currentUser.Gid)
+		if err != nil {
+			return fmt.Errorf("failed to parse GID: %w", err)
+		}
 	}
 
 	// Set ownership
@@ -171,7 +182,10 @@ func setupLinuxDirs(appsDir string) error {
 	if err := os.WriteFile(testFile, []byte("test"), 0644); err != nil {
 		return fmt.Errorf("failed to verify write permissions in %s: %w", appsDir, err)
 	}
-	os.Remove(testFile)
+	if err := os.Remove(testFile); err != nil {
+		// Log but don't fail - the test succeeded
+		log.Printf("Warning: failed to remove test file: %v", err)
+	}
 
 	fmt.Printf("✓ Successfully created %s with correct permissions\n", appsDir)
 	return nil

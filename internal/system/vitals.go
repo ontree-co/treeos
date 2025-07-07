@@ -1,3 +1,4 @@
+// Package system provides system monitoring and vitals functionality
 package system
 
 import (
@@ -9,12 +10,14 @@ import (
 	"github.com/shirou/gopsutil/v3/mem"
 )
 
+// Vitals represents system resource usage information
 type Vitals struct {
 	CPUPercent  float64
 	MemPercent  float64
 	DiskPercent float64
 }
 
+// GetVitals retrieves current system resource usage information
 func GetVitals() (*Vitals, error) {
 	cpuPercent, err := cpu.Percent(time.Second, false)
 	if err != nil {

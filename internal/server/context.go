@@ -16,6 +16,13 @@ func setUserContext(ctx context.Context, user *database.User) context.Context {
 
 // getUserFromContext retrieves user from context
 func getUserFromContext(ctx context.Context) *database.User {
-	user, _ := ctx.Value(userContextKey).(*database.User)
+	value := ctx.Value(userContextKey)
+	if value == nil {
+		return nil
+	}
+	user, ok := value.(*database.User)
+	if !ok {
+		return nil
+	}
 	return user
 }

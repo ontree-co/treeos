@@ -1,14 +1,15 @@
+// Package docker provides Docker client functionality for managing containerized applications
 package docker
 
 import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/go-connections/nat"
@@ -32,18 +33,18 @@ type AppConfig struct {
 	Ports map[string]string `json:"ports,omitempty"`
 }
 
-// DockerComposeService represents a service in docker-compose.yml
-type DockerComposeService struct {
+// ComposeService represents a service definition in docker-compose.yml
+type ComposeService struct {
 	Image       string   `yaml:"image"`
 	Ports       []string `yaml:"ports,omitempty"`
 	Environment []string `yaml:"environment,omitempty"`
 	Volumes     []string `yaml:"volumes,omitempty"`
 }
 
-// DockerCompose represents the docker-compose.yml structure
-type DockerCompose struct {
-	Version  string                          `yaml:"version"`
-	Services map[string]DockerComposeService `yaml:"services"`
+// Compose represents the docker-compose.yml structure
+type Compose struct {
+	Version  string                    `yaml:"version"`
+	Services map[string]ComposeService `yaml:"services"`
 }
 
 // ScanApps scans the apps directory for applications
@@ -105,7 +106,7 @@ func parseDockerCompose(path string) (*AppConfig, error) {
 		return nil, err
 	}
 
-	var compose DockerCompose
+	var compose Compose
 	if err := yaml.Unmarshal(data, &compose); err != nil {
 		return nil, err
 	}
@@ -201,7 +202,7 @@ func (c *Client) StartApp(appsDir, appName string) error {
 		return fmt.Errorf("failed to list containers: %w", err)
 	}
 
-	var existingContainer *types.Container
+	var existingContainer *container.Summary
 	for i := range containers {
 		for _, name := range containers[i].Names {
 			if strings.TrimPrefix(name, "/") == containerName {
@@ -231,13 +232,13 @@ func (c *Client) StartApp(appsDir, appName string) error {
 		return fmt.Errorf("failed to read docker-compose.yml: %w", err)
 	}
 
-	var compose DockerCompose
+	var compose Compose
 	if err := yaml.Unmarshal(composeData, &compose); err != nil {
 		return fmt.Errorf("failed to parse docker-compose.yml: %w", err)
 	}
 
 	// Get the first service
-	var service DockerComposeService
+	var service ComposeService
 	for _, svc := range compose.Services {
 		service = svc
 		break
@@ -301,10 +302,17 @@ func (c *Client) StartApp(appsDir, appName string) error {
 	if err != nil {
 		return fmt.Errorf("failed to pull image: %w", err)
 	}
-	defer reader.Close()
+	defer func() {
+		if err := reader.Close(); err != nil {
+			// Log error but don't fail the operation
+			log.Printf("Failed to close reader: %v", err)
+		}
+	}()
 
 	// Wait for pull to complete
-	io.Copy(io.Discard, reader)
+	if _, err := io.Copy(io.Discard, reader); err != nil {
+		return fmt.Errorf("failed to read pull response: %w", err)
+	}
 
 	// Create the container
 	resp, err := c.dockerClient.ContainerCreate(ctx, config, hostConfig, nil, nil, containerName)
@@ -360,10 +368,16 @@ func (c *Client) StopApp(appName string) error {
 // RecreateApp recreates the Docker container for the specified application
 func (c *Client) RecreateApp(appsDir, appName string) error {
 	// Stop the container if it's running
-	_ = c.StopApp(appName) // Ignore error if container doesn't exist
+	if err := c.StopApp(appName); err != nil {
+		// Ignore error if container doesn't exist - this is expected
+		log.Printf("Note: failed to stop app %s (this is expected if container doesn't exist): %v", appName, err)
+	}
 
 	// Delete the container
-	_ = c.DeleteAppContainer(appName) // Ignore error if container doesn't exist
+	if err := c.DeleteAppContainer(appName); err != nil {
+		// Ignore error if container doesn't exist - this is expected
+		log.Printf("Note: failed to delete app container %s (this is expected if container doesn't exist): %v", appName, err)
+	}
 
 	// Start a new container
 	return c.StartApp(appsDir, appName)

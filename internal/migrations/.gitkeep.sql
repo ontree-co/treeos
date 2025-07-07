@@ -1,0 +1,2 @@
+-- This is a placeholder file to satisfy the go:embed directive
+-- The actual migrations are in /migrations directory

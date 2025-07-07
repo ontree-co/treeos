@@ -86,7 +86,9 @@ func (s *Server) handleDockerOperationStatus(w http.ResponseWriter, r *http.Requ
 	if strings.Contains(acceptHeader, "application/json") {
 		// Return JSON for programmatic access
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(op)
+		if err := json.NewEncoder(w).Encode(op); err != nil {
+			log.Printf("Failed to encode JSON response: %v", err)
+		}
 		return
 	}
 
@@ -159,7 +161,9 @@ func (s *Server) handleDockerOperationStatus(w http.ResponseWriter, r *http.Requ
 		`, op.Status)
 	}
 
-	w.Write([]byte(html))
+	if _, err := w.Write([]byte(html)); err != nil {
+		log.Printf("Failed to write HTML response: %v", err)
+	}
 }
 
 // handleDockerOperationLogs handles the API endpoint for retrieving operation logs
@@ -187,7 +191,9 @@ func (s *Server) handleDockerOperationLogs(w http.ResponseWriter, r *http.Reques
 	if strings.Contains(acceptHeader, "application/json") {
 		// Return JSON for programmatic access
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(logs)
+		if err := json.NewEncoder(w).Encode(logs); err != nil {
+			log.Printf("Failed to encode JSON response: %v", err)
+		}
 		return
 	}
 
@@ -206,26 +212,26 @@ func (s *Server) handleDockerOperationLogs(w http.ResponseWriter, r *http.Reques
 		for _, log := range logs {
 			// Determine CSS class based on log level
 			levelClass := "log-" + log.Level
-			
+
 			html.WriteString(`<div class="log-entry `)
 			html.WriteString(levelClass)
 			html.WriteString(`">`)
-			
+
 			// Timestamp
 			html.WriteString(`<span class="timestamp">[`)
 			html.WriteString(log.Timestamp.Format("15:04:05"))
 			html.WriteString(`]</span> `)
-			
+
 			// Level
 			html.WriteString(`<span class="level">[`)
 			html.WriteString(strings.ToUpper(log.Level))
 			html.WriteString(`]</span> `)
-			
+
 			// Message
 			html.WriteString(`<span class="message">`)
 			html.WriteString(template.HTMLEscapeString(log.Message))
 			html.WriteString(`</span>`)
-			
+
 			// Details (if any)
 			if log.Details.Valid && log.Details.String != "" {
 				var details map[string]interface{}
@@ -238,7 +244,7 @@ func (s *Server) handleDockerOperationLogs(w http.ResponseWriter, r *http.Reques
 					}
 				}
 			}
-			
+
 			html.WriteString(`</div>`)
 		}
 	}
@@ -254,5 +260,7 @@ func (s *Server) handleDockerOperationLogs(w http.ResponseWriter, r *http.Reques
 		html.WriteString(`</div><!-- Operation complete, polling stopped -->`)
 	}
 
-	w.Write([]byte(html.String()))
+	if _, err := w.Write([]byte(html.String())); err != nil {
+		log.Printf("Failed to write HTML response: %v", err)
+	}
 }

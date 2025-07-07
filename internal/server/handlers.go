@@ -94,9 +94,15 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 				}
 
 				// Log the user in
-				session, _ := s.sessionStore.Get(r, "ontree-session")
+				session, err := s.sessionStore.Get(r, "ontree-session")
+				if err != nil {
+					log.Printf("Failed to get session: %v", err)
+					// Continue anyway - not critical
+				}
 				session.Values["user_id"] = user.ID
-				session.Save(r, w)
+				if err := session.Save(r, w); err != nil {
+					log.Printf("Failed to save session: %v", err)
+				}
 
 				log.Printf("Initial setup completed. Admin user: %s, Node: %s", user.Username, nodeName)
 
@@ -121,12 +127,15 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 				"node_description": nodeDescription,
 			},
 			CSRFToken: "",
-			Messages: nil,
+			Messages:  nil,
 		}
 
 		tmpl := s.templates["setup"]
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		tmpl.ExecuteTemplate(w, "base", data)
+		if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
+			log.Printf("Failed to execute template: %v", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		}
 		return
 	}
 
@@ -144,18 +153,25 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 			"node_name": "OnTree Node",
 		},
 		CSRFToken: "",
-		Messages: nil,
+		Messages:  nil,
 	}
 
 	tmpl := s.templates["setup"]
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	tmpl.ExecuteTemplate(w, "base", data)
+	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
+		log.Printf("Failed to execute template: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
 
 // handleLogin handles the login page
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	// Check if user is already authenticated
-	session, _ := s.sessionStore.Get(r, "ontree-session")
+	session, err := s.sessionStore.Get(r, "ontree-session")
+	if err != nil {
+		log.Printf("Failed to get session: %v", err)
+		// Continue anyway - not critical for most operations
+	}
 	if userID, ok := session.Values["user_id"].(int); ok && userID > 0 {
 		http.Redirect(w, r, "/", http.StatusFound)
 		return
@@ -201,7 +217,9 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 		// Set session
 		session.Values["user_id"] = user.ID
-		session.Save(r, w)
+		if err := session.Save(r, w); err != nil {
+			log.Printf("Failed to save session: %v", err)
+		}
 
 		log.Printf("User %s logged in successfully", username)
 
@@ -209,7 +227,9 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		next := session.Values["next"]
 		if nextURL, ok := next.(string); ok && nextURL != "" {
 			delete(session.Values, "next")
-			session.Save(r, w)
+			if err := session.Save(r, w); err != nil {
+				log.Printf("Failed to save session: %v", err)
+			}
 			// Add login=success query param for PostHog tracking
 			if strings.Contains(nextURL, "?") {
 				nextURL += "&login=success"
@@ -248,12 +268,18 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 // handleLogout handles user logout
 func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
-	session, _ := s.sessionStore.Get(r, "ontree-session")
+	session, err := s.sessionStore.Get(r, "ontree-session")
+	if err != nil {
+		log.Printf("Failed to get session: %v", err)
+		// Continue anyway - not critical for most operations
+	}
 
 	// Clear session
 	session.Values["user_id"] = nil
 	session.Options.MaxAge = -1
-	session.Save(r, w)
+	if err := session.Save(r, w); err != nil {
+		log.Printf("Failed to save session: %v", err)
+	}
 
 	log.Printf("User logged out")
 
@@ -337,12 +363,18 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Clear any flash messages from session without displaying them
-	session, _ := s.sessionStore.Get(r, "ontree-session")
+	session, err := s.sessionStore.Get(r, "ontree-session")
+	if err != nil {
+		log.Printf("Failed to get session: %v", err)
+		// Continue anyway - not critical for most operations
+	}
 	session.Flashes("error")
 	session.Flashes("success")
 	session.Flashes("info")
-	session.Save(r, w)
-	
+	if err := session.Save(r, w); err != nil {
+		log.Printf("Failed to save session: %v", err)
+	}
+
 	// Don't pass messages to the template
 	var messages []interface{}
 
@@ -425,9 +457,15 @@ func (s *Server) handleAppStart(w http.ResponseWriter, r *http.Request) {
 	operationID, err := s.createDockerOperation(database.OpTypeStartContainer, appName, nil)
 	if err != nil {
 		log.Printf("Failed to create operation for app %s: %v", appName, err)
-		session, _ := s.sessionStore.Get(r, "ontree-session")
+		session, err := s.sessionStore.Get(r, "ontree-session")
+		if err != nil {
+			log.Printf("Failed to get session: %v", err)
+			// Continue anyway - not critical for most operations
+		}
 		session.AddFlash("Failed to start application: unable to create operation", "error")
-		session.Save(r, w)
+		if err := session.Save(r, w); err != nil {
+			log.Printf("Failed to save session: %v", err)
+		}
 		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
 		return
 	}
@@ -436,9 +474,15 @@ func (s *Server) handleAppStart(w http.ResponseWriter, r *http.Request) {
 	s.worker.EnqueueOperation(operationID)
 
 	// Set flash message with operation ID
-	session, _ := s.sessionStore.Get(r, "ontree-session")
+	session, err := s.sessionStore.Get(r, "ontree-session")
+	if err != nil {
+		log.Printf("Failed to get session: %v", err)
+		// Continue anyway - not critical for most operations
+	}
 	session.AddFlash(fmt.Sprintf("Starting application... <div id=\"operation-status\" hx-get=\"/api/docker/operations/%s\" hx-trigger=\"load\" hx-swap=\"innerHTML\"></div>", operationID), "info")
-	session.Save(r, w)
+	if err := session.Save(r, w); err != nil {
+		log.Printf("Failed to save session: %v", err)
+	}
 
 	// Redirect back to app detail page
 	http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
@@ -470,14 +514,26 @@ func (s *Server) handleAppStop(w http.ResponseWriter, r *http.Request) {
 	err := s.dockerClient.StopApp(appName)
 	if err != nil {
 		log.Printf("Failed to stop app %s: %v", appName, err)
-		session, _ := s.sessionStore.Get(r, "ontree-session")
+		session, err := s.sessionStore.Get(r, "ontree-session")
+		if err != nil {
+			log.Printf("Failed to get session: %v", err)
+			// Continue anyway - not critical for most operations
+		}
 		session.AddFlash(fmt.Sprintf("Failed to stop application: %v", err), "error")
-		session.Save(r, w)
+		if err := session.Save(r, w); err != nil {
+			log.Printf("Failed to save session: %v", err)
+		}
 	} else {
 		log.Printf("Successfully stopped app: %s", appName)
-		session, _ := s.sessionStore.Get(r, "ontree-session")
+		session, err := s.sessionStore.Get(r, "ontree-session")
+		if err != nil {
+			log.Printf("Failed to get session: %v", err)
+			// Continue anyway - not critical for most operations
+		}
 		session.AddFlash("Application stopped successfully", "success")
-		session.Save(r, w)
+		if err := session.Save(r, w); err != nil {
+			log.Printf("Failed to save session: %v", err)
+		}
 	}
 
 	// Redirect back to app detail page
@@ -511,9 +567,15 @@ func (s *Server) handleAppRecreate(w http.ResponseWriter, r *http.Request) {
 	operationID, err := s.createDockerOperation(database.OpTypeRecreateContainer, appName, nil)
 	if err != nil {
 		log.Printf("Failed to create operation for app %s: %v", appName, err)
-		session, _ := s.sessionStore.Get(r, "ontree-session")
+		session, err := s.sessionStore.Get(r, "ontree-session")
+		if err != nil {
+			log.Printf("Failed to get session: %v", err)
+			// Continue anyway - not critical for most operations
+		}
 		session.AddFlash("Failed to recreate application: unable to create operation", "error")
-		session.Save(r, w)
+		if err := session.Save(r, w); err != nil {
+			log.Printf("Failed to save session: %v", err)
+		}
 		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
 		return
 	}
@@ -522,9 +584,15 @@ func (s *Server) handleAppRecreate(w http.ResponseWriter, r *http.Request) {
 	s.worker.EnqueueOperation(operationID)
 
 	// Set flash message with operation ID
-	session, _ := s.sessionStore.Get(r, "ontree-session")
+	session, err := s.sessionStore.Get(r, "ontree-session")
+	if err != nil {
+		log.Printf("Failed to get session: %v", err)
+		// Continue anyway - not critical for most operations
+	}
 	session.AddFlash(fmt.Sprintf("Recreating application... <div id=\"operation-status\" hx-get=\"/api/docker/operations/%s\" hx-trigger=\"load\" hx-swap=\"innerHTML\"></div>", operationID), "info")
-	session.Save(r, w)
+	if err := session.Save(r, w); err != nil {
+		log.Printf("Failed to save session: %v", err)
+	}
 
 	// Redirect back to app detail page
 	http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
@@ -556,20 +624,31 @@ func (s *Server) handleAppDelete(w http.ResponseWriter, r *http.Request) {
 	err := s.dockerClient.DeleteAppContainer(appName)
 	if err != nil {
 		log.Printf("Failed to delete app container %s: %v", appName, err)
-		session, _ := s.sessionStore.Get(r, "ontree-session")
+		session, err := s.sessionStore.Get(r, "ontree-session")
+		if err != nil {
+			log.Printf("Failed to get session: %v", err)
+			// Continue anyway - not critical for most operations
+		}
 		session.AddFlash(fmt.Sprintf("Failed to delete container: %v", err), "error")
-		session.Save(r, w)
+		if err := session.Save(r, w); err != nil {
+			log.Printf("Failed to save session: %v", err)
+		}
 	} else {
 		log.Printf("Successfully deleted app container: %s", appName)
-		session, _ := s.sessionStore.Get(r, "ontree-session")
+		session, err := s.sessionStore.Get(r, "ontree-session")
+		if err != nil {
+			log.Printf("Failed to get session: %v", err)
+			// Continue anyway - not critical for most operations
+		}
 		session.AddFlash("Container deleted successfully", "success")
-		session.Save(r, w)
+		if err := session.Save(r, w); err != nil {
+			log.Printf("Failed to save session: %v", err)
+		}
 	}
 
 	// Redirect back to app detail page
 	http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
 }
-
 
 // handleAppCheckUpdate checks if a newer version of the Docker image is available
 func (s *Server) handleAppCheckUpdate(w http.ResponseWriter, r *http.Request) {
@@ -611,7 +690,7 @@ func (s *Server) handleAppCheckUpdate(w http.ResponseWriter, r *http.Request) {
 		UpdateAvailable: updateStatus.UpdateAvailable,
 		CurrentImageID:  updateStatus.CurrentImageID,
 	}
-	
+
 	if updateStatus.Error != "" {
 		data.Error = updateStatus.Error
 	}
@@ -631,7 +710,7 @@ type updateStatusData struct {
 func (s *Server) renderUpdateStatus(w http.ResponseWriter, data *updateStatusData) {
 	// Create a simple template for the update status
 	tmplStr := `{{if .Error}}<span class="text-danger">{{.Error}}</span>{{else if .UpdateAvailable}}<span class="text-warning">Update available</span> <form method="post" action="/apps/{{.AppName}}/update" class="d-inline"><button type="submit" class="btn btn-sm btn-warning confirm-action" data-action="Update Image" data-confirm-text="Confirm Update?"><i>⬇️</i> Update Now</button></form>{{else}}<span class="text-success">Up to date</span>{{end}}`
-	
+
 	tmpl, err := template.New("updateStatus").Parse(tmplStr)
 	if err != nil {
 		http.Error(w, "Template error", http.StatusInternalServerError)
@@ -671,9 +750,15 @@ func (s *Server) handleAppUpdate(w http.ResponseWriter, r *http.Request) {
 	operationID, err := s.createDockerOperation(database.OpTypeUpdateImage, appName, nil)
 	if err != nil {
 		log.Printf("Failed to create docker operation: %v", err)
-		session, _ := s.sessionStore.Get(r, "ontree-session")
+		session, err := s.sessionStore.Get(r, "ontree-session")
+		if err != nil {
+			log.Printf("Failed to get session: %v", err)
+			// Continue anyway - not critical for most operations
+		}
 		session.AddFlash("Failed to start update operation", "error")
-		session.Save(r, w)
+		if err := session.Save(r, w); err != nil {
+			log.Printf("Failed to save session: %v", err)
+		}
 		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
 		return
 	}
@@ -682,9 +767,15 @@ func (s *Server) handleAppUpdate(w http.ResponseWriter, r *http.Request) {
 	s.worker.EnqueueOperation(operationID)
 
 	// Redirect back to app detail page (which will show the progress)
-	session, _ := s.sessionStore.Get(r, "ontree-session")
+	session, err := s.sessionStore.Get(r, "ontree-session")
+	if err != nil {
+		log.Printf("Failed to get session: %v", err)
+		// Continue anyway - not critical for most operations
+	}
 	session.AddFlash("Image update started", "success")
-	session.Save(r, w)
+	if err := session.Save(r, w); err != nil {
+		log.Printf("Failed to save session: %v", err)
+	}
 	http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
 }
 
@@ -715,7 +806,7 @@ func (s *Server) handleAppControls(w http.ResponseWriter, r *http.Request) {
 	// Check for active operations
 	var activeOperationID string
 	db := database.GetDB()
-	err = db.QueryRow(`
+	_ = db.QueryRow(`
 		SELECT id 
 		FROM docker_operations 
 		WHERE app_name = ? 
@@ -727,7 +818,7 @@ func (s *Server) handleAppControls(w http.ResponseWriter, r *http.Request) {
 
 	// Render just the controls
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	
+
 	if activeOperationID != "" {
 		// Show disabled button with spinner
 		buttonText := "Processing..."
@@ -781,7 +872,7 @@ func (s *Server) handleAppControls(w http.ResponseWriter, r *http.Request) {
 			</form>`, appName, appName)
 		}
 	}
-	
+
 	// Re-initialize the confirm action buttons
 	fmt.Fprint(w, `<script>
 		// Re-initialize two-step confirmation for dynamically loaded buttons

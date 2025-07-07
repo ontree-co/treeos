@@ -13,6 +13,7 @@ import (
 	"ontree-node/internal/docker"
 )
 
+// Worker manages background processing of Docker operations
 type Worker struct {
 	db         *sql.DB
 	dockerSvc  *docker.Service
@@ -22,6 +23,7 @@ type Worker struct {
 	cancelFunc context.CancelFunc
 }
 
+// New creates a new Worker instance for processing Docker operations
 func New(db *sql.DB, dockerSvc *docker.Service) *Worker {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Worker{
@@ -33,16 +35,17 @@ func New(db *sql.DB, dockerSvc *docker.Service) *Worker {
 	}
 }
 
+// Start begins processing operations with the specified number of workers
 func (w *Worker) Start(numWorkers int) {
 	// Start cleanup goroutine for stale operations
 	w.workerWg.Add(1)
 	go w.cleanupStaleOperations()
-	
+
 	for i := 0; i < numWorkers; i++ {
 		w.workerWg.Add(1)
 		go w.worker(i)
 	}
-	
+
 	// Pick up any pending operations on startup
 	go w.pickupPendingOperations()
 }
@@ -51,20 +54,24 @@ func (w *Worker) Start(numWorkers int) {
 func (w *Worker) pickupPendingOperations() {
 	// Wait a moment for workers to be ready
 	time.Sleep(1 * time.Second)
-	
+
 	query := `
 		SELECT id FROM docker_operations 
 		WHERE status = ? 
 		ORDER BY created_at ASC
 	`
-	
+
 	rows, err := w.db.Query(query, database.StatusPending)
 	if err != nil {
 		log.Printf("Failed to query pending operations: %v", err)
 		return
 	}
-	defer rows.Close()
-	
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("Failed to close rows: %v", err)
+		}
+	}()
+
 	count := 0
 	for rows.Next() {
 		var operationID string
@@ -72,22 +79,24 @@ func (w *Worker) pickupPendingOperations() {
 			log.Printf("Failed to scan operation ID: %v", err)
 			continue
 		}
-		
+
 		w.EnqueueOperation(operationID)
 		count++
 	}
-	
+
 	if count > 0 {
 		log.Printf("Picked up %d pending operations on startup", count)
 	}
 }
 
+// Stop gracefully shuts down all workers
 func (w *Worker) Stop() {
 	w.cancelFunc()
 	close(w.jobQueue)
 	w.workerWg.Wait()
 }
 
+// EnqueueOperation adds an operation to the processing queue
 func (w *Worker) EnqueueOperation(operationID string) {
 	select {
 	case w.jobQueue <- operationID:
@@ -229,7 +238,7 @@ func (w *Worker) processStartOperation(op *database.DockerOperation, logger *Ope
 	w.updateOperationStatus(op.ID, database.StatusInProgress, 90, "Starting container", "")
 	logger.LogInfo("Starting container...")
 	logger.LogCommand("Starting container", fmt.Sprintf("docker start ontree-%s", op.AppName))
-	
+
 	if err := w.dockerSvc.StartApp(op.AppName); err != nil {
 		logger.LogError(fmt.Sprintf("Failed to start container: %v", err))
 		return fmt.Errorf("failed to start app: %w", err)
@@ -392,14 +401,18 @@ func (w *Worker) cleanupStaleOperations() {
 				WHERE status IN (?, ?)
 				AND created_at <= datetime('now', '-5 minutes')
 			`
-			
+
 			result, err := w.db.Exec(query, database.StatusFailed, database.StatusPending, database.StatusInProgress)
 			if err != nil {
 				log.Printf("Failed to cleanup stale operations: %v", err)
 				continue
 			}
-			
-			if affected, _ := result.RowsAffected(); affected > 0 {
+
+			affected, err := result.RowsAffected()
+			if err != nil {
+				log.Printf("Failed to get affected rows: %v", err)
+			}
+			if affected > 0 {
 				log.Printf("Marked %d stale operations as failed", affected)
 			}
 

@@ -1,3 +1,4 @@
+// Package server provides HTTP server functionality for the OnTree application
 package server
 
 import (
@@ -61,9 +62,15 @@ func (s *Server) handleAppCreate(w http.ResponseWriter, r *http.Request) {
 				log.Printf("Successfully created application: %s", appName)
 
 				// Set success message
-				session, _ := s.sessionStore.Get(r, "ontree-session")
+				session, err := s.sessionStore.Get(r, "ontree-session")
+				if err != nil {
+					log.Printf("Failed to get session: %v", err)
+					// Continue anyway - not critical
+				}
 				session.AddFlash(fmt.Sprintf("Application '%s' has been created successfully! You can now manage it from the app detail page.", appName), "success")
-				session.Save(r, w)
+				if err := session.Save(r, w); err != nil {
+					log.Printf("Failed to save session: %v", err)
+				}
 
 				// Redirect to app detail page
 				http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
@@ -82,7 +89,10 @@ func (s *Server) handleAppCreate(w http.ResponseWriter, r *http.Request) {
 
 		tmpl := s.templates["app_create"]
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		tmpl.ExecuteTemplate(w, "base", data)
+		if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
+			log.Printf("Failed to execute template: %v", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		}
 		return
 	}
 
@@ -94,14 +104,21 @@ func (s *Server) handleAppCreate(w http.ResponseWriter, r *http.Request) {
 
 	tmpl := s.templates["app_create"]
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	tmpl.ExecuteTemplate(w, "base", data)
+	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
+		log.Printf("Failed to execute template: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
 
 // isValidAppName validates app name format
 func isValidAppName(appName string) bool {
 	// Only allow letters, numbers, hyphens, and underscores
 	pattern := `^[a-zA-Z0-9_-]+$`
-	match, _ := regexp.MatchString(pattern, appName)
+	match, err := regexp.MatchString(pattern, appName)
+	if err != nil {
+		log.Printf("Failed to match regex: %v", err)
+		return false
+	}
 	return match && len(appName) <= 50
 }
 
@@ -143,7 +160,10 @@ func validateComposeContent(content string, appName string) error {
 	}
 
 	// Check that service has an image
-	service := servicesMap[serviceName].(map[string]interface{})
+	service, ok := servicesMap[serviceName].(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("Invalid service structure for '%s'", serviceName)
+	}
 	if _, ok := service["image"]; !ok {
 		return fmt.Errorf("The service '%s' must contain an 'image' key", serviceName)
 	}
@@ -166,7 +186,9 @@ func createAppScaffold(appsDir, appName, composeContent string) error {
 	err = os.MkdirAll(mntPath, 0755)
 	if err != nil {
 		// Clean up on failure
-		os.RemoveAll(appPath)
+		if err := os.RemoveAll(appPath); err != nil {
+			log.Printf("Failed to clean up app directory: %v", err)
+		}
 		return fmt.Errorf("failed to create mnt directory: %v", err)
 	}
 
@@ -175,7 +197,9 @@ func createAppScaffold(appsDir, appName, composeContent string) error {
 	err = os.WriteFile(composePath, []byte(composeContent), 0644)
 	if err != nil {
 		// Clean up on failure
-		os.RemoveAll(appPath)
+		if err := os.RemoveAll(appPath); err != nil {
+			log.Printf("Failed to clean up app directory: %v", err)
+		}
 		return fmt.Errorf("failed to write docker-compose.yml: %v", err)
 	}
 

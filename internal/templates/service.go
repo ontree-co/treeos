@@ -1,3 +1,4 @@
+// Package templates provides template management functionality for Docker application templates
 package templates
 
 import (
@@ -6,10 +7,11 @@ import (
 	"io/fs"
 	"path/filepath"
 	"strings"
-	
+
 	"ontree-node/internal/embeds"
 )
 
+// Template represents a Docker application template
 type Template struct {
 	ID               string `json:"id"`
 	Name             string `json:"name"`
@@ -21,20 +23,24 @@ type Template struct {
 	DocumentationURL string `json:"documentation_url"`
 }
 
+// TemplatesFile represents the structure of the templates.json file
 type TemplatesFile struct {
 	Templates []Template `json:"templates"`
 }
 
+// Service provides template management functionality
 type Service struct {
 	templatesPath string
 }
 
+// NewService creates a new template service instance
 func NewService(templatesPath string) *Service {
 	return &Service{
 		templatesPath: templatesPath,
 	}
 }
 
+// GetAvailableTemplates returns all available Docker application templates
 func (s *Service) GetAvailableTemplates() ([]Template, error) {
 	templateFS, err := embeds.TemplateFS()
 	if err != nil {
@@ -55,6 +61,7 @@ func (s *Service) GetAvailableTemplates() ([]Template, error) {
 	return templatesFile.Templates, nil
 }
 
+// GetTemplateByID retrieves a specific template by its ID
 func (s *Service) GetTemplateByID(id string) (*Template, error) {
 	templates, err := s.GetAvailableTemplates()
 	if err != nil {
@@ -70,6 +77,7 @@ func (s *Service) GetTemplateByID(id string) (*Template, error) {
 	return nil, fmt.Errorf("template with id %s not found", id)
 }
 
+// GetTemplateContent reads the docker-compose.yml content for a template
 func (s *Service) GetTemplateContent(template *Template) (string, error) {
 	templateFS, err := embeds.TemplateFS()
 	if err != nil {
@@ -85,6 +93,7 @@ func (s *Service) GetTemplateContent(template *Template) (string, error) {
 	return string(content), nil
 }
 
+// ProcessTemplateContent replaces template variables with actual values
 func (s *Service) ProcessTemplateContent(content string, appName string) string {
 	// Replace the service name in the compose file with the app name
 	lines := strings.Split(content, "\n")

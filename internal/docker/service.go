@@ -39,7 +39,7 @@ func (s *Service) Close() error {
 // ScanApps delegates to the client with the configured apps directory
 func (s *Service) ScanApps() ([]*App, error) {
 	ctx := context.Background()
-	ctx, span := telemetry.StartSpan(ctx, "docker.scan_apps")
+	_, span := telemetry.StartSpan(ctx, "docker.scan_apps")
 	defer span.End()
 
 	span.SetAttributes(
@@ -60,7 +60,7 @@ func (s *Service) ScanApps() ([]*App, error) {
 // GetAppDetails delegates to the client with the configured apps directory
 func (s *Service) GetAppDetails(appName string) (*App, error) {
 	ctx := context.Background()
-	ctx, span := telemetry.StartSpan(ctx, "docker.get_app_details")
+	_, span := telemetry.StartSpan(ctx, "docker.get_app_details")
 	defer span.End()
 
 	span.SetAttributes(
@@ -78,7 +78,7 @@ func (s *Service) GetAppDetails(appName string) (*App, error) {
 // StartApp delegates to the client with the configured apps directory
 func (s *Service) StartApp(appName string) error {
 	ctx := context.Background()
-	ctx, span := telemetry.StartSpan(ctx, "docker.start_app")
+	_, span := telemetry.StartSpan(ctx, "docker.start_app")
 	defer span.End()
 
 	span.SetAttributes(
@@ -96,7 +96,7 @@ func (s *Service) StartApp(appName string) error {
 // StopApp delegates to the client
 func (s *Service) StopApp(appName string) error {
 	ctx := context.Background()
-	ctx, span := telemetry.StartSpan(ctx, "docker.stop_app")
+	_, span := telemetry.StartSpan(ctx, "docker.stop_app")
 	defer span.End()
 
 	span.SetAttributes(
@@ -113,7 +113,7 @@ func (s *Service) StopApp(appName string) error {
 // RecreateApp delegates to the client with the configured apps directory
 func (s *Service) RecreateApp(appName string) error {
 	ctx := context.Background()
-	ctx, span := telemetry.StartSpan(ctx, "docker.recreate_app")
+	_, span := telemetry.StartSpan(ctx, "docker.recreate_app")
 	defer span.End()
 
 	span.SetAttributes(
@@ -131,7 +131,7 @@ func (s *Service) RecreateApp(appName string) error {
 // DeleteApp delegates to the client
 func (s *Service) DeleteApp(appName string) error {
 	ctx := context.Background()
-	ctx, span := telemetry.StartSpan(ctx, "docker.delete_app")
+	_, span := telemetry.StartSpan(ctx, "docker.delete_app")
 	defer span.End()
 
 	span.SetAttributes(
@@ -151,7 +151,7 @@ type ProgressCallback func(progress int, message string)
 // PullImagesWithProgress pulls Docker images for an app with progress reporting
 func (s *Service) PullImagesWithProgress(appName string, progressCallback ProgressCallback) error {
 	ctx := context.Background()
-	ctx, span := telemetry.StartSpan(ctx, "docker.pull_images")
+	_, span := telemetry.StartSpan(ctx, "docker.pull_images")
 	defer span.End()
 
 	span.SetAttributes(
@@ -179,7 +179,12 @@ func (s *Service) PullImagesWithProgress(appName string, progressCallback Progre
 		span.RecordError(err)
 		return fmt.Errorf("failed to pull image: %w", err)
 	}
-	defer reader.Close()
+	defer func() {
+		if err := reader.Close(); err != nil {
+			// Log error but don't fail the operation
+			fmt.Printf("Failed to close reader: %v\n", err)
+		}
+	}()
 
 	// Parse the JSON stream for progress updates
 	decoder := json.NewDecoder(reader)
@@ -197,7 +202,10 @@ func (s *Service) PullImagesWithProgress(appName string, progressCallback Progre
 
 		// Extract progress information
 		if status, ok := event["status"].(string); ok {
-			id, _ := event["id"].(string)
+			id, ok := event["id"].(string)
+			if !ok {
+				id = ""
+			}
 
 			// Handle different status messages
 			switch {
@@ -257,7 +265,7 @@ type ImageUpdateStatus struct {
 // CheckImageUpdate checks if a newer version of the image is available
 func (s *Service) CheckImageUpdate(appName string) (*ImageUpdateStatus, error) {
 	ctx := context.Background()
-	ctx, span := telemetry.StartSpan(ctx, "docker.check_image_update")
+	_, span := telemetry.StartSpan(ctx, "docker.check_image_update")
 	defer span.End()
 
 	span.SetAttributes(
@@ -299,7 +307,12 @@ func (s *Service) CheckImageUpdate(appName string) (*ImageUpdateStatus, error) {
 			Error:           err.Error(),
 		}, nil
 	}
-	defer reader.Close()
+	defer func() {
+		if err := reader.Close(); err != nil {
+			// Log error but don't fail the operation
+			fmt.Printf("Failed to close reader: %v\n", err)
+		}
+	}()
 
 	// Parse the JSON stream to check if updates are available
 	decoder := json.NewDecoder(reader)
@@ -315,9 +328,9 @@ func (s *Service) CheckImageUpdate(appName string) (*ImageUpdateStatus, error) {
 
 		if status, ok := event["status"].(string); ok {
 			// If Docker is downloading layers, an update is available
-			if strings.Contains(status, "Downloading") || 
-			   strings.Contains(status, "Extracting") ||
-			   strings.Contains(status, "Downloaded newer image") {
+			if strings.Contains(status, "Downloading") ||
+				strings.Contains(status, "Extracting") ||
+				strings.Contains(status, "Downloaded newer image") {
 				updateAvailable = true
 			}
 			// If image is up to date, no update needed

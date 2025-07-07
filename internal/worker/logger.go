@@ -1,3 +1,4 @@
+// Package worker provides background job processing functionality for Docker operations
 package worker
 
 import (
@@ -58,11 +59,11 @@ func (ol *OperationLogger) LogCommand(description, command string) {
 // LogDockerAPI logs a Docker API call
 func (ol *OperationLogger) LogDockerAPI(method, endpoint string, statusCode int, responseTime time.Duration) {
 	details := map[string]interface{}{
-		"method":       method,
-		"endpoint":     endpoint,
-		"status_code":  statusCode,
+		"method":           method,
+		"endpoint":         endpoint,
+		"status_code":      statusCode,
 		"response_time_ms": responseTime.Milliseconds(),
-		"type":         "docker_api",
+		"type":             "docker_api",
 	}
 	message := fmt.Sprintf("Docker API: %s %s", method, endpoint)
 	if statusCode > 0 {
@@ -113,7 +114,7 @@ func (ol *OperationLogger) log(level, message string, details ...map[string]inte
 	log.Printf("[%s] %s %s", timestamp, levelStr, message)
 }
 
-// GetLogs retrieves all logs for an operation
+// GetOperationLogs retrieves all logs for an operation
 func GetOperationLogs(db *sql.DB, operationID string) ([]database.DockerOperationLog, error) {
 	query := `
 		SELECT id, operation_id, timestamp, level, message, details
@@ -126,7 +127,11 @@ func GetOperationLogs(db *sql.DB, operationID string) ([]database.DockerOperatio
 	if err != nil {
 		return nil, fmt.Errorf("failed to query logs: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("Failed to close rows: %v", err)
+		}
+	}()
 
 	var logs []database.DockerOperationLog
 	for rows.Next() {
@@ -144,21 +149,25 @@ func GetOperationLogs(db *sql.DB, operationID string) ([]database.DockerOperatio
 // CleanupOldLogs removes logs older than the specified duration
 func CleanupOldLogs(db *sql.DB, olderThan time.Duration) error {
 	cutoff := time.Now().Add(-olderThan)
-	
+
 	query := `
 		DELETE FROM docker_operation_logs
 		WHERE timestamp < ?
 	`
-	
+
 	result, err := db.Exec(query, cutoff)
 	if err != nil {
 		return fmt.Errorf("failed to cleanup old logs: %w", err)
 	}
-	
-	affected, _ := result.RowsAffected()
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		log.Printf("Failed to get affected rows: %v", err)
+		affected = 0
+	}
 	if affected > 0 {
 		log.Printf("Cleaned up %d old operation logs", affected)
 	}
-	
+
 	return nil
 }
