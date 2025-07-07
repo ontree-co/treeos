@@ -369,6 +369,8 @@ func (s *Server) routeApps(w http.ResponseWriter, r *http.Request) {
 		s.handleAppCheckUpdate(w, r)
 	} else if strings.HasSuffix(path, "/update") {
 		s.handleAppUpdate(w, r)
+	} else if strings.HasSuffix(path, "/controls") {
+		s.handleAppControls(w, r)
 	} else {
 		// Default to app detail page
 		s.handleAppDetail(w, r)

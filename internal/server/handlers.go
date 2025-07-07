@@ -181,16 +181,21 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 				Error     string
 				Username  string
 				CSRFToken string
+				Messages  []interface{}
 			}{
 				User:      nil,
 				Error:     "Invalid username or password",
 				Username:  username,
 				CSRFToken: "",
+				Messages:  nil,
 			}
 
 			tmpl := s.templates["login"]
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			tmpl.ExecuteTemplate(w, "base", data)
+			if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
+				log.Printf("Error rendering login template: %v", err)
+				http.Error(w, "Error rendering template", http.StatusInternalServerError)
+			}
 			return
 		}
 
@@ -224,16 +229,21 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		Error     string
 		Username  string
 		CSRFToken string
+		Messages  []interface{}
 	}{
 		User:      nil,
 		Error:     "",
 		Username:  "",
 		CSRFToken: "",
+		Messages:  nil,
 	}
 
 	tmpl := s.templates["login"]
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	tmpl.ExecuteTemplate(w, "base", data)
+	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
+		log.Printf("Error rendering login template: %v", err)
+		http.Error(w, "Error rendering template", http.StatusInternalServerError)
+	}
 }
 
 // handleLogout handles user logout
@@ -704,4 +714,138 @@ func (s *Server) handleAppUpdate(w http.ResponseWriter, r *http.Request) {
 	session.AddFlash("Image update started", "success")
 	session.Save(r, w)
 	http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
+}
+
+// handleAppControls returns just the control buttons for an app
+func (s *Server) handleAppControls(w http.ResponseWriter, r *http.Request) {
+	// Extract app name from URL path
+	path := r.URL.Path
+	parts := strings.Split(path, "/")
+	if len(parts) < 4 || parts[1] != "apps" || parts[3] != "controls" {
+		http.NotFound(w, r)
+		return
+	}
+
+	appName := parts[2]
+
+	// Get app details
+	if s.dockerClient == nil {
+		http.Error(w, "Docker client not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	app, err := s.dockerClient.GetAppDetails(s.config.AppsDir, appName)
+	if err != nil {
+		http.Error(w, "Failed to get app details", http.StatusInternalServerError)
+		return
+	}
+
+	// Check for active operations
+	var activeOperationID string
+	db := database.GetDB()
+	err = db.QueryRow(`
+		SELECT id 
+		FROM docker_operations 
+		WHERE app_name = ? 
+		AND status IN (?, ?)
+		AND created_at > datetime('now', '-5 minutes')
+		ORDER BY created_at DESC
+		LIMIT 1
+	`, appName, database.StatusPending, database.StatusInProgress).Scan(&activeOperationID)
+
+	// Render just the controls
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	
+	if activeOperationID != "" {
+		// Show disabled button with spinner
+		buttonText := "Processing..."
+		if app.Status == "not_created" {
+			buttonText = "Creating & Starting..."
+		}
+		fmt.Fprintf(w, `<button type="button" class="btn btn-primary" disabled>
+			<span class="spinner-border spinner-border-sm" role="status"></span>
+			<span>%s</span>
+		</button>`, buttonText)
+	} else {
+		// Show appropriate control buttons based on status
+		if app.Status == "running" {
+			fmt.Fprintf(w, `<form method="post" action="/apps/%s/stop" class="d-inline">
+				<button type="submit" class="btn btn-warning confirm-action" 
+						data-action="Stop"
+						data-confirm-text="Confirm Stop?">
+					<i>⏹️</i> Stop
+				</button>
+			</form>`, appName)
+		} else if app.Status != "not_created" {
+			fmt.Fprintf(w, `<form method="post" action="/apps/%s/start" class="d-inline">
+				<button type="submit" class="btn btn-success">
+					<i>▶️</i> Start
+				</button>
+			</form>`, appName)
+		} else {
+			fmt.Fprintf(w, `<form method="post" action="/apps/%s/start" class="d-inline">
+				<button type="submit" class="btn btn-primary">
+					<i>🚀</i> Create & Start
+				</button>
+			</form>`, appName)
+		}
+
+		// Add delete and recreate buttons if container exists
+		if app.Status != "not_created" {
+			fmt.Fprintf(w, `
+			<form method="post" action="/apps/%s/delete" class="d-inline">
+				<button type="submit" class="btn btn-danger confirm-action" 
+						data-action="Delete Container"
+						data-confirm-text="Confirm Delete?">
+					<i>🗑️</i> Delete Container
+				</button>
+			</form>
+			<form method="post" action="/apps/%s/recreate" class="d-inline">
+				<button type="submit" class="btn btn-info confirm-action" 
+						data-action="Recreate"
+						data-confirm-text="Confirm Recreate?">
+					<i>🔄</i> Recreate
+				</button>
+			</form>`, appName, appName)
+		}
+	}
+	
+	// Re-initialize the confirm action buttons
+	fmt.Fprint(w, `<script>
+		// Re-initialize two-step confirmation for dynamically loaded buttons
+		document.querySelectorAll('.confirm-action').forEach(button => {
+			if (button.dataset.initialized) return;
+			button.dataset.initialized = 'true';
+			
+			let timeout;
+			const form = button.closest('form');
+			const originalHtml = button.innerHTML;
+			const confirmText = button.dataset.confirmText || 'Confirm?';
+			const icon = button.querySelector('i')?.textContent || '';
+			
+			button.addEventListener('click', function(e) {
+				e.preventDefault();
+				
+				if (button.classList.contains('confirming')) {
+					form.submit();
+				} else {
+					button.classList.add('confirming');
+					button.innerHTML = icon + ' ' + confirmText + '<span class="cancel-confirm">✗</span>';
+					
+					const cancelBtn = button.querySelector('.cancel-confirm');
+					cancelBtn.addEventListener('click', function(e) {
+						e.stopPropagation();
+						clearTimeout(timeout);
+						button.classList.remove('confirming');
+						button.innerHTML = originalHtml;
+					});
+					
+					timeout = setTimeout(() => {
+						button.classList.remove('confirming');
+						button.innerHTML = originalHtml;
+					}, 5000);
+				}
+			});
+		});
+	</script>`)
 }

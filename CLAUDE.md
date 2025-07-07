@@ -6,6 +6,16 @@ OnTree is a Docker container management application with a web interface for man
 
 ## Recent Features
 
+### Improved Container Operation UI (2025-07-07)
+Enhanced the container operation experience with better visual feedback:
+
+- **Dynamic Button States**: During operations, buttons show appropriate text:
+  - "Creating & Starting..." when creating a new container
+  - "Processing..." for other operations
+- **Operation Lock**: All control buttons are disabled during operations to prevent conflicts
+- **Auto-refresh**: Controls automatically update when operations complete
+- **Seamless Updates**: Uses HTMX to refresh controls without page reload
+
 ### Real-Time Operation Logging (2025-07-07)
 The application now includes comprehensive logging for all Docker operations:
 
@@ -16,10 +26,12 @@ The application now includes comprehensive logging for all Docker operations:
 - **Persistent Storage**: Logs are stored in database for debugging
 
 When you click "Create & Start" or any container operation:
-1. The operation logs panel appears automatically
-2. You can see detailed step-by-step progress
-3. Any errors are clearly highlighted in red
-4. The equivalent Docker commands are shown for transparency
+1. The button changes to show operation status with a spinner
+2. The operation logs panel appears automatically
+3. You can see detailed step-by-step progress
+4. Any errors are clearly highlighted in red
+5. The equivalent Docker commands are shown for transparency
+6. Controls refresh automatically when the operation completes
 
 ### Stale Operation Handling (2025-07-07)
 Fixed issue where old pending operations would show spinner indefinitely:

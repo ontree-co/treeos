@@ -198,30 +198,47 @@
                 </div>
             {{end}}
         </div>
-        <div id="app-controls" class="btn-group" role="group">
-            {{if eq .App.Status "running"}}
-                <form method="post" action="/apps/{{.App.Name}}/stop" class="d-inline">
-                    <button type="submit" class="btn btn-warning confirm-action" 
-                            data-action="Stop"
-                            data-confirm-text="Confirm Stop?">
-                        <i>⏹️</i> Stop
-                    </button>
-                </form>
-            {{else if ne .App.Status "not_created"}}
-                <form method="post" action="/apps/{{.App.Name}}/start" class="d-inline">
-                    <button type="submit" class="btn btn-success">
-                        <i>▶️</i> Start
-                    </button>
-                </form>
+        <div id="app-controls" class="btn-group" role="group" 
+             hx-get="/apps/{{.App.Name}}/controls" 
+             hx-trigger="operation-complete from:body"
+             hx-swap="innerHTML">
+            {{if .ActiveOperationID}}
+                <!-- Show disabled button with spinner during operation -->
+                <button type="button" class="btn btn-primary" disabled>
+                    <span class="spinner-border spinner-border-sm" role="status"></span>
+                    <span id="operation-button-text">
+                        {{if eq .App.Status "not_created"}}
+                            Creating & Starting...
+                        {{else}}
+                            Processing...
+                        {{end}}
+                    </span>
+                </button>
             {{else}}
-                <form method="post" action="/apps/{{.App.Name}}/start" class="d-inline">
-                    <button type="submit" class="btn btn-primary">
-                        <i>🚀</i> Create & Start
-                    </button>
-                </form>
+                {{if eq .App.Status "running"}}
+                    <form method="post" action="/apps/{{.App.Name}}/stop" class="d-inline">
+                        <button type="submit" class="btn btn-warning confirm-action" 
+                                data-action="Stop"
+                                data-confirm-text="Confirm Stop?">
+                            <i>⏹️</i> Stop
+                        </button>
+                    </form>
+                {{else if ne .App.Status "not_created"}}
+                    <form method="post" action="/apps/{{.App.Name}}/start" class="d-inline">
+                        <button type="submit" class="btn btn-success">
+                            <i>▶️</i> Start
+                        </button>
+                    </form>
+                {{else}}
+                    <form method="post" action="/apps/{{.App.Name}}/start" class="d-inline">
+                        <button type="submit" class="btn btn-primary">
+                            <i>🚀</i> Create & Start
+                        </button>
+                    </form>
+                {{end}}
             {{end}}
             
-            {{if ne .App.Status "not_created"}}
+            {{if and (ne .App.Status "not_created") (not .ActiveOperationID)}}
                 <form method="post" action="/apps/{{.App.Name}}/delete" class="d-inline">
                     <button type="submit" class="btn btn-danger confirm-action" 
                             data-action="Delete Container"
@@ -495,6 +512,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Check if operation is complete to stop polling
                 if (html.includes('<!-- Operation complete, polling stopped -->')) {
                     stopLogPolling();
+                    // Trigger button refresh
+                    htmx.trigger('body', 'operation-complete');
                 }
             })
             .catch(error => {

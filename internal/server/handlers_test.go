@@ -177,7 +177,7 @@ func TestStaleOperationHandling(t *testing.T) {
 				containerStatus:   "not_created",
 				hasOldOperation:   false,
 				hasRecentOperation: true,
-				expectedUI:        "Show spinner with 'Waiting to start...'",
+				expectedUI:        "Show spinner with 'Creating & Starting...'",
 			},
 			{
 				name:              "running container with old operation",
@@ -196,5 +196,67 @@ func TestStaleOperationHandling(t *testing.T) {
 				t.Logf("Expected UI: %s", tc.expectedUI)
 			})
 		}
+	})
+}
+
+// TestAppControlsButtonStates tests the button states during operations
+func TestAppControlsButtonStates(t *testing.T) {
+	// Document expected button behavior during operations
+	
+	t.Run("Button states during create operation", func(t *testing.T) {
+		testCases := []struct {
+			containerStatus   string
+			hasActiveOperation bool
+			expectedButtonText string
+			expectedButtonState string
+		}{
+			{
+				containerStatus:   "not_created",
+				hasActiveOperation: false,
+				expectedButtonText: "Create & Start",
+				expectedButtonState: "enabled",
+			},
+			{
+				containerStatus:   "not_created",
+				hasActiveOperation: true,
+				expectedButtonText: "Creating & Starting...",
+				expectedButtonState: "disabled with spinner",
+			},
+			{
+				containerStatus:   "running",
+				hasActiveOperation: false,
+				expectedButtonText: "Stop",
+				expectedButtonState: "enabled",
+			},
+			{
+				containerStatus:   "exited",
+				hasActiveOperation: false,
+				expectedButtonText: "Start",
+				expectedButtonState: "enabled",
+			},
+			{
+				containerStatus:   "exited",
+				hasActiveOperation: true,
+				expectedButtonText: "Processing...",
+				expectedButtonState: "disabled with spinner",
+			},
+		}
+		
+		for _, tc := range testCases {
+			t.Run(tc.containerStatus, func(t *testing.T) {
+				t.Logf("Container status: %s", tc.containerStatus)
+				t.Logf("Has active operation: %v", tc.hasActiveOperation)
+				t.Logf("Expected button text: %s", tc.expectedButtonText)
+				t.Logf("Expected button state: %s", tc.expectedButtonState)
+			})
+		}
+	})
+	
+	t.Run("Controls refresh behavior", func(t *testing.T) {
+		t.Log("When operation completes:")
+		t.Log("1. Log viewer detects '<!-- Operation complete, polling stopped -->' comment")
+		t.Log("2. JavaScript triggers 'operation-complete' event on body")
+		t.Log("3. HTMX refreshes #app-controls div via GET /apps/{name}/controls")
+		t.Log("4. Controls are updated to reflect new container state")
 	})
 }
