@@ -171,7 +171,22 @@
         msg: "Port {{ app_port }} is already in use. This might be the development version of {{ app_name }} still running. Please stop it with 'systemctl stop {{ app_name }}-dev' or choose a different port."
       when: port_check.failed
 
-    # Phase 5: Service Configuration
+    # Phase 5: Caddy Health Check
+    - name: Check if Caddy is accessible
+      ansible.builtin.uri:
+        url: "http://localhost:2019/"
+        method: GET
+        status_code: 200
+        timeout: 5
+      register: caddy_health_check
+      ignore_errors: yes
+
+    - name: Fail if Caddy is not running or accessible
+      ansible.builtin.fail:
+        msg: "Cannot connect to Caddy Admin API at localhost:2019. Please ensure Caddy is installed and running."
+      when: caddy_health_check.failed or caddy_health_check.status != 200
+
+    # Phase 6: Service Configuration
     - name: Create systemd service file
       ansible.builtin.template:
         src: ontreenode.service.j2
@@ -181,7 +196,7 @@
         mode: "0644"
       notify: reload systemd
 
-    # Phase 6: Service Management
+    # Phase 7: Service Management
     - name: Enable and restart application service
       ansible.builtin.systemd:
         name: "{{ app_name }}"

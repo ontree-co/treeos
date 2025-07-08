@@ -32,6 +32,7 @@ type Server struct {
 	worker       *worker.Worker
 	templateSvc  *templates.Service
 	versionInfo  version.Info
+	caddyAvailable bool
 }
 
 // New creates a new server instance
@@ -85,6 +86,9 @@ func New(cfg *config.Config, versionInfo version.Info) (*Server, error) {
 	} else {
 		s.dockerSvc = dockerSvc
 	}
+
+	// Check Caddy availability
+	s.checkCaddyHealth()
 
 	// Initialize worker if Docker is available
 	if s.dockerSvc != nil && s.db != nil {
@@ -373,6 +377,9 @@ func (s *Server) baseTemplateData(user *database.User) map[string]interface{} {
 	data["Version"] = s.versionInfo.Version
 	data["VersionAge"] = version.GetVersionAge()
 
+	// Caddy availability
+	data["CaddyAvailable"] = s.caddyAvailable
+
 	// Messages field is required by base template
 	data["Messages"] = nil
 
@@ -437,5 +444,31 @@ func (s *Server) handleVersion(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Error encoding version response: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
+	}
+}
+
+// checkCaddyHealth performs a health check against Caddy's admin API
+func (s *Server) checkCaddyHealth() {
+	// Create HTTP client with timeout
+	client := &http.Client{
+		Timeout: 5 * time.Second,
+	}
+
+	// Make GET request to Caddy admin API
+	resp, err := client.Get("http://localhost:2019/")
+	if err != nil {
+		log.Printf("Cannot connect to Caddy Admin API at localhost:2019. Please ensure Caddy is installed and running.")
+		s.caddyAvailable = false
+		return
+	}
+	defer resp.Body.Close()
+
+	// Check for 200 OK status
+	if resp.StatusCode == http.StatusOK {
+		s.caddyAvailable = true
+		log.Printf("Successfully connected to Caddy Admin API")
+	} else {
+		log.Printf("Cannot connect to Caddy Admin API at localhost:2019. Please ensure Caddy is installed and running. Status: %d", resp.StatusCode)
+		s.caddyAvailable = false
 	}
 }
