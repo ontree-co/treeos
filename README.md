@@ -20,7 +20,7 @@ OnTree is a Docker container management application with a web interface for man
 
 ### Running OnTree
 
-1. Download the latest release for your platform from [GitHub Releases](https://github.com/yourusername/ontree-node/releases)
+1. Download the latest release for your platform from [GitHub Releases](https://github.com/stefanmunz/ontree-node/releases)
 
 2. Make the binary executable:
    ```bash
@@ -64,7 +64,7 @@ export PORT="3000"
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/ontree-node.git
+   git clone https://github.com/stefanmunz/ontree-node.git
    cd ontree-node
    ```
 
@@ -98,6 +98,74 @@ For development with hot-reloading:
 go run cmd/ontree-server/main.go
 ```
 
+## Building Releases
+
+OnTree uses [GoReleaser](https://goreleaser.com/) for automated release builds. The release process creates self-contained binaries with all assets embedded.
+
+### Creating a Release
+
+1. **Tag your release**:
+   ```bash
+   git tag -a v1.0.0 -m "Release version 1.0.0"
+   git push origin v1.0.0
+   ```
+
+2. **Automated GitHub Release**:
+   - GitHub Actions automatically builds releases when tags matching `v*.*.*` are pushed
+   - The workflow runs tests first, then creates platform-specific binaries
+   - Release notes are auto-generated from commit messages
+
+### Local Release Build
+
+To build a release locally (useful for testing):
+
+1. **Install GoReleaser**:
+   ```bash
+   go install github.com/goreleaser/goreleaser/v2@latest
+   ```
+
+2. **Build a snapshot release** (without publishing):
+   ```bash
+   goreleaser build --snapshot --clean
+   ```
+
+3. **Build for all platforms**:
+   ```bash
+   make build-all
+   ```
+
+### Release Artifacts
+
+Each release includes:
+- `ontree-server_VERSION_linux_x86_64.tar.gz` - Linux AMD64 binary
+- `ontree-server_VERSION_darwin_arm64.tar.gz` - macOS Apple Silicon binary
+- `checksums.txt` - SHA256 checksums for verification
+
+### Binary Features
+
+- **Self-contained**: All templates and static assets are embedded
+- **No dependencies**: Statically linked, no external libraries required
+- **Version info**: Build version, commit, and date embedded in binary
+- **Cross-platform**: Supports Linux (AMD64) and macOS (ARM64)
+
+### Manual Build Process
+
+For manual builds without GoReleaser:
+
+```bash
+# Ensure assets are embedded
+make embed-assets
+
+# Build for current platform
+make build
+
+# Build for specific platform
+GOOS=linux GOARCH=amd64 make build
+GOOS=darwin GOARCH=arm64 make build
+```
+
+The built binary will be in the `build/` directory.
+
 ## Architecture
 
 - **Backend**: Go with embedded HTTP server
@@ -120,4 +188,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Support
 
-For issues, questions, or contributions, please visit our [GitHub repository](https://github.com/yourusername/ontree-node).
+For issues, questions, or contributions, please visit our [GitHub repository](https://github.com/stefanmunz/ontree-node).
