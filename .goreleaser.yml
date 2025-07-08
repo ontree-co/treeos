@@ -1,7 +1,7 @@
 # GoReleaser configuration for OnTree
 # This file configures the release process for multi-architecture builds
 
-project_name: ontree-node
+project_name: ontree-server
 
 
 before:
@@ -10,9 +10,9 @@ before:
     - go mod download
 
 builds:
-  - id: ontree-node
+  - id: ontree-server
     main: ./cmd/ontree-server
-    binary: ontree-node
+    binary: ontree-server
     env:
       - CGO_ENABLED=0
     goos:
