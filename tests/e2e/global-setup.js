@@ -25,32 +25,32 @@ module.exports = async () => {
   
   // Start the server
   const serverPath = path.join(__dirname, '..', '..', 'ontree-server');
-  execSync(`LISTEN_ADDR=:8085 nohup ${serverPath} > server.log 2>&1 &`, { 
+  execSync(`LISTEN_ADDR=:3001 nohup ${serverPath} > server.log 2>&1 &`, { 
     cwd: path.join(__dirname, '..', '..'),
     shell: true 
   });
-  console.log('Started server on port 8085');
+  console.log('Started server on port 3001');
   
   // Wait for server to be ready
   execSync('sleep 3');
   
   // Check that server is actually running
   try {
-    execSync('curl -s http://localhost:8085/ > /dev/null', { stdio: 'ignore' });
-    console.log('Server is responding on port 8085');
+    execSync('curl -s http://localhost:3001/ > /dev/null', { stdio: 'ignore' });
+    console.log('Server is responding on port 3001');
   } catch (err) {
-    console.error('Server not responding on port 8085');
+    console.error('Server not responding on port 3001');
   }
   
   // Check if setup is needed and complete it
   try {
-    const response = execSync('curl -s -o /dev/null -w "%{http_code}" http://localhost:8085/setup', { encoding: 'utf8' }).trim();
+    const response = execSync('curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/setup', { encoding: 'utf8' }).trim();
     if (response === '200') {
       console.log('Setup page is accessible, completing initial setup...');
       
       // Complete setup using curl
       const setupData = 'username=admin&password=admin1234&password2=admin1234&node_name=Test+OnTree+Node&node_description=This+is+a+test+node+for+e2e+testing';
-      execSync(`curl -s -X POST -d '${setupData}' -H 'Content-Type: application/x-www-form-urlencoded' http://localhost:8085/setup`, { stdio: 'ignore' });
+      execSync(`curl -s -X POST -d '${setupData}' -H 'Content-Type: application/x-www-form-urlencoded' http://localhost:3001/setup`, { stdio: 'ignore' });
       console.log('Initial setup completed');
       
       // Give it a moment to process

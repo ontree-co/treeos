@@ -5,7 +5,7 @@ This directory contains end-to-end tests for the OnTree Node application using P
 ## Prerequisites
 
 - Node.js and npm installed
-- OnTree server running on port 8085
+- OnTree server running on port 3001
 - Docker installed and running (for app management tests)
 
 ## Installation

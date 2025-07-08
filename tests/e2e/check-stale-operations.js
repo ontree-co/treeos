@@ -7,7 +7,7 @@ test.describe('Stale Operations Bug Fix', () => {
     
     // Navigate to an app detail page
     // Note: This assumes there's an app called 'openwebui' - adjust as needed
-    await page.goto('http://localhost:8085/apps/openwebui');
+    await page.goto('http://localhost:3001/apps/openwebui');
     
     // Wait for page to load
     await page.waitForLoadState('networkidle');

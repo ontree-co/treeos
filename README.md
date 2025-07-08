@@ -16,7 +16,7 @@ OnTree is a Docker container management application with a web interface for man
 ### Prerequisites
 
 - Docker installed and running
-- Port 8080 available (or configure a different port)
+- Port 3000 available (or configure a different port)
 
 ### Running OnTree
 
@@ -32,13 +32,13 @@ OnTree is a Docker container management application with a web interface for man
    ./ontree-server
    ```
 
-4. Open your browser to `http://localhost:8080`
+4. Open your browser to `http://localhost:3000`
 
 ### Configuration
 
 OnTree can be configured using environment variables:
 
-- `PORT`: HTTP server port (default: 8080)
+- `LISTEN_ADDR`: HTTP server listen address (default: :3000)
 - `DATABASE_PATH`: Path to SQLite database (default: `./ontree.db`)
 - `AUTH_USERNAME`: Basic auth username (required)
 - `AUTH_PASSWORD`: Basic auth password (required)

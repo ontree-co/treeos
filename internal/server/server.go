@@ -274,7 +274,7 @@ func (s *Server) Start() error {
 	// Start server
 	addr := s.config.ListenAddr
 	if addr == "" {
-		addr = ":8083"
+		addr = config.DefaultPort
 	}
 
 	log.Printf("Starting server on %s", addr)

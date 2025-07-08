@@ -12,7 +12,7 @@ test.describe('Dashboard and System Vitals', () => {
 
   test.skip('should display dashboard with correct elements', async ({ page }) => {
     // Should be on dashboard - allow for query parameters
-    await expect(page.url()).toMatch(/^http:\/\/localhost:8085\/(\?.*)?$/);
+    await expect(page.url()).toMatch(/^http:\/\/localhost:3001\/(\?.*)?$/);
     
     // Verify header elements
     await expect(page.locator('.navbar-brand')).toContainText('OnTree.co');

@@ -31,7 +31,7 @@ type Config struct {
 func defaultConfig() *Config {
 	config := &Config{
 		DatabasePath: "ontree.db",
-		ListenAddr:   ":8081",
+		ListenAddr:   DefaultPort,
 		PostHogHost:  "https://app.posthog.com",
 	}
 

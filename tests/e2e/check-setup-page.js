@@ -25,9 +25,9 @@ const { chromium } = require('playwright');
       pageErrors.push(error.toString());
     });
 
-    // Navigate to setup page - using port 8085 as that's where the server is actually running
-    console.log('Navigating to http://localhost:8085/setup');
-    const response = await page.goto('http://localhost:8085/setup', {
+    // Navigate to setup page - using port 3001 as that's where the server is actually running
+    console.log('Navigating to http://localhost:3001/setup');
+    const response = await page.goto('http://localhost:3001/setup', {
       waitUntil: 'networkidle',
       timeout: 30000
     });
