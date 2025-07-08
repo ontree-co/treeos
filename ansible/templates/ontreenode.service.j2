@@ -8,8 +8,6 @@ Group={{ app_user }}
 WorkingDirectory={{ app_path }}
 Environment="PORT={{ app_port }}"
 Environment="DATABASE_PATH={{ app_path }}/ontree.db"
-Environment="STATIC_PATH={{ app_path }}/static"
-Environment="TEMPLATES_PATH={{ app_path }}/templates"
 ExecStart={{ app_path }}/{{ binary_name }}
 Restart=always
 RestartSec=10

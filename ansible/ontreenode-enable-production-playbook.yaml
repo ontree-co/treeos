@@ -13,7 +13,7 @@
   become: yes
 
   vars:
-    github_repo: "stefanmunz/ontreenode" # GitHub owner/repo
+    github_repo: "ontree/ontree-node" # GitHub owner/repo
     release_version: "v0.1.0" # Version to deploy
     app_name: "ontreenode"
     app_user: "ontree"
@@ -21,7 +21,7 @@
     app_path: "{{ app_root_dir }}/{{ app_name }}"
     app_port: 3000
     ansible_common_remote_group: "{{ app_user }}"
-    binary_name: "ontree-node"
+    binary_name: "ontree-server"
     # Detect architecture
     arch_map:
       x86_64: "x86_64"
@@ -109,13 +109,23 @@
         group: "{{ app_user }}"
         mode: "0755"
 
-    - name: Download migrations from repository
+    - name: Get list of migration files from repository
+      ansible.builtin.uri:
+        url: "https://api.github.com/repos/{{ github_repo }}/contents/migrations?ref={{ release_version }}"
+        method: GET
+        headers:
+          Accept: "application/vnd.github.v3+json"
+      register: migration_files
+
+    - name: Download all migration files
       ansible.builtin.get_url:
-        url: "https://raw.githubusercontent.com/{{ github_repo }}/{{ release_version }}/migrations/001_initial_schema.sql"
-        dest: "{{ app_path }}/migrations/001_initial_schema.sql"
+        url: "https://raw.githubusercontent.com/{{ github_repo }}/{{ release_version }}/migrations/{{ item.name }}"
+        dest: "{{ app_path }}/migrations/{{ item.name }}"
         owner: "{{ app_user }}"
         group: "{{ app_user }}"
         mode: '0644'
+      loop: "{{ migration_files.json }}"
+      when: item.type == 'file' and item.name.endswith('.sql')
 
     # Phase 3: Database Migrations
     - name: Check if goose is installed
