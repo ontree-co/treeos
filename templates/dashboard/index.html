@@ -85,7 +85,7 @@
                                         {{end}}
                                     </td>
                                     <td>
-                                        {{if .Config}}
+                                        {{if and .Config .Config.Container.Image}}
                                             <code class="small">{{.Config.Container.Image}}</code>
                                         {{else}}
                                             <span class="text-muted">-</span>

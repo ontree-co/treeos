@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { loginAsAdmin } = require('../helpers');
+const { loginAsAdmin, createTestApp } = require('../helpers');
 
 test.describe('Application Creation', () => {
   test.beforeEach(async ({ page }) => {
@@ -111,6 +111,10 @@ services:
   });
 
   test('should prevent duplicate app names', async ({ page }) => {
+    // First create an app
+    await createTestApp(page, 'test-nginx', 'nginx:latest');
+    
+    // Now try to create another app with the same name
     await page.goto('/apps/create');
     
     // Try to create app with existing name
