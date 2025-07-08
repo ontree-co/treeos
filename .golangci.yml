@@ -1,102 +1,110 @@
+version: "2"
+run:
+  build-tags:
+    - integration
+  tests: true
 linters:
   enable:
     - gosec
-    - gosimple
     - unused
     - errcheck
     - revive
-    - gofmt
     - govet
     - staticcheck
     - ineffassign
     - misspell
-
-linters-settings:
-  gosec:
-    severity: medium
-    confidence: medium
-  revive:
-    severity: warning
-    enable-all-rules: false
+  settings:
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+    gosec:
+      severity: medium
+      confidence: medium
+    revive:
+      severity: warning
+      enable-all-rules: false
+      rules:
+        - name: blank-imports
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: dot-imports
+        - name: empty-block
+        - name: error-naming
+        - name: error-return
+        - name: error-strings
+        - name: errorf
+        - name: exported
+        - name: increment-decrement
+        - name: indent-error-flow
+        - name: package-comments
+        - name: range
+        - name: receiver-naming
+        - name: time-naming
+        - name: unexported-return
+        - name: var-declaration
+        - name: var-naming
+  exclusions:
+    generated: lax
     rules:
-      - name: blank-imports
-      - name: context-as-argument
-      - name: context-keys-type
-      - name: dot-imports
-      - name: empty-block
-      - name: error-naming
-      - name: error-return
-      - name: error-strings
-      - name: errorf
-      - name: exported
-      - name: increment-decrement
-      - name: indent-error-flow
-      - name: package-comments
-      - name: range
-      - name: receiver-naming
-      - name: time-naming
-      - name: unexported-return
-      - name: var-declaration
-      - name: var-naming
-  errcheck:
-    check-type-assertions: true
-    check-blank: true
-
-run:
-  timeout: 5m
-  tests: true
-  build-tags:
-    - integration
-
+      - linters:
+          - errcheck
+          - gosec
+        path: _test\.go
+      - linters:
+          - govet
+        text: 'shadow: declaration of "err" shadows declaration'
+      - linters:
+          - govet
+        path: main\.go
+        text: exitAfterDefer
+      - linters:
+          - gosec
+        path: internal/docker/apps\.go
+        text: G304
+      - linters:
+          - gosec
+        path: internal/server/handlers\.go
+        text: G304
+      - linters:
+          - gosec
+        path: cmd/ontree-server/main\.go
+        text: G302
+      - linters:
+          - gosec
+        path: cmd/ontree-server/main\.go
+        text: G204
+      - linters:
+          - typecheck
+        path: internal/migrations/migrations\.go
+        text: 'pattern .*: no matching files found'
+      - linters:
+          - staticcheck
+        text: 'ST1005: error strings should not be capitalized'
+    paths:
+      - vendor
+      - third_party
+      - testdata
+      - examples
+      - node_modules
+      - apps/postgres-test/data
+      - third_party$
+      - builtin$
+      - examples$
 issues:
-  exclude-use-default: false
-  exclude-case-sensitive: false
   max-issues-per-linter: 0
   max-same-issues: 0
-  exclude-dirs:
-    - vendor
-    - third_party
-    - testdata
-    - examples
-    - node_modules
-    - apps/postgres-test/data
-  exclude-rules:
-    # Exclude some linters from running on tests files
-    - path: _test\.go
-      linters:
-        - gosec
-        - errcheck
-    # Exclude shadow checking in specific cases
-    - text: "shadow: declaration of \"err\" shadows declaration"
-      linters:
-        - govet
-    # Allow defer in main functions
-    - path: main\.go
-      text: "exitAfterDefer"
-      linters:
-        - govet
-    # Ignore embed issues in migrations
-    - path: internal/migrations/migrations\.go
-      text: "pattern .*: no matching files found"
-      linters:
-        - typecheck
-    # Allow reading files from trusted paths in docker package
-    - path: internal/docker/apps\.go
-      text: "G304"
-      linters:
-        - gosec
-    # Allow reading compose files from app directories
-    - path: internal/server/handlers\.go
-      text: "G304"
-      linters:
-        - gosec
-    # Allow necessary directory permissions for group access
-    - path: cmd/ontree-server/main\.go
-      text: "G302"
-      linters:
-        - gosec
-    # Allow usermod command for adding users to groups
-    - path: cmd/ontree-server/main\.go
-      text: "G204"
-      linters:
-        - gosec
+formatters:
+  enable:
+    - gofmt
+  exclusions:
+    generated: lax
+    paths:
+      - vendor
+      - third_party
+      - testdata
+      - examples
+      - node_modules
+      - apps/postgres-test/data
+      - third_party$
+      - builtin$
+      - examples$
