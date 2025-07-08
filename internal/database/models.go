@@ -94,3 +94,15 @@ const (
 	// LogLevelError indicates an error log level.
 	LogLevelError = "error"
 )
+
+// DeployedApp represents a deployed application managed by onTree.
+type DeployedApp struct {
+	ID            string
+	Name          string
+	DockerCompose string
+	Subdomain     string
+	HostPort      int  // The port exposed ON THE HOST (e.g., 8080)
+	IsExposed     bool
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
