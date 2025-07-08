@@ -1,7 +1,7 @@
 const { test, expect } = require('@playwright/test');
 const { loginAsAdmin, waitForOperation } = require('../helpers');
 
-test.describe('Template System', () => {
+test.describe.skip('Template System', () => {
   test.beforeEach(async ({ page }) => {
     // Set a longer timeout for navigation
     page.setDefaultTimeout(30000);

@@ -22,8 +22,10 @@ async function loginAsAdmin(page, username = 'admin', password = 'admin1234') {
   await page.fill('input[name="password"]', password);
   await page.click('button[type="submit"]');
   
-  // Wait for redirect to dashboard
-  await page.waitForURL('/');
+  // Wait for redirect to dashboard - allow for login=success query parameter
+  await page.waitForURL(url => {
+    return url.pathname === '/' || url.includes('/?login=success');
+  }, { timeout: 10000 });
 }
 
 /**

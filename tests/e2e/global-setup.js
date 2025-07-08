@@ -42,6 +42,26 @@ module.exports = async () => {
     console.error('Server not responding on port 8085');
   }
   
+  // Check if setup is needed and complete it
+  try {
+    const response = execSync('curl -s -o /dev/null -w "%{http_code}" http://localhost:8085/setup', { encoding: 'utf8' }).trim();
+    if (response === '200') {
+      console.log('Setup page is accessible, completing initial setup...');
+      
+      // Complete setup using curl
+      const setupData = 'username=admin&password=admin1234&password2=admin1234&node_name=Test+OnTree+Node&node_description=This+is+a+test+node+for+e2e+testing';
+      execSync(`curl -s -X POST -d '${setupData}' -H 'Content-Type: application/x-www-form-urlencoded' http://localhost:8085/setup`, { stdio: 'ignore' });
+      console.log('Initial setup completed');
+      
+      // Give it a moment to process
+      execSync('sleep 1');
+    } else {
+      console.log('Setup already completed');
+    }
+  } catch (err) {
+    console.error('Error checking/completing setup:', err.message);
+  }
+  
   // Clean up any existing test apps
   const appsPath = path.join(__dirname, '..', '..', 'apps');
   const testApps = ['test-nginx', 'test-postgres', 'template-test'];

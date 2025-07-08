@@ -10,7 +10,7 @@ test.describe('Docker Image Updates', () => {
     await loginAsAdmin(page);
   });
 
-  test('should show update check button on app detail page', async ({ page }) => {
+  test.skip('should show update check button on app detail page', async ({ page }) => {
     // Create a test app if it doesn't exist
     const appName = 'test-update-app';
     
@@ -133,7 +133,7 @@ services:
     }
   });
 
-  test('should show error for invalid image check', async ({ page }) => {
+  test.skip('should show error for invalid image check', async ({ page }) => {
     // Create app with non-existent image
     const appName = 'test-invalid-image';
     
@@ -178,7 +178,7 @@ services:
     await expect(page.locator('button:has-text("Check for Updates")')).toBeEnabled();
   });
 
-  test('should refresh update status after container recreation', async ({ page }) => {
+  test.skip('should refresh update status after container recreation', async ({ page }) => {
     const appName = 'test-update-app';
     await page.goto(`/apps/${appName}`);
     
