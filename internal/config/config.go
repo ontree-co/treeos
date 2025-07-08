@@ -25,6 +25,10 @@ type Config struct {
 	// PostHog analytics configuration
 	PostHogAPIKey string `toml:"posthog_api_key"`
 	PostHogHost   string `toml:"posthog_host"`
+
+	// Caddy integration configuration
+	PublicBaseDomain    string `toml:"public_base_domain"`
+	TailscaleBaseDomain string `toml:"tailscale_base_domain"`
 }
 
 // defaultConfig returns the default configuration based on the platform
@@ -80,6 +84,14 @@ func Load() (*Config, error) {
 
 	if postHogHost := os.Getenv("POSTHOG_HOST"); postHogHost != "" {
 		config.PostHogHost = postHogHost
+	}
+
+	if publicBaseDomain := os.Getenv("PUBLIC_BASE_DOMAIN"); publicBaseDomain != "" {
+		config.PublicBaseDomain = publicBaseDomain
+	}
+
+	if tailscaleBaseDomain := os.Getenv("TAILSCALE_BASE_DOMAIN"); tailscaleBaseDomain != "" {
+		config.TailscaleBaseDomain = tailscaleBaseDomain
 	}
 
 	// Ensure AppsDir is absolute

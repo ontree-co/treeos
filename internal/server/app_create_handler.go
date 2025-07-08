@@ -9,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
+	"time"
 )
 
 // handleAppCreate handles the application creation page
@@ -55,7 +57,7 @@ func (s *Server) handleAppCreate(w http.ResponseWriter, r *http.Request) {
 
 		if len(errors) == 0 && s.dockerClient != nil {
 			// Create the application
-			err := createAppScaffold(s.config.AppsDir, appName, composeContent)
+			err := s.createAppScaffold(appName, composeContent)
 			if err != nil {
 				errors = append(errors, fmt.Sprintf("Failed to create application: %v", err))
 			} else {
@@ -172,8 +174,8 @@ func validateComposeContent(content string, appName string) error {
 }
 
 // createAppScaffold creates the directory structure and docker-compose.yml for a new app
-func createAppScaffold(appsDir, appName, composeContent string) error {
-	appPath := filepath.Join(appsDir, appName)
+func (s *Server) createAppScaffold(appName, composeContent string) error {
+	appPath := filepath.Join(s.config.AppsDir, appName)
 
 	// Create app directory
 	err := os.MkdirAll(appPath, 0750)
@@ -203,5 +205,83 @@ func createAppScaffold(appsDir, appName, composeContent string) error {
 		return fmt.Errorf("failed to write docker-compose.yml: %v", err)
 	}
 
+	// Extract host port from compose content
+	hostPort, err := extractHostPort(composeContent)
+	if err != nil {
+		log.Printf("Warning: Could not extract host port from docker-compose: %v", err)
+		// Continue anyway - port will be 0
+	}
+
+	// Save to database
+	if s.db != nil {
+		// Generate a unique ID for the app
+		appID := fmt.Sprintf("app-%s-%d", appName, time.Now().Unix())
+		
+		_, err = s.db.Exec(`
+			INSERT INTO deployed_apps (id, name, docker_compose, subdomain, host_port, is_exposed)
+			VALUES (?, ?, ?, ?, ?, ?)
+		`, appID, appName, composeContent, appName, hostPort, 0)
+		
+		if err != nil {
+			log.Printf("Warning: Failed to save app to database: %v", err)
+			// Continue anyway - app is created on disk
+		}
+	}
+
 	return nil
+}
+
+// extractHostPort extracts the host port from a docker-compose.yml content
+func extractHostPort(composeContent string) (int, error) {
+	var data map[string]interface{}
+	err := yaml.Unmarshal([]byte(composeContent), &data)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse YAML: %w", err)
+	}
+
+	services, ok := data["services"].(map[string]interface{})
+	if !ok {
+		return 0, fmt.Errorf("no services found in docker-compose")
+	}
+
+	// Get the first service
+	for _, service := range services {
+		serviceMap, ok := service.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		// Check for ports
+		ports, ok := serviceMap["ports"]
+		if !ok {
+			continue
+		}
+
+		// ports can be a slice of strings
+		portsSlice, ok := ports.([]interface{})
+		if !ok {
+			continue
+		}
+
+		// Parse the first port mapping
+		if len(portsSlice) > 0 {
+			portStr, ok := portsSlice[0].(string)
+			if !ok {
+				continue
+			}
+
+			// Extract host port from format "8080:3000"
+			parts := strings.Split(portStr, ":")
+			if len(parts) >= 1 {
+				// Parse the host port
+				var hostPort int
+				_, err := fmt.Sscanf(parts[0], "%d", &hostPort)
+				if err == nil && hostPort > 0 {
+					return hostPort, nil
+				}
+			}
+		}
+	}
+
+	return 0, fmt.Errorf("no host port found in docker-compose")
 }

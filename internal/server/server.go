@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gorilla/sessions"
+	"ontree-node/internal/caddy"
 	"ontree-node/internal/config"
 	"ontree-node/internal/database"
 	"ontree-node/internal/docker"
@@ -33,6 +34,7 @@ type Server struct {
 	templateSvc  *templates.Service
 	versionInfo  version.Info
 	caddyAvailable bool
+	caddyClient    *caddy.Client
 }
 
 // New creates a new server instance
@@ -86,6 +88,9 @@ func New(cfg *config.Config, versionInfo version.Info) (*Server, error) {
 	} else {
 		s.dockerSvc = dockerSvc
 	}
+
+	// Initialize Caddy client
+	s.caddyClient = caddy.NewClient()
 
 	// Check Caddy availability
 	s.checkCaddyHealth()
@@ -386,6 +391,68 @@ func (s *Server) baseTemplateData(user *database.User) map[string]interface{} {
 	return data
 }
 
+// checkCaddyHealth checks if Caddy is available and running
+func (s *Server) checkCaddyHealth() {
+	if s.caddyClient == nil {
+		s.caddyAvailable = false
+		return
+	}
+
+	err := s.caddyClient.HealthCheck()
+	if err != nil {
+		log.Printf("Cannot connect to Caddy Admin API at localhost:2019. Please ensure Caddy is installed and running. Error: %v", err)
+		s.caddyAvailable = false
+		return
+	}
+
+	log.Printf("Successfully connected to Caddy Admin API")
+	s.caddyAvailable = true
+
+	// Sync exposed apps if database is available
+	if s.db != nil && s.caddyAvailable {
+		s.syncExposedApps()
+	}
+}
+
+// syncExposedApps synchronizes exposed apps with Caddy on startup
+func (s *Server) syncExposedApps() {
+	// Query all exposed apps from the database
+	rows, err := s.db.Query(`
+		SELECT id, name, subdomain, host_port 
+		FROM deployed_apps 
+		WHERE is_exposed = 1
+	`)
+	if err != nil {
+		log.Printf("Failed to query exposed apps: %v", err)
+		return
+	}
+	defer rows.Close()
+
+	// Get base domains from config
+	publicDomain := s.config.PublicBaseDomain
+	tailscaleDomain := s.config.TailscaleBaseDomain
+
+	for rows.Next() {
+		var app database.DeployedApp
+		err := rows.Scan(&app.ID, &app.Name, &app.Subdomain, &app.HostPort)
+		if err != nil {
+			log.Printf("Failed to scan app row: %v", err)
+			continue
+		}
+
+		// Create route config
+		routeConfig := caddy.CreateRouteConfig(app.ID, app.Subdomain, app.HostPort, publicDomain, tailscaleDomain)
+
+		// Add route to Caddy
+		err = s.caddyClient.AddOrUpdateRoute(routeConfig)
+		if err != nil {
+			log.Printf("Failed to sync app %s to Caddy: %v", app.Name, err)
+		} else {
+			log.Printf("Successfully synced app %s to Caddy", app.Name)
+		}
+	}
+}
+
 // routeApps routes all /apps/* requests to the appropriate handler
 func (s *Server) routeApps(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
@@ -407,6 +474,10 @@ func (s *Server) routeApps(w http.ResponseWriter, r *http.Request) {
 		s.handleAppUpdate(w, r)
 	} else if strings.HasSuffix(path, "/controls") {
 		s.handleAppControls(w, r)
+	} else if strings.HasSuffix(path, "/expose") {
+		s.handleAppExpose(w, r)
+	} else if strings.HasSuffix(path, "/unexpose") {
+		s.handleAppUnexpose(w, r)
 	} else {
 		// Default to app detail page
 		s.handleAppDetail(w, r)
@@ -447,28 +518,3 @@ func (s *Server) handleVersion(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// checkCaddyHealth performs a health check against Caddy's admin API
-func (s *Server) checkCaddyHealth() {
-	// Create HTTP client with timeout
-	client := &http.Client{
-		Timeout: 5 * time.Second,
-	}
-
-	// Make GET request to Caddy admin API
-	resp, err := client.Get("http://localhost:2019/")
-	if err != nil {
-		log.Printf("Cannot connect to Caddy Admin API at localhost:2019. Please ensure Caddy is installed and running.")
-		s.caddyAvailable = false
-		return
-	}
-	defer resp.Body.Close()
-
-	// Check for 200 OK status
-	if resp.StatusCode == http.StatusOK {
-		s.caddyAvailable = true
-		log.Printf("Successfully connected to Caddy Admin API")
-	} else {
-		log.Printf("Cannot connect to Caddy Admin API at localhost:2019. Please ensure Caddy is installed and running. Status: %d", resp.StatusCode)
-		s.caddyAvailable = false
-	}
-}

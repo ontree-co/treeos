@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"ontree-node/internal/caddy"
 	"ontree-node/internal/database"
 	"ontree-node/internal/system"
 	"os"
@@ -527,6 +528,34 @@ func (s *Server) handleAppStop(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		log.Printf("Successfully stopped app: %s", appName)
+		
+		// Also remove from Caddy if it was exposed
+		if s.db != nil && s.caddyClient != nil {
+			var app database.DeployedApp
+			err := s.db.QueryRow(`
+				SELECT id, is_exposed 
+				FROM deployed_apps 
+				WHERE name = ?
+			`, appName).Scan(&app.ID, &app.IsExposed)
+			
+			if err == nil && app.IsExposed {
+				routeID := fmt.Sprintf("route-for-app-%s", app.ID)
+				if err := s.caddyClient.DeleteRoute(routeID); err != nil {
+					log.Printf("Failed to remove app %s from Caddy: %v", appName, err)
+				}
+				
+				// Update database
+				_, err = s.db.Exec(`
+					UPDATE deployed_apps 
+					SET is_exposed = 0, updated_at = CURRENT_TIMESTAMP 
+					WHERE id = ?
+				`, app.ID)
+				if err != nil {
+					log.Printf("Failed to update app in database: %v", err)
+				}
+			}
+		}
+		
 		session, err := s.sessionStore.Get(r, "ontree-session")
 		if err != nil {
 			log.Printf("Failed to get session: %v", err)
@@ -928,4 +957,222 @@ func (s *Server) handleAppControls(w http.ResponseWriter, r *http.Request) {
 	</script>`); err != nil {
 		log.Printf("Error writing response: %v", err)
 	}
+}
+
+// handleAppExpose handles exposing an application to the internet via Caddy
+func (s *Server) handleAppExpose(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Extract app name from URL path
+	path := r.URL.Path
+	parts := strings.Split(path, "/")
+	if len(parts) < 4 || parts[1] != "apps" || parts[3] != "expose" {
+		http.NotFound(w, r)
+		return
+	}
+
+	appName := parts[2]
+
+	// Check if Caddy is available
+	if !s.caddyAvailable || s.caddyClient == nil {
+		session, err := s.sessionStore.Get(r, "ontree-session")
+		if err != nil {
+			log.Printf("Failed to get session: %v", err)
+		}
+		session.AddFlash("Cannot expose app: Caddy is not available. Please ensure Caddy is installed and running.", "error")
+		if err := session.Save(r, w); err != nil {
+			log.Printf("Failed to save session: %v", err)
+		}
+		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
+		return
+	}
+
+	// Get app details from database
+	var app database.DeployedApp
+	err := s.db.QueryRow(`
+		SELECT id, name, subdomain, host_port, is_exposed 
+		FROM deployed_apps 
+		WHERE name = ?
+	`, appName).Scan(&app.ID, &app.Name, &app.Subdomain, &app.HostPort, &app.IsExposed)
+	
+	if err != nil {
+		log.Printf("Failed to get app from database: %v", err)
+		session, err := s.sessionStore.Get(r, "ontree-session")
+		if err != nil {
+			log.Printf("Failed to get session: %v", err)
+		}
+		session.AddFlash("Failed to expose app: app not found in database", "error")
+		if err := session.Save(r, w); err != nil {
+			log.Printf("Failed to save session: %v", err)
+		}
+		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
+		return
+	}
+
+	// Check if already exposed
+	if app.IsExposed {
+		session, err := s.sessionStore.Get(r, "ontree-session")
+		if err != nil {
+			log.Printf("Failed to get session: %v", err)
+		}
+		session.AddFlash("App is already exposed", "info")
+		if err := session.Save(r, w); err != nil {
+			log.Printf("Failed to save session: %v", err)
+		}
+		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
+		return
+	}
+
+	// Create route config
+	routeConfig := caddy.CreateRouteConfig(app.ID, app.Subdomain, app.HostPort, s.config.PublicBaseDomain, s.config.TailscaleBaseDomain)
+
+	// Add route to Caddy
+	err = s.caddyClient.AddOrUpdateRoute(routeConfig)
+	if err != nil {
+		log.Printf("Failed to add route to Caddy: %v", err)
+		session, err := s.sessionStore.Get(r, "ontree-session")
+		if err != nil {
+			log.Printf("Failed to get session: %v", err)
+		}
+		session.AddFlash(fmt.Sprintf("Failed to expose app: %v", err), "error")
+		if err := session.Save(r, w); err != nil {
+			log.Printf("Failed to save session: %v", err)
+		}
+		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
+		return
+	}
+
+	// Update database
+	_, err = s.db.Exec(`
+		UPDATE deployed_apps 
+		SET is_exposed = 1, updated_at = CURRENT_TIMESTAMP 
+		WHERE id = ?
+	`, app.ID)
+	
+	if err != nil {
+		log.Printf("Failed to update app in database: %v", err)
+		// Try to rollback Caddy change
+		s.caddyClient.DeleteRoute(fmt.Sprintf("route-for-app-%s", app.ID))
+	}
+
+	log.Printf("Successfully exposed app %s", appName)
+	session, err := s.sessionStore.Get(r, "ontree-session")
+	if err != nil {
+		log.Printf("Failed to get session: %v", err)
+	}
+	
+	domains := []string{}
+	if s.config.PublicBaseDomain != "" {
+		domains = append(domains, fmt.Sprintf("%s.%s", app.Subdomain, s.config.PublicBaseDomain))
+	}
+	if s.config.TailscaleBaseDomain != "" {
+		domains = append(domains, fmt.Sprintf("%s.%s", app.Subdomain, s.config.TailscaleBaseDomain))
+	}
+	
+	session.AddFlash(fmt.Sprintf("App exposed successfully at: %s", strings.Join(domains, ", ")), "success")
+	if err := session.Save(r, w); err != nil {
+		log.Printf("Failed to save session: %v", err)
+	}
+
+	http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
+}
+
+// handleAppUnexpose handles removing an application from Caddy
+func (s *Server) handleAppUnexpose(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Extract app name from URL path
+	path := r.URL.Path
+	parts := strings.Split(path, "/")
+	if len(parts) < 4 || parts[1] != "apps" || parts[3] != "unexpose" {
+		http.NotFound(w, r)
+		return
+	}
+
+	appName := parts[2]
+
+	// Get app details from database
+	var app database.DeployedApp
+	err := s.db.QueryRow(`
+		SELECT id, name, is_exposed 
+		FROM deployed_apps 
+		WHERE name = ?
+	`, appName).Scan(&app.ID, &app.Name, &app.IsExposed)
+	
+	if err != nil {
+		log.Printf("Failed to get app from database: %v", err)
+		session, err := s.sessionStore.Get(r, "ontree-session")
+		if err != nil {
+			log.Printf("Failed to get session: %v", err)
+		}
+		session.AddFlash("Failed to unexpose app: app not found in database", "error")
+		if err := session.Save(r, w); err != nil {
+			log.Printf("Failed to save session: %v", err)
+		}
+		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
+		return
+	}
+
+	// Check if not exposed
+	if !app.IsExposed {
+		session, err := s.sessionStore.Get(r, "ontree-session")
+		if err != nil {
+			log.Printf("Failed to get session: %v", err)
+		}
+		session.AddFlash("App is not exposed", "info")
+		if err := session.Save(r, w); err != nil {
+			log.Printf("Failed to save session: %v", err)
+		}
+		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
+		return
+	}
+
+	// Delete route from Caddy if client is available
+	if s.caddyClient != nil {
+		routeID := fmt.Sprintf("route-for-app-%s", app.ID)
+		err = s.caddyClient.DeleteRoute(routeID)
+		if err != nil {
+			log.Printf("Failed to delete route from Caddy: %v", err)
+			// Continue anyway - we'll update the database
+		}
+	}
+
+	// Update database
+	_, err = s.db.Exec(`
+		UPDATE deployed_apps 
+		SET is_exposed = 0, updated_at = CURRENT_TIMESTAMP 
+		WHERE id = ?
+	`, app.ID)
+	
+	if err != nil {
+		log.Printf("Failed to update app in database: %v", err)
+		session, err := s.sessionStore.Get(r, "ontree-session")
+		if err != nil {
+			log.Printf("Failed to get session: %v", err)
+		}
+		session.AddFlash("Failed to unexpose app: database error", "error")
+		if err := session.Save(r, w); err != nil {
+			log.Printf("Failed to save session: %v", err)
+		}
+		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
+		return
+	}
+
+	log.Printf("Successfully unexposed app %s", appName)
+	session, err := s.sessionStore.Get(r, "ontree-session")
+	if err != nil {
+		log.Printf("Failed to get session: %v", err)
+	}
+	session.AddFlash("App unexposed successfully", "success")
+	if err := session.Save(r, w); err != nil {
+		log.Printf("Failed to save session: %v", err)
+	}
+
+	http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
 }
