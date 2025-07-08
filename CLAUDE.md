@@ -6,6 +6,19 @@ OnTree is a Docker container management application with a web interface for man
 
 ## Recent Features
 
+### CI Test Fixes (2025-07-08)
+
+Fixed CI test failures for v0.1.1 release:
+
+1. **Template Nil Pointer Errors**: Fixed nil pointer dereference errors in dashboard templates when accessing `.Config.Container.Image` and `.Config.Ports`. Added proper nil checks using Go template's `and` operator.
+
+2. **Port Configuration Mismatch**: Fixed port mismatch in GitHub Actions workflow where the server was started on port 8085 but tests expected port 3001. Updated workflow to use port 3001 consistently.
+
+The fixes ensure that:
+- Dashboard templates handle apps without config data gracefully
+- E2E tests run successfully in CI environment
+- No template rendering errors occur when displaying app information
+
 ### Improved Container Operation UI (2025-07-07)
 Enhanced the container operation experience with better visual feedback:
 

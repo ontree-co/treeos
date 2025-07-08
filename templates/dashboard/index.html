@@ -67,7 +67,7 @@
                                 <tr>
                                     <td>
                                         <strong>{{.Name}}</strong>
-                                        {{if .Config.Container.Image}}
+                                        {{if and .Config .Config.Container .Config.Container.Image}}
                                             <br><small class="text-muted">{{.Config.Container.Image}}</small>
                                         {{end}}
                                     </td>
@@ -92,7 +92,7 @@
                                         {{end}}
                                     </td>
                                     <td>
-                                        {{if .Config.Ports}}
+                                        {{if and .Config .Config.Ports}}
                                             {{range $host, $container := .Config.Ports}}
                                                 <span class="badge bg-light text-dark">{{$host}}:{{$container}}</span>
                                             {{end}}

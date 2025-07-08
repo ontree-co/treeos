@@ -298,7 +298,7 @@
                     <tr>
                         <th>Image:</th>
                         <td>
-                            <code>{{.App.Config.Container.Image}}</code>
+                            {{if and .App.Config .App.Config.Container .App.Config.Container.Image}}<code>{{.App.Config.Container.Image}}</code>{{else}}<span class="text-muted">N/A</span>{{end}}
                             <button type="button" 
                                     class="btn btn-sm btn-outline-primary ms-2"
                                     hx-get="/apps/{{.App.Name}}/check-update"
@@ -327,7 +327,7 @@
                 <h5 class="mb-0">Network & Ports</h5>
             </div>
             <div class="card-body">
-                {{if .App.Config.Ports}}
+                {{if and .App.Config .App.Config.Ports}}
                     <table class="table table-sm">
                         <thead>
                             <tr>

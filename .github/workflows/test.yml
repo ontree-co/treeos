@@ -140,14 +140,14 @@ jobs:
     - name: Start application
       run: |
         # Start the application with test configuration
-        LISTEN_ADDR=:8085 ./ontree-server &
+        LISTEN_ADDR=:3001 ./ontree-server &
         APP_PID=$!
         echo "APP_PID=$APP_PID" >> $GITHUB_ENV
         
         # Wait for the application to be ready
         echo "Waiting for application to start..."
         for i in {1..30}; do
-          if curl -f http://localhost:8085/ 2>/dev/null; then
+          if curl -f http://localhost:3001/ 2>/dev/null; then
             echo "Application is ready!"
             break
           fi
