@@ -2,6 +2,7 @@ package server
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"log"
@@ -16,6 +17,7 @@ import (
 	"ontree-node/internal/docker"
 	"ontree-node/internal/embeds"
 	"ontree-node/internal/templates"
+	"ontree-node/internal/version"
 	"ontree-node/internal/worker"
 )
 
@@ -29,10 +31,11 @@ type Server struct {
 	db           *sql.DB
 	worker       *worker.Worker
 	templateSvc  *templates.Service
+	versionInfo  version.Info
 }
 
 // New creates a new server instance
-func New(cfg *config.Config) (*Server, error) {
+func New(cfg *config.Config, versionInfo version.Info) (*Server, error) {
 	// Create session store with secure key
 	// In production, this should be loaded from environment or config
 	sessionKey := []byte("your-32-byte-session-key-here!!") // TODO: Load from config
@@ -41,6 +44,7 @@ func New(cfg *config.Config) (*Server, error) {
 		config:       cfg,
 		templates:    make(map[string]*template.Template),
 		sessionStore: sessions.NewCookieStore(sessionKey),
+		versionInfo:  versionInfo,
 	}
 
 	// Configure session store
@@ -266,6 +270,9 @@ func (s *Server) Start() error {
 	// API routes
 	mux.HandleFunc("/api/system-vitals", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleSystemVitals))))
 	mux.HandleFunc("/api/docker/operations/", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeDockerOperations))))
+	
+	// Version endpoint (no auth required for automation/monitoring)
+	mux.HandleFunc("/version", s.TracingMiddleware(s.handleVersion))
 
 	// Pattern library routes (no auth required - public access)
 	mux.HandleFunc("/patterns", s.TracingMiddleware(s.routePatterns))
@@ -362,9 +369,9 @@ func (s *Server) baseTemplateData(user *database.User) map[string]interface{} {
 		}
 	}
 
-	// Version info (placeholder for now)
-	data["Version"] = "1.0.0"
-	data["VersionAge"] = "latest"
+	// Version info
+	data["Version"] = s.versionInfo.Version
+	data["VersionAge"] = version.GetVersionAge()
 
 	// Messages field is required by base template
 	data["Messages"] = nil
@@ -409,5 +416,26 @@ func (s *Server) routeDockerOperations(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// Default to operation status
 		s.handleDockerOperationStatus(w, r)
+	}
+}
+
+// handleVersion returns version information as JSON
+func (s *Server) handleVersion(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	
+	versionData := map[string]interface{}{
+		"version":   s.versionInfo.Version,
+		"commit":    s.versionInfo.Commit,
+		"buildDate": s.versionInfo.BuildDate,
+		"goVersion": s.versionInfo.GoVersion,
+		"compiler":  s.versionInfo.Compiler,
+		"platform":  s.versionInfo.Platform,
+	}
+	
+	if err := json.NewEncoder(w).Encode(versionData); err != nil {
+		log.Printf("Error encoding version response: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
 	}
 }

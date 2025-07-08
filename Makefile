@@ -15,10 +15,16 @@ GOLINT=golangci-lint
 GOOS ?= $(shell go env GOOS)
 GOARCH ?= $(shell go env GOARCH)
 
+# Get the module path from go.mod
+GOMODULE = $(shell go list -m)
+
 # Build version information
-VERSION ?= $(shell git describe --tags --always --dirty)
-BUILD_TIME = $(shell date -u '+%Y-%m-%d_%H:%M:%S')
-LDFLAGS = -X main.version=$(VERSION) -X main.buildTime=$(BUILD_TIME)
+GIT_TAG ?= $(shell git describe --tags --always --dirty)
+GIT_COMMIT ?= $(shell git rev-parse HEAD)
+BUILD_DATE ?= $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
+
+# ldflags to inject version info
+LDFLAGS = -ldflags="-X '$(GOMODULE)/internal/version.Version=$(GIT_TAG)' -X '$(GOMODULE)/internal/version.Commit=$(GIT_COMMIT)' -X '$(GOMODULE)/internal/version.BuildDate=$(BUILD_DATE)'"
 
 # Default target
 .PHONY: all
@@ -29,7 +35,7 @@ all: build
 build: embed-assets
 	@echo "Building $(BINARY_NAME) for $(GOOS)/$(GOARCH)..."
 	@mkdir -p $(BUILD_DIR)
-	$(GOBUILD) -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME) $(MAIN_PATH)
+	$(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) $(MAIN_PATH)
 	@echo "Build complete: $(BUILD_DIR)/$(BINARY_NAME)"
 
 # Prepare embedded assets
@@ -47,10 +53,10 @@ build-all: embed-assets
 	@mkdir -p $(BUILD_DIR)
 	
 	@echo "Building for darwin/arm64 (Apple Silicon)..."
-	GOOS=darwin GOARCH=arm64 $(GOBUILD) -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 $(MAIN_PATH)
+	GOOS=darwin GOARCH=arm64 $(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 $(MAIN_PATH)
 	
 	@echo "Building for linux/amd64..."
-	GOOS=linux GOARCH=amd64 $(GOBUILD) -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-linux-amd64 $(MAIN_PATH)
+	GOOS=linux GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-linux-amd64 $(MAIN_PATH)
 	
 	@echo "Cross-platform builds complete"
 

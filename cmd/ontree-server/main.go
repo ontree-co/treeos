@@ -17,6 +17,7 @@ import (
 	"ontree-node/internal/database"
 	"ontree-node/internal/server"
 	"ontree-node/internal/telemetry"
+	"ontree-node/internal/version"
 )
 
 func main() {
@@ -60,8 +61,11 @@ func main() {
 		}
 	}()
 
+	// Get version information
+	versionInfo := version.Get()
+
 	// Create and start server
-	srv, err := server.New(cfg)
+	srv, err := server.New(cfg, versionInfo)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to create server: %v\n", err)
 		os.Exit(1)
