@@ -119,6 +119,24 @@ jobs:
         cp build/ontree-server ./ontree-server
         chmod +x ./ontree-server
 
+    - name: Run database migrations
+      run: |
+        # Install goose for migrations
+        go install github.com/pressly/goose/v3/cmd/goose@latest
+        
+        # Verify migrations directory exists
+        if [ ! -d "migrations" ]; then
+          echo "Error: migrations directory not found"
+          exit 1
+        fi
+        
+        # Run migrations
+        goose -dir migrations sqlite3 ./ontree.db up
+        
+        # Verify migration status
+        goose -dir migrations sqlite3 ./ontree.db status
+        echo "Database migrations completed successfully"
+
     - name: Start application
       run: |
         # Start the application with test configuration
