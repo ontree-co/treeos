@@ -398,6 +398,17 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Failed to check for active operations: %v", err)
 	}
 
+	// Fetch DeployedApp details from database
+	var deployedApp database.DeployedApp
+	err = s.db.QueryRow(`
+		SELECT id, name, subdomain, host_port, is_exposed 
+		FROM deployed_apps 
+		WHERE name = ?
+	`, appName).Scan(&deployedApp.ID, &deployedApp.Name, &deployedApp.Subdomain, &deployedApp.HostPort, &deployedApp.IsExposed)
+	
+	// It's okay if the app is not in the database yet
+	hasDeployedApp := err == nil
+
 	// Prepare template data
 	data := s.baseTemplateData(user)
 	data["App"] = app
@@ -406,6 +417,26 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 	data["Messages"] = messages
 	data["CSRFToken"] = ""
 	data["ActiveOperationID"] = activeOperationID
+	
+	// Add deployed app information if available
+	if hasDeployedApp {
+		data["DeployedApp"] = deployedApp
+		data["HasDeployedApp"] = true
+		
+		// Construct full URLs for display
+		var urls []string
+		if deployedApp.IsExposed && deployedApp.Subdomain != "" {
+			if s.config.PublicBaseDomain != "" {
+				urls = append(urls, fmt.Sprintf("https://%s.%s", deployedApp.Subdomain, s.config.PublicBaseDomain))
+			}
+			if s.config.TailscaleBaseDomain != "" {
+				urls = append(urls, fmt.Sprintf("https://%s.%s", deployedApp.Subdomain, s.config.TailscaleBaseDomain))
+			}
+		}
+		data["ExposedURLs"] = urls
+	} else {
+		data["HasDeployedApp"] = false
+	}
 
 	// Render template
 	tmpl, ok := s.templates["app_detail"]
@@ -1175,4 +1206,161 @@ func (s *Server) handleAppUnexpose(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
+}
+
+// handleAppStatusCheck handles checking the status of an exposed application's subdomains
+func (s *Server) handleAppStatusCheck(w http.ResponseWriter, r *http.Request) {
+	// Extract app name from URL path
+	path := r.URL.Path
+	parts := strings.Split(path, "/")
+	if len(parts) < 5 || parts[1] != "api" || parts[2] != "apps" || parts[4] != "status" {
+		http.NotFound(w, r)
+		return
+	}
+
+	appName := parts[3]
+	
+	// Get app details from database
+	var app database.DeployedApp
+	err := s.db.QueryRow(`
+		SELECT id, name, subdomain, host_port, is_exposed 
+		FROM deployed_apps 
+		WHERE name = ?
+	`, appName).Scan(&app.ID, &app.Name, &app.Subdomain, &app.HostPort, &app.IsExposed)
+	
+	if err != nil {
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte(`<div class="alert alert-warning">App not found in database</div>`))
+		return
+	}
+	
+	if !app.IsExposed || app.Subdomain == "" {
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte(`<div class="alert alert-info">App is not exposed</div>`))
+		return
+	}
+	
+	// Prepare status results
+	type StatusResult struct {
+		URL        string
+		Success    bool
+		StatusCode int
+		Error      string
+	}
+	
+	var results []StatusResult
+	
+	// Check public domain if configured
+	if s.config.PublicBaseDomain != "" {
+		url := fmt.Sprintf("https://%s.%s", app.Subdomain, s.config.PublicBaseDomain)
+		result := StatusResult{URL: url}
+		
+		// Create HTTP client with timeout
+		client := &http.Client{
+			Timeout: 10 * time.Second,
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				// Allow up to 5 redirects
+				if len(via) >= 5 {
+					return fmt.Errorf("too many redirects")
+				}
+				return nil
+			},
+		}
+		
+		resp, err := client.Get(url)
+		if err != nil {
+			result.Error = err.Error()
+		} else {
+			result.Success = true
+			result.StatusCode = resp.StatusCode
+			resp.Body.Close()
+		}
+		
+		results = append(results, result)
+	}
+	
+	// Check Tailscale domain if configured
+	if s.config.TailscaleBaseDomain != "" {
+		url := fmt.Sprintf("https://%s.%s", app.Subdomain, s.config.TailscaleBaseDomain)
+		result := StatusResult{URL: url}
+		
+		// Create HTTP client with timeout
+		client := &http.Client{
+			Timeout: 10 * time.Second,
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				// Allow up to 5 redirects
+				if len(via) >= 5 {
+					return fmt.Errorf("too many redirects")
+				}
+				return nil
+			},
+		}
+		
+		resp, err := client.Get(url)
+		if err != nil {
+			result.Error = err.Error()
+		} else {
+			result.Success = true
+			result.StatusCode = resp.StatusCode
+			resp.Body.Close()
+		}
+		
+		results = append(results, result)
+	}
+	
+	// Generate HTML response
+	w.Header().Set("Content-Type", "text/html")
+	
+	var html strings.Builder
+	html.WriteString(`<div class="status-results">`)
+	
+	for _, result := range results {
+		if result.Success {
+			statusClass := "success"
+			statusText := "OK"
+			
+			if result.StatusCode >= 400 {
+				statusClass = "danger"
+				statusText = fmt.Sprintf("HTTP %d", result.StatusCode)
+			} else if result.StatusCode >= 300 {
+				statusClass = "warning"
+				statusText = fmt.Sprintf("HTTP %d (Redirect)", result.StatusCode)
+			}
+			
+			html.WriteString(fmt.Sprintf(`
+				<div class="alert alert-%s d-flex justify-content-between align-items-center">
+					<div>
+						<strong>%s</strong><br>
+						<small class="text-muted">Status: %s</small>
+					</div>
+					<span class="badge bg-%s">%s</span>
+				</div>
+			`, statusClass, result.URL, statusText, statusClass, statusText))
+		} else {
+			// Parse error for better display
+			errorMsg := result.Error
+			if strings.Contains(errorMsg, "no such host") {
+				errorMsg = "Could not resolve domain"
+			} else if strings.Contains(errorMsg, "connection refused") {
+				errorMsg = "Connection refused"
+			} else if strings.Contains(errorMsg, "timeout") {
+				errorMsg = "Connection timeout"
+			} else if strings.Contains(errorMsg, "certificate") {
+				errorMsg = "Certificate error"
+			}
+			
+			html.WriteString(fmt.Sprintf(`
+				<div class="alert alert-danger d-flex justify-content-between align-items-center">
+					<div>
+						<strong>%s</strong><br>
+						<small class="text-muted">Error: %s</small>
+					</div>
+					<span class="badge bg-danger">Failed</span>
+				</div>
+			`, result.URL, errorMsg))
+		}
+	}
+	
+	html.WriteString(`</div>`)
+	w.Write([]byte(html.String()))
 }

@@ -279,6 +279,7 @@ func (s *Server) Start() error {
 	// API routes
 	mux.HandleFunc("/api/system-vitals", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleSystemVitals))))
 	mux.HandleFunc("/api/docker/operations/", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeDockerOperations))))
+	mux.HandleFunc("/api/apps/", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeAPIApps))))
 	
 	// Version endpoint (no auth required for automation/monitoring)
 	mux.HandleFunc("/version", s.TracingMiddleware(s.handleVersion))
@@ -481,6 +482,18 @@ func (s *Server) routeApps(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// Default to app detail page
 		s.handleAppDetail(w, r)
+	}
+}
+
+// routeAPIApps routes /api/apps/* requests
+func (s *Server) routeAPIApps(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Path
+	
+	// Route based on the path pattern
+	if strings.HasSuffix(path, "/status") {
+		s.handleAppStatusCheck(w, r)
+	} else {
+		http.NotFound(w, r)
 	}
 }
 
