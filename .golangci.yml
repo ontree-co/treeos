@@ -80,3 +80,23 @@ issues:
       text: "pattern .*: no matching files found"
       linters:
         - typecheck
+    # Allow reading files from trusted paths in docker package
+    - path: internal/docker/apps\.go
+      text: "G304"
+      linters:
+        - gosec
+    # Allow reading compose files from app directories
+    - path: internal/server/handlers\.go
+      text: "G304"
+      linters:
+        - gosec
+    # Allow necessary directory permissions for group access
+    - path: cmd/ontree-server/main\.go
+      text: "G302"
+      linters:
+        - gosec
+    # Allow usermod command for adding users to groups
+    - path: cmd/ontree-server/main\.go
+      text: "G204"
+      linters:
+        - gosec

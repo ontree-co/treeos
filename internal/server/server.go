@@ -102,13 +102,19 @@ func (s *Server) Shutdown() {
 		s.worker.Stop()
 	}
 	if s.dockerSvc != nil {
-		s.dockerSvc.Close()
+		if err := s.dockerSvc.Close(); err != nil {
+			log.Printf("Error closing docker service: %v", err)
+		}
 	}
 	if s.dockerClient != nil {
-		s.dockerClient.Close()
+		if err := s.dockerClient.Close(); err != nil {
+			log.Printf("Error closing docker client: %v", err)
+		}
 	}
 	if s.db != nil {
-		s.db.Close()
+		if err := s.db.Close(); err != nil {
+			log.Printf("Error closing database: %v", err)
+		}
 	}
 }
 
@@ -272,7 +278,7 @@ func (s *Server) Start() error {
 	}
 
 	log.Printf("Starting server on %s", addr)
-	
+
 	// Create server with proper timeouts
 	server := &http.Server{
 		Addr:         addr,
@@ -281,7 +287,7 @@ func (s *Server) Start() error {
 		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  60 * time.Second,
 	}
-	
+
 	return server.ListenAndServe()
 }
 

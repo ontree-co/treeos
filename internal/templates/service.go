@@ -23,8 +23,8 @@ type Template struct {
 	DocumentationURL string `json:"documentation_url"`
 }
 
-// TemplatesFile represents the structure of the templates.json file
-type TemplatesFile struct {
+// File represents the structure of the templates.json file
+type File struct {
 	Templates []Template `json:"templates"`
 }
 
@@ -53,7 +53,7 @@ func (s *Service) GetAvailableTemplates() ([]Template, error) {
 		return nil, fmt.Errorf("failed to read templates.json: %w", err)
 	}
 
-	var templatesFile TemplatesFile
+	var templatesFile File
 	if err := json.Unmarshal(data, &templatesFile); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal templates.json: %w", err)
 	}

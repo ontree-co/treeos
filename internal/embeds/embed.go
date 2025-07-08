@@ -1,3 +1,4 @@
+// Package embeds provides embedded static assets and templates for the OnTree application.
 package embeds
 
 import (

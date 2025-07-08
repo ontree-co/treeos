@@ -116,12 +116,12 @@ func setupLinuxDirs(appsDir string) error {
 
 	// Create parent directory first
 	parentDir := filepath.Dir(appsDir)
-	if err := os.MkdirAll(parentDir, 0755); err != nil {
+	if err := os.MkdirAll(parentDir, 0750); err != nil {
 		return fmt.Errorf("failed to create parent directory %s: %w", parentDir, err)
 	}
 
 	// Create apps directory
-	if err := os.MkdirAll(appsDir, 0775); err != nil {
+	if err := os.MkdirAll(appsDir, 0750); err != nil {
 		return fmt.Errorf("failed to create apps directory %s: %w", appsDir, err)
 	}
 
@@ -150,7 +150,7 @@ func setupLinuxDirs(appsDir string) error {
 	}
 
 	// Set permissions to 0775 (group-writable)
-	if err := os.Chmod(appsDir, 0775); err != nil {
+	if err := os.Chmod(appsDir, 0750); err != nil {
 		return fmt.Errorf("failed to set permissions on %s: %w", appsDir, err)
 	}
 
@@ -179,7 +179,7 @@ func setupLinuxDirs(appsDir string) error {
 
 	// Verify write permissions by creating a test file
 	testFile := filepath.Join(appsDir, ".test_write")
-	if err := os.WriteFile(testFile, []byte("test"), 0644); err != nil {
+	if err := os.WriteFile(testFile, []byte("test"), 0600); err != nil {
 		return fmt.Errorf("failed to verify write permissions in %s: %w", appsDir, err)
 	}
 	if err := os.Remove(testFile); err != nil {
@@ -195,7 +195,7 @@ func setupMacOSDirs(appsDir string) error {
 	fmt.Printf("Setting up directories for macOS (apps_dir=%s)\n", appsDir)
 
 	// Create apps directory
-	if err := os.MkdirAll(appsDir, 0755); err != nil {
+	if err := os.MkdirAll(appsDir, 0750); err != nil {
 		return fmt.Errorf("failed to create apps directory %s: %w", appsDir, err)
 	}
 

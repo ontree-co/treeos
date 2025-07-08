@@ -1,3 +1,4 @@
+// Package telemetry provides OpenTelemetry instrumentation for the OnTree application.
 package telemetry
 
 import (

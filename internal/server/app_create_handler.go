@@ -176,14 +176,14 @@ func createAppScaffold(appsDir, appName, composeContent string) error {
 	appPath := filepath.Join(appsDir, appName)
 
 	// Create app directory
-	err := os.MkdirAll(appPath, 0755)
+	err := os.MkdirAll(appPath, 0750)
 	if err != nil {
 		return fmt.Errorf("failed to create app directory: %v", err)
 	}
 
 	// Create mnt directory
 	mntPath := filepath.Join(appPath, "mnt")
-	err = os.MkdirAll(mntPath, 0755)
+	err = os.MkdirAll(mntPath, 0750)
 	if err != nil {
 		// Clean up on failure
 		if err := os.RemoveAll(appPath); err != nil {
@@ -194,7 +194,7 @@ func createAppScaffold(appsDir, appName, composeContent string) error {
 
 	// Write docker-compose.yml
 	composePath := filepath.Join(appPath, "docker-compose.yml")
-	err = os.WriteFile(composePath, []byte(composeContent), 0644)
+	err = os.WriteFile(composePath, []byte(composeContent), 0600)
 	if err != nil {
 		// Clean up on failure
 		if err := os.RemoveAll(appPath); err != nil {

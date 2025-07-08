@@ -1,3 +1,4 @@
+// Package migrations provides database migration functionality for the OnTree application.
 package migrations
 
 import (

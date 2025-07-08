@@ -1,3 +1,4 @@
+// Package database provides database connectivity and management for the OnTree application.
 package database
 
 import (
@@ -6,15 +7,17 @@ import (
 	"log"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/mattn/go-sqlite3" // SQLite driver
 )
 
 var db *sql.DB
 
+// GetDB returns the current database connection.
 func GetDB() *sql.DB {
 	return db
 }
 
+// Initialize opens a connection to the SQLite database and runs migrations.
 func Initialize(dbPath string) error {
 	var err error
 	db, err = sql.Open("sqlite3", dbPath)
@@ -48,6 +51,7 @@ func New(dbPath string) (*sql.DB, error) {
 	return db, nil
 }
 
+// Close closes the database connection.
 func Close() error {
 	if db != nil {
 		return db.Close()

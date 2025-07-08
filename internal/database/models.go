@@ -6,6 +6,7 @@ import (
 	"time"
 )
 
+// User represents a user in the system.
 type User struct {
 	ID          int
 	Username    string
@@ -20,6 +21,7 @@ type User struct {
 	LastLogin   sql.NullTime
 }
 
+// SystemSetup tracks the system setup state.
 type SystemSetup struct {
 	ID              int
 	IsSetupComplete bool
@@ -28,6 +30,7 @@ type SystemSetup struct {
 	NodeDescription sql.NullString
 }
 
+// SystemVitalLog stores system performance metrics.
 type SystemVitalLog struct {
 	ID               int
 	Timestamp        time.Time
@@ -36,6 +39,7 @@ type SystemVitalLog struct {
 	DiskUsagePercent float64
 }
 
+// DockerOperation tracks Docker operation state and progress.
 type DockerOperation struct {
 	ID              string
 	OperationType   string
@@ -50,6 +54,7 @@ type DockerOperation struct {
 	CompletedAt     sql.NullTime
 }
 
+// DockerOperationLog stores log entries for Docker operations.
 type DockerOperationLog struct {
 	ID          int
 	OperationID string
@@ -60,22 +65,32 @@ type DockerOperationLog struct {
 }
 
 const (
-	// Operation Types
-	OpTypePullImage         = "pull_image"
-	OpTypeStartContainer    = "start_container"
-	OpTypeCreateApp         = "create_app"
+	// OpTypePullImage indicates a Docker image pull operation.
+	OpTypePullImage = "pull_image"
+	// OpTypeStartContainer indicates a container start operation.
+	OpTypeStartContainer = "start_container"
+	// OpTypeCreateApp indicates an app creation operation.
+	OpTypeCreateApp = "create_app"
+	// OpTypeRecreateContainer indicates a container recreation operation.
 	OpTypeRecreateContainer = "recreate_container"
-	OpTypeUpdateImage       = "update_image"
+	// OpTypeUpdateImage indicates an image update operation.
+	OpTypeUpdateImage = "update_image"
 
-	// Status Choices
-	StatusPending    = "pending"
+	// StatusPending indicates an operation is waiting to start.
+	StatusPending = "pending"
+	// StatusInProgress indicates an operation is currently running.
 	StatusInProgress = "in_progress"
-	StatusCompleted  = "completed"
-	StatusFailed     = "failed"
+	// StatusCompleted indicates an operation finished successfully.
+	StatusCompleted = "completed"
+	// StatusFailed indicates an operation failed.
+	StatusFailed = "failed"
 
-	// Log Levels
-	LogLevelDebug   = "debug"
-	LogLevelInfo    = "info"
+	// LogLevelDebug indicates a debug log level.
+	LogLevelDebug = "debug"
+	// LogLevelInfo indicates an info log level.
+	LogLevelInfo = "info"
+	// LogLevelWarning indicates a warning log level.
 	LogLevelWarning = "warning"
-	LogLevelError   = "error"
+	// LogLevelError indicates an error log level.
+	LogLevelError = "error"
 )

@@ -288,7 +288,7 @@ func (c *Client) StartApp(appsDir, appName string) error {
 				if strings.HasPrefix(hostPath, "./") {
 					hostPath = filepath.Join(app.Path, hostPath[2:])
 					// Create directory if it doesn't exist
-					if err := os.MkdirAll(hostPath, 0755); err != nil {
+					if err := os.MkdirAll(hostPath, 0750); err != nil {
 						return fmt.Errorf("failed to create volume directory: %w", err)
 					}
 				}

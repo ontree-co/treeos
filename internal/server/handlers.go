@@ -297,7 +297,7 @@ func (s *Server) handleSystemVitals(w http.ResponseWriter, r *http.Request) {
 
 	// Return HTML partial with the vitals data
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprintf(w, `
+	if _, err := fmt.Fprintf(w, `
 <div class="vitals-content">
 	<div class="vital-item">
 		<span class="vital-label">CPU:</span>
@@ -311,7 +311,9 @@ func (s *Server) handleSystemVitals(w http.ResponseWriter, r *http.Request) {
 		<span class="vital-label">Disk:</span>
 		<span class="vital-value">%.1f%%</span>
 	</div>
-</div>`, vitals.CPUPercent, vitals.MemPercent, vitals.DiskPercent)
+</div>`, vitals.CPUPercent, vitals.MemPercent, vitals.DiskPercent); err != nil {
+		log.Printf("Error writing response: %v", err)
+	}
 }
 
 // handleAppDetail handles the application detail page
@@ -806,7 +808,7 @@ func (s *Server) handleAppControls(w http.ResponseWriter, r *http.Request) {
 	// Check for active operations
 	var activeOperationID string
 	db := database.GetDB()
-	_ = db.QueryRow(`
+	err = db.QueryRow(`
 		SELECT id 
 		FROM docker_operations 
 		WHERE app_name = ? 
@@ -815,6 +817,9 @@ func (s *Server) handleAppControls(w http.ResponseWriter, r *http.Request) {
 		ORDER BY created_at DESC
 		LIMIT 1
 	`, appName, database.StatusPending, database.StatusInProgress).Scan(&activeOperationID)
+	if err != nil && err != sql.ErrNoRows {
+		log.Printf("Error checking active operations: %v", err)
+	}
 
 	// Render just the controls
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -825,37 +830,45 @@ func (s *Server) handleAppControls(w http.ResponseWriter, r *http.Request) {
 		if app.Status == "not_created" {
 			buttonText = "Creating & Starting..."
 		}
-		fmt.Fprintf(w, `<button type="button" class="btn btn-primary" disabled>
+		if _, err := fmt.Fprintf(w, `<button type="button" class="btn btn-primary" disabled>
 			<span class="spinner-border spinner-border-sm" role="status"></span>
 			<span>%s</span>
-		</button>`, buttonText)
+		</button>`, buttonText); err != nil {
+			log.Printf("Error writing response: %v", err)
+		}
 	} else {
 		// Show appropriate control buttons based on status
 		if app.Status == "running" {
-			fmt.Fprintf(w, `<form method="post" action="/apps/%s/stop" class="d-inline">
+			if _, err := fmt.Fprintf(w, `<form method="post" action="/apps/%s/stop" class="d-inline">
 				<button type="submit" class="btn btn-warning confirm-action" 
 						data-action="Stop"
 						data-confirm-text="Confirm Stop?">
 					<i>⏹️</i> Stop
 				</button>
-			</form>`, appName)
+			</form>`, appName); err != nil {
+				log.Printf("Error writing response: %v", err)
+			}
 		} else if app.Status != "not_created" {
-			fmt.Fprintf(w, `<form method="post" action="/apps/%s/start" class="d-inline">
+			if _, err := fmt.Fprintf(w, `<form method="post" action="/apps/%s/start" class="d-inline">
 				<button type="submit" class="btn btn-success">
 					<i>▶️</i> Start
 				</button>
-			</form>`, appName)
+			</form>`, appName); err != nil {
+				log.Printf("Error writing response: %v", err)
+			}
 		} else {
-			fmt.Fprintf(w, `<form method="post" action="/apps/%s/start" class="d-inline">
+			if _, err := fmt.Fprintf(w, `<form method="post" action="/apps/%s/start" class="d-inline">
 				<button type="submit" class="btn btn-primary">
 					<i>🚀</i> Create & Start
 				</button>
-			</form>`, appName)
+			</form>`, appName); err != nil {
+				log.Printf("Error writing response: %v", err)
+			}
 		}
 
 		// Add delete and recreate buttons if container exists
 		if app.Status != "not_created" {
-			fmt.Fprintf(w, `
+			if _, err := fmt.Fprintf(w, `
 			<form method="post" action="/apps/%s/delete" class="d-inline">
 				<button type="submit" class="btn btn-danger confirm-action" 
 						data-action="Delete Container"
@@ -869,12 +882,14 @@ func (s *Server) handleAppControls(w http.ResponseWriter, r *http.Request) {
 						data-confirm-text="Confirm Recreate?">
 					<i>🔄</i> Recreate
 				</button>
-			</form>`, appName, appName)
+			</form>`, appName, appName); err != nil {
+				log.Printf("Error writing response: %v", err)
+			}
 		}
 	}
 
 	// Re-initialize the confirm action buttons
-	fmt.Fprint(w, `<script>
+	if _, err := fmt.Fprint(w, `<script>
 		// Re-initialize two-step confirmation for dynamically loaded buttons
 		document.querySelectorAll('.confirm-action').forEach(button => {
 			if (button.dataset.initialized) return;
@@ -910,5 +925,7 @@ func (s *Server) handleAppControls(w http.ResponseWriter, r *http.Request) {
 				}
 			});
 		});
-	</script>`)
+	</script>`); err != nil {
+		log.Printf("Error writing response: %v", err)
+	}
 }
