@@ -7,7 +7,6 @@
     caddy_group: caddy
     caddy_config_dir: /etc/caddy
     caddy_config_file: /etc/caddy/Caddyfile
-    caddy_example_domain: example.com
 
   tasks:
     - name: Install required dependencies
@@ -45,57 +44,19 @@
         state: started
         enabled: yes
 
-    - name: Create basic Caddyfile if it doesn't exist
+    - name: Create Caddyfile with admin API configuration
       ansible.builtin.copy:
         content: |
-          # Default Caddyfile configuration
-          {{ caddy_example_domain }} {
-            root * /usr/share/caddy
-            file_server
-            log {
-              output file /var/log/caddy/access.log
-              format console
-            }
+          {
+              # Enable the admin API on localhost only. This is secure and sufficient.
+              admin localhost:2019
           }
         dest: "{{ caddy_config_file }}"
         owner: "{{ caddy_user }}"
         group: "{{ caddy_group }}"
         mode: "0644"
-        force: no # Don't overwrite if file exists
+      notify: restart caddy
 
-    - name: Create a test HTML file
-      ansible.builtin.copy:
-        content: |
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <title>Welcome to Caddy!</title>
-            <style>
-              body {
-                font-family: Arial, sans-serif;
-                line-height: 1.6;
-                color: #333;
-                max-width: 800px;
-                margin: 0 auto;
-                padding: 2em;
-              }
-              h1 {
-                color: #2a76dd;
-              }
-            </style>
-          </head>
-          <body>
-            <h1>Welcome to Caddy!</h1>
-            <p>If you see this page, Caddy is successfully installed and working.</p>
-            <p>This is a default page served by Caddy. Replace this with your own content.</p>
-            <p>For more information about Caddy, visit <a href="https://caddyserver.com">caddyserver.com</a>.</p>
-          </body>
-          </html>
-        dest: /usr/share/caddy/index.html
-        owner: "{{ caddy_user }}"
-        group: "{{ caddy_group }}"
-        mode: "0644"
-        force: no # Don't overwrite if file exists
 
     - name: Check if Caddy is running
       ansible.builtin.command: systemctl is-active caddy
@@ -113,9 +74,10 @@
           Caddy has been installed successfully!
           - Service is running: {{ caddy_status.stdout == 'active' }}
           - Config file: {{ caddy_config_file }}
-          - Default document root: /usr/share/caddy
+          - Admin API enabled on: localhost:2019
 
-          Remember to:
-          1. Update the Caddyfile with your actual domain
-          2. Configure proper TLS if needed
-          3. Restart Caddy after config changes: sudo systemctl restart caddy
+  handlers:
+    - name: restart caddy
+      ansible.builtin.systemd:
+        name: caddy
+        state: restarted
