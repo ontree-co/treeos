@@ -185,7 +185,7 @@ jobs:
         fi
 
     - name: Upload test artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: failure()
       with:
         name: playwright-report
@@ -193,7 +193,7 @@ jobs:
         retention-days: 7
 
     - name: Upload application logs
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: failure()
       with:
         name: app-logs
