@@ -41,7 +41,7 @@ func Get() Info {
 	// Get additional information from debug.ReadBuildInfo
 	if bi, ok := debug.ReadBuildInfo(); ok {
 		info.GoVersion = bi.GoVersion
-		
+
 		// Extract compiler and platform from settings
 		for _, setting := range bi.Settings {
 			switch setting.Key {
@@ -87,7 +87,7 @@ func GetVersionAge() string {
 	}
 
 	duration := time.Since(t)
-	
+
 	// Format the duration in a human-readable way
 	if duration < time.Hour {
 		return fmt.Sprintf("%d minutes ago", int(duration.Minutes()))

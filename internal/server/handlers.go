@@ -405,7 +405,7 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 		FROM deployed_apps 
 		WHERE name = ?
 	`, appName).Scan(&deployedApp.ID, &deployedApp.Name, &deployedApp.Subdomain, &deployedApp.HostPort, &deployedApp.IsExposed)
-	
+
 	// It's okay if the app is not in the database yet
 	hasDeployedApp := err == nil
 
@@ -417,12 +417,12 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 	data["Messages"] = messages
 	data["CSRFToken"] = ""
 	data["ActiveOperationID"] = activeOperationID
-	
+
 	// Add deployed app information if available
 	if hasDeployedApp {
 		data["DeployedApp"] = deployedApp
 		data["HasDeployedApp"] = true
-		
+
 		// Construct full URLs for display
 		var urls []string
 		if deployedApp.IsExposed && deployedApp.Subdomain != "" {
@@ -559,7 +559,7 @@ func (s *Server) handleAppStop(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		log.Printf("Successfully stopped app: %s", appName)
-		
+
 		// Also remove from Caddy if it was exposed
 		if s.db != nil && s.caddyClient != nil {
 			var app database.DeployedApp
@@ -568,13 +568,13 @@ func (s *Server) handleAppStop(w http.ResponseWriter, r *http.Request) {
 				FROM deployed_apps 
 				WHERE name = ?
 			`, appName).Scan(&app.ID, &app.IsExposed)
-			
+
 			if err == nil && app.IsExposed {
 				routeID := fmt.Sprintf("route-for-app-%s", app.ID)
 				if err := s.caddyClient.DeleteRoute(routeID); err != nil {
 					log.Printf("Failed to remove app %s from Caddy: %v", appName, err)
 				}
-				
+
 				// Update database
 				_, err = s.db.Exec(`
 					UPDATE deployed_apps 
@@ -586,7 +586,7 @@ func (s *Server) handleAppStop(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
-		
+
 		session, err := s.sessionStore.Get(r, "ontree-session")
 		if err != nil {
 			log.Printf("Failed to get session: %v", err)
@@ -1028,7 +1028,7 @@ func (s *Server) handleAppExpose(w http.ResponseWriter, r *http.Request) {
 		FROM deployed_apps 
 		WHERE name = ?
 	`, appName).Scan(&app.ID, &app.Name, &app.Subdomain, &app.HostPort, &app.IsExposed)
-	
+
 	if err != nil {
 		log.Printf("Failed to get app from database: %v", err)
 		session, err := s.sessionStore.Get(r, "ontree-session")
@@ -1082,11 +1082,11 @@ func (s *Server) handleAppExpose(w http.ResponseWriter, r *http.Request) {
 		SET is_exposed = 1, updated_at = CURRENT_TIMESTAMP 
 		WHERE id = ?
 	`, app.ID)
-	
+
 	if err != nil {
 		log.Printf("Failed to update app in database: %v", err)
 		// Try to rollback Caddy change
-		s.caddyClient.DeleteRoute(fmt.Sprintf("route-for-app-%s", app.ID))
+		_ = s.caddyClient.DeleteRoute(fmt.Sprintf("route-for-app-%s", app.ID))
 	}
 
 	log.Printf("Successfully exposed app %s", appName)
@@ -1094,7 +1094,7 @@ func (s *Server) handleAppExpose(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("Failed to get session: %v", err)
 	}
-	
+
 	domains := []string{}
 	if s.config.PublicBaseDomain != "" {
 		domains = append(domains, fmt.Sprintf("%s.%s", app.Subdomain, s.config.PublicBaseDomain))
@@ -1102,7 +1102,7 @@ func (s *Server) handleAppExpose(w http.ResponseWriter, r *http.Request) {
 	if s.config.TailscaleBaseDomain != "" {
 		domains = append(domains, fmt.Sprintf("%s.%s", app.Subdomain, s.config.TailscaleBaseDomain))
 	}
-	
+
 	session.AddFlash(fmt.Sprintf("App exposed successfully at: %s", strings.Join(domains, ", ")), "success")
 	if err := session.Save(r, w); err != nil {
 		log.Printf("Failed to save session: %v", err)
@@ -1135,7 +1135,7 @@ func (s *Server) handleAppUnexpose(w http.ResponseWriter, r *http.Request) {
 		FROM deployed_apps 
 		WHERE name = ?
 	`, appName).Scan(&app.ID, &app.Name, &app.IsExposed)
-	
+
 	if err != nil {
 		log.Printf("Failed to get app from database: %v", err)
 		session, err := s.sessionStore.Get(r, "ontree-session")
@@ -1180,7 +1180,7 @@ func (s *Server) handleAppUnexpose(w http.ResponseWriter, r *http.Request) {
 		SET is_exposed = 0, updated_at = CURRENT_TIMESTAMP 
 		WHERE id = ?
 	`, app.ID)
-	
+
 	if err != nil {
 		log.Printf("Failed to update app in database: %v", err)
 		session, err := s.sessionStore.Get(r, "ontree-session")
@@ -1219,7 +1219,7 @@ func (s *Server) handleAppStatusCheck(w http.ResponseWriter, r *http.Request) {
 	}
 
 	appName := parts[3]
-	
+
 	// Get app details from database
 	var app database.DeployedApp
 	err := s.db.QueryRow(`
@@ -1227,19 +1227,19 @@ func (s *Server) handleAppStatusCheck(w http.ResponseWriter, r *http.Request) {
 		FROM deployed_apps 
 		WHERE name = ?
 	`, appName).Scan(&app.ID, &app.Name, &app.Subdomain, &app.HostPort, &app.IsExposed)
-	
+
 	if err != nil {
 		w.Header().Set("Content-Type", "text/html")
-		w.Write([]byte(`<div class="alert alert-warning">App not found in database</div>`))
+		_, _ = w.Write([]byte(`<div class="alert alert-warning">App not found in database</div>`))
 		return
 	}
-	
+
 	if !app.IsExposed || app.Subdomain == "" {
 		w.Header().Set("Content-Type", "text/html")
-		w.Write([]byte(`<div class="alert alert-info">App is not exposed</div>`))
+		_, _ = w.Write([]byte(`<div class="alert alert-info">App is not exposed</div>`))
 		return
 	}
-	
+
 	// Prepare status results
 	type StatusResult struct {
 		URL        string
@@ -1247,14 +1247,14 @@ func (s *Server) handleAppStatusCheck(w http.ResponseWriter, r *http.Request) {
 		StatusCode int
 		Error      string
 	}
-	
+
 	var results []StatusResult
-	
+
 	// Check public domain if configured
 	if s.config.PublicBaseDomain != "" {
 		url := fmt.Sprintf("https://%s.%s", app.Subdomain, s.config.PublicBaseDomain)
 		result := StatusResult{URL: url}
-		
+
 		// Create HTTP client with timeout
 		client := &http.Client{
 			Timeout: 10 * time.Second,
@@ -1266,24 +1266,24 @@ func (s *Server) handleAppStatusCheck(w http.ResponseWriter, r *http.Request) {
 				return nil
 			},
 		}
-		
+
 		resp, err := client.Get(url)
 		if err != nil {
 			result.Error = err.Error()
 		} else {
 			result.Success = true
 			result.StatusCode = resp.StatusCode
-			resp.Body.Close()
+			_ = resp.Body.Close()
 		}
-		
+
 		results = append(results, result)
 	}
-	
+
 	// Check Tailscale domain if configured
 	if s.config.TailscaleBaseDomain != "" {
 		url := fmt.Sprintf("https://%s.%s", app.Subdomain, s.config.TailscaleBaseDomain)
 		result := StatusResult{URL: url}
-		
+
 		// Create HTTP client with timeout
 		client := &http.Client{
 			Timeout: 10 * time.Second,
@@ -1295,30 +1295,30 @@ func (s *Server) handleAppStatusCheck(w http.ResponseWriter, r *http.Request) {
 				return nil
 			},
 		}
-		
+
 		resp, err := client.Get(url)
 		if err != nil {
 			result.Error = err.Error()
 		} else {
 			result.Success = true
 			result.StatusCode = resp.StatusCode
-			resp.Body.Close()
+			_ = resp.Body.Close()
 		}
-		
+
 		results = append(results, result)
 	}
-	
+
 	// Generate HTML response
 	w.Header().Set("Content-Type", "text/html")
-	
+
 	var html strings.Builder
 	html.WriteString(`<div class="status-results">`)
-	
+
 	for _, result := range results {
 		if result.Success {
 			statusClass := "success"
 			statusText := "OK"
-			
+
 			if result.StatusCode >= 400 {
 				statusClass = "danger"
 				statusText = fmt.Sprintf("HTTP %d", result.StatusCode)
@@ -1326,7 +1326,7 @@ func (s *Server) handleAppStatusCheck(w http.ResponseWriter, r *http.Request) {
 				statusClass = "warning"
 				statusText = fmt.Sprintf("HTTP %d (Redirect)", result.StatusCode)
 			}
-			
+
 			html.WriteString(fmt.Sprintf(`
 				<div class="alert alert-%s d-flex justify-content-between align-items-center">
 					<div>
@@ -1348,7 +1348,7 @@ func (s *Server) handleAppStatusCheck(w http.ResponseWriter, r *http.Request) {
 			} else if strings.Contains(errorMsg, "certificate") {
 				errorMsg = "Certificate error"
 			}
-			
+
 			html.WriteString(fmt.Sprintf(`
 				<div class="alert alert-danger d-flex justify-content-between align-items-center">
 					<div>
@@ -1360,7 +1360,7 @@ func (s *Server) handleAppStatusCheck(w http.ResponseWriter, r *http.Request) {
 			`, result.URL, errorMsg))
 		}
 	}
-	
+
 	html.WriteString(`</div>`)
-	w.Write([]byte(html.String()))
+	_, _ = w.Write([]byte(html.String()))
 }

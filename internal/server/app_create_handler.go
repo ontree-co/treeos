@@ -216,12 +216,12 @@ func (s *Server) createAppScaffold(appName, composeContent string) error {
 	if s.db != nil {
 		// Generate a unique ID for the app
 		appID := fmt.Sprintf("app-%s-%d", appName, time.Now().Unix())
-		
+
 		_, err = s.db.Exec(`
 			INSERT INTO deployed_apps (id, name, docker_compose, subdomain, host_port, is_exposed)
 			VALUES (?, ?, ?, ?, ?, ?)
 		`, appID, appName, composeContent, appName, hostPort, 0)
-		
+
 		if err != nil {
 			log.Printf("Warning: Failed to save app to database: %v", err)
 			// Continue anyway - app is created on disk

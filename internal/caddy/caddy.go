@@ -1,3 +1,4 @@
+// Package caddy provides a client for interacting with the Caddy API
 package caddy
 
 import (
@@ -26,10 +27,10 @@ func NewClient() *Client {
 
 // RouteConfig represents the structure of a Caddy route configuration
 type RouteConfig struct {
-	ID       string       `json:"@id"`
-	Match    []MatchRule  `json:"match"`
-	Handle   []Handler    `json:"handle"`
-	Terminal bool         `json:"terminal"`
+	ID       string      `json:"@id"`
+	Match    []MatchRule `json:"match"`
+	Handle   []Handler   `json:"handle"`
+	Terminal bool        `json:"terminal"`
 }
 
 // MatchRule represents a matching rule for the route
@@ -54,7 +55,7 @@ func (c *Client) HealthCheck() error {
 	if err != nil {
 		return fmt.Errorf("failed to connect to Caddy Admin API: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("Caddy Admin API returned status %d", resp.StatusCode)
@@ -81,7 +82,7 @@ func (c *Client) AddOrUpdateRoute(route *RouteConfig) error {
 	if err != nil {
 		return fmt.Errorf("failed to send request to Caddy: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		return fmt.Errorf("Caddy returned status %d when adding/updating route", resp.StatusCode)
@@ -102,7 +103,7 @@ func (c *Client) DeleteRoute(routeID string) error {
 	if err != nil {
 		return fmt.Errorf("failed to send delete request to Caddy: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Caddy returns 200 for successful deletion, 404 if route doesn't exist
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNotFound {
@@ -115,7 +116,7 @@ func (c *Client) DeleteRoute(routeID string) error {
 // CreateRouteConfig creates a RouteConfig for an application
 func CreateRouteConfig(appID, subdomain string, hostPort int, publicDomain, tailscaleDomain string) *RouteConfig {
 	routeID := fmt.Sprintf("route-for-app-%s", appID)
-	
+
 	hosts := []string{}
 	if publicDomain != "" {
 		hosts = append(hosts, fmt.Sprintf("%s.%s", subdomain, publicDomain))

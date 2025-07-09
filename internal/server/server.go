@@ -24,15 +24,15 @@ import (
 
 // Server represents the HTTP server
 type Server struct {
-	config       *config.Config
-	templates    map[string]*template.Template
-	sessionStore *sessions.CookieStore
-	dockerClient *docker.Client
-	dockerSvc    *docker.Service
-	db           *sql.DB
-	worker       *worker.Worker
-	templateSvc  *templates.Service
-	versionInfo  version.Info
+	config         *config.Config
+	templates      map[string]*template.Template
+	sessionStore   *sessions.CookieStore
+	dockerClient   *docker.Client
+	dockerSvc      *docker.Service
+	db             *sql.DB
+	worker         *worker.Worker
+	templateSvc    *templates.Service
+	versionInfo    version.Info
 	caddyAvailable bool
 	caddyClient    *caddy.Client
 }
@@ -280,7 +280,7 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/api/system-vitals", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleSystemVitals))))
 	mux.HandleFunc("/api/docker/operations/", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeDockerOperations))))
 	mux.HandleFunc("/api/apps/", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeAPIApps))))
-	
+
 	// Version endpoint (no auth required for automation/monitoring)
 	mux.HandleFunc("/version", s.TracingMiddleware(s.handleVersion))
 
@@ -427,7 +427,7 @@ func (s *Server) syncExposedApps() {
 		log.Printf("Failed to query exposed apps: %v", err)
 		return
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	// Get base domains from config
 	publicDomain := s.config.PublicBaseDomain
@@ -488,7 +488,7 @@ func (s *Server) routeApps(w http.ResponseWriter, r *http.Request) {
 // routeAPIApps routes /api/apps/* requests
 func (s *Server) routeAPIApps(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
-	
+
 	// Route based on the path pattern
 	if strings.HasSuffix(path, "/status") {
 		s.handleAppStatusCheck(w, r)
@@ -514,7 +514,7 @@ func (s *Server) routeDockerOperations(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleVersion(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
-	
+
 	versionData := map[string]interface{}{
 		"version":   s.versionInfo.Version,
 		"commit":    s.versionInfo.Commit,
@@ -523,11 +523,10 @@ func (s *Server) handleVersion(w http.ResponseWriter, r *http.Request) {
 		"compiler":  s.versionInfo.Compiler,
 		"platform":  s.versionInfo.Platform,
 	}
-	
+
 	if err := json.NewEncoder(w).Encode(versionData); err != nil {
 		log.Printf("Error encoding version response: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }
-

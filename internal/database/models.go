@@ -101,7 +101,7 @@ type DeployedApp struct {
 	Name          string
 	DockerCompose string
 	Subdomain     string
-	HostPort      int  // The port exposed ON THE HOST (e.g., 8080)
+	HostPort      int // The port exposed ON THE HOST (e.g., 8080)
 	IsExposed     bool
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
