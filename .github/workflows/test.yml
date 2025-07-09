@@ -58,6 +58,9 @@ jobs:
     - name: Install dependencies
       run: make deps
 
+    - name: Prepare embedded assets
+      run: make embed-assets
+
     - name: Run golangci-lint
       uses: golangci/golangci-lint-action@v7
       with:
