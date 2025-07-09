@@ -167,7 +167,7 @@ jobs:
 
     - name: Run E2E tests
       run: |
-        cd tests/e2e && npm test
+        cd tests/e2e && npm test -- --workers=1
       env:
         CI: true
 

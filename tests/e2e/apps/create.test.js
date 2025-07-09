@@ -111,24 +111,27 @@ services:
   });
 
   test('should prevent duplicate app names', async ({ page }) => {
+    // Use a unique app name for this test to avoid conflicts
+    const uniqueAppName = `test-duplicate-${Date.now()}`;
+    
     // First create an app
-    await createTestApp(page, 'test-nginx', 'nginx:latest');
+    await createTestApp(page, uniqueAppName, 'nginx:latest');
     
     // Now try to create another app with the same name
     await page.goto('/apps/create');
     
     // Try to create app with existing name
-    await page.fill('input[name="app_name"]', 'test-nginx');
+    await page.fill('input[name="app_name"]', uniqueAppName);
     await page.fill('textarea[name="compose_content"]', `version: '3'
 services:
-  test-nginx:
+  ${uniqueAppName}:
     image: nginx:latest`);
     
     await page.click('button[type="submit"]');
     
     // Should show error
     await expect(page.locator('.alert-danger')).toBeVisible();
-    await expect(page.locator('.alert-danger')).toContainText('An application named \'test-nginx\' already exists');
+    await expect(page.locator('.alert-danger')).toContainText(`An application named '${uniqueAppName}' already exists`);
   });
 
   test.skip('should create app with complex configuration', async ({ page }) => {
