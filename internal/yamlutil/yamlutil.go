@@ -9,6 +9,48 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// AppEmojis is a curated list of app-appropriate emojis
+var AppEmojis = []string{
+	// Development & Technology
+	"💻", "🖥️", "⌨️", "🖱️", "💾", "💿", "📱", "☁️", "🌐", "📡",
+	"🔌", "🔋", "🛠️", "⚙️", "🔧", "🔨", "⚡", "🚀", "🛸", "🤖",
+	
+	// Data & Analytics
+	"📊", "📈", "📉", "📋", "📌", "📍", "🗂️", "🗄️", "📁", "📂",
+	"💹", "🔍", "🔎", "🧮", "💡", "🎯", "📐", "📏", "🗺️", "🧭",
+	
+	// Security & Monitoring
+	"🔒", "🔓", "🔐", "🔑", "🛡️", "⚠️", "🚨", "📢", "🔔", "👁️",
+	"🕵️", "🚦", "🚥", "⏰", "⏱️", "⌚", "📅", "📆", "🕐", "🌡️",
+	
+	// Communication & Media
+	"📧", "📨", "📩", "💬", "💭", "🗨️", "📞", "☎️", "📠", "📻",
+	"📺", "📷", "📹", "🎥", "🎬", "🎤", "🎧", "🎵", "🎶", "📣",
+	
+	// Storage & Database
+	"🗃️", "🗳️", "📦", "📮", "📪", "📫", "📬", "📭", "🏗️", "🏭",
+	"🏪", "🏬", "🏦", "💳", "💰", "💸", "🪙", "💎", "⚖️", "🔗",
+	
+	// Nature & Science
+	"🌍", "🌎", "🌏", "🌐", "🪐", "🌙", "☀️", "⭐", "🌟", "✨",
+	"🔬", "🔭", "🧬", "🧪", "⚗️", "🧫", "🦠", "🧲", "⚛️", "🌡️",
+}
+
+// IsValidEmoji checks if the given emoji is in the allowed list
+func IsValidEmoji(emoji string) bool {
+	if emoji == "" {
+		// Empty emoji is valid (optional field)
+		return true
+	}
+	
+	for _, allowed := range AppEmojis {
+		if emoji == allowed {
+			return true
+		}
+	}
+	return false
+}
+
 // fileLocks manages file-level locking for concurrent access
 var fileLocks = struct {
 	sync.Mutex
@@ -37,6 +79,7 @@ type OnTreeMetadata struct {
 	Subdomain string `yaml:"subdomain,omitempty"`
 	HostPort  int    `yaml:"host_port,omitempty"`
 	IsExposed bool   `yaml:"is_exposed"`
+	Emoji     string `yaml:"emoji,omitempty"`
 }
 
 // ComposeFile represents a docker-compose.yml file structure

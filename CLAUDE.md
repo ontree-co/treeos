@@ -219,6 +219,16 @@ Completed comprehensive documentation and testing for the monitoring feature:
 - **Screenshot Guide**: Created `docs/monitoring-screenshots.md` describing required screenshots
 - **Test Coverage**: Includes endpoint tests, integration workflows, performance characteristics, and configuration options
 
+### Emoji Feature Data Structure Support (2025-07-10 - UI Improvements Ticket 1)
+
+Added backend support for emoji storage in apps:
+- **OnTreeMetadata struct**: Added `Emoji string` field with `yaml:"emoji,omitempty"` tag
+- **Emoji validation**: Added `IsValidEmoji()` function and curated `AppEmojis` list in yamlutil package
+- **YAML parsing**: Automatic handling through struct tags - no additional parsing code needed
+- **Storage**: Emojis stored in docker-compose.yml files under `x-ontree.emoji` (no database changes needed)
+- **Tests**: Added comprehensive tests for emoji validation, storage, and persistence
+- See `internal/yamlutil/CLAUDE.md` for implementation details
+
 ### UI Improvements (2025-07-10)
 
 #### Container Controls Reorganization

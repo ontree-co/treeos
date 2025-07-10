@@ -216,3 +216,153 @@ services:
 		t.Error("Expected is_exposed to be false")
 	}
 }
+
+func TestEmojiFunctionality(t *testing.T) {
+	// Test case 1: Valid emoji validation
+	t.Run("ValidEmoji", func(t *testing.T) {
+		validEmojis := []string{"🚀", "💻", "🔒", "📊", "🌍", ""}
+		for _, emoji := range validEmojis {
+			if !IsValidEmoji(emoji) {
+				t.Errorf("Expected emoji '%s' to be valid", emoji)
+			}
+		}
+	})
+
+	// Test case 2: Invalid emoji validation
+	t.Run("InvalidEmoji", func(t *testing.T) {
+		invalidEmojis := []string{"😀", "🎈", "🍕", "invalid", "123"}
+		for _, emoji := range invalidEmojis {
+			if IsValidEmoji(emoji) {
+				t.Errorf("Expected emoji '%s' to be invalid", emoji)
+			}
+		}
+	})
+
+	// Test case 3: Emoji storage in YAML
+	t.Run("EmojiStorageInYAML", func(t *testing.T) {
+		tempDir, err := os.MkdirTemp("", "yamlutil-emoji-test")
+		if err != nil {
+			t.Fatalf("Failed to create temp dir: %v", err)
+		}
+		defer os.RemoveAll(tempDir)
+
+		// Create a compose file
+		testContent := `version: '3.8'
+services:
+  app:
+    image: nginx:latest
+`
+		composeFile := filepath.Join(tempDir, "docker-compose.yml")
+		if err := os.WriteFile(composeFile, []byte(testContent), 0644); err != nil {
+			t.Fatalf("Failed to write test file: %v", err)
+		}
+
+		// Update metadata with emoji
+		metadata := &OnTreeMetadata{
+			Subdomain: "myapp",
+			HostPort:  8080,
+			IsExposed: true,
+			Emoji:     "🚀",
+		}
+
+		if err := UpdateComposeMetadata(tempDir, metadata); err != nil {
+			t.Fatalf("Failed to update compose metadata: %v", err)
+		}
+
+		// Read back and verify
+		readMetadata, err := ReadComposeMetadata(tempDir)
+		if err != nil {
+			t.Fatalf("Failed to read compose metadata: %v", err)
+		}
+
+		if readMetadata.Emoji != "🚀" {
+			t.Errorf("Expected emoji '🚀', got '%s'", readMetadata.Emoji)
+		}
+	})
+
+	// Test case 4: Emoji persistence through multiple updates
+	t.Run("EmojiPersistence", func(t *testing.T) {
+		tempDir, err := os.MkdirTemp("", "yamlutil-emoji-persist")
+		if err != nil {
+			t.Fatalf("Failed to create temp dir: %v", err)
+		}
+		defer os.RemoveAll(tempDir)
+
+		// Create initial compose file with emoji
+		testContent := `version: '3.8'
+x-ontree:
+  subdomain: testapp
+  host_port: 3000
+  is_exposed: false
+  emoji: "💻"
+services:
+  app:
+    image: node:14
+`
+		composeFile := filepath.Join(tempDir, "docker-compose.yml")
+		if err := os.WriteFile(composeFile, []byte(testContent), 0644); err != nil {
+			t.Fatalf("Failed to write test file: %v", err)
+		}
+
+		// Read metadata
+		metadata, err := ReadComposeMetadata(tempDir)
+		if err != nil {
+			t.Fatalf("Failed to read compose metadata: %v", err)
+		}
+
+		if metadata.Emoji != "💻" {
+			t.Errorf("Expected emoji '💻', got '%s'", metadata.Emoji)
+		}
+
+		// Update other fields without changing emoji
+		metadata.Subdomain = "newsubdomain"
+		metadata.IsExposed = true
+
+		if err := UpdateComposeMetadata(tempDir, metadata); err != nil {
+			t.Fatalf("Failed to update compose metadata: %v", err)
+		}
+
+		// Read again to verify emoji was preserved
+		updatedMetadata, err := ReadComposeMetadata(tempDir)
+		if err != nil {
+			t.Fatalf("Failed to read updated metadata: %v", err)
+		}
+
+		if updatedMetadata.Emoji != "💻" {
+			t.Errorf("Expected emoji '💻' to be preserved, got '%s'", updatedMetadata.Emoji)
+		}
+		if updatedMetadata.Subdomain != "newsubdomain" {
+			t.Errorf("Expected subdomain 'newsubdomain', got '%s'", updatedMetadata.Subdomain)
+		}
+	})
+
+	// Test case 5: Empty emoji handling
+	t.Run("EmptyEmoji", func(t *testing.T) {
+		tempDir, err := os.MkdirTemp("", "yamlutil-emoji-empty")
+		if err != nil {
+			t.Fatalf("Failed to create temp dir: %v", err)
+		}
+		defer os.RemoveAll(tempDir)
+
+		// Create compose file without emoji
+		testContent := `version: '3.8'
+services:
+  app:
+    image: nginx:latest
+`
+		composeFile := filepath.Join(tempDir, "docker-compose.yml")
+		if err := os.WriteFile(composeFile, []byte(testContent), 0644); err != nil {
+			t.Fatalf("Failed to write test file: %v", err)
+		}
+
+		// Read metadata - emoji should be empty
+		metadata, err := ReadComposeMetadata(tempDir)
+		if err != nil {
+			t.Fatalf("Failed to read compose metadata: %v", err)
+		}
+
+		if metadata.Emoji != "" {
+			t.Errorf("Expected empty emoji, got '%s'", metadata.Emoji)
+		}
+	})
+}
