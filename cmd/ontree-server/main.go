@@ -48,7 +48,7 @@ func main() {
 					log.Printf("Failed to close database: %v", err)
 				}
 			}()
-			
+
 			// Run migration
 			if err := migration.MigrateDeployedAppsToCompose(cfg); err != nil {
 				fmt.Fprintf(os.Stderr, "Migration failed: %v\n", err)

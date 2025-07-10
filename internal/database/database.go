@@ -129,7 +129,7 @@ func createTables() error {
 		`ALTER TABLE system_setup ADD COLUMN public_base_domain TEXT`,
 		`ALTER TABLE system_setup ADD COLUMN tailscale_base_domain TEXT`,
 	}
-	
+
 	for _, query := range alterQueries {
 		// Ignore errors as columns may already exist
 		_, _ = db.Exec(query)

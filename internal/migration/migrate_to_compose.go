@@ -12,6 +12,19 @@ import (
 	"ontree-node/internal/yamlutil"
 )
 
+// DeployedApp represents the old deployed_apps table structure
+// This is kept temporarily for migration purposes only
+type DeployedApp struct {
+	ID            string
+	Name          string
+	DockerCompose string
+	Subdomain     string
+	HostPort      int
+	IsExposed     bool
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
 // MigrateDeployedAppsToCompose migrates all app metadata from the deployed_apps table
 // to the x-ontree section in docker-compose.yml files
 func MigrateDeployedAppsToCompose(cfg *config.Config) error {
@@ -40,10 +53,10 @@ func MigrateDeployedAppsToCompose(cfg *config.Config) error {
 	successCount := 0
 	for _, app := range apps {
 		log.Printf("Migrating app: %s", app.Name)
-		
+
 		appPath := filepath.Join(cfg.AppsDir, app.Name)
 		composePath := filepath.Join(appPath, "docker-compose.yml")
-		
+
 		// Check if app directory exists
 		if _, err := os.Stat(appPath); os.IsNotExist(err) {
 			log.Printf("WARNING: App directory not found for %s, skipping", app.Name)
@@ -86,13 +99,13 @@ func MigrateDeployedAppsToCompose(cfg *config.Config) error {
 			continue
 		}
 
-		log.Printf("✓ Successfully migrated app: %s (subdomain: %s, port: %d, exposed: %v)", 
+		log.Printf("✓ Successfully migrated app: %s (subdomain: %s, port: %d, exposed: %v)",
 			app.Name, app.Subdomain, app.HostPort, app.IsExposed)
 		successCount++
 	}
 
 	log.Printf("Migration complete: %d/%d apps migrated successfully", successCount, len(apps))
-	
+
 	if successCount < len(apps) {
 		log.Printf("WARNING: %d apps failed to migrate. Check logs above for details.", len(apps)-successCount)
 		log.Printf("Backup files are available in: %s", backupDir)
@@ -102,29 +115,29 @@ func MigrateDeployedAppsToCompose(cfg *config.Config) error {
 	log.Println("All apps migrated successfully!")
 	log.Printf("Backup files are available in: %s", backupDir)
 	log.Println("You can now safely remove the deployed_apps table from the database.")
-	
+
 	return nil
 }
 
 // getAllDeployedApps retrieves all records from the deployed_apps table
-func getAllDeployedApps() ([]database.DeployedApp, error) {
+func getAllDeployedApps() ([]DeployedApp, error) {
 	db := database.GetDB()
-	
+
 	query := `
 		SELECT id, name, docker_compose, subdomain, host_port, is_exposed, created_at, updated_at
 		FROM deployed_apps
 		ORDER BY name
 	`
-	
+
 	rows, err := db.Query(query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query deployed_apps: %w", err)
 	}
 	defer rows.Close()
 
-	var apps []database.DeployedApp
+	var apps []DeployedApp
 	for rows.Next() {
-		var app database.DeployedApp
+		var app DeployedApp
 		err := rows.Scan(
 			&app.ID,
 			&app.Name,

@@ -490,7 +490,7 @@ func (s *Server) loadDomainConfig() error {
 // syncExposedApps synchronizes exposed apps with Caddy on startup
 func (s *Server) syncExposedApps() {
 	// Read all apps from the apps directory
-	apps, err := s.dockerSvc.ListApps()
+	apps, err := s.dockerSvc.ScanApps()
 	if err != nil {
 		log.Printf("Failed to list apps: %v", err)
 		return
