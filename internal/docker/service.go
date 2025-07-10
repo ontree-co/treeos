@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
 	"github.com/docker/docker/api/types/image"
@@ -143,6 +144,32 @@ func (s *Service) DeleteApp(appName string) error {
 		span.RecordError(err)
 	}
 	return err
+}
+
+// DeleteAppComplete deletes the app container and removes the entire app directory
+func (s *Service) DeleteAppComplete(appName string) error {
+	ctx := context.Background()
+	_, span := telemetry.StartSpan(ctx, "docker.delete_app_complete")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.String("app.name", appName),
+		attribute.String("apps.dir", s.appsDir),
+	)
+
+	// First, try to stop and delete the container
+	// We ignore errors here as the container might not exist
+	_ = s.client.StopApp(appName)
+	_ = s.client.DeleteAppContainer(appName)
+
+	// Now delete the app directory
+	appPath := fmt.Sprintf("%s/%s", s.appsDir, appName)
+	if err := os.RemoveAll(appPath); err != nil {
+		span.RecordError(err)
+		return fmt.Errorf("failed to delete app directory: %w", err)
+	}
+
+	return nil
 }
 
 // ProgressCallback is called with progress updates during image operations

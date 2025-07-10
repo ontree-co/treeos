@@ -1,0 +1,97 @@
+{{define "title"}}Edit Configuration - {{.App.Name}} - OnTree{{end}}
+
+{{define "content"}}
+<div class="container-fluid px-4">
+    <h1 class="mt-4">Edit Configuration: {{.App.Name}}</h1>
+    
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/dashboard">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="/apps/{{.App.Name}}">{{.App.Name}}</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Edit Configuration</li>
+        </ol>
+    </nav>
+
+    {{if .Error}}
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-circle me-2"></i>
+        {{.Error}}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {{end}}
+
+    <form method="POST" action="/apps/{{.App.Name}}/edit">
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fas fa-file-code me-1"></i>
+                docker-compose.yml
+            </div>
+            <div class="card-body">
+                <div class="form-group">
+                    <textarea name="content" 
+                              class="form-control font-monospace" 
+                              rows="25" 
+                              style="font-size: 14px; line-height: 1.5;"
+                              spellcheck="false"
+                              required>{{.Content}}</textarea>
+                </div>
+                <div class="mt-2">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Editing: <code>{{.App.Path}}/docker-compose.yml</code>
+                    </small>
+                </div>
+            </div>
+            <div class="card-footer">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        {{if eq .App.Status "running"}}
+                        <span class="text-warning">
+                            <i class="fas fa-exclamation-triangle me-1"></i>
+                            Container is running. It will be recreated with new settings after saving.
+                        </span>
+                        {{end}}
+                    </div>
+                    <div>
+                        <a href="/apps/{{.App.Name}}" class="btn btn-secondary">
+                            <i class="fas fa-times me-1"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary ms-2">
+                            <i class="fas fa-save me-1"></i> Save{{if eq .App.Status "running"}} & Recreate{{end}}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-question-circle me-1"></i>
+            Tips
+        </div>
+        <div class="card-body">
+            <ul class="mb-0">
+                <li>Make sure to maintain proper YAML indentation (use spaces, not tabs)</li>
+                <li>Each service must have either an 'image' or 'build' field</li>
+                <li>Port mappings use the format: <code>"host_port:container_port"</code></li>
+                <li>Volume mounts can be relative to the app directory</li>
+                {{if eq .App.Status "running"}}
+                <li><strong>The container will be automatically recreated after saving to apply your changes</strong></li>
+                {{end}}
+            </ul>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Enhance textarea for code editing */
+textarea[name="content"] {
+    font-family: 'Consolas', 'Monaco', 'Lucida Console', 'Liberation Mono', 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Courier New', monospace;
+    white-space: pre;
+    overflow-wrap: normal;
+    overflow-x: auto;
+    tab-size: 2;
+}
+</style>
+{{end}}

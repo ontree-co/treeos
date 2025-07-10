@@ -48,6 +48,7 @@ func (s *Service) GetAvailableTemplates() ([]Template, error) {
 	}
 
 	jsonPath := filepath.Join(s.templatesPath, "templates.json")
+	fmt.Printf("DEBUG: Looking for templates at: %s\n", jsonPath)
 	data, err := fs.ReadFile(templateFS, jsonPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read templates.json: %w", err)
