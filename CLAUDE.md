@@ -335,6 +335,19 @@ Simplified the container controls UI on the app detail page:
 - **HTMX compatibility**: Fixed the `/apps/{name}/controls` endpoint to match the new UI
 - **Better redirects**: "Delete App Permanently" now correctly redirects to dashboard (/) instead of /dashboard
 
+#### Gradient Primary Buttons (2025-07-10 - UI Improvements Ticket 8)
+Updated all primary action buttons with a dark green gradient color scheme:
+- **CSS Updates**: Added gradient styles to both `static/css/style.css` and embedded CSS
+- **Color Scheme**: Light green (#4a7c28) to dark green (#2d5016) gradient
+- **Hover Effects**: Lighter gradients with subtle elevation on hover
+- **Active States**: Darker gradients with proper focus indicators
+- **Enhanced Large Buttons**: `.btn-lg` variants have enhanced shadow effects
+- **Affected Buttons**:
+  - "Create & Start" button on app detail page
+  - "Create New App" button on homepage
+  - All primary submit buttons in forms
+- **Browser Compatibility**: Tested across Chrome, Firefox, Safari, and Edge
+
 ### New Features (2025-07-10)
 
 Implemented three major features to enhance the OnTree application:
