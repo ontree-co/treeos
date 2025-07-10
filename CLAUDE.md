@@ -6,6 +6,13 @@ OnTree is a Docker container management application with a web interface for man
 
 ## Recent Features
 
+### YAML Utilities Package (2025-07-10)
+
+Added yamlutil package for managing docker-compose.yml metadata:
+- Preserves comments and formatting when updating YAML files
+- Manages OnTree metadata in `x-ontree` extension field
+- See `internal/yamlutil/CLAUDE.md` for implementation details
+
 ### Caddy Integration UI (2025-07-10)
 
 Added Domain & Access section to app detail page for exposing apps via Caddy reverse proxy:
