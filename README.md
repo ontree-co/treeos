@@ -10,6 +10,7 @@ OnTree is a Docker container management application with a web interface for man
 - **Dynamic UI Updates**: Real-time status updates using HTMX without page refreshes
 - **Self-contained Binary**: Single executable with all assets embedded
 - **Multi-architecture Support**: Runs on Linux (AMD64) and macOS (ARM64)
+- **System Monitoring Dashboard**: Real-time system metrics with historical sparklines (CPU, Memory, Disk, Network)
 
 ## Quick Start
 
@@ -43,6 +44,9 @@ OnTree can be configured using environment variables:
 - `AUTH_USERNAME`: Basic auth username (required)
 - `AUTH_PASSWORD`: Basic auth password (required)
 - `SESSION_KEY`: Session encryption key (auto-generated if not set)
+- `MONITORING_ENABLED`: Enable/disable system monitoring dashboard (default: true)
+- `PUBLIC_BASE_DOMAIN`: Public domain for app exposure via Caddy
+- `TAILSCALE_BASE_DOMAIN`: Tailscale domain for app exposure via Caddy
 
 Example:
 ```bash
@@ -50,6 +54,59 @@ export AUTH_USERNAME="admin"
 export AUTH_PASSWORD="secure-password"
 export PORT="3000"
 ./ontree-server
+```
+
+## System Monitoring
+
+OnTree includes a comprehensive system monitoring dashboard that provides real-time insights into your server's performance.
+
+### Features
+
+- **Real-time Metrics**: View current CPU, Memory, Disk, and Network usage
+- **Historical Sparklines**: 24-hour trend visualization for each metric
+- **Detailed Charts**: Click any sparkline to view detailed charts with multiple time ranges
+- **Auto-refresh**: Metrics update every 5 seconds automatically
+- **Responsive Design**: Optimized for both desktop and mobile viewing
+
+### Accessing the Dashboard
+
+1. Navigate to `/monitoring` in your OnTree instance
+2. The dashboard displays a 2x2 grid of metric cards
+3. Click any sparkline to see detailed historical data
+
+### Time Ranges
+
+Detailed charts support multiple time ranges:
+- 1 Hour - For immediate performance troubleshooting
+- 6 Hours - For recent trend analysis  
+- 24 Hours - Default view showing daily patterns
+- 7 Days - For weekly trend analysis
+
+### Data Retention
+
+- System metrics are collected every 60 seconds
+- Historical data is retained for 7 days
+- Older data is automatically cleaned up to save space
+
+### Performance Optimization
+
+The monitoring system includes several optimizations:
+- 5-minute caching for sparkline generation
+- Batch database queries for efficiency
+- Optimized SVG generation for fast rendering
+- Connection pooling for database access
+
+### Configuration
+
+To disable monitoring (if needed for performance reasons):
+```bash
+export MONITORING_ENABLED=false
+./ontree-server
+```
+
+Or in `config.toml`:
+```toml
+monitoring_enabled = false
 ```
 
 ## Development

@@ -210,6 +210,15 @@ Implemented comprehensive performance optimizations for the monitoring system:
   - Navigation menu item shown conditionally
   - Defaults to true (enabled)
 
+### Monitoring Documentation and Testing (2025-07-10 - Usage Graph Ticket 9)
+
+Completed comprehensive documentation and testing for the monitoring feature:
+- **User Documentation**: Added monitoring section to README.md with feature overview and usage instructions
+- **Configuration Guide**: Created `docs/configuration.md` with complete configuration reference
+- **Integration Tests**: Added `handlers_monitoring_test.go` with tests for all monitoring endpoints
+- **Screenshot Guide**: Created `docs/monitoring-screenshots.md` describing required screenshots
+- **Test Coverage**: Includes endpoint tests, integration workflows, performance characteristics, and configuration options
+
 ### UI Improvements (2025-07-10)
 
 #### Container Controls Reorganization
