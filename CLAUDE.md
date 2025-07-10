@@ -94,6 +94,30 @@ Enabled historical data collection for system vitals to support the upcoming usa
 
 **Note**: The system_vital_logs table already existed but was unused. Now vitals are persisted for historical analysis.
 
+### Monitoring Routes and Handlers (2025-07-10 - Usage Graph Ticket 2)
+
+Added the foundational routing structure for the monitoring dashboard:
+- Created `/monitoring` route in `server.go` for the main dashboard page
+- Created `handlers_monitoring.go` with routing logic and placeholder handlers
+- Implemented partial routes for real-time updates:
+  - `/monitoring/partials/cpu` - CPU usage card updates
+  - `/monitoring/partials/memory` - Memory usage card updates
+  - `/monitoring/partials/disk` - Disk usage card updates
+  - `/monitoring/partials/network` - Network usage card updates
+- Added `/monitoring/charts/{metric}` route for detailed chart views
+- All handlers return placeholder HTML with HTMX polling configured (5s intervals)
+- Ready for integration with real data collection and SVG sparkline generation
+
+### SVG Sparkline Generation (2025-07-10 - Usage Graph Ticket 3)
+
+Implemented reusable SVG sparkline generator for visualizing time-series data:
+- Created `internal/charts` package with sparkline generation functions
+- `GenerateSparklineSVG` creates auto-scaled sparklines for any data range
+- `GeneratePercentageSparkline` optimized for 0-100% metrics
+- Supports custom styling (color, stroke width)
+- Comprehensive unit tests ensure reliability
+- See `internal/charts/CLAUDE.md` for implementation details
+
 ### UI Improvements (2025-07-10)
 
 #### Container Controls Reorganization
