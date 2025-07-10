@@ -445,6 +445,7 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 	if hasMetadata {
 		data["DeployedApp"] = deployedApp
 		data["HasDeployedApp"] = true
+		data["AppEmoji"] = metadata.Emoji // Pass emoji to template
 
 		// Construct full URLs for display
 		var urls []string
@@ -459,6 +460,7 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 		data["ExposedURLs"] = urls
 	} else {
 		data["HasDeployedApp"] = false
+		data["AppEmoji"] = "" // Empty emoji if no metadata
 	}
 
 	// Add domain configuration for UI display

@@ -291,6 +291,20 @@ Integrated emoji picker into the template-based app creation flow:
   - Emoji validation exists in `yamlutil.IsValidEmoji()`
 - See `internal/server/template_handlers.go` for implementation
 
+### Emoji Display on App Detail Page (2025-07-10 - UI Improvements Ticket 6)
+
+Implemented emoji display on the app detail page:
+- **Handler Updates**: Modified `handleAppDetail` in `handlers.go` to pass emoji from metadata to template
+- **Template Updates**: Updated app detail template to show emoji before app name with fallback to default 📦 icon
+- **Features**:
+  - Emoji appears before app name in page header when set
+  - Graceful fallback to default package icon when no emoji is configured
+  - Works with both regular templates and embedded templates
+- **Implementation Details**:
+  - Added `data["AppEmoji"] = metadata.Emoji` in handler to pass emoji to template
+  - Template uses `{{if .AppEmoji}}{{.AppEmoji}}{{else}}<i>📦</i>{{end}}` for conditional display
+  - No database changes required - emoji loaded from docker-compose.yml via yamlutil
+
 ### UI Improvements (2025-07-10)
 
 #### Container Controls Reorganization
