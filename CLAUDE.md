@@ -163,6 +163,31 @@ Connected monitoring dashboard handlers to real system data:
   - HTMX polling configured for 5-second updates on all cards
 - **Note**: Network rate calculation requires database schema update to store network bytes (future enhancement)
 
+### Modal Detail View for Monitoring (2025-07-10 - Usage Graph Ticket 7)
+
+Added click-to-expand functionality for detailed metric views:
+- **Modal Integration**: Clicking any sparkline opens a Bootstrap modal with detailed chart
+- **Detailed Charts**: Created `internal/charts/detailed.go` with comprehensive chart generation:
+  - Axes with smart Y-axis scaling and labels
+  - Grid lines for easy reading (5 horizontal, 6 vertical)
+  - Time-based X-axis with intelligent date/time formatting
+  - Filled area under line chart for better visualization
+  - Data points shown as circles for smaller datasets
+- **Time Range Selection**: Added buttons for different time ranges:
+  - 1 Hour, 6 Hours, 24 Hours (default), 7 Days
+  - Active range highlighted with primary button style
+  - Uses HTMX to reload chart without closing modal
+- **Chart Features**:
+  - 700x400 pixel detailed charts (vs 150x40 sparklines)
+  - Proper clipping to prevent data overflow
+  - Percentage metrics constrained to 0-100% range
+  - Auto-padding for non-percentage metrics
+- **Handler Updates**: Modified `/monitoring/charts/{metric}` endpoints to:
+  - Accept `?range=` query parameter for time selection
+  - Generate detailed charts using historical data
+  - Return HTML with time range selector and SVG chart
+- See `internal/charts/CLAUDE.md` for detailed implementation notes
+
 ### UI Improvements (2025-07-10)
 
 #### Container Controls Reorganization

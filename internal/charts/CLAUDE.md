@@ -46,3 +46,33 @@ Comprehensive unit tests cover:
 - Custom styling
 - SVG validity and structure
 - Edge cases (negative values, same values)
+
+## Detailed Chart Generation
+
+The `detailed.go` file implements full-featured charts with axes, labels, and grid lines:
+
+### Main Functions
+
+1. **GenerateDetailedChart(data DetailedChartData, width, height int) template.HTML**
+   - Creates comprehensive charts with axes, labels, and grid lines
+   - Supports time-series data with proper date/time formatting
+   - Auto-scales Y-axis with smart padding
+   - Respects min/max bounds for percentage metrics
+
+### Features
+
+- **Grid Lines**: 5 horizontal and 6 vertical lines for easy reading
+- **Y-Axis**: Smart labels with unit formatting (%, MB/s, etc.)
+- **X-Axis**: Time-based labels with intelligent date/time display
+- **Data Visualization**: 
+  - Line chart with filled area underneath
+  - Data points shown as circles (for smaller datasets)
+  - Responsive to data density
+- **Clipping**: Chart data is clipped to prevent overflow
+
+### Usage in Monitoring
+
+Used by the monitoring handlers to display detailed metric views when users click on sparklines:
+- CPU, Memory, Disk usage charts (0-100% scale)
+- Network usage charts (variable scale)
+- Supports time range selection (1h, 6h, 24h, 7d)

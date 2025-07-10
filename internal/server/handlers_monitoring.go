@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 	
 	"ontree-node/internal/charts"
 	"ontree-node/internal/database"
@@ -298,17 +299,147 @@ func (s *Server) handleMonitoringCharts(w http.ResponseWriter, r *http.Request) 
 	
 	metricType := parts[3]
 	
+	// Default time range is 24 hours
+	timeRange := r.URL.Query().Get("range")
+	if timeRange == "" {
+		timeRange = "24h"
+	}
+	
+	var duration time.Duration
+	var err error
+	
+	switch timeRange {
+	case "1h":
+		duration = time.Hour
+	case "6h":
+		duration = 6 * time.Hour
+	case "24h":
+		duration = 24 * time.Hour
+	case "7d":
+		duration = 7 * 24 * time.Hour
+	default:
+		duration = 24 * time.Hour
+	}
+	
+	// Get historical data based on metric type
+	var chartData charts.DetailedChartData
+	var historicalData []database.SystemVitalLog
+	
+	switch metricType {
+	case "cpu":
+		historicalData, err = database.GetMetricsForTimeRange(time.Now().Add(-duration), time.Now())
+		if err != nil {
+			log.Printf("Failed to get CPU data: %v", err)
+		}
+		chartData.Title = "CPU Usage"
+		chartData.YAxisUnit = "%"
+		chartData.MinValue = 0
+		chartData.MaxValue = 100
+		
+		// Convert to DataPoints
+		for _, metric := range historicalData {
+			chartData.Points = append(chartData.Points, charts.DataPoint{
+				Time:  metric.Timestamp,
+				Value: metric.CPUPercent,
+			})
+		}
+		
+	case "memory":
+		historicalData, err = database.GetMetricsForTimeRange(time.Now().Add(-duration), time.Now())
+		if err != nil {
+			log.Printf("Failed to get memory data: %v", err)
+		}
+		chartData.Title = "Memory Usage"
+		chartData.YAxisUnit = "%"
+		chartData.MinValue = 0
+		chartData.MaxValue = 100
+		
+		// Convert to DataPoints
+		for _, metric := range historicalData {
+			chartData.Points = append(chartData.Points, charts.DataPoint{
+				Time:  metric.Timestamp,
+				Value: metric.MemoryPercent,
+			})
+		}
+		
+	case "disk":
+		historicalData, err = database.GetMetricsForTimeRange(time.Now().Add(-duration), time.Now())
+		if err != nil {
+			log.Printf("Failed to get disk data: %v", err)
+		}
+		chartData.Title = "Disk Usage (/)"
+		chartData.YAxisUnit = "%"
+		chartData.MinValue = 0
+		chartData.MaxValue = 100
+		
+		// Convert to DataPoints
+		for _, metric := range historicalData {
+			chartData.Points = append(chartData.Points, charts.DataPoint{
+				Time:  metric.Timestamp,
+				Value: metric.DiskUsagePercent,
+			})
+		}
+		
+	case "network":
+		// Network data is not yet stored in the database
+		chartData.Title = "Network Usage"
+		chartData.YAxisUnit = "MB/s"
+		// Generate some sample data for now
+		now := time.Now()
+		for i := 0; i < 24; i++ {
+			chartData.Points = append(chartData.Points, charts.DataPoint{
+				Time:  now.Add(time.Duration(-i) * time.Hour),
+				Value: float64(i * 2 % 10),
+			})
+		}
+		
+	default:
+		http.NotFound(w, r)
+		return
+	}
+	
+	// Generate the detailed chart
+	chartSVG := charts.GenerateDetailedChart(chartData, 700, 400)
+	
+	// Time range selector buttons
+	timeRangeButtons := fmt.Sprintf(`
+	<div class="btn-group mb-3" role="group" aria-label="Time range selector">
+		<button type="button" class="btn btn-sm %s" onclick="loadChart('%s', '1h')">1 Hour</button>
+		<button type="button" class="btn btn-sm %s" onclick="loadChart('%s', '6h')">6 Hours</button>
+		<button type="button" class="btn btn-sm %s" onclick="loadChart('%s', '24h')">24 Hours</button>
+		<button type="button" class="btn btn-sm %s" onclick="loadChart('%s', '7d')">7 Days</button>
+	</div>`,
+		ifElse(timeRange == "1h", "btn-primary", "btn-outline-primary"), metricType,
+		ifElse(timeRange == "6h", "btn-primary", "btn-outline-primary"), metricType,
+		ifElse(timeRange == "24h", "btn-primary", "btn-outline-primary"), metricType,
+		ifElse(timeRange == "7d", "btn-primary", "btn-outline-primary"), metricType,
+	)
+	
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	html := `
+	html := fmt.Sprintf(`
 <div class="modal-chart">
-    <h2>` + strings.Title(metricType) + ` Details</h2>
-    <p>Detailed chart for ` + metricType + ` coming soon...</p>
-    <svg width="600" height="300" viewBox="0 0 600 300" xmlns="http://www.w3.org/2000/svg">
-        <!-- Detailed chart will go here -->
-        <rect x="0" y="0" width="600" height="300" fill="#f8f9fa" stroke="#dee2e6" />
-        <text x="300" y="150" text-anchor="middle" fill="#6c757d">Detailed ` + strings.Title(metricType) + ` Chart</text>
-    </svg>
+    %s
+    <div class="chart-container">
+        %s
+    </div>
 </div>
-	`
+<script>
+function loadChart(metric, range) {
+    htmx.ajax('GET', '/monitoring/charts/' + metric + '?range=' + range, {
+        target: '#modal-content',
+        swap: 'innerHTML'
+    });
+}
+</script>
+	`, timeRangeButtons, chartSVG)
+	
 	w.Write([]byte(html))
+}
+
+// Helper function for conditional strings
+func ifElse(condition bool, trueVal, falseVal string) string {
+	if condition {
+		return trueVal
+	}
+	return falseVal
 }
