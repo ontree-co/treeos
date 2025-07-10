@@ -1,0 +1,21 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "embed-assets",
+            "type": "shell",
+            "command": "make",
+            "args": ["embed-assets"],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "silent",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": false
+            },
+            "problemMatcher": []
+        }
+    ]
+}
