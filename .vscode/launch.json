@@ -1,0 +1,20 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Launch Server (Debug)",
+            "type": "go",
+            "request": "launch",
+            "mode": "debug",
+            "program": "${workspaceFolder}/cmd/ontree-server/main.go",
+            "cwd": "${workspaceFolder}",
+            // Note: LISTEN_ADDR is not set here, so it uses the default port from config.DefaultPort (currently :3000)
+            "env": {
+                "ONTREE_APPS_DIR": "${workspaceFolder}/apps",
+                "DATABASE_PATH": "${workspaceFolder}/ontree.db"
+            },
+            "args": [],
+            "showLog": true
+        }
+    ]
+}

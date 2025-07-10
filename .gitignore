@@ -22,7 +22,6 @@ vendor/
 go.sum
 
 # IDE
-.vscode/
 .idea/
 *.swp
 *.swo
