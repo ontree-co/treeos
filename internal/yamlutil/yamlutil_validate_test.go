@@ -42,7 +42,7 @@ services:
 			errMsg:  "missing 'version' field",
 		},
 		{
-			name:    "Empty version",
+			name: "Empty version",
 			content: `version: ""
 services:
   web:
@@ -57,14 +57,14 @@ services:
 			errMsg:  "missing 'services' section",
 		},
 		{
-			name:    "Empty services",
+			name: "Empty services",
 			content: `version: '3.8'
 services: {}`,
 			wantErr: true,
 			errMsg:  "missing 'services' section",
 		},
 		{
-			name:    "Service without image or build",
+			name: "Service without image or build",
 			content: `version: '3.8'
 services:
   web:
@@ -74,7 +74,7 @@ services:
 			errMsg:  "must have either 'image' or 'build' field",
 		},
 		{
-			name:    "Invalid YAML syntax",
+			name: "Invalid YAML syntax",
 			content: `version: '3.8'
 services:
   web
@@ -83,7 +83,7 @@ services:
 			errMsg:  "invalid YAML syntax",
 		},
 		{
-			name:    "Invalid service structure",
+			name: "Invalid service structure",
 			content: `version: '3.8'
 services:
   web: "not a map"`,

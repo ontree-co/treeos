@@ -111,7 +111,7 @@ func CleanupOldSystemVitals(olderThan time.Duration) error {
 	cutoff := time.Now().Add(-olderThan)
 
 	query := `DELETE FROM system_vital_logs WHERE timestamp < ?`
-	
+
 	result, err := db.Exec(query, cutoff)
 	if err != nil {
 		return fmt.Errorf("failed to cleanup old vitals: %w", err)
@@ -166,4 +166,40 @@ func GetMetricsForTimeRange(start, end time.Time) ([]SystemVitalLog, error) {
 	}
 
 	return metrics, nil
+}
+
+// MetricsBatch holds all metrics data for a time range
+type MetricsBatch struct {
+	Metrics []SystemVitalLog
+}
+
+// GetMetricsBatch retrieves all metrics for the given time range in a single query
+// This is more efficient than making multiple queries for different metric types
+func GetMetricsBatch(start, end time.Time) (*MetricsBatch, error) {
+	metrics, err := GetMetricsForTimeRange(start, end)
+	if err != nil {
+		return nil, err
+	}
+
+	return &MetricsBatch{
+		Metrics: metrics,
+	}, nil
+}
+
+// ExtractMetricData extracts a specific metric type from the batch
+func (b *MetricsBatch) ExtractMetricData(metricType string) []float64 {
+	var data []float64
+
+	for _, m := range b.Metrics {
+		switch metricType {
+		case "cpu":
+			data = append(data, m.CPUPercent)
+		case "memory":
+			data = append(data, m.MemoryPercent)
+		case "disk":
+			data = append(data, m.DiskUsagePercent)
+		}
+	}
+
+	return data
 }

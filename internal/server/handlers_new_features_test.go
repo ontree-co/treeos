@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"ontree-node/internal/yamlutil"
 	"strings"
 	"testing"
-	"ontree-node/internal/yamlutil"
 )
 
 // TestHandleAppDeleteComplete tests the app deletion handler
@@ -226,7 +226,7 @@ func TestDockerServiceDeleteAppComplete(t *testing.T) {
 		t.Log("2. Delete the container")
 		t.Log("3. Remove the entire app directory")
 		t.Log("4. Return error if directory deletion fails")
-		
+
 		// Note: Actual implementation testing would require mocking
 		// the Docker client and filesystem operations
 	})
@@ -259,7 +259,7 @@ services:
 			errMsg:  "missing 'version' field",
 		},
 		{
-			name: "Missing services",
+			name:    "Missing services",
 			content: `version: '3.8'`,
 			wantErr: true,
 			errMsg:  "missing 'services' section",

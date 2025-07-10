@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/gorilla/sessions"
+	"ontree-node/internal/cache"
 	"ontree-node/internal/caddy"
 	"ontree-node/internal/config"
 	"ontree-node/internal/database"
@@ -39,6 +40,7 @@ type Server struct {
 	caddyAvailable        bool
 	caddyClient           *caddy.Client
 	platformSupportsCaddy bool
+	sparklineCache        *cache.Cache
 }
 
 // New creates a new server instance
@@ -53,6 +55,7 @@ func New(cfg *config.Config, versionInfo version.Info) (*Server, error) {
 		sessionStore:          sessions.NewCookieStore(sessionKey),
 		versionInfo:           versionInfo,
 		platformSupportsCaddy: runtime.GOOS == "linux",
+		sparklineCache:        cache.New(5 * time.Minute), // 5-minute cache for sparklines
 	}
 
 	// Configure session store
@@ -330,9 +333,11 @@ func (s *Server) Start() error {
 		}
 	}))))
 
-	// Monitoring routes
-	mux.HandleFunc("/monitoring", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleMonitoring))))
-	mux.HandleFunc("/monitoring/", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeMonitoring))))
+	// Monitoring routes (only if enabled)
+	if s.config.MonitoringEnabled {
+		mux.HandleFunc("/monitoring", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleMonitoring))))
+		mux.HandleFunc("/monitoring/", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeMonitoring))))
+	}
 
 	// Start server
 	addr := s.config.ListenAddr
@@ -357,14 +362,14 @@ func (s *Server) Start() error {
 // startVitalsCleanup runs a background job to clean up old system vital logs
 func (s *Server) startVitalsCleanup() {
 	log.Printf("System vitals cleanup job started")
-	
+
 	// Run cleanup every hour
 	ticker := time.NewTicker(1 * time.Hour)
 	defer ticker.Stop()
-	
+
 	// Run initial cleanup on startup
 	s.cleanupOldVitals()
-	
+
 	for range ticker.C {
 		s.cleanupOldVitals()
 	}
@@ -373,25 +378,25 @@ func (s *Server) startVitalsCleanup() {
 // cleanupOldVitals removes system vital logs older than 7 days
 func (s *Server) cleanupOldVitals() {
 	db := database.GetDB()
-	
+
 	// Delete records older than 7 days
 	query := `
 		DELETE FROM system_vital_logs 
 		WHERE timestamp < datetime('now', '-7 days')
 	`
-	
+
 	result, err := db.Exec(query)
 	if err != nil {
 		log.Printf("Failed to cleanup old vitals: %v", err)
 		return
 	}
-	
+
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
 		log.Printf("Failed to get rows affected: %v", err)
 		return
 	}
-	
+
 	if rowsAffected > 0 {
 		log.Printf("Cleaned up %d old vital log records", rowsAffected)
 	}
@@ -475,6 +480,9 @@ func (s *Server) baseTemplateData(user *database.User) map[string]interface{} {
 	// Caddy availability
 	data["CaddyAvailable"] = s.caddyAvailable
 	data["PlatformSupportsCaddy"] = s.platformSupportsCaddy
+
+	// Monitoring availability
+	data["MonitoringEnabled"] = s.config.MonitoringEnabled
 
 	// Messages field is required by base template
 	data["Messages"] = nil

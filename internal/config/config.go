@@ -29,14 +29,18 @@ type Config struct {
 	// Caddy integration configuration
 	PublicBaseDomain    string `toml:"public_base_domain"`
 	TailscaleBaseDomain string `toml:"tailscale_base_domain"`
+
+	// Monitoring feature flag
+	MonitoringEnabled bool `toml:"monitoring_enabled"`
 }
 
 // defaultConfig returns the default configuration based on the platform
 func defaultConfig() *Config {
 	config := &Config{
-		DatabasePath: "ontree.db",
-		ListenAddr:   DefaultPort,
-		PostHogHost:  "https://app.posthog.com",
+		DatabasePath:      "ontree.db",
+		ListenAddr:        DefaultPort,
+		PostHogHost:       "https://app.posthog.com",
+		MonitoringEnabled: true, // Enabled by default
 	}
 
 	// Platform-specific defaults for AppsDir
@@ -92,6 +96,10 @@ func Load() (*Config, error) {
 
 	if tailscaleBaseDomain := os.Getenv("TAILSCALE_BASE_DOMAIN"); tailscaleBaseDomain != "" {
 		config.TailscaleBaseDomain = tailscaleBaseDomain
+	}
+
+	if monitoringEnabled := os.Getenv("MONITORING_ENABLED"); monitoringEnabled != "" {
+		config.MonitoringEnabled = monitoringEnabled == "true" || monitoringEnabled == "1"
 	}
 
 	// Ensure AppsDir is absolute

@@ -188,6 +188,28 @@ Added click-to-expand functionality for detailed metric views:
   - Return HTML with time range selector and SVG chart
 - See `internal/charts/CLAUDE.md` for detailed implementation notes
 
+### Monitoring Performance Optimizations (2025-07-10 - Usage Graph Ticket 8)
+
+Implemented comprehensive performance optimizations for the monitoring system:
+- **Sparkline Caching**: Added 5-minute in-memory cache for generated sparklines
+  - Created `internal/cache` package with thread-safe caching
+  - Caches both dashboard sparklines and detailed charts
+  - Automatic cleanup of expired entries
+- **Database Query Optimization**: 
+  - Added batch query function `GetMetricsBatch` to fetch all metrics in one query
+  - Reduced database roundtrips for chart generation
+  - Connection pooling already configured (25 max connections, 5 idle)
+- **SVG Generation Optimization**:
+  - Pre-allocate string builder capacity to avoid reallocations
+  - Pre-calculate constants outside loops
+  - Reduced decimal precision from 2 to 1 for coordinates
+  - Optimized string concatenation using strings.Builder
+- **Feature Flag**: Added `monitoring_enabled` configuration option
+  - Can be set via config.toml or MONITORING_ENABLED environment variable
+  - Routes only registered when enabled
+  - Navigation menu item shown conditionally
+  - Defaults to true (enabled)
+
 ### UI Improvements (2025-07-10)
 
 #### Container Controls Reorganization

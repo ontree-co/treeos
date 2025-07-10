@@ -70,15 +70,15 @@ func TestGenerateSparklineSVG(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := GenerateSparklineSVG(tt.dataPoints, tt.width, tt.height)
-			
+
 			if tt.wantEmpty && got != "" {
 				t.Errorf("GenerateSparklineSVG() = %v, want empty", got)
 			}
-			
+
 			if !tt.wantEmpty && got == "" {
 				t.Errorf("GenerateSparklineSVG() returned empty, want SVG")
 			}
-			
+
 			for _, substr := range tt.contains {
 				if !strings.Contains(string(got), substr) {
 					t.Errorf("GenerateSparklineSVG() missing substring %q in output", substr)
@@ -96,13 +96,13 @@ func TestGenerateSparklineSVGWithStyle(t *testing.T) {
 	strokeWidth := 3.5
 
 	got := GenerateSparklineSVGWithStyle(dataPoints, width, height, strokeColor, strokeWidth)
-	
+
 	expectedSubstrings := []string{
 		`stroke="#ff0000"`,
 		`stroke-width="3.5"`,
 		`<svg width="100" height="40"`,
 	}
-	
+
 	for _, substr := range expectedSubstrings {
 		if !strings.Contains(string(got), substr) {
 			t.Errorf("GenerateSparklineSVGWithStyle() missing substring %q in output", substr)
@@ -189,13 +189,13 @@ func TestBuildPolylinePoints(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := buildPolylinePoints(tt.dataPoints, tt.width, tt.height, tt.minVal, tt.maxVal)
-			
+
 			// Count coordinate pairs
 			coords := strings.Count(got, ",")
 			if coords != tt.wantPoints {
 				t.Errorf("buildPolylinePoints() returned %d coordinate pairs, want %d", coords, tt.wantPoints)
 			}
-			
+
 			// Verify format (should contain numbers and commas)
 			if !strings.Contains(got, ",") {
 				t.Errorf("buildPolylinePoints() = %v, missing comma separators", got)
@@ -238,15 +238,15 @@ func TestGeneratePercentageSparkline(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := GeneratePercentageSparkline(tt.dataPoints, tt.width, tt.height)
-			
+
 			if tt.wantEmpty && got != template.HTML("") {
 				t.Errorf("GeneratePercentageSparkline() = %v, want empty", got)
 			}
-			
+
 			if !tt.wantEmpty && got == template.HTML("") {
 				t.Errorf("GeneratePercentageSparkline() returned empty, want SVG")
 			}
-			
+
 			// Check for SVG structure
 			if !tt.wantEmpty && !strings.Contains(string(got), "<svg") {
 				t.Errorf("GeneratePercentageSparkline() missing SVG tag")
@@ -259,18 +259,18 @@ func TestGeneratePercentageSparkline(t *testing.T) {
 func TestSVGValidity(t *testing.T) {
 	dataPoints := []float64{10, 30, 20, 40, 35, 50}
 	svg := GenerateSparklineSVG(dataPoints, 100, 40)
-	
+
 	svgStr := string(svg)
-	
+
 	// Check for proper SVG structure
 	if !strings.HasPrefix(svgStr, "<svg") {
 		t.Error("SVG should start with <svg tag")
 	}
-	
+
 	if !strings.HasSuffix(strings.TrimSpace(svgStr), "</svg>") {
 		t.Error("SVG should end with </svg> tag")
 	}
-	
+
 	// Check for required attributes
 	requiredAttrs := []string{
 		"width=",
@@ -278,18 +278,18 @@ func TestSVGValidity(t *testing.T) {
 		"viewBox=",
 		"xmlns=",
 	}
-	
+
 	for _, attr := range requiredAttrs {
 		if !strings.Contains(svgStr, attr) {
 			t.Errorf("SVG missing required attribute: %s", attr)
 		}
 	}
-	
+
 	// Check polyline exists and has points
 	if !strings.Contains(svgStr, "<polyline") {
 		t.Error("SVG missing polyline element")
 	}
-	
+
 	if !strings.Contains(svgStr, "points=") {
 		t.Error("SVG polyline missing points attribute")
 	}

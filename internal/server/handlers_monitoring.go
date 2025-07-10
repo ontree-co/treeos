@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
-	
+
 	"ontree-node/internal/charts"
 	"ontree-node/internal/database"
 	"ontree-node/internal/system"
@@ -74,31 +74,41 @@ func (s *Server) handleMonitoringCPUPartial(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "Failed to get system vitals", http.StatusInternalServerError)
 		return
 	}
-	
-	// Get historical CPU data for the last 24 hours
-	historicalData, err := database.GetMetricsLast24Hours("cpu")
-	if err != nil {
-		log.Printf("Failed to get historical CPU data: %v", err)
-		// Continue with empty historical data
-		historicalData = []database.SystemVitalLog{}
-	}
-	
-	// Extract CPU percentages for sparkline
-	var cpuData []float64
-	for _, metric := range historicalData {
-		cpuData = append(cpuData, metric.CPUPercent)
-	}
-	
-	// Generate sparkline SVG
+
+	// Check cache for sparkline
+	cacheKey := fmt.Sprintf("sparkline:cpu:24h")
 	var sparklineSVG template.HTML
-	if len(cpuData) >= 2 {
-		sparklineSVG = charts.GeneratePercentageSparkline(cpuData, 150, 40)
+
+	if cached, found := s.sparklineCache.Get(cacheKey); found {
+		sparklineSVG = cached.(template.HTML)
 	} else {
-		// Not enough data, show a flat line at current value
-		sparklineSVG = template.HTML(fmt.Sprintf(`<svg width="150" height="40" viewBox="0 0 150 40" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"><line x1="0" y1="%d" x2="150" y2="%d" stroke="#007bff" stroke-width="2" /></svg>`, 
-			int(40-(vitals.CPUPercent*0.4)), int(40-(vitals.CPUPercent*0.4))))
+		// Get historical CPU data for the last 24 hours
+		historicalData, err := database.GetMetricsLast24Hours("cpu")
+		if err != nil {
+			log.Printf("Failed to get historical CPU data: %v", err)
+			// Continue with empty historical data
+			historicalData = []database.SystemVitalLog{}
+		}
+
+		// Extract CPU percentages for sparkline
+		var cpuData []float64
+		for _, metric := range historicalData {
+			cpuData = append(cpuData, metric.CPUPercent)
+		}
+
+		// Generate sparkline SVG
+		if len(cpuData) >= 2 {
+			sparklineSVG = charts.GeneratePercentageSparkline(cpuData, 150, 40)
+		} else {
+			// Not enough data, show a flat line at current value
+			sparklineSVG = template.HTML(fmt.Sprintf(`<svg width="150" height="40" viewBox="0 0 150 40" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"><line x1="0" y1="%d" x2="150" y2="%d" stroke="#007bff" stroke-width="2" /></svg>`,
+				int(40-(vitals.CPUPercent*0.4)), int(40-(vitals.CPUPercent*0.4))))
+		}
+
+		// Cache the sparkline
+		s.sparklineCache.Set(cacheKey, sparklineSVG)
 	}
-	
+
 	// Prepare data for the template
 	data := struct {
 		CurrentLoad  string
@@ -134,31 +144,41 @@ func (s *Server) handleMonitoringMemoryPartial(w http.ResponseWriter, r *http.Re
 		http.Error(w, "Failed to get system vitals", http.StatusInternalServerError)
 		return
 	}
-	
-	// Get historical memory data for the last 24 hours
-	historicalData, err := database.GetMetricsLast24Hours("memory")
-	if err != nil {
-		log.Printf("Failed to get historical memory data: %v", err)
-		// Continue with empty historical data
-		historicalData = []database.SystemVitalLog{}
-	}
-	
-	// Extract memory percentages for sparkline
-	var memData []float64
-	for _, metric := range historicalData {
-		memData = append(memData, metric.MemoryPercent)
-	}
-	
-	// Generate sparkline SVG
+
+	// Check cache for sparkline
+	cacheKey := fmt.Sprintf("sparkline:memory:24h")
 	var sparklineSVG template.HTML
-	if len(memData) >= 2 {
-		sparklineSVG = charts.GeneratePercentageSparkline(memData, 150, 40)
+
+	if cached, found := s.sparklineCache.Get(cacheKey); found {
+		sparklineSVG = cached.(template.HTML)
 	} else {
-		// Not enough data, show a flat line at current value
-		sparklineSVG = template.HTML(fmt.Sprintf(`<svg width="150" height="40" viewBox="0 0 150 40" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"><line x1="0" y1="%d" x2="150" y2="%d" stroke="#007bff" stroke-width="2" /></svg>`, 
-			int(40-(vitals.MemPercent*0.4)), int(40-(vitals.MemPercent*0.4))))
+		// Get historical memory data for the last 24 hours
+		historicalData, err := database.GetMetricsLast24Hours("memory")
+		if err != nil {
+			log.Printf("Failed to get historical memory data: %v", err)
+			// Continue with empty historical data
+			historicalData = []database.SystemVitalLog{}
+		}
+
+		// Extract memory percentages for sparkline
+		var memData []float64
+		for _, metric := range historicalData {
+			memData = append(memData, metric.MemoryPercent)
+		}
+
+		// Generate sparkline SVG
+		if len(memData) >= 2 {
+			sparklineSVG = charts.GeneratePercentageSparkline(memData, 150, 40)
+		} else {
+			// Not enough data, show a flat line at current value
+			sparklineSVG = template.HTML(fmt.Sprintf(`<svg width="150" height="40" viewBox="0 0 150 40" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"><line x1="0" y1="%d" x2="150" y2="%d" stroke="#007bff" stroke-width="2" /></svg>`,
+				int(40-(vitals.MemPercent*0.4)), int(40-(vitals.MemPercent*0.4))))
+		}
+
+		// Cache the sparkline
+		s.sparklineCache.Set(cacheKey, sparklineSVG)
 	}
-	
+
 	// Prepare data for the template
 	data := struct {
 		CurrentUsage string
@@ -194,31 +214,41 @@ func (s *Server) handleMonitoringDiskPartial(w http.ResponseWriter, r *http.Requ
 		http.Error(w, "Failed to get system vitals", http.StatusInternalServerError)
 		return
 	}
-	
-	// Get historical disk data for the last 24 hours
-	historicalData, err := database.GetMetricsLast24Hours("disk")
-	if err != nil {
-		log.Printf("Failed to get historical disk data: %v", err)
-		// Continue with empty historical data
-		historicalData = []database.SystemVitalLog{}
-	}
-	
-	// Extract disk percentages for sparkline
-	var diskData []float64
-	for _, metric := range historicalData {
-		diskData = append(diskData, metric.DiskUsagePercent)
-	}
-	
-	// Generate sparkline SVG
+
+	// Check cache for sparkline
+	cacheKey := fmt.Sprintf("sparkline:disk:24h")
 	var sparklineSVG template.HTML
-	if len(diskData) >= 2 {
-		sparklineSVG = charts.GeneratePercentageSparkline(diskData, 150, 40)
+
+	if cached, found := s.sparklineCache.Get(cacheKey); found {
+		sparklineSVG = cached.(template.HTML)
 	} else {
-		// Not enough data, show a flat line at current value
-		sparklineSVG = template.HTML(fmt.Sprintf(`<svg width="150" height="40" viewBox="0 0 150 40" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"><line x1="0" y1="%d" x2="150" y2="%d" stroke="#007bff" stroke-width="2" /></svg>`, 
-			int(40-(vitals.DiskPercent*0.4)), int(40-(vitals.DiskPercent*0.4))))
+		// Get historical disk data for the last 24 hours
+		historicalData, err := database.GetMetricsLast24Hours("disk")
+		if err != nil {
+			log.Printf("Failed to get historical disk data: %v", err)
+			// Continue with empty historical data
+			historicalData = []database.SystemVitalLog{}
+		}
+
+		// Extract disk percentages for sparkline
+		var diskData []float64
+		for _, metric := range historicalData {
+			diskData = append(diskData, metric.DiskUsagePercent)
+		}
+
+		// Generate sparkline SVG
+		if len(diskData) >= 2 {
+			sparklineSVG = charts.GeneratePercentageSparkline(diskData, 150, 40)
+		} else {
+			// Not enough data, show a flat line at current value
+			sparklineSVG = template.HTML(fmt.Sprintf(`<svg width="150" height="40" viewBox="0 0 150 40" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"><line x1="0" y1="%d" x2="150" y2="%d" stroke="#007bff" stroke-width="2" /></svg>`,
+				int(40-(vitals.DiskPercent*0.4)), int(40-(vitals.DiskPercent*0.4))))
+		}
+
+		// Cache the sparkline
+		s.sparklineCache.Set(cacheKey, sparklineSVG)
 	}
-	
+
 	// Prepare data for the template
 	data := struct {
 		Path         string
@@ -251,10 +281,10 @@ func (s *Server) handleMonitoringDiskPartial(w http.ResponseWriter, r *http.Requ
 func (s *Server) handleMonitoringNetworkPartial(w http.ResponseWriter, r *http.Request) {
 	// For network data, we'll use placeholder data for now since the database doesn't store network metrics
 	// In a future ticket, we could add network bytes to the database and calculate rates
-	
+
 	// Generate a simple placeholder sparkline
 	sparklineSVG := template.HTML(`<svg width="150" height="40" viewBox="0 0 150 40" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"><polyline fill="none" stroke="#007bff" stroke-width="2" points="0,35 30,30 60,25 90,28 120,32 150,30" /></svg>`)
-	
+
 	// Prepare data for the template
 	// In a real implementation, we would:
 	// 1. Store network bytes in/out in the database
@@ -265,8 +295,8 @@ func (s *Server) handleMonitoringNetworkPartial(w http.ResponseWriter, r *http.R
 		UploadRate   string
 		SparklineSVG template.HTML
 	}{
-		DownloadRate: "0 KB/s",  // Placeholder for now
-		UploadRate:   "0 KB/s",  // Placeholder for now
+		DownloadRate: "0 KB/s", // Placeholder for now
+		UploadRate:   "0 KB/s", // Placeholder for now
 		SparklineSVG: sparklineSVG,
 	}
 
@@ -296,18 +326,17 @@ func (s *Server) handleMonitoringCharts(w http.ResponseWriter, r *http.Request) 
 		http.NotFound(w, r)
 		return
 	}
-	
+
 	metricType := parts[3]
-	
+
 	// Default time range is 24 hours
 	timeRange := r.URL.Query().Get("range")
 	if timeRange == "" {
 		timeRange = "24h"
 	}
-	
+
 	var duration time.Duration
-	var err error
-	
+
 	switch timeRange {
 	case "1h":
 		duration = time.Hour
@@ -320,87 +349,96 @@ func (s *Server) handleMonitoringCharts(w http.ResponseWriter, r *http.Request) 
 	default:
 		duration = 24 * time.Hour
 	}
-	
-	// Get historical data based on metric type
-	var chartData charts.DetailedChartData
-	var historicalData []database.SystemVitalLog
-	
-	switch metricType {
-	case "cpu":
-		historicalData, err = database.GetMetricsForTimeRange(time.Now().Add(-duration), time.Now())
+
+	// Get all metrics in a single batch query
+	startTime := time.Now().Add(-duration)
+	endTime := time.Now()
+
+	// Check cache for the specific metric and time range
+	cacheKey := fmt.Sprintf("chart:%s:%s", metricType, timeRange)
+	var chartSVG template.HTML
+
+	if cached, found := s.sparklineCache.Get(cacheKey); found {
+		chartSVG = cached.(template.HTML)
+	} else {
+		// Batch query for all metrics
+		batch, err := database.GetMetricsBatch(startTime, endTime)
 		if err != nil {
-			log.Printf("Failed to get CPU data: %v", err)
+			log.Printf("Failed to get metrics batch: %v", err)
+			batch = &database.MetricsBatch{Metrics: []database.SystemVitalLog{}}
 		}
-		chartData.Title = "CPU Usage"
-		chartData.YAxisUnit = "%"
-		chartData.MinValue = 0
-		chartData.MaxValue = 100
-		
-		// Convert to DataPoints
-		for _, metric := range historicalData {
-			chartData.Points = append(chartData.Points, charts.DataPoint{
-				Time:  metric.Timestamp,
-				Value: metric.CPUPercent,
-			})
+
+		// Prepare chart data based on metric type
+		var chartData charts.DetailedChartData
+
+		switch metricType {
+		case "cpu":
+			chartData.Title = "CPU Usage"
+			chartData.YAxisUnit = "%"
+			chartData.MinValue = 0
+			chartData.MaxValue = 100
+
+			// Convert to DataPoints
+			for _, metric := range batch.Metrics {
+				chartData.Points = append(chartData.Points, charts.DataPoint{
+					Time:  metric.Timestamp,
+					Value: metric.CPUPercent,
+				})
+			}
+
+		case "memory":
+			chartData.Title = "Memory Usage"
+			chartData.YAxisUnit = "%"
+			chartData.MinValue = 0
+			chartData.MaxValue = 100
+
+			// Convert to DataPoints
+			for _, metric := range batch.Metrics {
+				chartData.Points = append(chartData.Points, charts.DataPoint{
+					Time:  metric.Timestamp,
+					Value: metric.MemoryPercent,
+				})
+			}
+
+		case "disk":
+			chartData.Title = "Disk Usage (/)"
+			chartData.YAxisUnit = "%"
+			chartData.MinValue = 0
+			chartData.MaxValue = 100
+
+			// Convert to DataPoints
+			for _, metric := range batch.Metrics {
+				chartData.Points = append(chartData.Points, charts.DataPoint{
+					Time:  metric.Timestamp,
+					Value: metric.DiskUsagePercent,
+				})
+			}
+
+		case "network":
+			// Network data is not yet stored in the database
+			chartData.Title = "Network Usage"
+			chartData.YAxisUnit = "MB/s"
+			// Generate some sample data for now
+			now := time.Now()
+			for i := 0; i < 24; i++ {
+				chartData.Points = append(chartData.Points, charts.DataPoint{
+					Time:  now.Add(time.Duration(-i) * time.Hour),
+					Value: float64(i * 2 % 10),
+				})
+			}
+
+		default:
+			http.NotFound(w, r)
+			return
 		}
-		
-	case "memory":
-		historicalData, err = database.GetMetricsForTimeRange(time.Now().Add(-duration), time.Now())
-		if err != nil {
-			log.Printf("Failed to get memory data: %v", err)
-		}
-		chartData.Title = "Memory Usage"
-		chartData.YAxisUnit = "%"
-		chartData.MinValue = 0
-		chartData.MaxValue = 100
-		
-		// Convert to DataPoints
-		for _, metric := range historicalData {
-			chartData.Points = append(chartData.Points, charts.DataPoint{
-				Time:  metric.Timestamp,
-				Value: metric.MemoryPercent,
-			})
-		}
-		
-	case "disk":
-		historicalData, err = database.GetMetricsForTimeRange(time.Now().Add(-duration), time.Now())
-		if err != nil {
-			log.Printf("Failed to get disk data: %v", err)
-		}
-		chartData.Title = "Disk Usage (/)"
-		chartData.YAxisUnit = "%"
-		chartData.MinValue = 0
-		chartData.MaxValue = 100
-		
-		// Convert to DataPoints
-		for _, metric := range historicalData {
-			chartData.Points = append(chartData.Points, charts.DataPoint{
-				Time:  metric.Timestamp,
-				Value: metric.DiskUsagePercent,
-			})
-		}
-		
-	case "network":
-		// Network data is not yet stored in the database
-		chartData.Title = "Network Usage"
-		chartData.YAxisUnit = "MB/s"
-		// Generate some sample data for now
-		now := time.Now()
-		for i := 0; i < 24; i++ {
-			chartData.Points = append(chartData.Points, charts.DataPoint{
-				Time:  now.Add(time.Duration(-i) * time.Hour),
-				Value: float64(i * 2 % 10),
-			})
-		}
-		
-	default:
-		http.NotFound(w, r)
-		return
+
+		// Generate the detailed chart
+		chartSVG = charts.GenerateDetailedChart(chartData, 700, 400)
+
+		// Cache the generated chart
+		s.sparklineCache.Set(cacheKey, chartSVG)
 	}
-	
-	// Generate the detailed chart
-	chartSVG := charts.GenerateDetailedChart(chartData, 700, 400)
-	
+
 	// Time range selector buttons
 	timeRangeButtons := fmt.Sprintf(`
 	<div class="btn-group mb-3" role="group" aria-label="Time range selector">
@@ -414,7 +452,7 @@ func (s *Server) handleMonitoringCharts(w http.ResponseWriter, r *http.Request) 
 		ifElse(timeRange == "24h", "btn-primary", "btn-outline-primary"), metricType,
 		ifElse(timeRange == "7d", "btn-primary", "btn-outline-primary"), metricType,
 	)
-	
+
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	html := fmt.Sprintf(`
 <div class="modal-chart">
@@ -432,7 +470,7 @@ function loadChart(metric, range) {
 }
 </script>
 	`, timeRangeButtons, chartSVG)
-	
+
 	w.Write([]byte(html))
 }
 

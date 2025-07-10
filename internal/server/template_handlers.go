@@ -24,7 +24,7 @@ func (s *Server) handleTemplates(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to load templates", http.StatusInternalServerError)
 		return
 	}
-	
+
 	log.Printf("DEBUG: Loaded %d templates", len(templates))
 	for i, t := range templates {
 		log.Printf("DEBUG: Template %d: %s (%s)", i, t.Name, t.Filename)

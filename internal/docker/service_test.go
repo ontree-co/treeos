@@ -39,7 +39,7 @@ func TestDeleteAppComplete(t *testing.T) {
 
 		// Note: In actual implementation, this would also try to stop/delete container
 		// For this test, we're focusing on directory deletion
-		
+
 		// Since we can't test the full implementation without mocks,
 		// we'll test the directory deletion part directly
 		err := os.RemoveAll(appDir)

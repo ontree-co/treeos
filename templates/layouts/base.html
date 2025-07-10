@@ -252,6 +252,11 @@
                             <li><a class="dropdown-item" href="/docker/operations">
                                 <i>📋</i> Docker Operations
                             </a></li>
+                            {{if .MonitoringEnabled}}
+                            <li><a class="dropdown-item" href="/monitoring">
+                                <i>📊</i> System Monitoring
+                            </a></li>
+                            {{end}}
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="/settings">
                                 <i>⚙️</i> Settings
