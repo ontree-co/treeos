@@ -270,10 +270,26 @@ Integrated emoji picker into the app creation form:
   - Form preserves emoji selection on validation errors
   - Empty emoji selection is allowed (optional field)
 - **Template Loading**: Updated template loading to include emoji picker component
-- **Implementation Notes**:
-  - Template creation flow (ticket 5) still needs emoji integration
-  - Added TODO comment for future enhancement
 - See `internal/server/app_create_handler.go` for implementation
+
+### Emoji Integration in Template Creation (2025-07-10 - UI Improvements Ticket 5)
+
+Integrated emoji picker into the template-based app creation flow:
+- **Template Form Update**: Added emoji picker component to `/templates/{id}/create` form after app name input
+- **Handler Updates**: Modified `handleCreateFromTemplate` to:
+  - Pass emoji list and selected emoji to template
+  - Extract emoji from form submission
+  - Pass emoji to `createAppScaffold` function
+- **YAML Integration**: Emoji is automatically included in the generated docker-compose.yml under `x-ontree.emoji`
+- **Features**:
+  - Same emoji picker UI as regular app creation
+  - Emoji is optional (empty selection allowed)
+  - Proper Unicode handling and YAML escaping via yaml.v3 library
+- **No Changes Needed**:
+  - `createAppScaffold` already handles emoji properly
+  - YAML escaping is automatic via the yaml library
+  - Emoji validation exists in `yamlutil.IsValidEmoji()`
+- See `internal/server/template_handlers.go` for implementation
 
 ### UI Improvements (2025-07-10)
 

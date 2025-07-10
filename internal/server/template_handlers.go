@@ -84,6 +84,8 @@ func (s *Server) handleCreateFromTemplate(w http.ResponseWriter, r *http.Request
 		data["Template"] = template
 		data["Messages"] = nil
 		data["CSRFToken"] = "" // No CSRF yet
+		data["Emojis"] = getRandomEmojis(7)
+		data["SelectedEmoji"] = ""
 
 		tmpl, ok := s.templates["app_create_from_template"]
 		if !ok {
@@ -107,6 +109,7 @@ func (s *Server) handleCreateFromTemplate(w http.ResponseWriter, r *http.Request
 
 		appName := strings.TrimSpace(r.FormValue("name"))
 		autoStart := r.FormValue("auto_start") == "on"
+		emoji := strings.TrimSpace(r.FormValue("emoji"))
 
 		// Validate app name
 		if appName == "" {
@@ -126,8 +129,7 @@ func (s *Server) handleCreateFromTemplate(w http.ResponseWriter, r *http.Request
 		processedContent := s.templateSvc.ProcessTemplateContent(content, appName)
 
 		// Create the app using existing scaffold logic
-		// TODO: Add emoji selection to template creation flow (ticket 5)
-		if err := s.createAppScaffold(appName, processedContent, ""); err != nil {
+		if err := s.createAppScaffold(appName, processedContent, emoji); err != nil {
 			log.Printf("Error creating app from template: %v", err)
 			http.Error(w, fmt.Sprintf("Failed to create application: %v", err), http.StatusInternalServerError)
 			return
