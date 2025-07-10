@@ -19,12 +19,29 @@ Added migration command to move app metadata from database to docker-compose.yml
 
 Updated all app management handlers to use docker-compose.yml files as the source of truth:
 - **handleAppDetail**: Now reads metadata from compose files using yamlutil
-- **handleAppExpose**: Writes subdomain and exposure status to compose files
-- **handleAppUnexpose**: Updates compose files to mark apps as unexposed  
+- **handleAppExpose**: Writes subdomain and exposure status to compose files (synchronous operation)
+- **handleAppUnexpose**: Updates compose files to mark apps as unexposed (synchronous operation)
 - **handleAppStatusCheck**: Reads from compose files for subdomain status checks
 - **createAppScaffold**: Adds initial x-ontree metadata when creating new apps
 - Added file locking in yamlutil to prevent race conditions during concurrent writes
 - All handlers maintain backward compatibility with existing template structures
+
+**Note**: Expose/unexpose operations remain synchronous and do not use the background worker system
+
+### Ticket 4 Investigation (2025-07-10)
+
+Discovered that the background worker operations `processExposeOperation` and `processUnexposeOperation` referenced in the specification do not exist. The expose/unexpose functionality is implemented synchronously in the handlers and already uses compose files as the source of truth. See `input/remove-app-model/ticket4-findings.md` for details.
+
+### Database Cleanup - deployed_apps Removal (2025-07-10 - Ticket 5)
+
+Completed cleanup to remove the `deployed_apps` table and model from the codebase:
+- Created migration file `004_drop_deployed_apps.sql` to drop the table
+- Removed `DeployedApp` model from `internal/database/models.go`
+- Removed table creation from `internal/database/database.go`
+- Updated `syncExposedApps()` in `internal/server/server.go` to read from compose files instead of database
+- Fixed compilation issue in `internal/server/handlers.go` by replacing database model with anonymous struct
+
+**Note**: The migration package (`internal/migration/`) still references the model but can be removed after all instances have completed migration
 
 ### YAML Utilities Package (2025-07-10)
 

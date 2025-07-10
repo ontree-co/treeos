@@ -116,16 +116,6 @@ func createTables() error {
 		`CREATE INDEX IF NOT EXISTS idx_docker_operations_status_created ON docker_operations(status, created_at)`,
 		`CREATE INDEX IF NOT EXISTS idx_docker_operations_app_created ON docker_operations(app_name, created_at)`,
 		`CREATE INDEX IF NOT EXISTS idx_docker_operation_logs_operation_timestamp ON docker_operation_logs(operation_id, timestamp)`,
-		`CREATE TABLE IF NOT EXISTS deployed_apps (
-			id TEXT PRIMARY KEY,
-			name TEXT NOT NULL UNIQUE,
-			docker_compose TEXT NOT NULL,
-			subdomain TEXT,
-			host_port INTEGER,
-			is_exposed INTEGER DEFAULT 0,
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-		)`,
 	}
 
 	for _, query := range queries {

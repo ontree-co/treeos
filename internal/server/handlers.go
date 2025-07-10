@@ -404,7 +404,13 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 	hasMetadata := err == nil && metadata != nil
 
 	// Create a DeployedApp-like structure for template compatibility
-	var deployedApp database.DeployedApp
+	deployedApp := struct {
+		ID        string
+		Name      string
+		Subdomain string
+		HostPort  int
+		IsExposed bool
+	}{}
 	if hasMetadata {
 		deployedApp.Name = appName
 		deployedApp.Subdomain = metadata.Subdomain

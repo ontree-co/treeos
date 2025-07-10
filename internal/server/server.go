@@ -22,6 +22,7 @@ import (
 	"ontree-node/internal/templates"
 	"ontree-node/internal/version"
 	"ontree-node/internal/worker"
+	"ontree-node/internal/yamlutil"
 )
 
 // Server represents the HTTP server
@@ -488,32 +489,35 @@ func (s *Server) loadDomainConfig() error {
 
 // syncExposedApps synchronizes exposed apps with Caddy on startup
 func (s *Server) syncExposedApps() {
-	// Query all exposed apps from the database
-	rows, err := s.db.Query(`
-		SELECT id, name, subdomain, host_port 
-		FROM deployed_apps 
-		WHERE is_exposed = 1
-	`)
+	// Read all apps from the apps directory
+	apps, err := s.dockerSvc.ListApps()
 	if err != nil {
-		log.Printf("Failed to query exposed apps: %v", err)
+		log.Printf("Failed to list apps: %v", err)
 		return
 	}
-	defer func() { _ = rows.Close() }()
 
 	// Get base domains from config
 	publicDomain := s.config.PublicBaseDomain
 	tailscaleDomain := s.config.TailscaleBaseDomain
 
-	for rows.Next() {
-		var app database.DeployedApp
-		err := rows.Scan(&app.ID, &app.Name, &app.Subdomain, &app.HostPort)
+	for _, app := range apps {
+		// Read metadata from compose file
+		metadata, err := yamlutil.ReadComposeMetadata(app.Path)
 		if err != nil {
-			log.Printf("Failed to scan app row: %v", err)
+			log.Printf("Failed to read metadata for app %s: %v", app.Name, err)
 			continue
 		}
 
+		// Skip if not exposed
+		if metadata == nil || !metadata.IsExposed || metadata.Subdomain == "" || metadata.HostPort == 0 {
+			continue
+		}
+
+		// Generate ID for Caddy route
+		appID := fmt.Sprintf("app-%s", app.Name)
+
 		// Create route config
-		routeConfig := caddy.CreateRouteConfig(app.ID, app.Subdomain, app.HostPort, publicDomain, tailscaleDomain)
+		routeConfig := caddy.CreateRouteConfig(appID, metadata.Subdomain, metadata.HostPort, publicDomain, tailscaleDomain)
 
 		// Add route to Caddy
 		err = s.caddyClient.AddOrUpdateRoute(routeConfig)

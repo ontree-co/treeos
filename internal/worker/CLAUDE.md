@@ -19,6 +19,15 @@ The worker system uses goroutines and channels to process Docker operations (sta
 - **Recreate Container**: Stops, removes, and creates a new container with latest images
 - **Update Image**: Checks for and pulls newer versions of Docker images
 
+## Notable Exclusions
+
+**Expose/Unexpose operations are NOT handled by the worker**. These operations are implemented synchronously in the HTTP handlers (`handleAppExpose` and `handleAppUnexpose`) because:
+- They are typically fast operations (just Caddy API calls)
+- They complete within reasonable HTTP request timeouts
+- They already use compose files as the source of truth via yamlutil package
+
+Note: The specification mentions `processExposeOperation` and `processUnexposeOperation` but these were never implemented.
+
 ## Progress Tracking
 
 Operations update their status in the database:
