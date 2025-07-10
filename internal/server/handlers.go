@@ -9,6 +9,7 @@ import (
 	"ontree-node/internal/caddy"
 	"ontree-node/internal/database"
 	"ontree-node/internal/system"
+	"ontree-node/internal/yamlutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -398,16 +399,20 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Failed to check for active operations: %v", err)
 	}
 
-	// Fetch DeployedApp details from database
-	var deployedApp database.DeployedApp
-	err = s.db.QueryRow(`
-		SELECT id, name, subdomain, host_port, is_exposed 
-		FROM deployed_apps 
-		WHERE name = ?
-	`, appName).Scan(&deployedApp.ID, &deployedApp.Name, &deployedApp.Subdomain, &deployedApp.HostPort, &deployedApp.IsExposed)
+	// Fetch app metadata from docker-compose.yml using yamlutil
+	metadata, err := yamlutil.ReadComposeMetadata(app.Path)
+	hasMetadata := err == nil && metadata != nil
 
-	// It's okay if the app is not in the database yet
-	hasDeployedApp := err == nil
+	// Create a DeployedApp-like structure for template compatibility
+	var deployedApp database.DeployedApp
+	if hasMetadata {
+		deployedApp.Name = appName
+		deployedApp.Subdomain = metadata.Subdomain
+		deployedApp.HostPort = metadata.HostPort
+		deployedApp.IsExposed = metadata.IsExposed
+		// Generate a pseudo-ID for template compatibility
+		deployedApp.ID = fmt.Sprintf("app-%s", appName)
+	}
 
 	// Prepare template data
 	data := s.baseTemplateData(user)
@@ -419,7 +424,7 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 	data["ActiveOperationID"] = activeOperationID
 
 	// Add deployed app information if available
-	if hasDeployedApp {
+	if hasMetadata {
 		data["DeployedApp"] = deployedApp
 		data["HasDeployedApp"] = true
 
@@ -566,28 +571,24 @@ func (s *Server) handleAppStop(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Successfully stopped app: %s", appName)
 
 		// Also remove from Caddy if it was exposed
-		if s.db != nil && s.caddyClient != nil {
-			var app database.DeployedApp
-			err := s.db.QueryRow(`
-				SELECT id, is_exposed 
-				FROM deployed_apps 
-				WHERE name = ?
-			`, appName).Scan(&app.ID, &app.IsExposed)
+		if s.caddyClient != nil {
+			// Get app details
+			appDetails, err := s.dockerClient.GetAppDetails(s.config.AppsDir, appName)
+			if err == nil {
+				// Get metadata from compose file
+				metadata, err := yamlutil.ReadComposeMetadata(appDetails.Path)
+				if err == nil && metadata.IsExposed {
+					appID := fmt.Sprintf("app-%s", appName)
+					routeID := fmt.Sprintf("route-for-%s", appID)
+					if err := s.caddyClient.DeleteRoute(routeID); err != nil {
+						log.Printf("Failed to remove app %s from Caddy: %v", appName, err)
+					}
 
-			if err == nil && app.IsExposed {
-				routeID := fmt.Sprintf("route-for-app-%s", app.ID)
-				if err := s.caddyClient.DeleteRoute(routeID); err != nil {
-					log.Printf("Failed to remove app %s from Caddy: %v", appName, err)
-				}
-
-				// Update database
-				_, err = s.db.Exec(`
-					UPDATE deployed_apps 
-					SET is_exposed = 0, updated_at = CURRENT_TIMESTAMP 
-					WHERE id = ?
-				`, app.ID)
-				if err != nil {
-					log.Printf("Failed to update app in database: %v", err)
+					// Update compose metadata
+					metadata.IsExposed = false
+					if err := yamlutil.UpdateComposeMetadata(appDetails.Path, metadata); err != nil {
+						log.Printf("Failed to update compose metadata: %v", err)
+					}
 				}
 			}
 		}
@@ -1026,21 +1027,15 @@ func (s *Server) handleAppExpose(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get app details from database
-	var app database.DeployedApp
-	err := s.db.QueryRow(`
-		SELECT id, name, subdomain, host_port, is_exposed 
-		FROM deployed_apps 
-		WHERE name = ?
-	`, appName).Scan(&app.ID, &app.Name, &app.Subdomain, &app.HostPort, &app.IsExposed)
-
+	// Get app details from docker
+	appDetails, err := s.dockerClient.GetAppDetails(s.config.AppsDir, appName)
 	if err != nil {
-		log.Printf("Failed to get app from database: %v", err)
+		log.Printf("Failed to get app details: %v", err)
 		session, err := s.sessionStore.Get(r, "ontree-session")
 		if err != nil {
 			log.Printf("Failed to get session: %v", err)
 		}
-		session.AddFlash("Failed to expose app: app not found in database", "error")
+		session.AddFlash("Failed to expose app: app not found", "error")
 		if err := session.Save(r, w); err != nil {
 			log.Printf("Failed to save session: %v", err)
 		}
@@ -1048,8 +1043,29 @@ func (s *Server) handleAppExpose(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get metadata from compose file
+	metadata, err := yamlutil.ReadComposeMetadata(appDetails.Path)
+	if err != nil {
+		log.Printf("Failed to read compose metadata: %v", err)
+		// Initialize with defaults if metadata doesn't exist
+		metadata = &yamlutil.OnTreeMetadata{
+			Subdomain: "",
+			HostPort:  0,
+			IsExposed: false,
+		}
+	}
+
+	// Get subdomain from form
+	subdomain := r.FormValue("subdomain")
+	if subdomain == "" {
+		subdomain = appName // Default to app name
+	}
+
+	// Update metadata with subdomain from form
+	metadata.Subdomain = subdomain
+
 	// Check if already exposed
-	if app.IsExposed {
+	if metadata.IsExposed {
 		session, err := s.sessionStore.Get(r, "ontree-session")
 		if err != nil {
 			log.Printf("Failed to get session: %v", err)
@@ -1062,8 +1078,35 @@ func (s *Server) handleAppExpose(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get host port from metadata (should have been set during app creation)
+	if metadata.HostPort == 0 {
+		// Try to extract from compose file if not set
+		compose, err := yamlutil.ReadComposeWithMetadata(filepath.Join(appDetails.Path, "docker-compose.yml"))
+		if err == nil {
+			// Extract port from first service
+			for _, service := range compose.Services {
+				if svcMap, ok := service.(map[string]interface{}); ok {
+					if ports, ok := svcMap["ports"]; ok {
+						if portsList, ok := ports.([]interface{}); ok && len(portsList) > 0 {
+							if portStr, ok := portsList[0].(string); ok {
+								parts := strings.Split(portStr, ":")
+								if len(parts) >= 1 {
+									fmt.Sscanf(parts[0], "%d", &metadata.HostPort)
+									break
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Generate app ID for route
+	appID := fmt.Sprintf("app-%s", appName)
+
 	// Create route config
-	routeConfig := caddy.CreateRouteConfig(app.ID, app.Subdomain, app.HostPort, s.config.PublicBaseDomain, s.config.TailscaleBaseDomain)
+	routeConfig := caddy.CreateRouteConfig(appID, metadata.Subdomain, metadata.HostPort, s.config.PublicBaseDomain, s.config.TailscaleBaseDomain)
 
 	// Add route to Caddy
 	err = s.caddyClient.AddOrUpdateRoute(routeConfig)
@@ -1081,17 +1124,23 @@ func (s *Server) handleAppExpose(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Update database
-	_, err = s.db.Exec(`
-		UPDATE deployed_apps 
-		SET is_exposed = 1, updated_at = CURRENT_TIMESTAMP 
-		WHERE id = ?
-	`, app.ID)
-
+	// Update compose file metadata
+	metadata.IsExposed = true
+	err = yamlutil.UpdateComposeMetadata(appDetails.Path, metadata)
 	if err != nil {
-		log.Printf("Failed to update app in database: %v", err)
+		log.Printf("Failed to update compose metadata: %v", err)
 		// Try to rollback Caddy change
-		_ = s.caddyClient.DeleteRoute(fmt.Sprintf("route-for-app-%s", app.ID))
+		_ = s.caddyClient.DeleteRoute(fmt.Sprintf("route-for-%s", appID))
+		session, err := s.sessionStore.Get(r, "ontree-session")
+		if err != nil {
+			log.Printf("Failed to get session: %v", err)
+		}
+		session.AddFlash("Failed to expose app: could not update metadata", "error")
+		if err := session.Save(r, w); err != nil {
+			log.Printf("Failed to save session: %v", err)
+		}
+		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
+		return
 	}
 
 	log.Printf("Successfully exposed app %s", appName)
@@ -1102,10 +1151,10 @@ func (s *Server) handleAppExpose(w http.ResponseWriter, r *http.Request) {
 
 	domains := []string{}
 	if s.config.PublicBaseDomain != "" {
-		domains = append(domains, fmt.Sprintf("%s.%s", app.Subdomain, s.config.PublicBaseDomain))
+		domains = append(domains, fmt.Sprintf("%s.%s", metadata.Subdomain, s.config.PublicBaseDomain))
 	}
 	if s.config.TailscaleBaseDomain != "" {
-		domains = append(domains, fmt.Sprintf("%s.%s", app.Subdomain, s.config.TailscaleBaseDomain))
+		domains = append(domains, fmt.Sprintf("%s.%s", metadata.Subdomain, s.config.TailscaleBaseDomain))
 	}
 
 	session.AddFlash(fmt.Sprintf("App exposed successfully at: %s", strings.Join(domains, ", ")), "success")
@@ -1133,21 +1182,31 @@ func (s *Server) handleAppUnexpose(w http.ResponseWriter, r *http.Request) {
 
 	appName := parts[2]
 
-	// Get app details from database
-	var app database.DeployedApp
-	err := s.db.QueryRow(`
-		SELECT id, name, is_exposed 
-		FROM deployed_apps 
-		WHERE name = ?
-	`, appName).Scan(&app.ID, &app.Name, &app.IsExposed)
-
+	// Get app details from docker
+	appDetails, err := s.dockerClient.GetAppDetails(s.config.AppsDir, appName)
 	if err != nil {
-		log.Printf("Failed to get app from database: %v", err)
+		log.Printf("Failed to get app details: %v", err)
 		session, err := s.sessionStore.Get(r, "ontree-session")
 		if err != nil {
 			log.Printf("Failed to get session: %v", err)
 		}
-		session.AddFlash("Failed to unexpose app: app not found in database", "error")
+		session.AddFlash("Failed to unexpose app: app not found", "error")
+		if err := session.Save(r, w); err != nil {
+			log.Printf("Failed to save session: %v", err)
+		}
+		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
+		return
+	}
+
+	// Get metadata from compose file
+	metadata, err := yamlutil.ReadComposeMetadata(appDetails.Path)
+	if err != nil {
+		log.Printf("Failed to read compose metadata: %v", err)
+		session, err := s.sessionStore.Get(r, "ontree-session")
+		if err != nil {
+			log.Printf("Failed to get session: %v", err)
+		}
+		session.AddFlash("Failed to unexpose app: could not read metadata", "error")
 		if err := session.Save(r, w); err != nil {
 			log.Printf("Failed to save session: %v", err)
 		}
@@ -1156,7 +1215,7 @@ func (s *Server) handleAppUnexpose(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if not exposed
-	if !app.IsExposed {
+	if !metadata.IsExposed {
 		session, err := s.sessionStore.Get(r, "ontree-session")
 		if err != nil {
 			log.Printf("Failed to get session: %v", err)
@@ -1171,28 +1230,25 @@ func (s *Server) handleAppUnexpose(w http.ResponseWriter, r *http.Request) {
 
 	// Delete route from Caddy if client is available
 	if s.caddyClient != nil {
-		routeID := fmt.Sprintf("route-for-app-%s", app.ID)
+		appID := fmt.Sprintf("app-%s", appName)
+		routeID := fmt.Sprintf("route-for-%s", appID)
 		err = s.caddyClient.DeleteRoute(routeID)
 		if err != nil {
 			log.Printf("Failed to delete route from Caddy: %v", err)
-			// Continue anyway - we'll update the database
+			// Continue anyway - we'll update the metadata
 		}
 	}
 
-	// Update database
-	_, err = s.db.Exec(`
-		UPDATE deployed_apps 
-		SET is_exposed = 0, updated_at = CURRENT_TIMESTAMP 
-		WHERE id = ?
-	`, app.ID)
-
+	// Update compose file metadata
+	metadata.IsExposed = false
+	err = yamlutil.UpdateComposeMetadata(appDetails.Path, metadata)
 	if err != nil {
-		log.Printf("Failed to update app in database: %v", err)
+		log.Printf("Failed to update compose metadata: %v", err)
 		session, err := s.sessionStore.Get(r, "ontree-session")
 		if err != nil {
 			log.Printf("Failed to get session: %v", err)
 		}
-		session.AddFlash("Failed to unexpose app: database error", "error")
+		session.AddFlash("Failed to unexpose app: could not update metadata", "error")
 		if err := session.Save(r, w); err != nil {
 			log.Printf("Failed to save session: %v", err)
 		}
@@ -1362,21 +1418,23 @@ func (s *Server) handleAppStatusCheck(w http.ResponseWriter, r *http.Request) {
 
 	appName := parts[3]
 
-	// Get app details from database
-	var app database.DeployedApp
-	err := s.db.QueryRow(`
-		SELECT id, name, subdomain, host_port, is_exposed 
-		FROM deployed_apps 
-		WHERE name = ?
-	`, appName).Scan(&app.ID, &app.Name, &app.Subdomain, &app.HostPort, &app.IsExposed)
-
+	// Get app details from docker
+	appDetails, err := s.dockerClient.GetAppDetails(s.config.AppsDir, appName)
 	if err != nil {
 		w.Header().Set("Content-Type", "text/html")
-		_, _ = w.Write([]byte(`<div class="alert alert-warning">App not found in database</div>`))
+		_, _ = w.Write([]byte(`<div class="alert alert-warning">App not found</div>`))
 		return
 	}
 
-	if !app.IsExposed || app.Subdomain == "" {
+	// Get metadata from compose file
+	metadata, err := yamlutil.ReadComposeMetadata(appDetails.Path)
+	if err != nil {
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = w.Write([]byte(`<div class="alert alert-warning">Could not read app metadata</div>`))
+		return
+	}
+
+	if !metadata.IsExposed || metadata.Subdomain == "" {
 		w.Header().Set("Content-Type", "text/html")
 		_, _ = w.Write([]byte(`<div class="alert alert-info">App is not exposed</div>`))
 		return
@@ -1394,7 +1452,7 @@ func (s *Server) handleAppStatusCheck(w http.ResponseWriter, r *http.Request) {
 
 	// Check public domain if configured
 	if s.config.PublicBaseDomain != "" {
-		url := fmt.Sprintf("https://%s.%s", app.Subdomain, s.config.PublicBaseDomain)
+		url := fmt.Sprintf("https://%s.%s", metadata.Subdomain, s.config.PublicBaseDomain)
 		result := StatusResult{URL: url}
 
 		// Create HTTP client with timeout
@@ -1423,7 +1481,7 @@ func (s *Server) handleAppStatusCheck(w http.ResponseWriter, r *http.Request) {
 
 	// Check Tailscale domain if configured
 	if s.config.TailscaleBaseDomain != "" {
-		url := fmt.Sprintf("https://%s.%s", app.Subdomain, s.config.TailscaleBaseDomain)
+		url := fmt.Sprintf("https://%s.%s", metadata.Subdomain, s.config.TailscaleBaseDomain)
 		result := StatusResult{URL: url}
 
 		// Create HTTP client with timeout

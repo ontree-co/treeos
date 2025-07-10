@@ -6,11 +6,11 @@ import (
 	"gopkg.in/yaml.v3"
 	"log"
 	"net/http"
+	"ontree-node/internal/yamlutil"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
-	"time"
 )
 
 // handleAppCreate handles the application creation page
@@ -212,19 +212,25 @@ func (s *Server) createAppScaffold(appName, composeContent string) error {
 		// Continue anyway - port will be 0
 	}
 
-	// Save to database
-	if s.db != nil {
-		// Generate a unique ID for the app
-		appID := fmt.Sprintf("app-%s-%d", appName, time.Now().Unix())
+	// Add OnTree metadata to the compose file
+	compose, err := yamlutil.ReadComposeWithMetadata(composePath)
+	if err != nil {
+		log.Printf("Warning: Failed to read compose file for metadata: %v", err)
+		// Continue anyway - app is created on disk
+	} else {
+		// Set initial metadata
+		metadata := &yamlutil.OnTreeMetadata{
+			Subdomain: appName, // Default subdomain to app name
+			HostPort:  hostPort,
+			IsExposed: false,
+		}
+		yamlutil.SetOnTreeMetadata(compose, metadata)
 
-		_, err = s.db.Exec(`
-			INSERT INTO deployed_apps (id, name, docker_compose, subdomain, host_port, is_exposed)
-			VALUES (?, ?, ?, ?, ?, ?)
-		`, appID, appName, composeContent, appName, hostPort, 0)
-
+		// Write back with metadata
+		err = yamlutil.WriteComposeWithMetadata(composePath, compose)
 		if err != nil {
-			log.Printf("Warning: Failed to save app to database: %v", err)
-			// Continue anyway - app is created on disk
+			log.Printf("Warning: Failed to write compose metadata: %v", err)
+			// Continue anyway - app is created without metadata
 		}
 	}
 

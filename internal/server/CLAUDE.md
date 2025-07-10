@@ -1,5 +1,61 @@
 # Server Package Documentation
 
+## Handler Updates for Compose-Based Metadata (2025-07-10)
+
+### Overview
+Updated all HTTP handlers to use docker-compose.yml files as the single source of truth for app metadata, removing dependency on the `deployed_apps` database table.
+
+### Modified Handlers
+
+#### handleAppDetail (handlers.go:320)
+- Reads metadata from compose files using `yamlutil.ReadComposeMetadata()`
+- Creates a DeployedApp-like structure for template compatibility
+- No longer queries the database for app metadata
+
+#### handleAppExpose (handlers.go:998) 
+- Reads current metadata from compose file
+- Accepts subdomain from form input
+- Writes updated metadata (subdomain, is_exposed) back to compose file
+- Extracts host_port from compose if not already set in metadata
+- Uses file locking to prevent concurrent write issues
+
+#### handleAppUnexpose (handlers.go:1120)
+- Reads metadata from compose file to check exposure status
+- Updates is_exposed to false in compose file
+- Removes route from Caddy reverse proxy
+
+#### handleAppStatusCheck (handlers.go:1353)
+- Reads subdomain and exposure status from compose files
+- No database queries for app metadata
+
+#### handleAppStop (handlers.go:531)
+- Additionally checks compose metadata when stopping containers
+- If app was exposed, removes from Caddy and updates compose metadata
+
+### App Creation Updates
+
+#### createAppScaffold (app_create_handler.go:176)
+- Extracts host port from docker-compose content
+- Creates initial x-ontree metadata with:
+  - subdomain (defaults to app name)
+  - host_port (extracted from compose)
+  - is_exposed (defaults to false)
+- Writes metadata to compose file after creation
+
+### Key Implementation Details
+
+1. **Backward Compatibility**: All handlers maintain compatibility with existing templates by creating DeployedApp-like structures
+
+2. **Error Handling**: If compose metadata cannot be read, handlers initialize with sensible defaults
+
+3. **File Locking**: All write operations use file-level mutex locking implemented in yamlutil
+
+4. **ID Generation**: Since database IDs are no longer available, handlers generate pseudo-IDs in format `app-{appName}` for Caddy route management
+
+### Migration Notes
+
+After running the migration script, the application will use compose files exclusively. The database table can be dropped once all instances are updated.
+
 ## Stale Operation Handling
 
 The app detail page filters Docker operations to prevent showing spinners for stale operations:

@@ -15,6 +15,17 @@ Added migration command to move app metadata from database to docker-compose.yml
 - Provides detailed logging and error handling
 - See `internal/migration/CLAUDE.md` for implementation details
 
+### Handler Updates for Compose-Based Metadata (2025-07-10 - Ticket 3)
+
+Updated all app management handlers to use docker-compose.yml files as the source of truth:
+- **handleAppDetail**: Now reads metadata from compose files using yamlutil
+- **handleAppExpose**: Writes subdomain and exposure status to compose files
+- **handleAppUnexpose**: Updates compose files to mark apps as unexposed  
+- **handleAppStatusCheck**: Reads from compose files for subdomain status checks
+- **createAppScaffold**: Adds initial x-ontree metadata when creating new apps
+- Added file locking in yamlutil to prevent race conditions during concurrent writes
+- All handlers maintain backward compatibility with existing template structures
+
 ### YAML Utilities Package (2025-07-10)
 
 Added yamlutil package for managing docker-compose.yml metadata:

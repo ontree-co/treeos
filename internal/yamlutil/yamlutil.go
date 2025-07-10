@@ -4,9 +4,33 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"gopkg.in/yaml.v3"
 )
+
+// fileLocks manages file-level locking for concurrent access
+var fileLocks = struct {
+	sync.Mutex
+	locks map[string]*sync.Mutex
+}{
+	locks: make(map[string]*sync.Mutex),
+}
+
+// getFileLock returns a mutex for the given file path
+func getFileLock(path string) *sync.Mutex {
+	fileLocks.Lock()
+	defer fileLocks.Unlock()
+
+	absPath, _ := filepath.Abs(path)
+	if lock, exists := fileLocks.locks[absPath]; exists {
+		return lock
+	}
+
+	lock := &sync.Mutex{}
+	fileLocks.locks[absPath] = lock
+	return lock
+}
 
 // OnTreeMetadata represents the OnTree-specific metadata stored in docker-compose.yml
 type OnTreeMetadata struct {
@@ -45,27 +69,32 @@ func ReadComposeWithMetadata(path string) (*ComposeFile, error) {
 
 	// Store any additional fields that aren't in our struct
 	compose.raw = make(map[string]*yaml.Node)
-	
+
 	return &compose, nil
 }
 
 // WriteComposeWithMetadata writes a docker-compose.yml file preserving formatting and comments
 func WriteComposeWithMetadata(path string, compose *ComposeFile) error {
+	// Get file lock for this path
+	lock := getFileLock(path)
+	lock.Lock()
+	defer lock.Unlock()
+
 	// For preserving comments and formatting, we need to work with yaml.Node
 	// Read the original file if it exists to preserve its structure
 	var node yaml.Node
-	
+
 	if _, err := os.Stat(path); err == nil {
 		// File exists, read it to preserve structure
 		data, err := os.ReadFile(path)
 		if err != nil {
 			return fmt.Errorf("failed to read existing file: %w", err)
 		}
-		
+
 		if err := yaml.Unmarshal(data, &node); err != nil {
 			return fmt.Errorf("failed to parse existing YAML: %w", err)
 		}
-		
+
 		// Update the node with our new values
 		if err := updateYAMLNode(&node, compose); err != nil {
 			return fmt.Errorf("failed to update YAML node: %w", err)
@@ -76,31 +105,31 @@ func WriteComposeWithMetadata(path string, compose *ComposeFile) error {
 			return fmt.Errorf("failed to encode compose file: %w", err)
 		}
 	}
-	
+
 	// Marshal the node back to YAML
 	output, err := yaml.Marshal(&node)
 	if err != nil {
 		return fmt.Errorf("failed to marshal YAML: %w", err)
 	}
-	
+
 	// Create directory if it doesn't exist
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("failed to create directory: %w", err)
 	}
-	
+
 	// Write to file atomically
 	tempFile := path + ".tmp"
 	if err := os.WriteFile(tempFile, output, 0644); err != nil {
 		return fmt.Errorf("failed to write file: %w", err)
 	}
-	
+
 	// Rename to final location
 	if err := os.Rename(tempFile, path); err != nil {
 		os.Remove(tempFile) // Clean up on error
 		return fmt.Errorf("failed to rename file: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -123,12 +152,12 @@ func updateYAMLNode(node *yaml.Node, compose *ComposeFile) error {
 	if node.Kind == yaml.DocumentNode && len(node.Content) > 0 {
 		node = node.Content[0]
 	}
-	
+
 	// Ensure it's a mapping node
 	if node.Kind != yaml.MappingNode {
 		return fmt.Errorf("expected mapping node, got %v", node.Kind)
 	}
-	
+
 	// Update or add x-ontree field
 	updated := false
 	for i := 0; i < len(node.Content); i += 2 {
@@ -143,7 +172,7 @@ func updateYAMLNode(node *yaml.Node, compose *ComposeFile) error {
 			break
 		}
 	}
-	
+
 	// If x-ontree wasn't found and we have metadata, add it
 	if !updated && compose.XOnTree != nil {
 		keyNode := &yaml.Node{Kind: yaml.ScalarNode, Value: "x-ontree"}
@@ -151,7 +180,7 @@ func updateYAMLNode(node *yaml.Node, compose *ComposeFile) error {
 		if err := valueNode.Encode(compose.XOnTree); err != nil {
 			return fmt.Errorf("failed to encode x-ontree: %w", err)
 		}
-		
+
 		// Add after version field if possible
 		insertIndex := len(node.Content)
 		for i := 0; i < len(node.Content); i += 2 {
@@ -160,12 +189,12 @@ func updateYAMLNode(node *yaml.Node, compose *ComposeFile) error {
 				break
 			}
 		}
-		
+
 		// Insert at the determined position
-		node.Content = append(node.Content[:insertIndex], 
+		node.Content = append(node.Content[:insertIndex],
 			append([]*yaml.Node{keyNode, valueNode}, node.Content[insertIndex:]...)...)
 	}
-	
+
 	return nil
 }
 
@@ -182,6 +211,8 @@ func ReadComposeMetadata(appPath string) (*OnTreeMetadata, error) {
 // UpdateComposeMetadata is a helper function that updates only the OnTree metadata in a compose file
 func UpdateComposeMetadata(appPath string, metadata *OnTreeMetadata) error {
 	composePath := filepath.Join(appPath, "docker-compose.yml")
+
+	// Note: WriteComposeWithMetadata handles its own locking
 	compose, err := ReadComposeWithMetadata(composePath)
 	if err != nil {
 		return err

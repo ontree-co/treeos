@@ -2,6 +2,15 @@
 
 This package provides utilities for reading and writing docker-compose.yml files while preserving formatting and comments.
 
+## File Locking (2025-07-10)
+
+Added thread-safe file locking mechanism to prevent race conditions during concurrent writes:
+
+- `getFileLock(path)`: Returns a mutex for the given file path
+- All write operations through `WriteComposeWithMetadata()` are automatically protected
+- Uses a global map of file-specific mutexes to allow concurrent access to different files
+- Lock is held only during the actual file write operation to minimize contention
+
 ## Key Features
 
 - **Format Preservation**: Uses gopkg.in/yaml.v3 to maintain comments and formatting when updating YAML files
