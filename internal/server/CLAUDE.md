@@ -128,6 +128,54 @@ tmpl := s.templates["template_name"]
 tmpl.ExecuteTemplate(w, "base", data)
 ```
 
+## Monitoring Dashboard Handlers (2025-07-10)
+
+### Overview
+Added new handlers and routing structure for the system monitoring dashboard feature. The monitoring system uses HTMX for real-time updates without full page refreshes.
+
+### Routes Structure
+- `/monitoring` - Main dashboard page
+- `/monitoring/partials/cpu` - CPU usage card partial
+- `/monitoring/partials/memory` - Memory usage card partial
+- `/monitoring/partials/disk` - Disk usage card partial
+- `/monitoring/partials/network` - Network usage card partial
+- `/monitoring/charts/{metric}` - Detailed chart views (modal content)
+
+### Implementation Details
+
+#### handlers_monitoring.go
+Created new file with all monitoring-related handlers:
+
+1. **handleMonitoring**: Renders the main monitoring dashboard
+   - Currently returns placeholder HTML
+   - Will be updated to use proper template system
+
+2. **routeMonitoring**: Routes /monitoring/* requests
+   - Handles partial updates and chart requests
+   - Similar pattern to routeApps
+
+3. **Partial Handlers**: Return HTMX-compatible HTML fragments
+   - Each returns a complete card with hx-get for polling
+   - 5-second refresh interval configured
+   - Placeholder SVG sparklines included
+
+4. **handleMonitoringCharts**: Returns detailed charts
+   - Extracts metric type from URL path
+   - Will return larger SVG charts for modal display
+
+### HTMX Integration
+- Cards use `hx-get` for automatic polling
+- `hx-trigger="every 5s"` for real-time updates
+- `hx-swap="outerHTML"` to replace entire card
+- Follows existing HTMX patterns from system vitals
+
+### Next Steps
+These handlers are ready for:
+- Integration with real system metrics data
+- SVG sparkline generation from historical data
+- Proper template integration
+- Bootstrap styling to match OnTree design
+
 ## Handler Patterns
 
 ### GET Handler Example

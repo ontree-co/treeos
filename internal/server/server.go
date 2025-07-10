@@ -330,6 +330,10 @@ func (s *Server) Start() error {
 		}
 	}))))
 
+	// Monitoring routes
+	mux.HandleFunc("/monitoring", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleMonitoring))))
+	mux.HandleFunc("/monitoring/", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeMonitoring))))
+
 	// Start server
 	addr := s.config.ListenAddr
 	if addr == "" {

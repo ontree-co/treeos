@@ -118,6 +118,23 @@ Implemented reusable SVG sparkline generator for visualizing time-series data:
 - Comprehensive unit tests ensure reliability
 - See `internal/charts/CLAUDE.md` for implementation details
 
+### Monitoring Dashboard Templates (2025-07-10 - Usage Graph Ticket 4)
+
+Created HTMX-powered monitoring dashboard templates with responsive design:
+- **Main Dashboard**: `templates/dashboard/monitoring.html` - 2x2 grid layout for desktop, stacks on mobile
+- **Partial Templates**: Created card templates for real-time updates:
+  - `_cpu_card.html` - CPU load display with sparkline
+  - `_memory_card.html` - Memory usage display with sparkline
+  - `_disk_card.html` - Disk usage display with path indicator
+  - `_network_card.html` - Network load with upload/download rates
+- **Features**:
+  - HTMX polling configured for 5-second intervals
+  - Bootstrap responsive grid with proper breakpoints
+  - Cards styled to match OnTree's existing UI patterns
+  - Click-to-expand functionality prepared for detailed charts
+  - Modal container for future detailed metric views
+- **Handler Updates**: Modified `handlers_monitoring.go` to use template rendering instead of inline HTML
+
 ### UI Improvements (2025-07-10)
 
 #### Container Controls Reorganization

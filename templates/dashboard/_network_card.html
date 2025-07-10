@@ -1,0 +1,26 @@
+{{ define "network-card-partial" }}
+<div id="network-card" 
+     hx-get="/monitoring/partials/network" 
+     hx-trigger="every 5s" 
+     hx-swap="outerHTML">
+    <div class="card monitoring-card">
+        <div class="card-body">
+            <h5 class="metric-title">
+                <i class="bi bi-arrow-down-up"></i> Network Load
+            </h5>
+            <div class="metric-value" style="font-size: 1.5rem;">
+                <span title="Download">↓ {{ .DownloadRate }}</span>
+                <br>
+                <span title="Upload">↑ {{ .UploadRate }}</span>
+            </div>
+            <div class="sparkline-container" 
+                 title="Click for detailed view"
+                 role="button"
+                 aria-label="Network usage sparkline chart">
+                {{ .SparklineSVG }}
+            </div>
+            <small class="text-muted">Last 24 hours</small>
+        </div>
+    </div>
+</div>
+{{ end }}

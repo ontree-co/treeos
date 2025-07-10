@@ -1,0 +1,22 @@
+{{ define "memory-card-partial" }}
+<div id="memory-card" 
+     hx-get="/monitoring/partials/memory" 
+     hx-trigger="every 5s" 
+     hx-swap="outerHTML">
+    <div class="card monitoring-card">
+        <div class="card-body">
+            <h5 class="metric-title">
+                <i class="bi bi-memory"></i> Memory Usage
+            </h5>
+            <div class="metric-value">{{ .CurrentUsage }}%</div>
+            <div class="sparkline-container" 
+                 title="Click for detailed view"
+                 role="button"
+                 aria-label="Memory usage sparkline chart">
+                {{ .SparklineSVG }}
+            </div>
+            <small class="text-muted">Last 24 hours</small>
+        </div>
+    </div>
+</div>
+{{ end }}

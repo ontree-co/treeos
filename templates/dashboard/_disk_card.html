@@ -1,0 +1,23 @@
+{{ define "disk-card-partial" }}
+<div id="disk-card" 
+     hx-get="/monitoring/partials/disk" 
+     hx-trigger="every 5s" 
+     hx-swap="outerHTML">
+    <div class="card monitoring-card">
+        <div class="card-body">
+            <h5 class="metric-title">
+                <i class="bi bi-hdd"></i> Disk Usage
+                <small class="text-muted">({{ .Path }})</small>
+            </h5>
+            <div class="metric-value">{{ .CurrentUsage }}%</div>
+            <div class="sparkline-container" 
+                 title="Click for detailed view"
+                 role="button"
+                 aria-label="Disk usage sparkline chart">
+                {{ .SparklineSVG }}
+            </div>
+            <small class="text-muted">Last 24 hours</small>
+        </div>
+    </div>
+</div>
+{{ end }}
