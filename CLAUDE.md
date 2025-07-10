@@ -84,6 +84,16 @@ Fixed critical issues with Caddy integration that were causing 500 errors:
 
 **Testing**: After these fixes, the expose functionality should work correctly. When you click "Expose App", check the server logs for detailed information about what's happening with the Caddy API.
 
+### System Vitals Historical Data Collection (2025-07-10 - Usage Graph Ticket 1)
+
+Enabled historical data collection for system vitals to support the upcoming usage graph feature:
+- Modified `handleSystemVitals` in `internal/server/handlers.go` to store vitals in the database
+- Added automatic cleanup job that runs hourly to remove vitals older than 7 days
+- Updated vitals collection interval from 30s to 60s for efficiency
+- See `internal/server/server.go` for cleanup implementation (`startVitalsCleanup` and `cleanupOldVitals`)
+
+**Note**: The system_vital_logs table already existed but was unused. Now vitals are persisted for historical analysis.
+
 ### UI Improvements (2025-07-10)
 
 #### Container Controls Reorganization

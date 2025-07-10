@@ -5,7 +5,7 @@ These tickets implement the system monitoring dashboard as specified in specific
 
 ## Tickets
 
-### TICKET-001: Enable Historical System Vitals Data Collection
+## TICKET 1: Enable Historical System Vitals Data Collection
 **Priority**: High  
 **Dependencies**: None  
 **Estimated Effort**: 2-3 hours
@@ -26,7 +26,7 @@ Activate the existing but unused system_vital_logs table to store historical sys
 
 ---
 
-### TICKET-002: Create Monitoring Routes and Handler Structure
+## TICKET 2: Create Monitoring Routes and Handler Structure
 **Priority**: High  
 **Dependencies**: None  
 **Estimated Effort**: 2 hours
@@ -47,7 +47,7 @@ Set up the routing structure and base handlers for the monitoring dashboard.
 
 ---
 
-### TICKET-003: Implement SVG Sparkline Generation
+## TICKET 3: Implement SVG Sparkline Generation
 **Priority**: High  
 **Dependencies**: None  
 **Estimated Effort**: 3-4 hours
@@ -70,7 +70,7 @@ Create a reusable SVG sparkline generator for visualizing time-series data.
 
 ---
 
-### TICKET-004: Create Monitoring Dashboard Templates
+## TICKET 4: Create Monitoring Dashboard Templates
 **Priority**: Medium  
 **Dependencies**: TICKET-002  
 **Estimated Effort**: 3-4 hours
@@ -93,7 +93,7 @@ Build the HTMX-powered monitoring dashboard UI with a 2x2 grid layout.
 
 ---
 
-### TICKET-005: Implement Data Retrieval Functions
+## TICKET 5: Implement Data Retrieval Functions
 **Priority**: High  
 **Dependencies**: TICKET-001  
 **Estimated Effort**: 3-4 hours
@@ -116,7 +116,7 @@ Create database functions to retrieve historical metrics for sparkline generatio
 
 ---
 
-### TICKET-006: Wire Up Monitoring Handlers with Real Data
+## TICKET 6: Wire Up Monitoring Handlers with Real Data
 **Priority**: High  
 **Dependencies**: TICKET-003, TICKET-004, TICKET-005  
 **Estimated Effort**: 4-5 hours
@@ -139,7 +139,7 @@ Connect the monitoring handlers to real system data and sparkline generation.
 
 ---
 
-### TICKET-007: Add Modal Detail View
+## TICKET 7: Add Modal Detail View
 **Priority**: Low  
 **Dependencies**: TICKET-006  
 **Estimated Effort**: 3-4 hours
@@ -162,7 +162,7 @@ Implement click-to-expand functionality for detailed metric views.
 
 ---
 
-### TICKET-008: Performance Optimization and Cleanup
+## TICKET 8: Performance Optimization and Cleanup
 **Priority**: Medium  
 **Dependencies**: TICKET-006  
 **Estimated Effort**: 2-3 hours
@@ -185,7 +185,7 @@ Optimize the monitoring system for production use.
 
 ---
 
-### TICKET-009: Documentation and Testing
+## TICKET 9: Documentation and Testing
 **Priority**: Medium  
 **Dependencies**: TICKET-006  
 **Estimated Effort**: 2-3 hours

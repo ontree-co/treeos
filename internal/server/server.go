@@ -284,6 +284,9 @@ func (s *Server) loadTemplates() error {
 
 // Start starts the HTTP server
 func (s *Server) Start() error {
+	// Start background jobs
+	go s.startVitalsCleanup()
+
 	// Set up routes
 	mux := http.NewServeMux()
 
@@ -345,6 +348,49 @@ func (s *Server) Start() error {
 	}
 
 	return server.ListenAndServe()
+}
+
+// startVitalsCleanup runs a background job to clean up old system vital logs
+func (s *Server) startVitalsCleanup() {
+	log.Printf("System vitals cleanup job started")
+	
+	// Run cleanup every hour
+	ticker := time.NewTicker(1 * time.Hour)
+	defer ticker.Stop()
+	
+	// Run initial cleanup on startup
+	s.cleanupOldVitals()
+	
+	for range ticker.C {
+		s.cleanupOldVitals()
+	}
+}
+
+// cleanupOldVitals removes system vital logs older than 7 days
+func (s *Server) cleanupOldVitals() {
+	db := database.GetDB()
+	
+	// Delete records older than 7 days
+	query := `
+		DELETE FROM system_vital_logs 
+		WHERE timestamp < datetime('now', '-7 days')
+	`
+	
+	result, err := db.Exec(query)
+	if err != nil {
+		log.Printf("Failed to cleanup old vitals: %v", err)
+		return
+	}
+	
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.Printf("Failed to get rows affected: %v", err)
+		return
+	}
+	
+	if rowsAffected > 0 {
+		log.Printf("Cleaned up %d old vital log records", rowsAffected)
+	}
 }
 
 // handleDashboard handles the dashboard page
