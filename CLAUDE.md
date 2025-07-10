@@ -149,6 +149,20 @@ Implemented database functions for retrieving historical system metrics:
 - **Testing**: Full test coverage with edge case handling
 - See `internal/database/CLAUDE.md` for implementation details
 
+### Monitoring Handlers with Real Data (2025-07-10 - Usage Graph Ticket 6)
+
+Connected monitoring dashboard handlers to real system data:
+- **CPU Handler**: Fetches real CPU usage and generates sparkline from 24-hour historical data
+- **Memory Handler**: Displays actual memory usage with historical sparkline
+- **Disk Handler**: Shows disk usage for "/" path with trend visualization
+- **Network Handler**: Currently shows placeholder data (network metrics not yet stored in database)
+- **Features**:
+  - All handlers use `GeneratePercentageSparkline` for consistent 0-100% scaling
+  - Gracefully handles missing historical data with flat line visualization
+  - Values formatted with 1 decimal place precision (e.g., "15.2%")
+  - HTMX polling configured for 5-second updates on all cards
+- **Note**: Network rate calculation requires database schema update to store network bytes (future enhancement)
+
 ### UI Improvements (2025-07-10)
 
 #### Container Controls Reorganization

@@ -1,10 +1,15 @@
 package server
 
 import (
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
 	"strings"
+	
+	"ontree-node/internal/charts"
+	"ontree-node/internal/database"
+	"ontree-node/internal/system"
 )
 
 // handleMonitoring handles the main monitoring dashboard page
@@ -61,13 +66,45 @@ func (s *Server) routeMonitoring(w http.ResponseWriter, r *http.Request) {
 
 // handleMonitoringCPUPartial returns the CPU monitoring card partial
 func (s *Server) handleMonitoringCPUPartial(w http.ResponseWriter, r *http.Request) {
+	// Get current CPU usage
+	vitals, err := system.GetVitals()
+	if err != nil {
+		log.Printf("Failed to get system vitals: %v", err)
+		http.Error(w, "Failed to get system vitals", http.StatusInternalServerError)
+		return
+	}
+	
+	// Get historical CPU data for the last 24 hours
+	historicalData, err := database.GetMetricsLast24Hours("cpu")
+	if err != nil {
+		log.Printf("Failed to get historical CPU data: %v", err)
+		// Continue with empty historical data
+		historicalData = []database.SystemVitalLog{}
+	}
+	
+	// Extract CPU percentages for sparkline
+	var cpuData []float64
+	for _, metric := range historicalData {
+		cpuData = append(cpuData, metric.CPUPercent)
+	}
+	
+	// Generate sparkline SVG
+	var sparklineSVG template.HTML
+	if len(cpuData) >= 2 {
+		sparklineSVG = charts.GeneratePercentageSparkline(cpuData, 150, 40)
+	} else {
+		// Not enough data, show a flat line at current value
+		sparklineSVG = template.HTML(fmt.Sprintf(`<svg width="150" height="40" viewBox="0 0 150 40" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"><line x1="0" y1="%d" x2="150" y2="%d" stroke="#007bff" stroke-width="2" /></svg>`, 
+			int(40-(vitals.CPUPercent*0.4)), int(40-(vitals.CPUPercent*0.4))))
+	}
+	
 	// Prepare data for the template
 	data := struct {
 		CurrentLoad  string
 		SparklineSVG template.HTML
 	}{
-		CurrentLoad:  "15.2",
-		SparklineSVG: template.HTML(`<svg width="100%" height="100%" viewBox="0 0 150 40" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"><polyline fill="none" stroke="#007bff" stroke-width="2" points="0,30 30,25 60,20 90,22 120,18 150,15" /></svg>`),
+		CurrentLoad:  fmt.Sprintf("%.1f", vitals.CPUPercent),
+		SparklineSVG: sparklineSVG,
 	}
 
 	// Get the CPU card template
@@ -89,13 +126,45 @@ func (s *Server) handleMonitoringCPUPartial(w http.ResponseWriter, r *http.Reque
 
 // handleMonitoringMemoryPartial returns the memory monitoring card partial
 func (s *Server) handleMonitoringMemoryPartial(w http.ResponseWriter, r *http.Request) {
+	// Get current memory usage
+	vitals, err := system.GetVitals()
+	if err != nil {
+		log.Printf("Failed to get system vitals: %v", err)
+		http.Error(w, "Failed to get system vitals", http.StatusInternalServerError)
+		return
+	}
+	
+	// Get historical memory data for the last 24 hours
+	historicalData, err := database.GetMetricsLast24Hours("memory")
+	if err != nil {
+		log.Printf("Failed to get historical memory data: %v", err)
+		// Continue with empty historical data
+		historicalData = []database.SystemVitalLog{}
+	}
+	
+	// Extract memory percentages for sparkline
+	var memData []float64
+	for _, metric := range historicalData {
+		memData = append(memData, metric.MemoryPercent)
+	}
+	
+	// Generate sparkline SVG
+	var sparklineSVG template.HTML
+	if len(memData) >= 2 {
+		sparklineSVG = charts.GeneratePercentageSparkline(memData, 150, 40)
+	} else {
+		// Not enough data, show a flat line at current value
+		sparklineSVG = template.HTML(fmt.Sprintf(`<svg width="150" height="40" viewBox="0 0 150 40" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"><line x1="0" y1="%d" x2="150" y2="%d" stroke="#007bff" stroke-width="2" /></svg>`, 
+			int(40-(vitals.MemPercent*0.4)), int(40-(vitals.MemPercent*0.4))))
+	}
+	
 	// Prepare data for the template
 	data := struct {
 		CurrentUsage string
 		SparklineSVG template.HTML
 	}{
-		CurrentUsage: "45.8",
-		SparklineSVG: template.HTML(`<svg width="100%" height="100%" viewBox="0 0 150 40" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"><polyline fill="none" stroke="#007bff" stroke-width="2" points="0,20 30,22 60,25 90,23 120,20 150,18" /></svg>`),
+		CurrentUsage: fmt.Sprintf("%.1f", vitals.MemPercent),
+		SparklineSVG: sparklineSVG,
 	}
 
 	// Get the memory card template
@@ -117,6 +186,38 @@ func (s *Server) handleMonitoringMemoryPartial(w http.ResponseWriter, r *http.Re
 
 // handleMonitoringDiskPartial returns the disk monitoring card partial
 func (s *Server) handleMonitoringDiskPartial(w http.ResponseWriter, r *http.Request) {
+	// Get current disk usage
+	vitals, err := system.GetVitals()
+	if err != nil {
+		log.Printf("Failed to get system vitals: %v", err)
+		http.Error(w, "Failed to get system vitals", http.StatusInternalServerError)
+		return
+	}
+	
+	// Get historical disk data for the last 24 hours
+	historicalData, err := database.GetMetricsLast24Hours("disk")
+	if err != nil {
+		log.Printf("Failed to get historical disk data: %v", err)
+		// Continue with empty historical data
+		historicalData = []database.SystemVitalLog{}
+	}
+	
+	// Extract disk percentages for sparkline
+	var diskData []float64
+	for _, metric := range historicalData {
+		diskData = append(diskData, metric.DiskUsagePercent)
+	}
+	
+	// Generate sparkline SVG
+	var sparklineSVG template.HTML
+	if len(diskData) >= 2 {
+		sparklineSVG = charts.GeneratePercentageSparkline(diskData, 150, 40)
+	} else {
+		// Not enough data, show a flat line at current value
+		sparklineSVG = template.HTML(fmt.Sprintf(`<svg width="150" height="40" viewBox="0 0 150 40" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"><line x1="0" y1="%d" x2="150" y2="%d" stroke="#007bff" stroke-width="2" /></svg>`, 
+			int(40-(vitals.DiskPercent*0.4)), int(40-(vitals.DiskPercent*0.4))))
+	}
+	
 	// Prepare data for the template
 	data := struct {
 		Path         string
@@ -124,8 +225,8 @@ func (s *Server) handleMonitoringDiskPartial(w http.ResponseWriter, r *http.Requ
 		SparklineSVG template.HTML
 	}{
 		Path:         "/",
-		CurrentUsage: "78.1",
-		SparklineSVG: template.HTML(`<svg width="100%" height="100%" viewBox="0 0 150 40" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"><polyline fill="none" stroke="#007bff" stroke-width="2" points="0,10 30,10 60,11 90,11 120,12 150,12" /></svg>`),
+		CurrentUsage: fmt.Sprintf("%.1f", vitals.DiskPercent),
+		SparklineSVG: sparklineSVG,
 	}
 
 	// Get the disk card template
@@ -147,15 +248,25 @@ func (s *Server) handleMonitoringDiskPartial(w http.ResponseWriter, r *http.Requ
 
 // handleMonitoringNetworkPartial returns the network monitoring card partial
 func (s *Server) handleMonitoringNetworkPartial(w http.ResponseWriter, r *http.Request) {
+	// For network data, we'll use placeholder data for now since the database doesn't store network metrics
+	// In a future ticket, we could add network bytes to the database and calculate rates
+	
+	// Generate a simple placeholder sparkline
+	sparklineSVG := template.HTML(`<svg width="150" height="40" viewBox="0 0 150 40" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"><polyline fill="none" stroke="#007bff" stroke-width="2" points="0,35 30,30 60,25 90,28 120,32 150,30" /></svg>`)
+	
 	// Prepare data for the template
+	// In a real implementation, we would:
+	// 1. Store network bytes in/out in the database
+	// 2. Calculate rate by comparing current and previous values
+	// 3. Format the rates appropriately
 	data := struct {
 		DownloadRate string
 		UploadRate   string
 		SparklineSVG template.HTML
 	}{
-		DownloadRate: "1.2 MB/s",
-		UploadRate:   "85 KB/s",
-		SparklineSVG: template.HTML(`<svg width="100%" height="100%" viewBox="0 0 150 40" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"><polyline fill="none" stroke="#007bff" stroke-width="2" points="0,35 30,30 60,25 90,28 120,32 150,30" /></svg>`),
+		DownloadRate: "0 KB/s",  // Placeholder for now
+		UploadRate:   "0 KB/s",  // Placeholder for now
+		SparklineSVG: sparklineSVG,
 	}
 
 	// Get the network card template
