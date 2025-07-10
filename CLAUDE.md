@@ -229,6 +229,36 @@ Added backend support for emoji storage in apps:
 - **Tests**: Added comprehensive tests for emoji validation, storage, and persistence
 - See `internal/yamlutil/CLAUDE.md` for implementation details
 
+### Emoji Picker Component (2025-07-10 - UI Improvements Ticket 2)
+
+Created reusable emoji picker component for app creation forms:
+- **Component Template**: Created `/templates/components/emoji-picker.html` with HTMX integration
+- **Features**:
+  - 7x1 grid layout (5x1 on mobile) displaying random emojis
+  - Click to select with visual feedback (blue background, border)
+  - Hidden input field to store selected value for form submission
+  - Shuffle button for new random emojis (requires handler implementation)
+- **Styling**: Added CSS to `static/css/style.css` with hover effects and responsive design
+- **JavaScript**: Inline selection handling with `selectEmoji()` function
+- **Pattern Library**: Updated components page to demonstrate emoji picker usage
+- **Next Steps**: Integrate into app creation forms and implement shuffle endpoint handler
+
+### Emoji Shuffle Endpoint (2025-07-10 - UI Improvements Ticket 3)
+
+Implemented the emoji picker shuffle functionality:
+- **Endpoint**: Created `/components/emoji-picker/shuffle` handler
+- **Features**:
+  - Returns 7 random emojis from the curated `AppEmojis` list
+  - Supports demo mode for pattern library with `?demo=true` parameter
+  - Returns complete HTMX-compatible HTML fragment
+  - Maintains selection state through JavaScript
+- **Implementation**: 
+  - Created `internal/server/components_handlers.go` with routing logic
+  - Added `/components/` route to server setup
+  - Shuffle algorithm uses time-seeded random selection
+- **Pattern Library**: Wired up shuffle button in components page demo
+- See `internal/server/components_handlers.go` for implementation
+
 ### UI Improvements (2025-07-10)
 
 #### Container Controls Reorganization

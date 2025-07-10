@@ -14,36 +14,36 @@ import (
 // TestMonitoringDashboard tests the main monitoring dashboard handler
 func TestMonitoringDashboard(t *testing.T) {
 	tests := []struct {
-		name           string
-		method         string
-		path           string
+		name              string
+		method            string
+		path              string
 		monitoringEnabled bool
-		wantStatusCode int
-		description    string
+		wantStatusCode    int
+		description       string
 	}{
 		{
-			name:           "GET monitoring dashboard when enabled",
-			method:         "GET",
-			path:           "/monitoring",
+			name:              "GET monitoring dashboard when enabled",
+			method:            "GET",
+			path:              "/monitoring",
 			monitoringEnabled: true,
-			wantStatusCode: http.StatusInternalServerError, // Template not found in test
-			description:    "Should attempt to return monitoring dashboard when feature is enabled",
+			wantStatusCode:    http.StatusInternalServerError, // Template not found in test
+			description:       "Should attempt to return monitoring dashboard when feature is enabled",
 		},
 		{
-			name:           "GET monitoring dashboard when disabled",
-			method:         "GET",
-			path:           "/monitoring",
+			name:              "GET monitoring dashboard when disabled",
+			method:            "GET",
+			path:              "/monitoring",
 			monitoringEnabled: false,
-			wantStatusCode: http.StatusNotFound,
-			description:    "Should return 404 when monitoring is disabled",
+			wantStatusCode:    http.StatusNotFound,
+			description:       "Should return 404 when monitoring is disabled",
 		},
 		{
-			name:           "POST to monitoring dashboard",
-			method:         "POST",
-			path:           "/monitoring",
+			name:              "POST to monitoring dashboard",
+			method:            "POST",
+			path:              "/monitoring",
 			monitoringEnabled: true,
-			wantStatusCode: http.StatusMethodNotAllowed,
-			description:    "Only GET method should be allowed",
+			wantStatusCode:    http.StatusMethodNotAllowed,
+			description:       "Only GET method should be allowed",
 		},
 	}
 
@@ -87,7 +87,7 @@ func TestMonitoringDashboard(t *testing.T) {
 // TestMonitoringPartials tests the partial update handlers
 func TestMonitoringPartials(t *testing.T) {
 	metrics := []string{"cpu", "memory", "disk", "network"}
-	
+
 	for _, metric := range metrics {
 		t.Run("GET monitoring partial for "+metric, func(t *testing.T) {
 			// Create a minimal server for testing

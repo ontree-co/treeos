@@ -167,6 +167,73 @@
                     </div>
                 </div>
             </section>
+
+            <!-- Emoji Picker Section -->
+            <section class="mb-5">
+                <h2 class="h4 mb-3">Emoji Picker</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="h6 text-muted mb-3">Example</h3>
+                        
+                        <div class="emoji-picker" id="emoji-picker-demo">
+                            <label class="form-label">Choose an emoji for your app</label>
+                            <div class="emoji-grid mb-3">
+                                {{range $index, $emoji := .DemoEmojis}}
+                                <button type="button" 
+                                        class="emoji-option" 
+                                        data-emoji="{{$emoji}}"
+                                        onclick="selectEmojiDemo(this)"
+                                        aria-label="Select emoji {{$emoji}}">
+                                    {{$emoji}}
+                                </button>
+                                {{end}}
+                            </div>
+                            <button type="button" 
+                                    class="btn btn-sm btn-secondary"
+                                    hx-get="/components/emoji-picker/shuffle?demo=true" 
+                                    hx-target="#emoji-picker-demo"
+                                    hx-swap="outerHTML">
+                                🔀 Shuffle
+                            </button>
+                            <input type="hidden" name="demo-emoji" id="demo-selected-emoji" value="">
+                        </div>
+
+                        <h3 class="h6 text-muted mt-4 mb-3">Code</h3>
+                        <pre class="bg-light p-3 rounded"><code>&lt;!-- Include the emoji picker component --&gt;
+{{ "{{" }} template "emoji-picker" . {{ "}}" }}
+
+&lt;!-- Or use directly in forms --&gt;
+&lt;div class="emoji-picker" id="emoji-picker"&gt;
+    &lt;label class="form-label"&gt;Choose an emoji for your app&lt;/label&gt;
+    &lt;div class="emoji-grid mb-3"&gt;
+        &lt;!-- Emoji buttons --&gt;
+    &lt;/div&gt;
+    &lt;button type="button" class="btn btn-sm btn-secondary" 
+            hx-get="/components/emoji-picker/shuffle" 
+            hx-target="#emoji-picker"&gt;
+        🔀 Shuffle
+    &lt;/button&gt;
+    &lt;input type="hidden" name="emoji" id="selected-emoji" value=""&gt;
+&lt;/div&gt;</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <script>
+            function selectEmojiDemo(button) {
+                // Remove selected class from all emoji buttons in demo
+                document.querySelectorAll('#emoji-picker-demo .emoji-option').forEach(btn => {
+                    btn.classList.remove('selected');
+                });
+                
+                // Add selected class to clicked button
+                button.classList.add('selected');
+                
+                // Update hidden input value
+                const emoji = button.getAttribute('data-emoji');
+                document.getElementById('demo-selected-emoji').value = emoji;
+            }
+            </script>
         </div>
     </div>
 </div>

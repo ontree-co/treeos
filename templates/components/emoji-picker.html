@@ -1,0 +1,49 @@
+<div class="emoji-picker" id="emoji-picker">
+    <label class="form-label">Choose an emoji for your app</label>
+    <div class="emoji-grid mb-3">
+        {{ range $index, $emoji := .Emojis }}
+        <button type="button" 
+                class="emoji-option" 
+                data-emoji="{{ $emoji }}"
+                onclick="selectEmoji(this)"
+                aria-label="Select emoji {{ $emoji }}">
+            {{ $emoji }}
+        </button>
+        {{ end }}
+    </div>
+    <button type="button" 
+            class="btn btn-sm btn-secondary" 
+            hx-get="/components/emoji-picker/shuffle" 
+            hx-target="#emoji-picker"
+            hx-swap="outerHTML">
+        🔀 Shuffle
+    </button>
+    <input type="hidden" name="emoji" id="selected-emoji" value="{{ .SelectedEmoji }}">
+</div>
+
+<script>
+function selectEmoji(button) {
+    // Remove selected class from all emoji buttons
+    document.querySelectorAll('.emoji-option').forEach(btn => {
+        btn.classList.remove('selected');
+    });
+    
+    // Add selected class to clicked button
+    button.classList.add('selected');
+    
+    // Update hidden input value
+    const emoji = button.getAttribute('data-emoji');
+    document.getElementById('selected-emoji').value = emoji;
+}
+
+// If there's a pre-selected emoji, mark it as selected
+document.addEventListener('DOMContentLoaded', function() {
+    const selectedValue = document.getElementById('selected-emoji').value;
+    if (selectedValue) {
+        const button = document.querySelector(`[data-emoji="${selectedValue}"]`);
+        if (button) {
+            button.classList.add('selected');
+        }
+    }
+});
+</script>

@@ -99,7 +99,8 @@ func (s *Server) handlePatternsComponents(w http.ResponseWriter, r *http.Request
 			Title   string
 			Content string
 		}
-		Messages []interface{}
+		DemoEmojis []string
+		Messages   []interface{}
 	}{
 		User:        user,
 		UserInitial: userInitial,
@@ -135,6 +136,7 @@ func (s *Server) handlePatternsComponents(w http.ResponseWriter, r *http.Request
 			{Title: "Basic Card", Content: "This is a basic card with some example content."},
 			{Title: "Another Card", Content: "Cards are flexible content containers."},
 		},
+		DemoEmojis: []string{"🚀", "💻", "🔧", "📊", "🔒", "☁️", "🌐"},
 	}
 
 	tmpl, ok := s.templates["patterns_components"]

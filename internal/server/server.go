@@ -324,6 +324,9 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/patterns", s.TracingMiddleware(s.routePatterns))
 	mux.HandleFunc("/patterns/", s.TracingMiddleware(s.routePatterns))
 
+	// Component routes (no auth required - public access for HTMX components)
+	mux.HandleFunc("/components/", s.TracingMiddleware(s.routeComponents))
+
 	// Settings routes
 	mux.HandleFunc("/settings", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" {
