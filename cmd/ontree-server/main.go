@@ -15,6 +15,7 @@ import (
 
 	"ontree-node/internal/config"
 	"ontree-node/internal/database"
+	"ontree-node/internal/migration"
 	"ontree-node/internal/server"
 	"ontree-node/internal/telemetry"
 	"ontree-node/internal/version"
@@ -28,12 +29,33 @@ func main() {
 		os.Exit(1)
 	}
 
-	if len(os.Args) > 1 && os.Args[1] == "setup-dirs" {
-		if err := setupDirs(); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "setup-dirs":
+			if err := setupDirs(); err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+			return
+		case "migrate-to-compose":
+			// Initialize database for migration
+			if err := database.Initialize(cfg.DatabasePath); err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to initialize database: %v\n", err)
+				os.Exit(1)
+			}
+			defer func() {
+				if err := database.Close(); err != nil {
+					log.Printf("Failed to close database: %v", err)
+				}
+			}()
+			
+			// Run migration
+			if err := migration.MigrateDeployedAppsToCompose(cfg); err != nil {
+				fmt.Fprintf(os.Stderr, "Migration failed: %v\n", err)
+				os.Exit(1)
+			}
+			return
 		}
-		return
 	}
 
 	// Initialize telemetry

@@ -6,6 +6,15 @@ OnTree is a Docker container management application with a web interface for man
 
 ## Recent Features
 
+### Data Migration Script (2025-07-10 - Ticket 2)
+
+Added migration command to move app metadata from database to docker-compose.yml files:
+- Run with: `./ontree-server migrate-to-compose`
+- Creates timestamped backups of all compose files before modification
+- Migrates subdomain, host_port, and is_exposed fields to x-ontree section
+- Provides detailed logging and error handling
+- See `internal/migration/CLAUDE.md` for implementation details
+
 ### YAML Utilities Package (2025-07-10)
 
 Added yamlutil package for managing docker-compose.yml metadata:
