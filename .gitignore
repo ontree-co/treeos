@@ -64,3 +64,6 @@ bin/
 # Debug
 __debug_bin*
 apps/postgres-test/data/
+
+# Authentication
+cookies.txt
