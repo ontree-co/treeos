@@ -135,6 +135,20 @@ Created HTMX-powered monitoring dashboard templates with responsive design:
   - Modal container for future detailed metric views
 - **Handler Updates**: Modified `handlers_monitoring.go` to use template rendering instead of inline HTML
 
+### System Vitals Data Retrieval Functions (2025-07-10 - Usage Graph Ticket 5)
+
+Implemented database functions for retrieving historical system metrics:
+- Created `internal/database/system_vitals.go` with comprehensive data access functions
+- **Key Functions**:
+  - `GetMetricsLast24Hours` - Retrieves 24-hour historical data for sparklines
+  - `GetLatestMetric` - Gets current metric values for dashboard display
+  - `StoreSystemVital` - Persists new metric readings
+  - `CleanupOldSystemVitals` - Implements data retention policy
+  - `GetMetricsForTimeRange` - Flexible time range queries for future features
+- **Performance**: Leverages existing timestamp index for efficient queries
+- **Testing**: Full test coverage with edge case handling
+- See `internal/database/CLAUDE.md` for implementation details
+
 ### UI Improvements (2025-07-10)
 
 #### Container Controls Reorganization
