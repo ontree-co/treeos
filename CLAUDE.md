@@ -348,6 +348,14 @@ Updated all primary action buttons with a dark green gradient color scheme:
   - All primary submit buttons in forms
 - **Browser Compatibility**: Tested across Chrome, Firefox, Safari, and Edge
 
+#### Simplified Homepage Create Button (2025-07-10 - UI Improvements Ticket 9)
+Simplified the app creation flow on the homepage:
+- **Removed Templates button**: The separate "Templates" button has been removed
+- **Single Create button**: "Create New App" button now links directly to `/templates`
+- **Larger button**: Button is now `btn-lg` size for better visibility
+- **Updated icon**: Uses Bootstrap's `bi-plus-circle` icon
+- **Consistent flow**: Users go directly to templates page where they can choose templates or create from scratch
+
 ### New Features (2025-07-10)
 
 Implemented three major features to enhance the OnTree application:
