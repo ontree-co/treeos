@@ -79,7 +79,9 @@ func createTables() error {
 			is_setup_complete INTEGER DEFAULT 0,
 			setup_date DATETIME,
 			node_name TEXT DEFAULT 'OnTree Node',
-			node_description TEXT
+			node_description TEXT,
+			public_base_domain TEXT,
+			tailscale_base_domain TEXT
 		)`,
 		`CREATE TABLE IF NOT EXISTS system_vital_logs (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -114,12 +116,33 @@ func createTables() error {
 		`CREATE INDEX IF NOT EXISTS idx_docker_operations_status_created ON docker_operations(status, created_at)`,
 		`CREATE INDEX IF NOT EXISTS idx_docker_operations_app_created ON docker_operations(app_name, created_at)`,
 		`CREATE INDEX IF NOT EXISTS idx_docker_operation_logs_operation_timestamp ON docker_operation_logs(operation_id, timestamp)`,
+		`CREATE TABLE IF NOT EXISTS deployed_apps (
+			id TEXT PRIMARY KEY,
+			name TEXT NOT NULL UNIQUE,
+			docker_compose TEXT NOT NULL,
+			subdomain TEXT,
+			host_port INTEGER,
+			is_exposed INTEGER DEFAULT 0,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)`,
 	}
 
 	for _, query := range queries {
 		if _, err := db.Exec(query); err != nil {
 			return fmt.Errorf("failed to execute query: %w", err)
 		}
+	}
+
+	// Add domain columns to existing system_setup table (safe to run multiple times)
+	alterQueries := []string{
+		`ALTER TABLE system_setup ADD COLUMN public_base_domain TEXT`,
+		`ALTER TABLE system_setup ADD COLUMN tailscale_base_domain TEXT`,
+	}
+	
+	for _, query := range alterQueries {
+		// Ignore errors as columns may already exist
+		_, _ = db.Exec(query)
 	}
 
 	return nil

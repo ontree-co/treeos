@@ -1213,6 +1213,143 @@ func (s *Server) handleAppUnexpose(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
 }
 
+// handleSettings handles the settings page display
+func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
+	user := getUserFromContext(r.Context())
+
+	// Get current system setup
+	var setup database.SystemSetup
+	err := s.db.QueryRow(`
+		SELECT id, public_base_domain, tailscale_base_domain 
+		FROM system_setup 
+		WHERE id = 1
+	`).Scan(&setup.ID, &setup.PublicBaseDomain, &setup.TailscaleBaseDomain)
+
+	if err != nil && err != sql.ErrNoRows {
+		log.Printf("Failed to get system setup: %v", err)
+		http.Error(w, "Failed to load settings", http.StatusInternalServerError)
+		return
+	}
+
+	// Get flash messages
+	session, err := s.sessionStore.Get(r, "ontree-session")
+	if err != nil {
+		log.Printf("Failed to get session: %v", err)
+	}
+
+	var messages []interface{}
+	if flashes := session.Flashes("success"); len(flashes) > 0 {
+		for _, flash := range flashes {
+			messages = append(messages, map[string]interface{}{
+				"Type": "success",
+				"Text": flash,
+			})
+		}
+	}
+	if flashes := session.Flashes("error"); len(flashes) > 0 {
+		for _, flash := range flashes {
+			messages = append(messages, map[string]interface{}{
+				"Type": "danger",
+				"Text": flash,
+			})
+		}
+	}
+	if err := session.Save(r, w); err != nil {
+		log.Printf("Failed to save session: %v", err)
+	}
+
+	// Prepare template data
+	data := s.baseTemplateData(user)
+	data["Messages"] = messages
+	data["PublicBaseDomain"] = ""
+	data["TailscaleBaseDomain"] = ""
+
+	if setup.PublicBaseDomain.Valid {
+		data["PublicBaseDomain"] = setup.PublicBaseDomain.String
+	}
+	if setup.TailscaleBaseDomain.Valid {
+		data["TailscaleBaseDomain"] = setup.TailscaleBaseDomain.String
+	}
+
+	// Also show current values from config (to show if env vars are overriding)
+	data["ConfigPublicDomain"] = s.config.PublicBaseDomain
+	data["ConfigTailscaleDomain"] = s.config.TailscaleBaseDomain
+
+	// Render template
+	tmpl, ok := s.templates["settings"]
+	if !ok {
+		http.Error(w, "Template not found", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
+		log.Printf("Error rendering template: %v", err)
+		http.Error(w, "Error rendering template", http.StatusInternalServerError)
+		return
+	}
+}
+
+// handleSettingsUpdate handles saving settings
+func (s *Server) handleSettingsUpdate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Parse form
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Failed to parse form", http.StatusBadRequest)
+		return
+	}
+
+	publicDomain := strings.TrimSpace(r.FormValue("public_base_domain"))
+	tailscaleDomain := strings.TrimSpace(r.FormValue("tailscale_base_domain"))
+
+	// Ensure system_setup record exists
+	_, err := s.db.Exec(`
+		INSERT OR IGNORE INTO system_setup (id, is_setup_complete) 
+		VALUES (1, 1)
+	`)
+	if err != nil {
+		log.Printf("Failed to ensure system_setup exists: %v", err)
+	}
+
+	// Update database
+	_, err = s.db.Exec(`
+		UPDATE system_setup 
+		SET public_base_domain = ?, tailscale_base_domain = ?
+		WHERE id = 1
+	`, publicDomain, tailscaleDomain)
+
+	if err != nil {
+		log.Printf("Failed to update settings: %v", err)
+		session, _ := s.sessionStore.Get(r, "ontree-session")
+		session.AddFlash("Failed to save settings", "error")
+		_ = session.Save(r, w)
+		http.Redirect(w, r, "/settings", http.StatusFound)
+		return
+	}
+
+	// Update in-memory config if env vars are not set
+	if os.Getenv("PUBLIC_BASE_DOMAIN") == "" {
+		s.config.PublicBaseDomain = publicDomain
+	}
+	if os.Getenv("TAILSCALE_BASE_DOMAIN") == "" {
+		s.config.TailscaleBaseDomain = tailscaleDomain
+	}
+
+	// Re-check Caddy health since domains may have changed
+	s.checkCaddyHealth()
+
+	// Success message
+	session, _ := s.sessionStore.Get(r, "ontree-session")
+	session.AddFlash("Settings saved successfully", "success")
+	_ = session.Save(r, w)
+
+	http.Redirect(w, r, "/settings", http.StatusFound)
+}
+
 // handleAppStatusCheck handles checking the status of an exposed application's subdomains
 func (s *Server) handleAppStatusCheck(w http.ResponseWriter, r *http.Request) {
 	// Extract app name from URL path

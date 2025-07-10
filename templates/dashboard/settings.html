@@ -1,0 +1,143 @@
+{{define "content"}}
+<div class="row">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/">Dashboard</a></li>
+                <li class="breadcrumb-item active">Settings</li>
+            </ol>
+        </nav>
+        
+        <h1 class="mb-4">
+            <i>⚙️</i> Settings
+        </h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Domain Configuration</h5>
+            </div>
+            <div class="card-body">
+                {{if not .PlatformSupportsCaddy}}
+                    <div class="alert alert-info">
+                        <i>ℹ️</i> <strong>Domain configuration is not available on macOS</strong><br>
+                        <small>This feature is only supported on Linux servers.</small>
+                    </div>
+                {{else}}
+                    <p class="text-muted mb-4">
+                        Configure base domains for exposing applications. These settings allow apps to be accessed via custom subdomains with automatic HTTPS certificates.
+                    </p>
+                    
+                    <form method="post" action="/settings">
+                        <div class="mb-4">
+                            <label for="public_base_domain" class="form-label">
+                                Public Base Domain
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="public_base_domain" 
+                                   name="public_base_domain"
+                                   placeholder="example.com"
+                                   value="{{.PublicBaseDomain}}"
+                                   {{if not .PlatformSupportsCaddy}}disabled{{end}}>
+                            <small class="form-text text-muted">
+                                Your public domain (e.g., homelab.com). Apps will be accessible at subdomain.homelab.com.
+                            </small>
+                            {{if and .ConfigPublicDomain (ne .ConfigPublicDomain .PublicBaseDomain)}}
+                                <div class="alert alert-warning mt-2 mb-0">
+                                    <small>
+                                        <i>⚠️</i> Currently using <code>{{.ConfigPublicDomain}}</code> from environment variable
+                                    </small>
+                                </div>
+                            {{end}}
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="tailscale_base_domain" class="form-label">
+                                Tailscale Base Domain
+                                <span class="badge bg-secondary">Optional</span>
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="tailscale_base_domain" 
+                                   name="tailscale_base_domain"
+                                   placeholder="myserver.tailnet.ts.net"
+                                   value="{{.TailscaleBaseDomain}}"
+                                   {{if not .PlatformSupportsCaddy}}disabled{{end}}>
+                            <small class="form-text text-muted">
+                                Your Tailscale domain for private access. Apps will be accessible at subdomain.myserver.tailnet.ts.net.
+                            </small>
+                            {{if and .ConfigTailscaleDomain (ne .ConfigTailscaleDomain .TailscaleBaseDomain)}}
+                                <div class="alert alert-warning mt-2 mb-0">
+                                    <small>
+                                        <i>⚠️</i> Currently using <code>{{.ConfigTailscaleDomain}}</code> from environment variable
+                                    </small>
+                                </div>
+                            {{end}}
+                        </div>
+                        
+                        <div class="d-flex justify-content-between align-items-center">
+                            <button type="submit" class="btn btn-primary" {{if not .PlatformSupportsCaddy}}disabled{{end}}>
+                                <i>💾</i> Save Settings
+                            </button>
+                            
+                            {{if .CaddyAvailable}}
+                                <span class="text-success">
+                                    <i>✅</i> Caddy service is running
+                                </span>
+                            {{else if .PlatformSupportsCaddy}}
+                                <span class="text-warning">
+                                    <i>⚠️</i> Caddy service not available
+                                </span>
+                            {{end}}
+                        </div>
+                    </form>
+                {{end}}
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">Environment Variables</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-3">
+                    Domain settings can also be configured via environment variables, which take priority over database settings:
+                </p>
+                <ul class="font-monospace small">
+                    <li><code>PUBLIC_BASE_DOMAIN</code> - Sets the public base domain</li>
+                    <li><code>TAILSCALE_BASE_DOMAIN</code> - Sets the Tailscale base domain</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Help</h5>
+            </div>
+            <div class="card-body">
+                <h6>Setting up domains:</h6>
+                <ol class="small">
+                    <li>Configure your DNS to point <code>*.yourdomain.com</code> to this server</li>
+                    <li>Enter your domain in the Public Base Domain field</li>
+                    <li>Caddy will automatically obtain HTTPS certificates</li>
+                    <li>Apps can then be exposed via the app detail page</li>
+                </ol>
+                
+                <h6 class="mt-3">Requirements:</h6>
+                <ul class="small">
+                    <li>Linux server (not macOS)</li>
+                    <li>Caddy installed and running</li>
+                    <li>Port 80 and 443 accessible</li>
+                    <li>Valid DNS configuration</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{{end}}

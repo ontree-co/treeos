@@ -23,11 +23,13 @@ type User struct {
 
 // SystemSetup tracks the system setup state.
 type SystemSetup struct {
-	ID              int
-	IsSetupComplete bool
-	SetupDate       sql.NullTime
-	NodeName        string
-	NodeDescription sql.NullString
+	ID                   int
+	IsSetupComplete      bool
+	SetupDate            sql.NullTime
+	NodeName             string
+	NodeDescription      sql.NullString
+	PublicBaseDomain     sql.NullString
+	TailscaleBaseDomain  sql.NullString
 }
 
 // SystemVitalLog stores system performance metrics.

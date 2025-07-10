@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -92,6 +93,11 @@ func New(cfg *config.Config, versionInfo version.Info) (*Server, error) {
 		s.dockerSvc = dockerSvc
 	}
 
+	// Load domain configuration from database if not set by environment
+	if err := s.loadDomainConfig(); err != nil {
+		log.Printf("Warning: Failed to load domain config from database: %v", err)
+	}
+
 	// Initialize Caddy client only on Linux
 	if s.platformSupportsCaddy {
 		s.caddyClient = caddy.NewClient()
@@ -166,6 +172,14 @@ func (s *Server) loadTemplates() error {
 		return fmt.Errorf("failed to parse login template: %w", err)
 	}
 	s.templates["login"] = tmpl
+
+	// Load settings template
+	settingsTemplate := filepath.Join("templates", "dashboard", "settings.html")
+	tmpl, err = embeds.ParseTemplate(baseTemplate, settingsTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse settings template: %w", err)
+	}
+	s.templates["settings"] = tmpl
 
 	// Load app detail template
 	appDetailTemplate := filepath.Join("templates", "dashboard", "app_detail.html")
@@ -294,6 +308,15 @@ func (s *Server) Start() error {
 	// Pattern library routes (no auth required - public access)
 	mux.HandleFunc("/patterns", s.TracingMiddleware(s.routePatterns))
 	mux.HandleFunc("/patterns/", s.TracingMiddleware(s.routePatterns))
+
+	// Settings routes
+	mux.HandleFunc("/settings", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "POST" {
+			s.handleSettingsUpdate(w, r)
+		} else {
+			s.handleSettings(w, r)
+		}
+	}))))
 
 	// Start server
 	addr := s.config.ListenAddr
@@ -427,6 +450,40 @@ func (s *Server) checkCaddyHealth() {
 	if s.db != nil && s.caddyAvailable {
 		s.syncExposedApps()
 	}
+}
+
+// loadDomainConfig loads domain configuration from database if not set by environment
+func (s *Server) loadDomainConfig() error {
+	// Skip if environment variables are set
+	if os.Getenv("PUBLIC_BASE_DOMAIN") != "" && os.Getenv("TAILSCALE_BASE_DOMAIN") != "" {
+		return nil
+	}
+
+	// Query database for domain configuration
+	var publicDomain, tailscaleDomain sql.NullString
+	err := s.db.QueryRow(`
+		SELECT public_base_domain, tailscale_base_domain 
+		FROM system_setup 
+		WHERE id = 1
+	`).Scan(&publicDomain, &tailscaleDomain)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// No config yet, that's OK
+			return nil
+		}
+		return fmt.Errorf("failed to query domain config: %w", err)
+	}
+
+	// Update config if not overridden by environment
+	if os.Getenv("PUBLIC_BASE_DOMAIN") == "" && publicDomain.Valid {
+		s.config.PublicBaseDomain = publicDomain.String
+	}
+	if os.Getenv("TAILSCALE_BASE_DOMAIN") == "" && tailscaleDomain.Valid {
+		s.config.TailscaleBaseDomain = tailscaleDomain.String
+	}
+
+	return nil
 }
 
 // syncExposedApps synchronizes exposed apps with Caddy on startup
