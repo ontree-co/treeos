@@ -438,6 +438,11 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 		data["HasDeployedApp"] = false
 	}
 
+	// Add domain configuration for UI display
+	data["HasDomainsConfigured"] = s.config.PublicBaseDomain != "" || s.config.TailscaleBaseDomain != ""
+	data["PublicBaseDomain"] = s.config.PublicBaseDomain
+	data["TailscaleBaseDomain"] = s.config.TailscaleBaseDomain
+
 	// Render template
 	tmpl, ok := s.templates["app_detail"]
 	if !ok {

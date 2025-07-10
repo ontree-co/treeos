@@ -63,3 +63,4 @@ bin/
 
 # Debug
 __debug_bin*
+apps/postgres-test/data/

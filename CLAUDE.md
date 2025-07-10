@@ -6,6 +6,49 @@ OnTree is a Docker container management application with a web interface for man
 
 ## Recent Features
 
+### Caddy Integration UI (2025-07-10)
+
+Added Domain & Access section to app detail page for exposing apps via Caddy reverse proxy:
+
+1. **UI States**: The Domain & Access section displays differently based on prerequisites:
+   - **Caddy not available**: Shows disabled form with warning message
+   - **No domains configured**: Shows disabled form with info message to configure domains in settings
+   - **App not exposed**: Shows form to enter subdomain and expose app
+   - **App exposed**: Shows current subdomain, access URLs, and unexpose button
+
+2. **Features**:
+   - Subdomain input with validation (lowercase letters, numbers, hyphens only)
+   - Shows domain suffix preview (.yourdomain.com)
+   - Remembers previously used subdomain
+   - Two-step confirmation for unexpose action
+   - Check Status button for exposed apps
+
+3. **Integration**: Uses existing backend handlers:
+   - POST `/apps/{name}/expose` - Expose app with subdomain
+   - POST `/apps/{name}/unexpose` - Remove app from Caddy
+   - GET `/api/apps/{name}/status` - Check subdomain availability
+
+The UI gracefully degrades when prerequisites aren't met, always showing users what features are available.
+
+#### Configuration
+
+To enable the Caddy integration feature:
+
+1. **Install and configure Caddy** on the host system with admin API enabled:
+   ```
+   {
+       admin localhost:2019
+   }
+   ```
+
+2. **Configure domains** via environment variables or config.toml:
+   - `PUBLIC_BASE_DOMAIN` - Your public domain (e.g., `homelab.com`)
+   - `TAILSCALE_BASE_DOMAIN` - Your Tailscale domain (e.g., `myserver.tailnet.ts.net`)
+
+3. **Ensure OnTree has Docker permissions** to manage containers
+
+When properly configured, apps can be exposed at `https://subdomain.yourdomain.com` with automatic HTTPS certificates managed by Caddy.
+
 ### CI Test Fixes (2025-07-08)
 
 Fixed CI test failures for v0.1.1 release:

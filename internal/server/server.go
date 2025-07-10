@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -24,17 +25,18 @@ import (
 
 // Server represents the HTTP server
 type Server struct {
-	config         *config.Config
-	templates      map[string]*template.Template
-	sessionStore   *sessions.CookieStore
-	dockerClient   *docker.Client
-	dockerSvc      *docker.Service
-	db             *sql.DB
-	worker         *worker.Worker
-	templateSvc    *templates.Service
-	versionInfo    version.Info
-	caddyAvailable bool
-	caddyClient    *caddy.Client
+	config                *config.Config
+	templates             map[string]*template.Template
+	sessionStore          *sessions.CookieStore
+	dockerClient          *docker.Client
+	dockerSvc             *docker.Service
+	db                    *sql.DB
+	worker                *worker.Worker
+	templateSvc           *templates.Service
+	versionInfo           version.Info
+	caddyAvailable        bool
+	caddyClient           *caddy.Client
+	platformSupportsCaddy bool
 }
 
 // New creates a new server instance
@@ -44,10 +46,11 @@ func New(cfg *config.Config, versionInfo version.Info) (*Server, error) {
 	sessionKey := []byte("your-32-byte-session-key-here!!") // TODO: Load from config
 
 	s := &Server{
-		config:       cfg,
-		templates:    make(map[string]*template.Template),
-		sessionStore: sessions.NewCookieStore(sessionKey),
-		versionInfo:  versionInfo,
+		config:                cfg,
+		templates:             make(map[string]*template.Template),
+		sessionStore:          sessions.NewCookieStore(sessionKey),
+		versionInfo:           versionInfo,
+		platformSupportsCaddy: runtime.GOOS == "linux",
 	}
 
 	// Configure session store
@@ -89,11 +92,15 @@ func New(cfg *config.Config, versionInfo version.Info) (*Server, error) {
 		s.dockerSvc = dockerSvc
 	}
 
-	// Initialize Caddy client
-	s.caddyClient = caddy.NewClient()
-
-	// Check Caddy availability
-	s.checkCaddyHealth()
+	// Initialize Caddy client only on Linux
+	if s.platformSupportsCaddy {
+		s.caddyClient = caddy.NewClient()
+		// Check Caddy availability
+		s.checkCaddyHealth()
+	} else {
+		log.Printf("Caddy integration is not supported on %s platform", runtime.GOOS)
+		s.caddyAvailable = false
+	}
 
 	// Initialize worker if Docker is available
 	if s.dockerSvc != nil && s.db != nil {
@@ -385,6 +392,7 @@ func (s *Server) baseTemplateData(user *database.User) map[string]interface{} {
 
 	// Caddy availability
 	data["CaddyAvailable"] = s.caddyAvailable
+	data["PlatformSupportsCaddy"] = s.platformSupportsCaddy
 
 	// Messages field is required by base template
 	data["Messages"] = nil
@@ -394,6 +402,12 @@ func (s *Server) baseTemplateData(user *database.User) map[string]interface{} {
 
 // checkCaddyHealth checks if Caddy is available and running
 func (s *Server) checkCaddyHealth() {
+	// Skip Caddy checks on non-Linux platforms
+	if !s.platformSupportsCaddy {
+		s.caddyAvailable = false
+		return
+	}
+
 	if s.caddyClient == nil {
 		s.caddyAvailable = false
 		return
