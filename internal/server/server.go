@@ -117,7 +117,7 @@ func New(cfg *config.Config, versionInfo version.Info) (*Server, error) {
 	}
 
 	// Initialize template service
-	templatesPath := filepath.Join("templates", "compose")
+	templatesPath := "compose" // Path within the embedded templates directory
 	s.templateSvc = templates.NewService(templatesPath)
 
 	return s, nil
@@ -213,6 +213,14 @@ func (s *Server) loadTemplates() error {
 		return fmt.Errorf("failed to parse app create from template template: %w", err)
 	}
 	s.templates["app_create_from_template"] = tmpl
+
+	// Load app compose edit template
+	appComposeEditTemplate := filepath.Join("templates", "dashboard", "app_compose_edit.html")
+	tmpl, err = embeds.ParseTemplate(baseTemplate, appComposeEditTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse app compose edit template: %w", err)
+	}
+	s.templates["app_compose_edit"] = tmpl
 
 	// Load pattern library templates
 	// Pattern library index
@@ -544,6 +552,8 @@ func (s *Server) routeApps(w http.ResponseWriter, r *http.Request) {
 		s.handleAppRecreate(w, r)
 	} else if strings.HasSuffix(path, "/delete") {
 		s.handleAppDelete(w, r)
+	} else if strings.HasSuffix(path, "/delete-complete") {
+		s.handleAppDeleteComplete(w, r)
 	} else if strings.HasSuffix(path, "/check-update") {
 		s.handleAppCheckUpdate(w, r)
 	} else if strings.HasSuffix(path, "/update") {
@@ -554,6 +564,12 @@ func (s *Server) routeApps(w http.ResponseWriter, r *http.Request) {
 		s.handleAppExpose(w, r)
 	} else if strings.HasSuffix(path, "/unexpose") {
 		s.handleAppUnexpose(w, r)
+	} else if strings.HasSuffix(path, "/edit") {
+		if r.Method == "POST" {
+			s.handleAppComposeUpdate(w, r)
+		} else {
+			s.handleAppComposeEdit(w, r)
+		}
 	} else {
 		// Default to app detail page
 		s.handleAppDetail(w, r)

@@ -220,3 +220,37 @@ func UpdateComposeMetadata(appPath string, metadata *OnTreeMetadata) error {
 	SetOnTreeMetadata(compose, metadata)
 	return WriteComposeWithMetadata(composePath, compose)
 }
+
+// ValidateComposeFile validates the YAML syntax and structure of a docker-compose file
+func ValidateComposeFile(content string) error {
+	var compose ComposeFile
+	if err := yaml.Unmarshal([]byte(content), &compose); err != nil {
+		return fmt.Errorf("invalid YAML syntax: %w", err)
+	}
+
+	// Check required fields
+	if compose.Version == "" {
+		return fmt.Errorf("missing 'version' field")
+	}
+
+	if compose.Services == nil || len(compose.Services) == 0 {
+		return fmt.Errorf("missing 'services' section")
+	}
+
+	// Validate each service has basic structure
+	for name, service := range compose.Services {
+		svcMap, ok := service.(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("service '%s' has invalid structure", name)
+		}
+
+		// Check for image or build
+		_, hasImage := svcMap["image"]
+		_, hasBuild := svcMap["build"]
+		if !hasImage && !hasBuild {
+			return fmt.Errorf("service '%s' must have either 'image' or 'build' field", name)
+		}
+	}
+
+	return nil
+}
