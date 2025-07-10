@@ -5,6 +5,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
+	"log"
 	"net/http"
 	"time"
 )
@@ -58,7 +60,8 @@ func (c *Client) HealthCheck() error {
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("Caddy Admin API returned status %d", resp.StatusCode)
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("Caddy Admin API returned status %d: %s", resp.StatusCode, string(body))
 	}
 
 	return nil
@@ -70,6 +73,8 @@ func (c *Client) AddOrUpdateRoute(route *RouteConfig) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal route config: %w", err)
 	}
+
+	log.Printf("[Caddy] Adding/updating route %s with config: %s", route.ID, string(jsonData))
 
 	url := c.baseURL + "/config/apps/http/servers/srv0/routes"
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(jsonData))
@@ -85,14 +90,19 @@ func (c *Client) AddOrUpdateRoute(route *RouteConfig) error {
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		return fmt.Errorf("Caddy returned status %d when adding/updating route", resp.StatusCode)
+		body, _ := io.ReadAll(resp.Body)
+		log.Printf("[Caddy] ERROR: Failed to add/update route. Status: %d, Response: %s", resp.StatusCode, string(body))
+		return fmt.Errorf("Caddy returned status %d when adding/updating route: %s", resp.StatusCode, string(body))
 	}
+
+	log.Printf("[Caddy] Successfully added/updated route %s", route.ID)
 
 	return nil
 }
 
 // DeleteRoute deletes a route from Caddy's configuration by its ID
 func (c *Client) DeleteRoute(routeID string) error {
+	log.Printf("[Caddy] Deleting route %s", routeID)
 	url := c.baseURL + "/id/" + routeID
 	req, err := http.NewRequest(http.MethodDelete, url, nil)
 	if err != nil {
@@ -107,7 +117,15 @@ func (c *Client) DeleteRoute(routeID string) error {
 
 	// Caddy returns 200 for successful deletion, 404 if route doesn't exist
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNotFound {
-		return fmt.Errorf("Caddy returned status %d when deleting route", resp.StatusCode)
+		body, _ := io.ReadAll(resp.Body)
+		log.Printf("[Caddy] ERROR: Failed to delete route. Status: %d, Response: %s", resp.StatusCode, string(body))
+		return fmt.Errorf("Caddy returned status %d when deleting route: %s", resp.StatusCode, string(body))
+	}
+
+	if resp.StatusCode == http.StatusNotFound {
+		log.Printf("[Caddy] Route %s not found (already deleted)", routeID)
+	} else {
+		log.Printf("[Caddy] Successfully deleted route %s", routeID)
 	}
 
 	return nil

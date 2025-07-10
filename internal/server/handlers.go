@@ -585,7 +585,7 @@ func (s *Server) handleAppStop(w http.ResponseWriter, r *http.Request) {
 				metadata, err := yamlutil.ReadComposeMetadata(appDetails.Path)
 				if err == nil && metadata.IsExposed {
 					appID := fmt.Sprintf("app-%s", appName)
-					routeID := fmt.Sprintf("route-for-%s", appID)
+					routeID := fmt.Sprintf("route-for-app-%s", appID)
 					if err := s.caddyClient.DeleteRoute(routeID); err != nil {
 						log.Printf("Failed to remove app %s from Caddy: %v", appName, err)
 					}
@@ -1110,14 +1110,16 @@ func (s *Server) handleAppExpose(w http.ResponseWriter, r *http.Request) {
 
 	// Generate app ID for route
 	appID := fmt.Sprintf("app-%s", appName)
+	log.Printf("[Expose] Exposing app %s with subdomain %s on port %d", appName, metadata.Subdomain, metadata.HostPort)
 
 	// Create route config
 	routeConfig := caddy.CreateRouteConfig(appID, metadata.Subdomain, metadata.HostPort, s.config.PublicBaseDomain, s.config.TailscaleBaseDomain)
 
 	// Add route to Caddy
+	log.Printf("[Expose] Sending route config to Caddy for app %s", appName)
 	err = s.caddyClient.AddOrUpdateRoute(routeConfig)
 	if err != nil {
-		log.Printf("Failed to add route to Caddy: %v", err)
+		log.Printf("[Expose] Failed to add route to Caddy: %v", err)
 		session, err := s.sessionStore.Get(r, "ontree-session")
 		if err != nil {
 			log.Printf("Failed to get session: %v", err)
@@ -1136,7 +1138,7 @@ func (s *Server) handleAppExpose(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("Failed to update compose metadata: %v", err)
 		// Try to rollback Caddy change
-		_ = s.caddyClient.DeleteRoute(fmt.Sprintf("route-for-%s", appID))
+		_ = s.caddyClient.DeleteRoute(fmt.Sprintf("route-for-app-%s", appID))
 		session, err := s.sessionStore.Get(r, "ontree-session")
 		if err != nil {
 			log.Printf("Failed to get session: %v", err)
@@ -1237,7 +1239,7 @@ func (s *Server) handleAppUnexpose(w http.ResponseWriter, r *http.Request) {
 	// Delete route from Caddy if client is available
 	if s.caddyClient != nil {
 		appID := fmt.Sprintf("app-%s", appName)
-		routeID := fmt.Sprintf("route-for-%s", appID)
+		routeID := fmt.Sprintf("route-for-app-%s", appID)
 		err = s.caddyClient.DeleteRoute(routeID)
 		if err != nil {
 			log.Printf("Failed to delete route from Caddy: %v", err)
