@@ -23,6 +23,7 @@ type App struct {
 	Status string     `json:"status"`
 	Config *AppConfig `json:"config,omitempty"`
 	Error  string     `json:"error,omitempty"`
+	Emoji  string     `json:"emoji,omitempty"`
 }
 
 // AppConfig represents the application configuration from docker-compose.yml
@@ -45,6 +46,12 @@ type ComposeService struct {
 type Compose struct {
 	Version  string                    `yaml:"version"`
 	Services map[string]ComposeService `yaml:"services"`
+	XOnTree  *struct {
+		Subdomain string `yaml:"subdomain,omitempty"`
+		HostPort  int    `yaml:"host_port,omitempty"`
+		IsExposed bool   `yaml:"is_exposed"`
+		Emoji     string `yaml:"emoji,omitempty"`
+	} `yaml:"x-ontree,omitempty"`
 }
 
 // ScanApps scans the apps directory for applications
@@ -83,12 +90,13 @@ func (c *Client) ScanApps(appsDir string) ([]*App, error) {
 		}
 
 		// Parse docker-compose.yml
-		config, err := parseDockerCompose(composePath)
+		config, emoji, err := parseDockerCompose(composePath)
 		if err != nil {
 			app.Status = "error"
 			app.Error = fmt.Sprintf("Failed to parse docker-compose.yml: %v", err)
 		} else {
 			app.Config = config
+			app.Emoji = emoji
 			// Get container status
 			app.Status = c.getContainerStatus(app.Name)
 		}
@@ -100,15 +108,15 @@ func (c *Client) ScanApps(appsDir string) ([]*App, error) {
 }
 
 // parseDockerCompose parses a docker-compose.yml file
-func parseDockerCompose(path string) (*AppConfig, error) {
+func parseDockerCompose(path string) (*AppConfig, string, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	var compose Compose
 	if err := yaml.Unmarshal(data, &compose); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	// Extract configuration from the first service
@@ -130,7 +138,13 @@ func parseDockerCompose(path string) (*AppConfig, error) {
 		break // Use first service for now
 	}
 
-	return config, nil
+	// Extract emoji from x-ontree metadata
+	emoji := ""
+	if compose.XOnTree != nil {
+		emoji = compose.XOnTree.Emoji
+	}
+
+	return config, emoji, nil
 }
 
 // getContainerStatus gets the status of a container with the ontree- prefix
@@ -173,12 +187,13 @@ func (c *Client) GetAppDetails(appsDir, appName string) (*App, error) {
 	}
 
 	// Parse docker-compose.yml
-	config, err := parseDockerCompose(composePath)
+	config, emoji, err := parseDockerCompose(composePath)
 	if err != nil {
 		app.Status = "error"
 		app.Error = fmt.Sprintf("Failed to parse docker-compose.yml: %v", err)
 	} else {
 		app.Config = config
+		app.Emoji = emoji
 		app.Status = c.getContainerStatus(appName)
 	}
 

@@ -66,7 +66,7 @@
                                 {{range .Apps}}
                                 <tr>
                                     <td>
-                                        <strong>{{.Name}}</strong>
+                                        <strong>{{if .Emoji}}{{.Emoji}} {{end}}{{.Name}}</strong>
                                         {{if and .Config .Config.Container .Config.Container.Image}}
                                             <br><small class="text-muted">{{.Config.Container.Image}}</small>
                                         {{end}}

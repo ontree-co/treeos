@@ -305,6 +305,21 @@ Implemented emoji display on the app detail page:
   - Template uses `{{if .AppEmoji}}{{.AppEmoji}}{{else}}<i>📦</i>{{end}}` for conditional display
   - No database changes required - emoji loaded from docker-compose.yml via yamlutil
 
+### Emoji Display on Dashboard (2025-07-10 - UI Improvements Ticket 7)
+
+Added emoji display to the dashboard app list:
+- **Docker Package Updates**: Modified `internal/docker/apps.go` to:
+  - Added `Emoji string` field to the `App` struct
+  - Updated `Compose` struct to include `x-ontree` metadata parsing
+  - Modified `parseDockerCompose` to extract and return emoji from compose files
+  - Updated all callers of `parseDockerCompose` to handle the emoji return value
+- **Template Updates**: Modified dashboard template to show emoji before app name in the table
+  - Uses `{{if .Emoji}}{{.Emoji}} {{end}}` for graceful handling of apps without emojis
+- **Features**:
+  - Dashboard now displays emojis next to app names in the application list
+  - Apps without emojis display normally (no visual issues)
+  - Consistent emoji display across dashboard and detail pages
+
 ### UI Improvements (2025-07-10)
 
 #### Container Controls Reorganization
