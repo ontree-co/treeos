@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"ontree-node/internal/caddy"
 	"ontree-node/internal/database"
+	"ontree-node/internal/docker"
 	"ontree-node/internal/system"
 	"ontree-node/internal/yamlutil"
 	"os"
@@ -720,8 +721,79 @@ func (s *Server) handleAppDelete(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Redirect back to app detail page
+	// Redirect back to app detail page (app still exists, just container is deleted)
 	http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
+}
+
+// handleAppDeleteComplete handles permanently deleting an application and its data
+func (s *Server) handleAppDeleteComplete(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Extract app name from URL path
+	path := r.URL.Path
+	parts := strings.Split(path, "/")
+	if len(parts) < 4 || parts[1] != "apps" || parts[3] != "delete-complete" {
+		http.NotFound(w, r)
+		return
+	}
+
+	appName := parts[2]
+	user := getUserFromContext(r.Context())
+
+	// Check if app was exposed and remove from Caddy
+	if s.caddyClient != nil {
+		metadata, err := yamlutil.ReadComposeMetadata(filepath.Join(s.config.AppsDir, appName, "docker-compose.yml"))
+		if err == nil && metadata.IsExposed {
+			appID := fmt.Sprintf("app-%s", appName)
+			routeID := fmt.Sprintf("route-for-app-%s", appID)
+			_ = s.caddyClient.DeleteRoute(routeID) // Ignore errors, we're deleting anyway
+		}
+	}
+
+	// Delete the app completely (container + directory)
+	if s.dockerClient == nil {
+		http.Error(w, "Docker service not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	// Create a docker service to handle complete deletion
+	dockerService, err := docker.NewService(s.config.AppsDir)
+	if err != nil {
+		http.Error(w, "Failed to create Docker service", http.StatusServiceUnavailable)
+		return
+	}
+	defer dockerService.Close()
+
+	err = dockerService.DeleteAppComplete(appName)
+	if err != nil {
+		log.Printf("Failed to delete app %s: %v", appName, err)
+		session, err := s.sessionStore.Get(r, "ontree-session")
+		if err != nil {
+			log.Printf("Failed to get session: %v", err)
+		}
+		session.AddFlash(fmt.Sprintf("Failed to delete app: %v", err), "error")
+		if err := session.Save(r, w); err != nil {
+			log.Printf("Failed to save session: %v", err)
+		}
+		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
+		return
+	}
+
+	log.Printf("User %s successfully deleted app: %s", user.Username, appName)
+	session, err := s.sessionStore.Get(r, "ontree-session")
+	if err != nil {
+		log.Printf("Failed to get session: %v", err)
+	}
+	session.AddFlash(fmt.Sprintf("App '%s' and all its data have been permanently deleted", appName), "success")
+	if err := session.Save(r, w); err != nil {
+		log.Printf("Failed to save session: %v", err)
+	}
+
+	// Redirect to dashboard since the app no longer exists
+	http.Redirect(w, r, "/", http.StatusFound)
 }
 
 // handleAppCheckUpdate checks if a newer version of the Docker image is available
@@ -795,6 +867,148 @@ func (s *Server) renderUpdateStatus(w http.ResponseWriter, data *updateStatusDat
 	if err := tmpl.Execute(w, data); err != nil {
 		http.Error(w, "Template execution error", http.StatusInternalServerError)
 	}
+}
+
+// handleAppComposeEdit shows the docker-compose.yml edit form
+func (s *Server) handleAppComposeEdit(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Extract app name from URL
+	path := r.URL.Path
+	parts := strings.Split(path, "/")
+	if len(parts) < 4 || parts[1] != "apps" || parts[3] != "edit" {
+		http.NotFound(w, r)
+		return
+	}
+
+	appName := parts[2]
+	user := getUserFromContext(r.Context())
+
+	// Get app details
+	if s.dockerClient == nil {
+		http.Error(w, "Docker client not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	appDetails, err := s.dockerClient.GetAppDetails(s.config.AppsDir, appName)
+	if err != nil {
+		http.Error(w, "App not found", http.StatusNotFound)
+		return
+	}
+
+	// Read docker-compose.yml content
+	composePath := filepath.Join(appDetails.Path, "docker-compose.yml")
+	content, err := os.ReadFile(composePath)
+	if err != nil {
+		http.Error(w, "Failed to read compose file", http.StatusInternalServerError)
+		return
+	}
+
+	// Prepare template data
+	data := s.baseTemplateData(user)
+	data["App"] = appDetails
+	data["Content"] = string(content)
+
+	// Render the template
+	tmpl := s.templates["app_compose_edit"]
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
+		log.Printf("Failed to render edit template: %v", err)
+		http.Error(w, "Failed to render template", http.StatusInternalServerError)
+	}
+}
+
+// handleAppComposeUpdate handles saving the edited docker-compose.yml
+func (s *Server) handleAppComposeUpdate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Extract app name from URL
+	path := r.URL.Path
+	parts := strings.Split(path, "/")
+	if len(parts) < 4 || parts[1] != "apps" || parts[3] != "edit" {
+		http.NotFound(w, r)
+		return
+	}
+
+	appName := parts[2]
+	user := getUserFromContext(r.Context())
+
+	// Parse form
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Failed to parse form", http.StatusBadRequest)
+		return
+	}
+
+	newContent := r.FormValue("content")
+	if newContent == "" {
+		http.Error(w, "Content cannot be empty", http.StatusBadRequest)
+		return
+	}
+
+	// Validate YAML syntax
+	if err := yamlutil.ValidateComposeFile(newContent); err != nil {
+		// Show error in edit form
+		appDetails, _ := s.dockerClient.GetAppDetails(s.config.AppsDir, appName)
+		data := s.baseTemplateData(user)
+		data["App"] = appDetails
+		data["Content"] = newContent
+		data["Error"] = fmt.Sprintf("Invalid YAML: %v", err)
+
+		tmpl := s.templates["app_compose_edit"]
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		tmpl.ExecuteTemplate(w, "base", data)
+		return
+	}
+
+	// Get app details
+	appDetails, err := s.dockerClient.GetAppDetails(s.config.AppsDir, appName)
+	if err != nil {
+		http.Error(w, "App not found", http.StatusNotFound)
+		return
+	}
+
+	// Write the new content
+	composePath := filepath.Join(appDetails.Path, "docker-compose.yml")
+	if err := os.WriteFile(composePath, []byte(newContent), 0644); err != nil {
+		log.Printf("Failed to write compose file: %v", err)
+		http.Error(w, "Failed to save file", http.StatusInternalServerError)
+		return
+	}
+
+	// Check if container is running
+	containerRunning := appDetails.Status == "running"
+
+	// Get session for flash message
+	session, err := s.sessionStore.Get(r, "ontree-session")
+	if err != nil {
+		log.Printf("Failed to get session: %v", err)
+	}
+
+	if containerRunning {
+		// Queue a recreate operation
+		operationID, err := s.createDockerOperation("recreate_container", appName, nil)
+		if err == nil {
+			s.worker.EnqueueOperation(operationID)
+			session.AddFlash("Configuration saved. Container is being recreated with new settings.", "success")
+		} else {
+			session.AddFlash("Configuration saved. Please recreate the container manually to apply changes.", "warning")
+		}
+	} else {
+		session.AddFlash("Configuration saved successfully.", "success")
+	}
+
+	if err := session.Save(r, w); err != nil {
+		log.Printf("Failed to save session: %v", err)
+	}
+
+	// Redirect to app detail page
+	http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
 }
 
 // handleAppUpdate initiates the Docker image update process
@@ -934,27 +1148,6 @@ func (s *Server) handleAppControls(w http.ResponseWriter, r *http.Request) {
 					<i>🚀</i> Create & Start
 				</button>
 			</form>`, appName); err != nil {
-				log.Printf("Error writing response: %v", err)
-			}
-		}
-
-		// Add delete and recreate buttons if container exists
-		if app.Status != "not_created" {
-			if _, err := fmt.Fprintf(w, `
-			<form method="post" action="/apps/%s/delete" class="d-inline">
-				<button type="submit" class="btn btn-danger confirm-action" 
-						data-action="Delete Container"
-						data-confirm-text="Confirm Delete?">
-					<i>🗑️</i> Delete Container
-				</button>
-			</form>
-			<form method="post" action="/apps/%s/recreate" class="d-inline">
-				<button type="submit" class="btn btn-info confirm-action" 
-						data-action="Recreate"
-						data-confirm-text="Confirm Recreate?">
-					<i>🔄</i> Recreate
-				</button>
-			</form>`, appName, appName); err != nil {
 				log.Printf("Error writing response: %v", err)
 			}
 		}

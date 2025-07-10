@@ -84,6 +84,52 @@ Fixed critical issues with Caddy integration that were causing 500 errors:
 
 **Testing**: After these fixes, the expose functionality should work correctly. When you click "Expose App", check the server logs for detailed information about what's happening with the Caddy API.
 
+### UI Improvements (2025-07-10)
+
+#### Container Controls Reorganization
+Simplified the container controls UI on the app detail page:
+- **Removed buttons**: "Delete Container" and "Recreate" buttons removed from main controls
+- **Clean controls**: When container is running, only the "Stop" button is shown
+- **Delete section**: Reorganized the Delete card at bottom of page:
+  - Title changed from "Delete App" to "Delete"
+  - Two-column layout with clear distinction:
+    - Left: "Delete App Permanently" - removes everything
+    - Right: "Delete Container Only" - removes just the container
+  - Clear descriptions of what each action does
+- **HTMX compatibility**: Fixed the `/apps/{name}/controls` endpoint to match the new UI
+- **Better redirects**: "Delete App Permanently" now correctly redirects to dashboard (/) instead of /dashboard
+
+### New Features (2025-07-10)
+
+Implemented three major features to enhance the OnTree application:
+
+#### 1. Delete App Functionality
+Added the ability to permanently delete an entire application:
+- New "Delete App" card on the app detail page with danger styling
+- Two-step confirmation process to prevent accidental deletions
+- Deletes both the Docker container and the entire app directory
+- Removes app from Caddy if it was exposed
+- Redirects to dashboard after successful deletion
+- Implementation: `DeleteAppComplete` in Docker service, `handleAppDeleteComplete` handler
+
+#### 2. Edit docker-compose.yml
+Added in-browser editing of docker-compose.yml files:
+- New "Edit" button on the Configuration card
+- Full-page editor with syntax highlighting (monospace font)
+- YAML validation before saving
+- Automatic container recreation if the container is running
+- Shows validation errors inline if YAML is invalid
+- Implementation: `handleAppComposeEdit` handlers, `ValidateComposeFile` in yamlutil
+
+#### 3. Enhanced Template System
+Added new application templates:
+- **Open WebUI**: Simple version without Ollama for running LLMs
+- **Nginx Test**: Basic web server for testing with sample HTML page
+- Templates are available in the `/templates` page
+- Each template includes proper configuration and documentation links
+
+**Note**: Template variable substitution ({{.Port}}, {{.RandomString}}) is planned for a future enhancement.
+
 ### YAML Utilities Package (2025-07-10)
 
 Added yamlutil package for managing docker-compose.yml metadata:
