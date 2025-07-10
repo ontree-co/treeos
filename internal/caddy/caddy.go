@@ -51,7 +51,7 @@ type Upstream struct {
 
 // HealthCheck performs a health check on the Caddy Admin API
 func (c *Client) HealthCheck() error {
-	resp, err := c.httpClient.Get(c.baseURL + "/")
+	resp, err := c.httpClient.Get(c.baseURL + "/config/")
 	if err != nil {
 		return fmt.Errorf("failed to connect to Caddy Admin API: %w", err)
 	}

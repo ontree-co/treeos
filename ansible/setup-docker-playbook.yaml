@@ -1,5 +1,5 @@
-- name: My first play
-  hosts: myhosts
+- name: Setup Docker on OnTree nodes
+  hosts: ontreenodes
   become: yes # Add this line to elevate privileges
   vars:
     docker_packages:

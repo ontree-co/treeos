@@ -1,6 +1,6 @@
 ---
 - name: Install Caddy Web Server
-  hosts: myhosts
+  hosts: ontreenodes
   become: yes
   vars:
     caddy_user: caddy
