@@ -126,7 +126,8 @@ func (s *Server) handleCreateFromTemplate(w http.ResponseWriter, r *http.Request
 		processedContent := s.templateSvc.ProcessTemplateContent(content, appName)
 
 		// Create the app using existing scaffold logic
-		if err := s.createAppScaffold(appName, processedContent); err != nil {
+		// TODO: Add emoji selection to template creation flow (ticket 5)
+		if err := s.createAppScaffold(appName, processedContent, ""); err != nil {
 			log.Printf("Error creating app from template: %v", err)
 			http.Error(w, fmt.Sprintf("Failed to create application: %v", err), http.StatusInternalServerError)
 			return

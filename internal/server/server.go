@@ -193,9 +193,10 @@ func (s *Server) loadTemplates() error {
 	}
 	s.templates["app_detail"] = tmpl
 
-	// Load app create template
+	// Load app create template with emoji picker component
 	appCreateTemplate := filepath.Join("templates", "dashboard", "app_create.html")
-	tmpl, err = embeds.ParseTemplate(baseTemplate, appCreateTemplate)
+	emojiPickerTemplate := filepath.Join("templates", "components", "emoji-picker.html")
+	tmpl, err = embeds.ParseTemplate(baseTemplate, appCreateTemplate, emojiPickerTemplate)
 	if err != nil {
 		return fmt.Errorf("failed to parse app create template: %w", err)
 	}

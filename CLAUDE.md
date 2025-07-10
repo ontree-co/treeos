@@ -259,6 +259,22 @@ Implemented the emoji picker shuffle functionality:
 - **Pattern Library**: Wired up shuffle button in components page demo
 - See `internal/server/components_handlers.go` for implementation
 
+### Emoji Integration in App Creation (2025-07-10 - UI Improvements Ticket 4)
+
+Integrated emoji picker into the app creation form:
+- **Form Updates**: Added emoji picker component after app name input in `/apps/create`
+- **Handler Updates**: Modified `handleAppCreate` to process emoji selection
+- **Features**:
+  - Emoji picker displays 7 random emojis with shuffle button
+  - Selected emoji is saved to docker-compose.yml under `x-ontree.emoji`
+  - Form preserves emoji selection on validation errors
+  - Empty emoji selection is allowed (optional field)
+- **Template Loading**: Updated template loading to include emoji picker component
+- **Implementation Notes**:
+  - Template creation flow (ticket 5) still needs emoji integration
+  - Added TODO comment for future enhancement
+- See `internal/server/app_create_handler.go` for implementation
+
 ### UI Improvements (2025-07-10)
 
 #### Container Controls Reorganization

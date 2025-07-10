@@ -28,6 +28,7 @@ func (s *Server) handleAppCreate(w http.ResponseWriter, r *http.Request) {
 
 		appName := r.FormValue("app_name")
 		composeContent := r.FormValue("compose_content")
+		emoji := r.FormValue("emoji")
 
 		// Validate
 		var errors []string
@@ -57,7 +58,7 @@ func (s *Server) handleAppCreate(w http.ResponseWriter, r *http.Request) {
 
 		if len(errors) == 0 && s.dockerClient != nil {
 			// Create the application
-			err := s.createAppScaffold(appName, composeContent)
+			err := s.createAppScaffold(appName, composeContent, emoji)
 			if err != nil {
 				errors = append(errors, fmt.Sprintf("Failed to create application: %v", err))
 			} else {
@@ -86,8 +87,11 @@ func (s *Server) handleAppCreate(w http.ResponseWriter, r *http.Request) {
 		data["FormData"] = map[string]string{
 			"app_name":        appName,
 			"compose_content": composeContent,
+			"emoji":           emoji,
 		}
 		data["CSRFToken"] = ""
+		data["Emojis"] = getRandomEmojis(7)
+		data["SelectedEmoji"] = emoji
 
 		tmpl := s.templates["app_create"]
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -103,6 +107,8 @@ func (s *Server) handleAppCreate(w http.ResponseWriter, r *http.Request) {
 	data["Errors"] = nil
 	data["FormData"] = map[string]string{}
 	data["CSRFToken"] = ""
+	data["Emojis"] = getRandomEmojis(7)
+	data["SelectedEmoji"] = ""
 
 	tmpl := s.templates["app_create"]
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -174,7 +180,7 @@ func validateComposeContent(content string, appName string) error {
 }
 
 // createAppScaffold creates the directory structure and docker-compose.yml for a new app
-func (s *Server) createAppScaffold(appName, composeContent string) error {
+func (s *Server) createAppScaffold(appName, composeContent, emoji string) error {
 	appPath := filepath.Join(s.config.AppsDir, appName)
 
 	// Create app directory
@@ -223,6 +229,7 @@ func (s *Server) createAppScaffold(appName, composeContent string) error {
 			Subdomain: appName, // Default subdomain to app name
 			HostPort:  hostPort,
 			IsExposed: false,
+			Emoji:     emoji,
 		}
 		yamlutil.SetOnTreeMetadata(compose, metadata)
 
