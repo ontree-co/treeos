@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"ontree-node/internal/cache"
 	"ontree-node/internal/config"
+	"ontree-node/internal/realtime"
 	"strings"
 	"testing"
 	"time"
@@ -55,7 +56,8 @@ func TestMonitoringDashboard(t *testing.T) {
 				config: &config.Config{
 					MonitoringEnabled: tt.monitoringEnabled,
 				},
-				sparklineCache: cache.New(5 * time.Minute),
+				sparklineCache:  cache.New(5 * time.Minute),
+				realtimeMetrics: realtime.NewMetrics(),
 			}
 
 			// Create request
@@ -96,7 +98,8 @@ func TestMonitoringPartials(t *testing.T) {
 				config: &config.Config{
 					MonitoringEnabled: true,
 				},
-				sparklineCache: cache.New(5 * time.Minute),
+				sparklineCache:  cache.New(5 * time.Minute),
+				realtimeMetrics: realtime.NewMetrics(),
 			}
 
 			// Create request
@@ -149,7 +152,7 @@ func TestMonitoringCharts(t *testing.T) {
 			method:         "GET",
 			path:           "/monitoring/charts/cpu",
 			queryParams:    "",
-			wantStatusCode: http.StatusInternalServerError, // Expected due to missing DB in test
+			wantStatusCode: http.StatusOK, // Handler returns 200 even with empty data
 			description:    "Should attempt to generate CPU chart",
 		},
 		{
@@ -157,7 +160,7 @@ func TestMonitoringCharts(t *testing.T) {
 			method:         "GET",
 			path:           "/monitoring/charts/memory",
 			queryParams:    "?range=1h",
-			wantStatusCode: http.StatusInternalServerError,
+			wantStatusCode: http.StatusOK,
 			description:    "Should attempt to generate memory chart for 1 hour",
 		},
 		{
@@ -165,7 +168,7 @@ func TestMonitoringCharts(t *testing.T) {
 			method:         "GET",
 			path:           "/monitoring/charts/disk",
 			queryParams:    "?range=7d",
-			wantStatusCode: http.StatusInternalServerError,
+			wantStatusCode: http.StatusOK,
 			description:    "Should attempt to generate disk chart for 7 days",
 		},
 		{
@@ -173,7 +176,7 @@ func TestMonitoringCharts(t *testing.T) {
 			method:         "GET",
 			path:           "/monitoring/charts/network",
 			queryParams:    "?range=invalid",
-			wantStatusCode: http.StatusInternalServerError,
+			wantStatusCode: http.StatusOK,
 			description:    "Should handle invalid range parameter",
 		},
 		{
@@ -202,7 +205,8 @@ func TestMonitoringCharts(t *testing.T) {
 				config: &config.Config{
 					MonitoringEnabled: true,
 				},
-				sparklineCache: cache.New(5 * time.Minute),
+				sparklineCache:  cache.New(5 * time.Minute),
+				realtimeMetrics: realtime.NewMetrics(),
 			}
 
 			// Create request

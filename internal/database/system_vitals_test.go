@@ -24,7 +24,7 @@ func TestSystemVitalsFunctions(t *testing.T) {
 
 	// Test StoreSystemVital
 	t.Run("StoreSystemVital", func(t *testing.T) {
-		err := StoreSystemVital(25.5, 60.3, 45.2)
+		err := StoreSystemVital(25.5, 60.3, 45.2, 1000000, 500000)
 		if err != nil {
 			t.Errorf("Failed to store system vital: %v", err)
 		}
@@ -33,7 +33,7 @@ func TestSystemVitalsFunctions(t *testing.T) {
 	// Test GetLatestMetric
 	t.Run("GetLatestMetric", func(t *testing.T) {
 		// Store another vital
-		err := StoreSystemVital(30.2, 65.1, 48.9)
+		err := StoreSystemVital(30.2, 65.1, 48.9, 2000000, 1000000)
 		if err != nil {
 			t.Fatalf("Failed to store system vital: %v", err)
 		}
@@ -62,7 +62,7 @@ func TestSystemVitalsFunctions(t *testing.T) {
 	t.Run("GetMetricsLast24Hours", func(t *testing.T) {
 		// Add more test data
 		for i := 0; i < 5; i++ {
-			err := StoreSystemVital(float64(35+i), float64(70+i), float64(50+i))
+			err := StoreSystemVital(float64(35+i), float64(70+i), float64(50+i), uint64(3000000+i*100000), uint64(1500000+i*50000))
 			if err != nil {
 				t.Fatalf("Failed to store system vital: %v", err)
 			}
@@ -120,7 +120,7 @@ func TestSystemVitalsFunctions(t *testing.T) {
 	t.Run("CleanupOldSystemVitals", func(t *testing.T) {
 		// Add some test data
 		for i := 0; i < 10; i++ {
-			err := StoreSystemVital(float64(40+i), float64(75+i), float64(55+i))
+			err := StoreSystemVital(float64(40+i), float64(75+i), float64(55+i), uint64(4000000+i*100000), uint64(2000000+i*50000))
 			if err != nil {
 				t.Fatalf("Failed to store system vital: %v", err)
 			}
@@ -148,7 +148,7 @@ func TestSystemVitalsFunctions(t *testing.T) {
 		now := time.Now()
 		// Add data with known timestamps
 		for i := 0; i < 5; i++ {
-			err := StoreSystemVital(float64(50+i), float64(80+i), float64(60+i))
+			err := StoreSystemVital(float64(50+i), float64(80+i), float64(60+i), uint64(5000000+i*100000), uint64(2500000+i*50000))
 			if err != nil {
 				t.Fatalf("Failed to store system vital: %v", err)
 			}

@@ -21,6 +21,12 @@ func (s *Server) handleMonitoring(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Only allow GET method
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
 	// Get user from context
 	user := getUserFromContext(r.Context())
 
@@ -496,6 +502,12 @@ func (s *Server) handleMonitoringNetworkPartial(w http.ResponseWriter, r *http.R
 
 // handleMonitoringCharts returns detailed charts for specific metrics
 func (s *Server) handleMonitoringCharts(w http.ResponseWriter, r *http.Request) {
+	// Only allow GET method
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
 	// Extract metric type from path
 	path := r.URL.Path
 	parts := strings.Split(path, "/")
