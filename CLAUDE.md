@@ -219,6 +219,19 @@ Completed comprehensive documentation and testing for the monitoring feature:
 - **Screenshot Guide**: Created `docs/monitoring-screenshots.md` describing required screenshots
 - **Test Coverage**: Includes endpoint tests, integration workflows, performance characteristics, and configuration options
 
+### Dashboard System Status Update (2025-07-15)
+
+Replaced the simple system vitals display on the dashboard with the full monitoring cards:
+- **Removed**: Old `/api/system-vitals` endpoint and basic CPU/Memory/Disk display
+- **Added**: Four monitoring cards (CPU, Memory, Disk, Network) directly on dashboard
+- **Features**:
+  - Same real-time updates as monitoring page (CPU/Network 1s, Memory/Disk 60s)
+  - Sparkline visualizations for 24-hour history
+  - Click-to-expand detailed charts in modal
+  - White cards on funky gradient background
+- **Routes**: Added `/partials/*` routes for dashboard access to monitoring handlers
+- **Cleanup**: Removed old vitals CSS and handleSystemVitals function
+
 ### Time-Aware Graph Visualization (2025-07-15)
 
 Fixed monitoring graphs to properly display data gaps and time ranges:

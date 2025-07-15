@@ -96,29 +96,6 @@ svg {
     box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
 }
 
-/* System Vitals Styles */
-.vitals-content {
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    padding: 20px;
-}
-
-.vital-item {
-    text-align: center;
-    flex: 1;
-}
-
-.vital-label {
-    font-size: 1.2rem;
-    font-weight: 600;
-    margin-right: 10px;
-}
-
-.vital-value {
-    font-size: 2rem;
-    font-weight: 700;
-}
 
 /* Emoji Picker Styles */
 .emoji-picker {

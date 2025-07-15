@@ -5,7 +5,7 @@
     </div>
 </div>
 
-<!-- System Vitals Section -->
+<!-- System Status Section -->
 <div class="row mb-4">
     <div class="col-12">
         <div class="card funky-gradient-card">
@@ -14,19 +14,84 @@
                     System Status
                 </h2>
                 
-                <!-- HTMX system status container -->
-                <div id="system-status-container"
-                     class="d-flex align-items-center justify-content-center"
-                     style="min-height: 150px;"
-                     hx-get="/api/system-vitals"
-                     hx-trigger="load, every 60s"
-                     hx-swap="innerHTML">
-                    <!-- Loading placeholder -->
-                    <div class="text-center">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Loading system status...</span>
+                <!-- Monitoring Grid -->
+                <div class="monitoring-grid">
+                    <div class="row g-3">
+                        <!-- CPU Card -->
+                        <div class="col-12 col-md-6 col-lg-3">
+                            <div id="cpu-card" 
+                                 hx-get="/partials/cpu" 
+                                 hx-trigger="load, every 1s" 
+                                 hx-swap="outerHTML">
+                                <div class="card monitoring-card bg-white">
+                                    <div class="card-body metric-loading">
+                                        <div class="text-center">
+                                            <div class="spinner-border text-primary" role="status">
+                                                <span class="visually-hidden">Loading CPU data...</span>
+                                            </div>
+                                            <p class="mt-2 text-muted mb-0">Loading CPU data...</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <p class="mt-2 text-muted mb-0">Loading system status...</p>
+                        
+                        <!-- Memory Card -->
+                        <div class="col-12 col-md-6 col-lg-3">
+                            <div id="memory-card" 
+                                 hx-get="/partials/memory" 
+                                 hx-trigger="load, every 60s" 
+                                 hx-swap="outerHTML">
+                                <div class="card monitoring-card bg-white">
+                                    <div class="card-body metric-loading">
+                                        <div class="text-center">
+                                            <div class="spinner-border text-primary" role="status">
+                                                <span class="visually-hidden">Loading memory data...</span>
+                                            </div>
+                                            <p class="mt-2 text-muted mb-0">Loading memory data...</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Disk Card -->
+                        <div class="col-12 col-md-6 col-lg-3">
+                            <div id="disk-card" 
+                                 hx-get="/partials/disk" 
+                                 hx-trigger="load, every 60s" 
+                                 hx-swap="outerHTML">
+                                <div class="card monitoring-card bg-white">
+                                    <div class="card-body metric-loading">
+                                        <div class="text-center">
+                                            <div class="spinner-border text-primary" role="status">
+                                                <span class="visually-hidden">Loading disk data...</span>
+                                            </div>
+                                            <p class="mt-2 text-muted mb-0">Loading disk data...</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Network Card -->
+                        <div class="col-12 col-md-6 col-lg-3">
+                            <div id="network-card" 
+                                 hx-get="/partials/network" 
+                                 hx-trigger="load, every 1s" 
+                                 hx-swap="outerHTML">
+                                <div class="card monitoring-card bg-white">
+                                    <div class="card-body metric-loading">
+                                        <div class="text-center">
+                                            <div class="spinner-border text-primary" role="status">
+                                                <span class="visually-hidden">Loading network data...</span>
+                                            </div>
+                                            <p class="mt-2 text-muted mb-0">Loading network data...</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -127,6 +192,103 @@
         </div>
     </div>
 </div>
+
+<!-- Modal for detailed charts -->
+<div class="modal fade" id="chartModal" tabindex="-1" aria-labelledby="chartModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="chartModalLabel">Metric Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="modal-content">
+                <!-- Detailed chart will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Monitoring card styles for dashboard */
+    .monitoring-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+        height: 100%;
+        border: 1px solid rgba(0,0,0,0.125);
+    }
+    
+    .monitoring-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    .metric-value {
+        font-size: 2rem;
+        font-weight: 600;
+        color: #2d3748;
+        margin: 0.5rem 0;
+    }
+    
+    .sparkline-container {
+        height: 40px;
+        overflow: hidden;
+        margin-top: 0.5rem;
+        cursor: pointer;
+        position: relative;
+    }
+    
+    .sparkline-container:hover {
+        opacity: 0.8;
+    }
+    
+    .sparkline-container svg {
+        width: 100%;
+        height: 100%;
+    }
+    
+    .metric-title {
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: #4a5568;
+        margin-bottom: 0.5rem;
+    }
+    
+    .metric-loading {
+        min-height: 120px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    /* Ensure white background for cards inside gradient container */
+    .funky-gradient-card .monitoring-card {
+        background-color: white !important;
+    }
+    
+    /* Adjust text color for gradient background */
+    .funky-gradient-card .card-title {
+        color: white;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+    }
+</style>
+
+<script>
+    // Handle sparkline clicks to show detailed view
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.sparkline-container')) {
+            const card = e.target.closest('[id$="-card"]');
+            if (card) {
+                const metric = card.id.replace('-card', '');
+                htmx.ajax('GET', '/monitoring/charts/' + metric, {
+                    target: '#modal-content',
+                    swap: 'innerHTML'
+                }).then(() => {
+                    const modal = new bootstrap.Modal(document.getElementById('chartModal'));
+                    modal.show();
+                });
+            }
+        }
+    });
+</script>
 {{end}}
 
 {{define "extra_js"}}

@@ -357,9 +357,14 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/templates/", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeTemplates))))
 
 	// API routes
-	mux.HandleFunc("/api/system-vitals", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleSystemVitals))))
 	mux.HandleFunc("/api/docker/operations/", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeDockerOperations))))
 	mux.HandleFunc("/api/apps/", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeAPIApps))))
+	
+	// Dashboard partial routes (for monitoring cards on dashboard)
+	mux.HandleFunc("/partials/cpu", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleMonitoringCPUPartial))))
+	mux.HandleFunc("/partials/memory", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleMonitoringMemoryPartial))))
+	mux.HandleFunc("/partials/disk", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleMonitoringDiskPartial))))
+	mux.HandleFunc("/partials/network", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleMonitoringNetworkPartial))))
 
 	// Version endpoint (no auth required for automation/monitoring)
 	mux.HandleFunc("/version", s.TracingMiddleware(s.handleVersion))

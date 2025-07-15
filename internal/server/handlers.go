@@ -9,7 +9,6 @@ import (
 	"ontree-node/internal/caddy"
 	"ontree-node/internal/database"
 	"ontree-node/internal/docker"
-	"ontree-node/internal/system"
 	"ontree-node/internal/yamlutil"
 	"os"
 	"path/filepath"
@@ -289,43 +288,6 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/login", http.StatusFound)
 }
 
-// handleSystemVitals returns system vitals as an HTML partial
-func (s *Server) handleSystemVitals(w http.ResponseWriter, r *http.Request) {
-	vitals, err := system.GetVitals()
-	if err != nil {
-		log.Printf("Failed to get system vitals: %v", err)
-		http.Error(w, "Failed to get system vitals", http.StatusInternalServerError)
-		return
-	}
-
-	// Store vitals in the database for historical tracking
-	err = database.StoreSystemVital(vitals.CPUPercent, vitals.MemPercent, vitals.DiskPercent, 
-		vitals.NetworkRxBytes, vitals.NetworkTxBytes)
-	if err != nil {
-		log.Printf("Failed to store system vitals in database: %v", err)
-		// Continue even if storing fails - we still want to show current vitals
-	}
-
-	// Return HTML partial with the vitals data
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if _, err := fmt.Fprintf(w, `
-<div class="vitals-content">
-	<div class="vital-item">
-		<span class="vital-label">CPU:</span>
-		<span class="vital-value">%.1f%%</span>
-	</div>
-	<div class="vital-item">
-		<span class="vital-label">Mem:</span>
-		<span class="vital-value">%.1f%%</span>
-	</div>
-	<div class="vital-item">
-		<span class="vital-label">Disk:</span>
-		<span class="vital-value">%.1f%%</span>
-	</div>
-</div>`, vitals.CPUPercent, vitals.MemPercent, vitals.DiskPercent); err != nil {
-		log.Printf("Error writing response: %v", err)
-	}
-}
 
 // handleAppDetail handles the application detail page
 func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
