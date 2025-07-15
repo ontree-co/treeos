@@ -63,7 +63,9 @@ bin/
 
 # Debug
 __debug_bin*
-apps/postgres-test/data/
+
+# Apps directory (runtime data)
+apps/
 
 # Authentication
 cookies.txt
