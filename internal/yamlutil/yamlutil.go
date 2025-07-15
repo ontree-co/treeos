@@ -2,6 +2,7 @@ package yamlutil
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"sync"
@@ -64,7 +65,11 @@ func getFileLock(path string) *sync.Mutex {
 	fileLocks.Lock()
 	defer fileLocks.Unlock()
 
-	absPath, _ := filepath.Abs(path)
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		// If we can't resolve the absolute path, use the original path
+		absPath = path
+	}
 	if lock, exists := fileLocks.locks[absPath]; exists {
 		return lock
 	}
@@ -163,13 +168,16 @@ func WriteComposeWithMetadata(path string, compose *ComposeFile) error {
 
 	// Write to file atomically
 	tempFile := path + ".tmp"
-	if err := os.WriteFile(tempFile, output, 0644); err != nil {
+	// Use 0644 for docker-compose.yml files as they need to be readable by docker daemon
+	if err := os.WriteFile(tempFile, output, 0644); err != nil { // #nosec G306 - compose files need to be world-readable
 		return fmt.Errorf("failed to write file: %w", err)
 	}
 
 	// Rename to final location
 	if err := os.Rename(tempFile, path); err != nil {
-		os.Remove(tempFile) // Clean up on error
+		if removeErr := os.Remove(tempFile); removeErr != nil {
+			log.Printf("Failed to remove temp file %s: %v", tempFile, removeErr)
+		}
 		return fmt.Errorf("failed to rename file: %w", err)
 	}
 
@@ -276,7 +284,7 @@ func ValidateComposeFile(content string) error {
 		return fmt.Errorf("missing 'version' field")
 	}
 
-	if compose.Services == nil || len(compose.Services) == 0 {
+	if len(compose.Services) == 0 {
 		return fmt.Errorf("missing 'services' section")
 	}
 

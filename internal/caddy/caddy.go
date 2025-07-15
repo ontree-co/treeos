@@ -60,7 +60,10 @@ func (c *Client) HealthCheck() error {
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("Caddy Admin API returned status %d (failed to read body: %w)", resp.StatusCode, err)
+		}
 		return fmt.Errorf("Caddy Admin API returned status %d: %s", resp.StatusCode, string(body))
 	}
 
@@ -90,7 +93,11 @@ func (c *Client) AddOrUpdateRoute(route *RouteConfig) error {
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		body, _ := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			log.Printf("[Caddy] ERROR: Failed to add/update route. Status: %d, failed to read response body: %v", resp.StatusCode, err)
+			return fmt.Errorf("Caddy returned status %d when adding/updating route (failed to read body: %w)", resp.StatusCode, err)
+		}
 		log.Printf("[Caddy] ERROR: Failed to add/update route. Status: %d, Response: %s", resp.StatusCode, string(body))
 		return fmt.Errorf("Caddy returned status %d when adding/updating route: %s", resp.StatusCode, string(body))
 	}
@@ -117,7 +124,11 @@ func (c *Client) DeleteRoute(routeID string) error {
 
 	// Caddy returns 200 for successful deletion, 404 if route doesn't exist
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNotFound {
-		body, _ := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			log.Printf("[Caddy] ERROR: Failed to delete route. Status: %d, failed to read response body: %v", resp.StatusCode, err)
+			return fmt.Errorf("Caddy returned status %d when deleting route (failed to read body: %w)", resp.StatusCode, err)
+		}
 		log.Printf("[Caddy] ERROR: Failed to delete route. Status: %d, Response: %s", resp.StatusCode, string(body))
 		return fmt.Errorf("Caddy returned status %d when deleting route: %s", resp.StatusCode, string(body))
 	}

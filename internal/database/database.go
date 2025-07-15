@@ -134,7 +134,11 @@ func createTables() error {
 
 	for _, query := range alterQueries {
 		// Ignore errors as columns may already exist
-		_, _ = db.Exec(query)
+		_, err := db.Exec(query)
+		if err != nil {
+			// This is expected if the column already exists, which is fine
+			log.Printf("Migration query (expected to fail if column exists): %v", err)
+		}
 	}
 
 	return nil

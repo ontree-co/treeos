@@ -933,7 +933,10 @@ func (s *Server) handleAppComposeUpdate(w http.ResponseWriter, r *http.Request) 
 
 		tmpl := s.templates["app_compose_edit"]
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		tmpl.ExecuteTemplate(w, "base", data)
+		if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
+			log.Printf("Failed to render template: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+		}
 		return
 	}
 
@@ -946,7 +949,8 @@ func (s *Server) handleAppComposeUpdate(w http.ResponseWriter, r *http.Request) 
 
 	// Write the new content
 	composePath := filepath.Join(appDetails.Path, "docker-compose.yml")
-	if err := os.WriteFile(composePath, []byte(newContent), 0644); err != nil {
+	// Use 0644 for docker-compose.yml files as they need to be readable by docker daemon
+	if err := os.WriteFile(composePath, []byte(newContent), 0644); err != nil { // #nosec G306 - compose files need to be world-readable
 		log.Printf("Failed to write compose file: %v", err)
 		http.Error(w, "Failed to save file", http.StatusInternalServerError)
 		return
@@ -1261,7 +1265,9 @@ func (s *Server) handleAppExpose(w http.ResponseWriter, r *http.Request) {
 							if portStr, ok := portsList[0].(string); ok {
 								parts := strings.Split(portStr, ":")
 								if len(parts) >= 1 {
-									fmt.Sscanf(parts[0], "%d", &metadata.HostPort)
+									if _, err := fmt.Sscanf(parts[0], "%d", &metadata.HostPort); err != nil {
+										log.Printf("Failed to parse port from %s: %v", parts[0], err)
+									}
 									break
 								}
 							}
@@ -1552,9 +1558,15 @@ func (s *Server) handleSettingsUpdate(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		log.Printf("Failed to update settings: %v", err)
-		session, _ := s.sessionStore.Get(r, "ontree-session")
-		session.AddFlash("Failed to save settings", "error")
-		_ = session.Save(r, w)
+		session, sessionErr := s.sessionStore.Get(r, "ontree-session")
+		if sessionErr != nil {
+			log.Printf("Failed to get session: %v", sessionErr)
+		} else {
+			session.AddFlash("Failed to save settings", "error")
+			if saveErr := session.Save(r, w); saveErr != nil {
+				log.Printf("Failed to save session: %v", saveErr)
+			}
+		}
 		http.Redirect(w, r, "/settings", http.StatusFound)
 		return
 	}
@@ -1571,9 +1583,15 @@ func (s *Server) handleSettingsUpdate(w http.ResponseWriter, r *http.Request) {
 	s.checkCaddyHealth()
 
 	// Success message
-	session, _ := s.sessionStore.Get(r, "ontree-session")
-	session.AddFlash("Settings saved successfully", "success")
-	_ = session.Save(r, w)
+	session, err := s.sessionStore.Get(r, "ontree-session")
+	if err != nil {
+		log.Printf("Failed to get session: %v", err)
+	} else {
+		session.AddFlash("Settings saved successfully", "success")
+		if err := session.Save(r, w); err != nil {
+			log.Printf("Failed to save session: %v", err)
+		}
+	}
 
 	http.Redirect(w, r, "/settings", http.StatusFound)
 }

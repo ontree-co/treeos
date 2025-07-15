@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"strings"
 
@@ -159,8 +160,12 @@ func (s *Service) DeleteAppComplete(appName string) error {
 
 	// First, try to stop and delete the container
 	// We ignore errors here as the container might not exist
-	_ = s.client.StopApp(appName)
-	_ = s.client.DeleteAppContainer(appName)
+	if err := s.client.StopApp(appName); err != nil {
+		log.Printf("Failed to stop app %s (this is expected if container doesn't exist): %v", appName, err)
+	}
+	if err := s.client.DeleteAppContainer(appName); err != nil {
+		log.Printf("Failed to delete container for app %s (this is expected if container doesn't exist): %v", appName, err)
+	}
 
 	// Now delete the app directory
 	appPath := fmt.Sprintf("%s/%s", s.appsDir, appName)

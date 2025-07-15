@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"net/http"
 	"strings"
@@ -95,13 +96,15 @@ function selectEmoji(button) {
 
 	// Return HTML fragment
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write([]byte(html.String()))
+	if _, err := w.Write([]byte(html.String())); err != nil {
+		log.Printf("Failed to write response: %v", err)
+	}
 }
 
 // getRandomEmojis returns n random emojis from the curated list
 func getRandomEmojis(n int) []string {
-	// Create a random source
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	// Create a random source - using math/rand is fine for emoji selection
+	rng := rand.New(rand.NewSource(time.Now().UnixNano())) // #nosec G404 - weak RNG is acceptable for UI emoji selection
 
 	// Copy the emoji list to avoid modifying the original
 	emojis := make([]string, len(yamlutil.AppEmojis))

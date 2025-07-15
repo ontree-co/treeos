@@ -174,5 +174,6 @@ func copyFile(src, dst string) error {
 		return err
 	}
 
-	return os.WriteFile(dst, input, 0644)
+	// Use 0644 for backup files as they may need to be accessible for recovery
+	return os.WriteFile(dst, input, 0644) // #nosec G306 - backup files should be readable
 }

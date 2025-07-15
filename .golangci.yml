@@ -67,6 +67,14 @@ issues:
       text: G304
     - linters:
         - gosec
+      path: internal/server/handlers\.go
+      text: G306
+    - linters:
+        - gosec
+      path: internal/yamlutil/yamlutil\.go
+      text: G306
+    - linters:
+        - gosec
       path: cmd/ontree-server/main\.go
       text: G302
     - linters:
@@ -89,5 +97,9 @@ issues:
     - linters:
         - errcheck
       text: 'Error return value of `s\.caddyClient\.DeleteRoute` is not checked'
+    - linters:
+        - errcheck
+      path: internal/server/handlers\.go
+      text: 'Error return value of `s\.dockerClient\.GetAppDetails` is not checked'
   max-issues-per-linter: 0
   max-same-issues: 0

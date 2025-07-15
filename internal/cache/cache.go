@@ -1,3 +1,4 @@
+// Package cache provides a simple in-memory cache implementation with TTL support.
 package cache
 
 import (
@@ -5,8 +6,9 @@ import (
 	"time"
 )
 
-// CacheEntry represents a single cached item
-type CacheEntry struct {
+// Package cache provides a simple in-memory cache implementation with TTL support.
+// Entry represents a single cached item
+type Entry struct {
 	Value      interface{}
 	Expiration time.Time
 }
@@ -14,14 +16,14 @@ type CacheEntry struct {
 // Cache is a simple in-memory cache with expiration
 type Cache struct {
 	mu      sync.RWMutex
-	entries map[string]CacheEntry
+	entries map[string]Entry
 	ttl     time.Duration
 }
 
 // New creates a new cache with the specified TTL
 func New(ttl time.Duration) *Cache {
 	c := &Cache{
-		entries: make(map[string]CacheEntry),
+		entries: make(map[string]Entry),
 		ttl:     ttl,
 	}
 
@@ -59,7 +61,7 @@ func (c *Cache) SetWithTTL(key string, value interface{}, ttl time.Duration) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	c.entries[key] = CacheEntry{
+	c.entries[key] = Entry{
 		Value:      value,
 		Expiration: time.Now().Add(ttl),
 	}
@@ -78,7 +80,7 @@ func (c *Cache) Clear() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	c.entries = make(map[string]CacheEntry)
+	c.entries = make(map[string]Entry)
 }
 
 // cleanup periodically removes expired entries

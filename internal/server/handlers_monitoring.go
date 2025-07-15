@@ -165,11 +165,15 @@ func (s *Server) handleMonitoringMemoryPartial(w http.ResponseWriter, r *http.Re
 	}
 
 	// Check cache for sparkline
-	cacheKey := fmt.Sprintf("sparkline:memory:24h")
+	cacheKey := "sparkline:memory:24h"
 	var sparklineSVG template.HTML
 
 	if cached, found := s.sparklineCache.Get(cacheKey); found {
-		sparklineSVG = cached.(template.HTML)
+		if svg, ok := cached.(template.HTML); ok {
+			sparklineSVG = svg
+		} else {
+			log.Printf("Invalid type in sparkline cache for key %s", cacheKey)
+		}
 	} else {
 		// Get historical memory data for the last 24 hours
 		now := time.Now()
@@ -235,11 +239,15 @@ func (s *Server) handleMonitoringDiskPartial(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Check cache for sparkline
-	cacheKey := fmt.Sprintf("sparkline:disk:24h")
+	cacheKey := "sparkline:disk:24h"
 	var sparklineSVG template.HTML
 
 	if cached, found := s.sparklineCache.Get(cacheKey); found {
-		sparklineSVG = cached.(template.HTML)
+		if svg, ok := cached.(template.HTML); ok {
+			sparklineSVG = svg
+		} else {
+			log.Printf("Invalid type in sparkline cache for key %s", cacheKey)
+		}
 	} else {
 		// Get historical disk data for the last 24 hours
 		now := time.Now()
@@ -548,7 +556,11 @@ func (s *Server) handleMonitoringCharts(w http.ResponseWriter, r *http.Request) 
 	var chartSVG template.HTML
 
 	if cached, found := s.sparklineCache.Get(cacheKey); found {
-		chartSVG = cached.(template.HTML)
+		if svg, ok := cached.(template.HTML); ok {
+			chartSVG = svg
+		} else {
+			log.Printf("Invalid type in sparkline cache for key %s", cacheKey)
+		}
 	} else {
 		// Batch query for all metrics
 		batch, err := database.GetMetricsBatch(startTime, endTime)
@@ -674,7 +686,9 @@ function loadChart(metric, range) {
 </script>
 	`, timeRangeButtons, chartSVG)
 
-	w.Write([]byte(html))
+	if _, err := w.Write([]byte(html)); err != nil {
+		log.Printf("Failed to write response: %v", err)
+	}
 }
 
 // Helper function for conditional strings
@@ -693,11 +707,12 @@ func formatNetworkRate(bytesPerSecond float64) string {
 
 	if bytesPerSecond < 1024 {
 		return fmt.Sprintf("%.0f B/s", bytesPerSecond)
-	} else if bytesPerSecond < 1024*1024 {
-		return fmt.Sprintf("%.1f KB/s", bytesPerSecond/1024)
-	} else if bytesPerSecond < 1024*1024*1024 {
-		return fmt.Sprintf("%.1f MB/s", bytesPerSecond/1024/1024)
-	} else {
-		return fmt.Sprintf("%.1f GB/s", bytesPerSecond/1024/1024/1024)
 	}
+	if bytesPerSecond < 1024*1024 {
+		return fmt.Sprintf("%.1f KB/s", bytesPerSecond/1024)
+	}
+	if bytesPerSecond < 1024*1024*1024 {
+		return fmt.Sprintf("%.1f MB/s", bytesPerSecond/1024/1024)
+	}
+	return fmt.Sprintf("%.1f GB/s", bytesPerSecond/1024/1024/1024)
 }

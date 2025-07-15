@@ -20,7 +20,11 @@ func TestSystemVitalsFunctions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to initialize database: %v", err)
 	}
-	defer Close()
+	defer func() {
+		if err := Close(); err != nil {
+			t.Logf("Failed to close database: %v", err)
+		}
+	}()
 
 	// Test StoreSystemVital
 	t.Run("StoreSystemVital", func(t *testing.T) {
