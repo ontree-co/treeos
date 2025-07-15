@@ -7,7 +7,7 @@ import (
 	"io/fs"
 )
 
-//go:embed static templates
+//go:embed static templates templates/dashboard/_*.html
 var content embed.FS
 
 // StaticFS returns the embedded static files

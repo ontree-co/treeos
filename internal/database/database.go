@@ -128,6 +128,8 @@ func createTables() error {
 	alterQueries := []string{
 		`ALTER TABLE system_setup ADD COLUMN public_base_domain TEXT`,
 		`ALTER TABLE system_setup ADD COLUMN tailscale_base_domain TEXT`,
+		`ALTER TABLE system_vital_logs ADD COLUMN network_rx_bytes INTEGER DEFAULT 0`,
+		`ALTER TABLE system_vital_logs ADD COLUMN network_tx_bytes INTEGER DEFAULT 0`,
 	}
 
 	for _, query := range alterQueries {

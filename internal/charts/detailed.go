@@ -14,6 +14,8 @@ type DetailedChartData struct {
 	YAxisUnit string // e.g., "%", "MB/s"
 	MinValue  float64
 	MaxValue  float64
+	StartTime time.Time // Requested start time (for showing full range)
+	EndTime   time.Time // Requested end time
 }
 
 // DataPoint represents a single data point with timestamp
@@ -24,7 +26,7 @@ type DataPoint struct {
 
 // GenerateDetailedChart creates a detailed SVG chart with axes, labels, and grid lines
 func GenerateDetailedChart(data DetailedChartData, width, height int) template.HTML {
-	if len(data.Points) < 2 {
+	if len(data.Points) == 0 {
 		return template.HTML(fmt.Sprintf(`<svg width="%d" height="%d" viewBox="0 0 %d %d" xmlns="http://www.w3.org/2000/svg">
 			<text x="%d" y="%d" text-anchor="middle" fill="#6c757d">No data available</text>
 		</svg>`, width, height, width, height, width/2, height/2))
@@ -77,7 +79,7 @@ func GenerateDetailedChart(data DetailedChartData, width, height int) template.H
 	svg += generateYAxis(marginLeft, marginTop, chartHeight, data.MinValue, data.MaxValue, data.YAxisUnit)
 
 	// X-axis labels and ticks
-	svg += generateXAxis(marginLeft, marginTop, chartWidth, chartHeight, data.Points)
+	svg += generateXAxis(marginLeft, marginTop, chartWidth, chartHeight, data.StartTime, data.EndTime)
 
 	// Plot area clipping
 	svg += fmt.Sprintf(`<defs><clipPath id="plotArea"><rect x="%d" y="%d" width="%d" height="%d"/></clipPath></defs>`,
@@ -85,7 +87,7 @@ func GenerateDetailedChart(data DetailedChartData, width, height int) template.H
 
 	// Data line
 	svg += `<g clip-path="url(#plotArea)">`
-	svg += generateDataLine(data.Points, marginLeft, marginTop, chartWidth, chartHeight, data.MinValue, data.MaxValue)
+	svg += generateDataLine(data.Points, marginLeft, marginTop, chartWidth, chartHeight, data.MinValue, data.MaxValue, data.StartTime, data.EndTime)
 	svg += `</g>`
 
 	// Chart border
@@ -143,29 +145,46 @@ func generateYAxis(left, top, height int, minVal, maxVal float64, unit string) s
 	return svg
 }
 
-// generateXAxis creates X-axis labels and ticks
-func generateXAxis(left, top, width, height int, points []DataPoint) string {
+// generateXAxis creates X-axis labels and ticks based on requested time range
+func generateXAxis(left, top, width, height int, startTime, endTime time.Time) string {
 	svg := `<g font-size="11" fill="#6c757d">`
 
-	// Show up to 7 time labels
+	// Calculate time range
+	timeRange := endTime.Sub(startTime)
+	if timeRange <= 0 {
+		timeRange = 24 * time.Hour // Default
+	}
+	
+	// Generate evenly spaced time labels across the time range
 	labelCount := 7
-	if len(points) < labelCount {
-		labelCount = len(points)
+	if timeRange < 1*time.Hour {
+		labelCount = 5 // Fewer labels for short time ranges
 	}
 
 	for i := 0; i < labelCount; i++ {
-		idx := i * (len(points) - 1) / (labelCount - 1)
-		if i == labelCount-1 {
-			idx = len(points) - 1
-		}
-
-		x := left + (width * idx / (len(points) - 1))
+		// Calculate time for this label position
+		labelTime := startTime.Add(timeRange * time.Duration(i) / time.Duration(labelCount-1))
+		
+		// Calculate X position
+		elapsed := labelTime.Sub(startTime)
+		x := left + int(float64(elapsed)/float64(timeRange)*float64(width))
 		y := top + height + 20
 
-		timeLabel := points[idx].Time.Format("15:04")
-		if i == 0 || i == labelCount-1 {
-			// Show date for first and last
-			timeLabel = points[idx].Time.Format("Jan 2 15:04")
+		// Format time label based on time range
+		var timeLabel string
+		if timeRange <= 2*time.Hour {
+			// Show time only for short ranges
+			timeLabel = labelTime.Format("15:04")
+		} else if timeRange <= 24*time.Hour {
+			// Show time with abbreviated date
+			if i == 0 || i == labelCount-1 {
+				timeLabel = labelTime.Format("Jan 2 15:04")
+			} else {
+				timeLabel = labelTime.Format("15:04")
+			}
+		} else {
+			// Show date and time for longer ranges
+			timeLabel = labelTime.Format("Jan 2 15:04")
 		}
 
 		svg += fmt.Sprintf(`<text x="%d" y="%d" text-anchor="middle">%s</text>`, x, y, timeLabel)
@@ -179,47 +198,118 @@ func generateXAxis(left, top, width, height int, points []DataPoint) string {
 	return svg
 }
 
-// generateDataLine creates the actual data line
-func generateDataLine(points []DataPoint, left, top, width, height int, minVal, maxVal float64) string {
-	if len(points) < 2 {
+// generateDataLine creates the actual data line with gap detection
+func generateDataLine(points []DataPoint, left, top, width, height int, minVal, maxVal float64, requestedStartTime, requestedEndTime time.Time) string {
+	if len(points) == 0 {
 		return ""
 	}
 
-	// Build polyline points
-	polylinePoints := ""
-	for i, point := range points {
-		x := left + (width * i / (len(points) - 1))
-
-		// Normalize value to 0-1 range
+	// Single point - just draw a dot
+	if len(points) == 1 {
+		point := points[0]
+		x := left + width/2 // Center it
 		normalized := (point.Value - minVal) / (maxVal - minVal)
-		// Invert Y-axis
 		y := top + height - int(normalized*float64(height))
-
-		if i > 0 {
-			polylinePoints += " "
-		}
-		polylinePoints += fmt.Sprintf("%d,%d", x, y)
+		return fmt.Sprintf(`<circle cx="%d" cy="%d" r="4" fill="#007bff"/>`, x, y)
 	}
 
-	// Create filled area under the line
-	areaPoints := polylinePoints
-	// Add bottom-right corner
-	areaPoints += fmt.Sprintf(" %d,%d", left+width, top+height)
-	// Add bottom-left corner
-	areaPoints += fmt.Sprintf(" %d,%d", left, top+height)
+	// Use requested time range for positioning
+	timeRange := requestedEndTime.Sub(requestedStartTime)
+	if timeRange <= 0 {
+		timeRange = 24 * time.Hour // Default
+	}
 
-	svg := fmt.Sprintf(`<polygon points="%s" fill="#007bff" fill-opacity="0.1"/>`, areaPoints)
-	svg += fmt.Sprintf(`<polyline points="%s" fill="none" stroke="#007bff" stroke-width="2"/>`, polylinePoints)
+	// Gap threshold - if gap is more than 2x the expected interval, break the line
+	// For 60s collection interval, gap threshold is 2 minutes
+	gapThreshold := 2 * time.Minute
 
-	// Add data points
-	for i, point := range points {
-		x := left + (width * i / (len(points) - 1))
-		normalized := (point.Value - minVal) / (maxVal - minVal)
-		y := top + height - int(normalized*float64(height))
+	// Group points into segments based on time gaps
+	segments := [][]DataPoint{}
+	currentSegment := []DataPoint{points[0]}
 
-		// Only show dots for smaller datasets
-		if len(points) < 50 {
+	for i := 1; i < len(points); i++ {
+		gap := points[i].Time.Sub(points[i-1].Time)
+		if gap > gapThreshold {
+			// Start new segment
+			segments = append(segments, currentSegment)
+			currentSegment = []DataPoint{points[i]}
+		} else {
+			// Continue current segment
+			currentSegment = append(currentSegment, points[i])
+		}
+	}
+	// Add final segment
+	if len(currentSegment) > 0 {
+		segments = append(segments, currentSegment)
+	}
+
+	svg := ""
+
+	// Draw each segment separately
+	for _, segment := range segments {
+		if len(segment) < 2 {
+			// Single point segment - draw as dot
+			point := segment[0]
+			elapsed := point.Time.Sub(requestedStartTime)
+			x := left + int(float64(elapsed)/float64(timeRange)*float64(width))
+			normalized := (point.Value - minVal) / (maxVal - minVal)
+			y := top + height - int(normalized*float64(height))
 			svg += fmt.Sprintf(`<circle cx="%d" cy="%d" r="3" fill="#007bff"/>`, x, y)
+			continue
+		}
+
+		// Build polyline for this segment
+		polylinePoints := ""
+		firstX := 0
+		lastX := 0
+
+		for i, point := range segment {
+			// Calculate X based on actual timestamp
+			elapsed := point.Time.Sub(requestedStartTime)
+			x := left + int(float64(elapsed)/float64(timeRange)*float64(width))
+			
+			if i == 0 {
+				firstX = x
+			}
+			lastX = x
+
+			// Calculate Y based on value
+			normalized := (point.Value - minVal) / (maxVal - minVal)
+			if normalized < 0 {
+				normalized = 0
+			} else if normalized > 1 {
+				normalized = 1
+			}
+			y := top + height - int(normalized*float64(height))
+
+			if i > 0 {
+				polylinePoints += " "
+			}
+			polylinePoints += fmt.Sprintf("%d,%d", x, y)
+		}
+
+		// Create filled area under this segment
+		areaPoints := polylinePoints
+		areaPoints += fmt.Sprintf(" %d,%d", lastX, top+height)
+		areaPoints += fmt.Sprintf(" %d,%d", firstX, top+height)
+
+		svg += fmt.Sprintf(`<polygon points="%s" fill="#007bff" fill-opacity="0.1"/>`, areaPoints)
+		svg += fmt.Sprintf(`<polyline points="%s" fill="none" stroke="#007bff" stroke-width="2"/>`, polylinePoints)
+
+		// Add dots for small segments
+		if len(segment) < 20 {
+			for _, point := range segment {
+				elapsed := point.Time.Sub(requestedStartTime)
+				x := left + int(float64(elapsed)/float64(timeRange)*float64(width))
+				normalized := (point.Value - minVal) / (maxVal - minVal)
+				if normalized < 0 {
+					normalized = 0
+				} else if normalized > 1 {
+					normalized = 1
+				}
+				y := top + height - int(normalized*float64(height))
+				svg += fmt.Sprintf(`<circle cx="%d" cy="%d" r="3" fill="#007bff"/>`, x, y)
+			}
 		}
 	}
 

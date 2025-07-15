@@ -299,11 +299,8 @@ func (s *Server) handleSystemVitals(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Store vitals in the database for historical tracking
-	db := database.GetDB()
-	_, err = db.Exec(`
-		INSERT INTO system_vital_logs (timestamp, cpu_percent, memory_percent, disk_usage_percent)
-		VALUES (?, ?, ?, ?)
-	`, time.Now(), vitals.CPUPercent, vitals.MemPercent, vitals.DiskPercent)
+	err = database.StoreSystemVital(vitals.CPUPercent, vitals.MemPercent, vitals.DiskPercent, 
+		vitals.NetworkRxBytes, vitals.NetworkTxBytes)
 	if err != nil {
 		log.Printf("Failed to store system vitals in database: %v", err)
 		// Continue even if storing fails - we still want to show current vitals

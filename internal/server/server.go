@@ -20,6 +20,8 @@ import (
 	"ontree-node/internal/database"
 	"ontree-node/internal/docker"
 	"ontree-node/internal/embeds"
+	"ontree-node/internal/realtime"
+	"ontree-node/internal/system"
 	"ontree-node/internal/templates"
 	"ontree-node/internal/version"
 	"ontree-node/internal/worker"
@@ -41,6 +43,7 @@ type Server struct {
 	caddyClient           *caddy.Client
 	platformSupportsCaddy bool
 	sparklineCache        *cache.Cache
+	realtimeMetrics       *realtime.Metrics
 }
 
 // New creates a new server instance
@@ -56,6 +59,7 @@ func New(cfg *config.Config, versionInfo version.Info) (*Server, error) {
 		versionInfo:           versionInfo,
 		platformSupportsCaddy: runtime.GOOS == "linux",
 		sparklineCache:        cache.New(5 * time.Minute), // 5-minute cache for sparklines
+		realtimeMetrics:       realtime.NewMetrics(),
 	}
 
 	// Configure session store
@@ -226,6 +230,44 @@ func (s *Server) loadTemplates() error {
 	}
 	s.templates["app_compose_edit"] = tmpl
 
+	// Load monitoring template
+	monitoringTemplate := filepath.Join("templates", "dashboard", "monitoring.html")
+	tmpl, err = embeds.ParseTemplate(baseTemplate, monitoringTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse monitoring template: %w", err)
+	}
+	s.templates["monitoring"] = tmpl
+
+	// Load monitoring partial templates (loaded separately for HTMX updates)
+	// Note: These partials don't use the base template since they're HTMX fragments
+	cpuCardTemplate := filepath.Join("templates", "dashboard", "_cpu_card.html")
+	cpuTmpl, err := embeds.ParseTemplate(cpuCardTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse cpu card template: %w", err)
+	}
+	s.templates["_cpu_card"] = cpuTmpl
+
+	memoryCardTemplate := filepath.Join("templates", "dashboard", "_memory_card.html")
+	memTmpl, err := embeds.ParseTemplate(memoryCardTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse memory card template: %w", err)
+	}
+	s.templates["_memory_card"] = memTmpl
+
+	diskCardTemplate := filepath.Join("templates", "dashboard", "_disk_card.html")
+	diskTmpl, err := embeds.ParseTemplate(diskCardTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse disk card template: %w", err)
+	}
+	s.templates["_disk_card"] = diskTmpl
+
+	networkCardTemplate := filepath.Join("templates", "dashboard", "_network_card.html")
+	netTmpl, err := embeds.ParseTemplate(networkCardTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse network card template: %w", err)
+	}
+	s.templates["_network_card"] = netTmpl
+
 	// Load pattern library templates
 	// Pattern library index
 	patternsIndexTemplate := filepath.Join("templates", "pattern_library", "index.html")
@@ -290,6 +332,7 @@ func (s *Server) loadTemplates() error {
 func (s *Server) Start() error {
 	// Start background jobs
 	go s.startVitalsCleanup()
+	go s.startRealtimeMetricsCollection()
 
 	// Set up routes
 	mux := http.NewServeMux()
@@ -403,6 +446,30 @@ func (s *Server) cleanupOldVitals() {
 
 	if rowsAffected > 0 {
 		log.Printf("Cleaned up %d old vital log records", rowsAffected)
+	}
+}
+
+// startRealtimeMetricsCollection collects CPU and network metrics every second for real-time display
+func (s *Server) startRealtimeMetricsCollection() {
+	log.Printf("Real-time metrics collection started")
+	
+	// Run collection every second
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+	
+	for range ticker.C {
+		// Get current system vitals
+		vitals, err := system.GetVitals()
+		if err != nil {
+			log.Printf("Failed to collect real-time metrics: %v", err)
+			continue
+		}
+		
+		// Store CPU metric
+		s.realtimeMetrics.AddCPU(vitals.CPUPercent)
+		
+		// Store network metrics
+		s.realtimeMetrics.AddNetwork(vitals.NetworkRxBytes, vitals.NetworkTxBytes)
 	}
 }
 

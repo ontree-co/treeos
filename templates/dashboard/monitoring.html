@@ -94,7 +94,7 @@
         <div class="col-12 col-md-6 col-lg-3">
             <div id="cpu-card" 
                  hx-get="/monitoring/partials/cpu" 
-                 hx-trigger="load, every 5s" 
+                 hx-trigger="load, every 1s" 
                  hx-swap="outerHTML">
                 <div class="card monitoring-card">
                     <div class="card-body metric-loading">
@@ -113,7 +113,7 @@
         <div class="col-12 col-md-6 col-lg-3">
             <div id="memory-card" 
                  hx-get="/monitoring/partials/memory" 
-                 hx-trigger="load, every 5s" 
+                 hx-trigger="load, every 60s" 
                  hx-swap="outerHTML">
                 <div class="card monitoring-card">
                     <div class="card-body metric-loading">
@@ -132,7 +132,7 @@
         <div class="col-12 col-md-6 col-lg-3">
             <div id="disk-card" 
                  hx-get="/monitoring/partials/disk" 
-                 hx-trigger="load, every 5s" 
+                 hx-trigger="load, every 60s" 
                  hx-swap="outerHTML">
                 <div class="card monitoring-card">
                     <div class="card-body metric-loading">
@@ -151,7 +151,7 @@
         <div class="col-12 col-md-6 col-lg-3">
             <div id="network-card" 
                  hx-get="/monitoring/partials/network" 
-                 hx-trigger="load, every 5s" 
+                 hx-trigger="load, every 1s" 
                  hx-swap="outerHTML">
                 <div class="card monitoring-card">
                     <div class="card-body metric-loading">

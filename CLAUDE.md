@@ -219,6 +219,42 @@ Completed comprehensive documentation and testing for the monitoring feature:
 - **Screenshot Guide**: Created `docs/monitoring-screenshots.md` describing required screenshots
 - **Test Coverage**: Includes endpoint tests, integration workflows, performance characteristics, and configuration options
 
+### Time-Aware Graph Visualization (2025-07-15)
+
+Fixed monitoring graphs to properly display data gaps and time ranges:
+- **Time-aware sparklines**: Created new `GenerateTimeAwareSparkline` function that respects actual timestamps
+- **Gap detection**: Graphs now break lines when data gaps exceed 2 minutes (2x collection interval)
+- **Proper time scaling**: Data points positioned based on actual timestamps, not array indices
+- **Single point handling**: Single data points shown as dots, not stretched lines
+- **Full time range display**: Charts show requested time range (1h, 6h, 24h, 7d) even if data is sparse
+- **No data messages**: Empty time ranges display "No data" instead of misleading visualizations
+- **Implementation**:
+  - Added `internal/charts/timeseries.go` with time-aware chart generation
+  - Updated detailed charts to detect and visualize gaps between data segments
+  - Modified all monitoring handlers to use time-aware functions
+  - X-axis labels now show actual time range, not just data point times
+
+### Network Monitoring Implementation (2025-07-15)
+
+Implemented full network monitoring support:
+- **Data Collection**: Updated `system.GetVitals()` to collect network statistics using gopsutil/net
+  - Collects total bytes received/transmitted across all interfaces
+  - Added NetworkRxBytes and NetworkTxBytes fields to Vitals struct
+- **Database Storage**: 
+  - Added network_rx_bytes and network_tx_bytes columns to system_vital_logs table
+  - Updated SystemVitalLog model to include network fields
+  - Modified all database queries to handle network data with COALESCE for backward compatibility
+- **Rate Calculation**: Network shows transfer rates (KB/s, MB/s) instead of absolute values
+  - Calculates rates by comparing consecutive data points
+  - Handles edge cases (no data, single point, large time gaps)
+  - Formats rates with appropriate units (B/s, KB/s, MB/s, GB/s)
+- **UI Display**:
+  - Shows download/upload rates in the network card
+  - Sparkline displays combined network activity over 24 hours
+  - Detailed chart shows network usage in MB/s
+  - Properly handles "no data" cases with dashed lines
+- **Migration**: Database migration automatically adds network columns to existing installations
+
 ### Emoji Feature Data Structure Support (2025-07-10 - UI Improvements Ticket 1)
 
 Added backend support for emoji storage in apps:

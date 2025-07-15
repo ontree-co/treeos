@@ -67,54 +67,67 @@ func (s *Server) routeMonitoring(w http.ResponseWriter, r *http.Request) {
 
 // handleMonitoringCPUPartial returns the CPU monitoring card partial
 func (s *Server) handleMonitoringCPUPartial(w http.ResponseWriter, r *http.Request) {
-	// Get current CPU usage
-	vitals, err := system.GetVitals()
-	if err != nil {
-		log.Printf("Failed to get system vitals: %v", err)
-		http.Error(w, "Failed to get system vitals", http.StatusInternalServerError)
-		return
-	}
-
-	// Check cache for sparkline
-	cacheKey := fmt.Sprintf("sparkline:cpu:24h")
-	var sparklineSVG template.HTML
-
-	if cached, found := s.sparklineCache.Get(cacheKey); found {
-		sparklineSVG = cached.(template.HTML)
+	// Get current CPU usage from real-time metrics
+	var currentCPU float64
+	if latest, ok := s.realtimeMetrics.GetLatestCPU(); ok {
+		currentCPU = latest.Value
 	} else {
-		// Get historical CPU data for the last 24 hours
-		historicalData, err := database.GetMetricsLast24Hours("cpu")
+		// Fallback to system vitals if no real-time data
+		vitals, err := system.GetVitals()
 		if err != nil {
-			log.Printf("Failed to get historical CPU data: %v", err)
-			// Continue with empty historical data
-			historicalData = []database.SystemVitalLog{}
+			log.Printf("Failed to get system vitals: %v", err)
+			http.Error(w, "Failed to get system vitals", http.StatusInternalServerError)
+			return
 		}
-
-		// Extract CPU percentages for sparkline
-		var cpuData []float64
-		for _, metric := range historicalData {
-			cpuData = append(cpuData, metric.CPUPercent)
-		}
-
-		// Generate sparkline SVG
-		if len(cpuData) >= 2 {
-			sparklineSVG = charts.GeneratePercentageSparkline(cpuData, 150, 40)
-		} else {
-			// Not enough data, show a flat line at current value
-			sparklineSVG = template.HTML(fmt.Sprintf(`<svg width="150" height="40" viewBox="0 0 150 40" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"><line x1="0" y1="%d" x2="150" y2="%d" stroke="#007bff" stroke-width="2" /></svg>`,
-				int(40-(vitals.CPUPercent*0.4)), int(40-(vitals.CPUPercent*0.4))))
-		}
-
-		// Cache the sparkline
-		s.sparklineCache.Set(cacheKey, sparklineSVG)
+		currentCPU = vitals.CPUPercent
 	}
+
+	// Don't cache sparklines for real-time data
+	now := time.Now()
+	startTime := now.Add(-24 * time.Hour)
+	
+	// Get real-time data for the last 60 seconds
+	realtimeData := s.realtimeMetrics.GetCPU(60 * time.Second)
+	
+	// Get historical data from database (older than 60 seconds)
+	oneMinuteAgo := now.Add(-60 * time.Second)
+	historicalData, err := database.GetMetricsForTimeRange(startTime, oneMinuteAgo)
+	if err != nil {
+		log.Printf("Failed to get historical CPU data: %v", err)
+		historicalData = []database.SystemVitalLog{}
+	}
+
+	// Combine data: historical + real-time
+	var timeSeriesData []charts.TimeSeriesPoint
+	
+	// Add historical data
+	for _, metric := range historicalData {
+		if metric.Timestamp.Before(oneMinuteAgo) {
+			timeSeriesData = append(timeSeriesData, charts.TimeSeriesPoint{
+				Time:  metric.Timestamp,
+				Value: metric.CPUPercent,
+			})
+		}
+	}
+	
+	// Add real-time data
+	for _, point := range realtimeData {
+		timeSeriesData = append(timeSeriesData, charts.TimeSeriesPoint{
+			Time:  point.Time,
+			Value: point.Value,
+		})
+	}
+
+	// Generate sparkline SVG with time awareness
+	opts := charts.DefaultPercentageOptions()
+	sparklineSVG := charts.GenerateTimeAwareSparkline(timeSeriesData, startTime, now, opts)
 
 	// Prepare data for the template
 	data := struct {
 		CurrentLoad  string
 		SparklineSVG template.HTML
 	}{
-		CurrentLoad:  fmt.Sprintf("%.1f", vitals.CPUPercent),
+		CurrentLoad:  fmt.Sprintf("%.1f", currentCPU),
 		SparklineSVG: sparklineSVG,
 	}
 
@@ -153,27 +166,27 @@ func (s *Server) handleMonitoringMemoryPartial(w http.ResponseWriter, r *http.Re
 		sparklineSVG = cached.(template.HTML)
 	} else {
 		// Get historical memory data for the last 24 hours
+		now := time.Now()
+		startTime := now.Add(-24 * time.Hour)
+		
 		historicalData, err := database.GetMetricsLast24Hours("memory")
 		if err != nil {
 			log.Printf("Failed to get historical memory data: %v", err)
-			// Continue with empty historical data
 			historicalData = []database.SystemVitalLog{}
 		}
 
-		// Extract memory percentages for sparkline
-		var memData []float64
+		// Convert to time series points
+		var timeSeriesData []charts.TimeSeriesPoint
 		for _, metric := range historicalData {
-			memData = append(memData, metric.MemoryPercent)
+			timeSeriesData = append(timeSeriesData, charts.TimeSeriesPoint{
+				Time:  metric.Timestamp,
+				Value: metric.MemoryPercent,
+			})
 		}
 
-		// Generate sparkline SVG
-		if len(memData) >= 2 {
-			sparklineSVG = charts.GeneratePercentageSparkline(memData, 150, 40)
-		} else {
-			// Not enough data, show a flat line at current value
-			sparklineSVG = template.HTML(fmt.Sprintf(`<svg width="150" height="40" viewBox="0 0 150 40" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"><line x1="0" y1="%d" x2="150" y2="%d" stroke="#007bff" stroke-width="2" /></svg>`,
-				int(40-(vitals.MemPercent*0.4)), int(40-(vitals.MemPercent*0.4))))
-		}
+		// Generate sparkline SVG with time awareness
+		opts := charts.DefaultPercentageOptions()
+		sparklineSVG = charts.GenerateTimeAwareSparkline(timeSeriesData, startTime, now, opts)
 
 		// Cache the sparkline
 		s.sparklineCache.Set(cacheKey, sparklineSVG)
@@ -223,27 +236,27 @@ func (s *Server) handleMonitoringDiskPartial(w http.ResponseWriter, r *http.Requ
 		sparklineSVG = cached.(template.HTML)
 	} else {
 		// Get historical disk data for the last 24 hours
+		now := time.Now()
+		startTime := now.Add(-24 * time.Hour)
+		
 		historicalData, err := database.GetMetricsLast24Hours("disk")
 		if err != nil {
 			log.Printf("Failed to get historical disk data: %v", err)
-			// Continue with empty historical data
 			historicalData = []database.SystemVitalLog{}
 		}
 
-		// Extract disk percentages for sparkline
-		var diskData []float64
+		// Convert to time series points
+		var timeSeriesData []charts.TimeSeriesPoint
 		for _, metric := range historicalData {
-			diskData = append(diskData, metric.DiskUsagePercent)
+			timeSeriesData = append(timeSeriesData, charts.TimeSeriesPoint{
+				Time:  metric.Timestamp,
+				Value: metric.DiskUsagePercent,
+			})
 		}
 
-		// Generate sparkline SVG
-		if len(diskData) >= 2 {
-			sparklineSVG = charts.GeneratePercentageSparkline(diskData, 150, 40)
-		} else {
-			// Not enough data, show a flat line at current value
-			sparklineSVG = template.HTML(fmt.Sprintf(`<svg width="150" height="40" viewBox="0 0 150 40" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"><line x1="0" y1="%d" x2="150" y2="%d" stroke="#007bff" stroke-width="2" /></svg>`,
-				int(40-(vitals.DiskPercent*0.4)), int(40-(vitals.DiskPercent*0.4))))
-		}
+		// Generate sparkline SVG with time awareness
+		opts := charts.DefaultPercentageOptions()
+		sparklineSVG = charts.GenerateTimeAwareSparkline(timeSeriesData, startTime, now, opts)
 
 		// Cache the sparkline
 		s.sparklineCache.Set(cacheKey, sparklineSVG)
@@ -279,24 +292,188 @@ func (s *Server) handleMonitoringDiskPartial(w http.ResponseWriter, r *http.Requ
 
 // handleMonitoringNetworkPartial returns the network monitoring card partial
 func (s *Server) handleMonitoringNetworkPartial(w http.ResponseWriter, r *http.Request) {
-	// For network data, we'll use placeholder data for now since the database doesn't store network metrics
-	// In a future ticket, we could add network bytes to the database and calculate rates
+	// Get historical network data for rate calculation
+	now := time.Now()
+	startTime := now.Add(-24 * time.Hour)
+	
+	// Calculate current network rates from real-time data
+	var downloadRate, uploadRate string
+	realtimeNetData := s.realtimeMetrics.GetNetwork(2 * time.Second) // Get last 2 seconds of data
+	
+	if len(realtimeNetData) >= 2 {
+		// Calculate rate between most recent two points
+		latest := realtimeNetData[len(realtimeNetData)-1]
+		previous := realtimeNetData[len(realtimeNetData)-2]
+		
+		timeDiff := latest.Time.Sub(previous.Time).Seconds()
+		if timeDiff > 0 && timeDiff < 2 { // Real-time data should be within 2 seconds
+			// Calculate bytes per second, handling counter resets
+			var rxRate, txRate float64
+			
+			if latest.RxBytes >= previous.RxBytes {
+				rxRate = float64(latest.RxBytes-previous.RxBytes) / timeDiff
+			} else {
+				// Counter reset or overflow, show 0
+				rxRate = 0
+			}
+			
+			if latest.TxBytes >= previous.TxBytes {
+				txRate = float64(latest.TxBytes-previous.TxBytes) / timeDiff
+			} else {
+				// Counter reset or overflow, show 0
+				txRate = 0
+			}
+			
+			// Format rates
+			downloadRate = formatNetworkRate(rxRate)
+			uploadRate = formatNetworkRate(txRate)
+		} else {
+			downloadRate = "0 KB/s"
+			uploadRate = "0 KB/s"
+		}
+	} else {
+		// Fallback to database if no real-time data
+		recentMetrics, err := database.GetMetricsForTimeRange(now.Add(-2*time.Minute), now)
+		if err != nil {
+			log.Printf("Failed to get recent network metrics: %v", err)
+			recentMetrics = []database.SystemVitalLog{}
+		}
+		
+		if len(recentMetrics) >= 2 {
+			// Calculate rate between most recent two points
+			latest := recentMetrics[len(recentMetrics)-1]
+			previous := recentMetrics[len(recentMetrics)-2]
+			
+			timeDiff := latest.Timestamp.Sub(previous.Timestamp).Seconds()
+			if timeDiff > 0 && timeDiff < 120 { // Ignore gaps larger than 2 minutes
+				// Calculate bytes per second, handling counter resets
+				var rxRate, txRate float64
+				
+				if latest.NetworkRxBytes >= previous.NetworkRxBytes {
+					rxRate = float64(latest.NetworkRxBytes-previous.NetworkRxBytes) / timeDiff
+				} else {
+					rxRate = 0
+				}
+				
+				if latest.NetworkTxBytes >= previous.NetworkTxBytes {
+					txRate = float64(latest.NetworkTxBytes-previous.NetworkTxBytes) / timeDiff
+				} else {
+					txRate = 0
+				}
+				
+				// Format rates
+				downloadRate = formatNetworkRate(rxRate)
+				uploadRate = formatNetworkRate(txRate)
+			} else {
+				downloadRate = "0 KB/s"
+				uploadRate = "0 KB/s"
+			}
+		} else {
+			downloadRate = "0 KB/s"
+			uploadRate = "0 KB/s"
+		}
+	}
 
-	// Generate a simple placeholder sparkline
-	sparklineSVG := template.HTML(`<svg width="150" height="40" viewBox="0 0 150 40" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"><polyline fill="none" stroke="#007bff" stroke-width="2" points="0,35 30,30 60,25 90,28 120,32 150,30" /></svg>`)
+	// Get real-time data for the last 60 seconds
+	realtimeData := s.realtimeMetrics.GetNetwork(60 * time.Second)
+	
+	// Get historical data from database (older than 60 seconds)
+	oneMinuteAgo := now.Add(-60 * time.Second)
+	historicalData, err := database.GetMetricsForTimeRange(startTime, oneMinuteAgo)
+	if err != nil {
+		log.Printf("Failed to get historical network data: %v", err)
+		historicalData = []database.SystemVitalLog{}
+	}
+
+	// Calculate rates for sparkline (MB/s for better scale)
+	var timeSeriesData []charts.TimeSeriesPoint
+	
+	// Process historical data
+	if len(historicalData) > 0 {
+		// Add initial zero point
+		timeSeriesData = append(timeSeriesData, charts.TimeSeriesPoint{
+			Time:  historicalData[0].Timestamp,
+			Value: 0,
+		})
+		
+		for i := 1; i < len(historicalData); i++ {
+			prev := historicalData[i-1]
+			curr := historicalData[i]
+			
+			// Only include data older than 60 seconds
+			if curr.Timestamp.Before(oneMinuteAgo) {
+				timeDiff := curr.Timestamp.Sub(prev.Timestamp).Seconds()
+				if timeDiff > 0 && timeDiff < 120 { // Only use points within 2 minutes of each other
+					// Calculate combined rate in MB/s, handling counter resets
+					var rxRate, txRate float64
+					
+					if curr.NetworkRxBytes >= prev.NetworkRxBytes {
+						rxRate = float64(curr.NetworkRxBytes-prev.NetworkRxBytes) / timeDiff / 1024 / 1024
+					}
+					if curr.NetworkTxBytes >= prev.NetworkTxBytes {
+						txRate = float64(curr.NetworkTxBytes-prev.NetworkTxBytes) / timeDiff / 1024 / 1024
+					}
+					
+					totalRate := rxRate + txRate
+					
+					timeSeriesData = append(timeSeriesData, charts.TimeSeriesPoint{
+						Time:  curr.Timestamp,
+						Value: totalRate,
+					})
+				}
+			}
+		}
+	}
+	
+	// Process real-time data
+	if len(realtimeData) > 0 {
+		// Add zero point if no historical data
+		if len(timeSeriesData) == 0 {
+			timeSeriesData = append(timeSeriesData, charts.TimeSeriesPoint{
+				Time:  realtimeData[0].Time,
+				Value: 0,
+			})
+		}
+		
+		for i := 1; i < len(realtimeData); i++ {
+			prev := realtimeData[i-1]
+			curr := realtimeData[i]
+			
+			timeDiff := curr.Time.Sub(prev.Time).Seconds()
+			if timeDiff > 0 && timeDiff < 2 { // Real-time data should be within 2 seconds
+				// Calculate combined rate in MB/s, handling counter resets
+				var rxRate, txRate float64
+				
+				if curr.RxBytes >= prev.RxBytes {
+					rxRate = float64(curr.RxBytes-prev.RxBytes) / timeDiff / 1024 / 1024
+				}
+				if curr.TxBytes >= prev.TxBytes {
+					txRate = float64(curr.TxBytes-prev.TxBytes) / timeDiff / 1024 / 1024
+				}
+				
+				totalRate := rxRate + txRate
+				
+				timeSeriesData = append(timeSeriesData, charts.TimeSeriesPoint{
+					Time:  curr.Time,
+					Value: totalRate,
+				})
+			}
+		}
+	}
+
+	// Generate sparkline
+	opts := charts.DefaultSparklineOptions()
+	opts.ShowNoData = true
+	sparklineSVG := charts.GenerateTimeAwareSparkline(timeSeriesData, startTime, now, opts)
 
 	// Prepare data for the template
-	// In a real implementation, we would:
-	// 1. Store network bytes in/out in the database
-	// 2. Calculate rate by comparing current and previous values
-	// 3. Format the rates appropriately
 	data := struct {
 		DownloadRate string
 		UploadRate   string
 		SparklineSVG template.HTML
 	}{
-		DownloadRate: "0 KB/s", // Placeholder for now
-		UploadRate:   "0 KB/s", // Placeholder for now
+		DownloadRate: downloadRate,
+		UploadRate:   uploadRate,
 		SparklineSVG: sparklineSVG,
 	}
 
@@ -370,6 +547,8 @@ func (s *Server) handleMonitoringCharts(w http.ResponseWriter, r *http.Request) 
 
 		// Prepare chart data based on metric type
 		var chartData charts.DetailedChartData
+		chartData.StartTime = startTime
+		chartData.EndTime = endTime
 
 		switch metricType {
 		case "cpu":
@@ -415,16 +594,28 @@ func (s *Server) handleMonitoringCharts(w http.ResponseWriter, r *http.Request) 
 			}
 
 		case "network":
-			// Network data is not yet stored in the database
 			chartData.Title = "Network Usage"
 			chartData.YAxisUnit = "MB/s"
-			// Generate some sample data for now
-			now := time.Now()
-			for i := 0; i < 24; i++ {
-				chartData.Points = append(chartData.Points, charts.DataPoint{
-					Time:  now.Add(time.Duration(-i) * time.Hour),
-					Value: float64(i * 2 % 10),
-				})
+			
+			// Calculate network rates from consecutive data points
+			if len(batch.Metrics) > 1 {
+				for i := 1; i < len(batch.Metrics); i++ {
+					prev := batch.Metrics[i-1]
+					curr := batch.Metrics[i]
+					
+					timeDiff := curr.Timestamp.Sub(prev.Timestamp).Seconds()
+					if timeDiff > 0 && timeDiff < 120 { // Only use points within 2 minutes
+						// Calculate combined rate in MB/s
+						rxRate := float64(curr.NetworkRxBytes-prev.NetworkRxBytes) / timeDiff / 1024 / 1024
+						txRate := float64(curr.NetworkTxBytes-prev.NetworkTxBytes) / timeDiff / 1024 / 1024
+						totalRate := rxRate + txRate
+						
+						chartData.Points = append(chartData.Points, charts.DataPoint{
+							Time:  curr.Timestamp,
+							Value: totalRate,
+						})
+					}
+				}
 			}
 
 		default:
@@ -480,4 +671,21 @@ func ifElse(condition bool, trueVal, falseVal string) string {
 		return trueVal
 	}
 	return falseVal
+}
+
+// formatNetworkRate formats bytes per second into human-readable format
+func formatNetworkRate(bytesPerSecond float64) string {
+	if bytesPerSecond < 0 {
+		return "0 KB/s"
+	}
+	
+	if bytesPerSecond < 1024 {
+		return fmt.Sprintf("%.0f B/s", bytesPerSecond)
+	} else if bytesPerSecond < 1024*1024 {
+		return fmt.Sprintf("%.1f KB/s", bytesPerSecond/1024)
+	} else if bytesPerSecond < 1024*1024*1024 {
+		return fmt.Sprintf("%.1f MB/s", bytesPerSecond/1024/1024)
+	} else {
+		return fmt.Sprintf("%.1f GB/s", bytesPerSecond/1024/1024/1024)
+	}
 }
