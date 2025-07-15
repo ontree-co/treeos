@@ -288,7 +288,6 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/login", http.StatusFound)
 }
 
-
 // handleAppDetail handles the application detail page
 func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 	// Extract app name from URL path

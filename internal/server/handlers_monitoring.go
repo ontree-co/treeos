@@ -91,10 +91,10 @@ func (s *Server) handleMonitoringCPUPartial(w http.ResponseWriter, r *http.Reque
 	// Don't cache sparklines for real-time data
 	now := time.Now()
 	startTime := now.Add(-24 * time.Hour)
-	
+
 	// Get real-time data for the last 60 seconds
 	realtimeData := s.realtimeMetrics.GetCPU(60 * time.Second)
-	
+
 	// Get historical data from database (older than 60 seconds)
 	oneMinuteAgo := now.Add(-60 * time.Second)
 	historicalData, err := database.GetMetricsForTimeRange(startTime, oneMinuteAgo)
@@ -105,7 +105,7 @@ func (s *Server) handleMonitoringCPUPartial(w http.ResponseWriter, r *http.Reque
 
 	// Combine data: historical + real-time
 	var timeSeriesData []charts.TimeSeriesPoint
-	
+
 	// Add historical data
 	for _, metric := range historicalData {
 		if metric.Timestamp.Before(oneMinuteAgo) {
@@ -115,7 +115,7 @@ func (s *Server) handleMonitoringCPUPartial(w http.ResponseWriter, r *http.Reque
 			})
 		}
 	}
-	
+
 	// Add real-time data
 	for _, point := range realtimeData {
 		timeSeriesData = append(timeSeriesData, charts.TimeSeriesPoint{
@@ -174,7 +174,7 @@ func (s *Server) handleMonitoringMemoryPartial(w http.ResponseWriter, r *http.Re
 		// Get historical memory data for the last 24 hours
 		now := time.Now()
 		startTime := now.Add(-24 * time.Hour)
-		
+
 		historicalData, err := database.GetMetricsLast24Hours("memory")
 		if err != nil {
 			log.Printf("Failed to get historical memory data: %v", err)
@@ -244,7 +244,7 @@ func (s *Server) handleMonitoringDiskPartial(w http.ResponseWriter, r *http.Requ
 		// Get historical disk data for the last 24 hours
 		now := time.Now()
 		startTime := now.Add(-24 * time.Hour)
-		
+
 		historicalData, err := database.GetMetricsLast24Hours("disk")
 		if err != nil {
 			log.Printf("Failed to get historical disk data: %v", err)
@@ -301,35 +301,35 @@ func (s *Server) handleMonitoringNetworkPartial(w http.ResponseWriter, r *http.R
 	// Get historical network data for rate calculation
 	now := time.Now()
 	startTime := now.Add(-24 * time.Hour)
-	
+
 	// Calculate current network rates from real-time data
 	var downloadRate, uploadRate string
 	realtimeNetData := s.realtimeMetrics.GetNetwork(2 * time.Second) // Get last 2 seconds of data
-	
+
 	if len(realtimeNetData) >= 2 {
 		// Calculate rate between most recent two points
 		latest := realtimeNetData[len(realtimeNetData)-1]
 		previous := realtimeNetData[len(realtimeNetData)-2]
-		
+
 		timeDiff := latest.Time.Sub(previous.Time).Seconds()
 		if timeDiff > 0 && timeDiff < 2 { // Real-time data should be within 2 seconds
 			// Calculate bytes per second, handling counter resets
 			var rxRate, txRate float64
-			
+
 			if latest.RxBytes >= previous.RxBytes {
 				rxRate = float64(latest.RxBytes-previous.RxBytes) / timeDiff
 			} else {
 				// Counter reset or overflow, show 0
 				rxRate = 0
 			}
-			
+
 			if latest.TxBytes >= previous.TxBytes {
 				txRate = float64(latest.TxBytes-previous.TxBytes) / timeDiff
 			} else {
 				// Counter reset or overflow, show 0
 				txRate = 0
 			}
-			
+
 			// Format rates
 			downloadRate = formatNetworkRate(rxRate)
 			uploadRate = formatNetworkRate(txRate)
@@ -344,29 +344,29 @@ func (s *Server) handleMonitoringNetworkPartial(w http.ResponseWriter, r *http.R
 			log.Printf("Failed to get recent network metrics: %v", err)
 			recentMetrics = []database.SystemVitalLog{}
 		}
-		
+
 		if len(recentMetrics) >= 2 {
 			// Calculate rate between most recent two points
 			latest := recentMetrics[len(recentMetrics)-1]
 			previous := recentMetrics[len(recentMetrics)-2]
-			
+
 			timeDiff := latest.Timestamp.Sub(previous.Timestamp).Seconds()
 			if timeDiff > 0 && timeDiff < 120 { // Ignore gaps larger than 2 minutes
 				// Calculate bytes per second, handling counter resets
 				var rxRate, txRate float64
-				
+
 				if latest.NetworkRxBytes >= previous.NetworkRxBytes {
 					rxRate = float64(latest.NetworkRxBytes-previous.NetworkRxBytes) / timeDiff
 				} else {
 					rxRate = 0
 				}
-				
+
 				if latest.NetworkTxBytes >= previous.NetworkTxBytes {
 					txRate = float64(latest.NetworkTxBytes-previous.NetworkTxBytes) / timeDiff
 				} else {
 					txRate = 0
 				}
-				
+
 				// Format rates
 				downloadRate = formatNetworkRate(rxRate)
 				uploadRate = formatNetworkRate(txRate)
@@ -382,7 +382,7 @@ func (s *Server) handleMonitoringNetworkPartial(w http.ResponseWriter, r *http.R
 
 	// Get real-time data for the last 60 seconds
 	realtimeData := s.realtimeMetrics.GetNetwork(60 * time.Second)
-	
+
 	// Get historical data from database (older than 60 seconds)
 	oneMinuteAgo := now.Add(-60 * time.Second)
 	historicalData, err := database.GetMetricsForTimeRange(startTime, oneMinuteAgo)
@@ -393,7 +393,7 @@ func (s *Server) handleMonitoringNetworkPartial(w http.ResponseWriter, r *http.R
 
 	// Calculate rates for sparkline (MB/s for better scale)
 	var timeSeriesData []charts.TimeSeriesPoint
-	
+
 	// Process historical data
 	if len(historicalData) > 0 {
 		// Add initial zero point
@@ -401,27 +401,27 @@ func (s *Server) handleMonitoringNetworkPartial(w http.ResponseWriter, r *http.R
 			Time:  historicalData[0].Timestamp,
 			Value: 0,
 		})
-		
+
 		for i := 1; i < len(historicalData); i++ {
 			prev := historicalData[i-1]
 			curr := historicalData[i]
-			
+
 			// Only include data older than 60 seconds
 			if curr.Timestamp.Before(oneMinuteAgo) {
 				timeDiff := curr.Timestamp.Sub(prev.Timestamp).Seconds()
 				if timeDiff > 0 && timeDiff < 120 { // Only use points within 2 minutes of each other
 					// Calculate combined rate in MB/s, handling counter resets
 					var rxRate, txRate float64
-					
+
 					if curr.NetworkRxBytes >= prev.NetworkRxBytes {
 						rxRate = float64(curr.NetworkRxBytes-prev.NetworkRxBytes) / timeDiff / 1024 / 1024
 					}
 					if curr.NetworkTxBytes >= prev.NetworkTxBytes {
 						txRate = float64(curr.NetworkTxBytes-prev.NetworkTxBytes) / timeDiff / 1024 / 1024
 					}
-					
+
 					totalRate := rxRate + txRate
-					
+
 					timeSeriesData = append(timeSeriesData, charts.TimeSeriesPoint{
 						Time:  curr.Timestamp,
 						Value: totalRate,
@@ -430,7 +430,7 @@ func (s *Server) handleMonitoringNetworkPartial(w http.ResponseWriter, r *http.R
 			}
 		}
 	}
-	
+
 	// Process real-time data
 	if len(realtimeData) > 0 {
 		// Add zero point if no historical data
@@ -440,25 +440,25 @@ func (s *Server) handleMonitoringNetworkPartial(w http.ResponseWriter, r *http.R
 				Value: 0,
 			})
 		}
-		
+
 		for i := 1; i < len(realtimeData); i++ {
 			prev := realtimeData[i-1]
 			curr := realtimeData[i]
-			
+
 			timeDiff := curr.Time.Sub(prev.Time).Seconds()
 			if timeDiff > 0 && timeDiff < 2 { // Real-time data should be within 2 seconds
 				// Calculate combined rate in MB/s, handling counter resets
 				var rxRate, txRate float64
-				
+
 				if curr.RxBytes >= prev.RxBytes {
 					rxRate = float64(curr.RxBytes-prev.RxBytes) / timeDiff / 1024 / 1024
 				}
 				if curr.TxBytes >= prev.TxBytes {
 					txRate = float64(curr.TxBytes-prev.TxBytes) / timeDiff / 1024 / 1024
 				}
-				
+
 				totalRate := rxRate + txRate
-				
+
 				timeSeriesData = append(timeSeriesData, charts.TimeSeriesPoint{
 					Time:  curr.Time,
 					Value: totalRate,
@@ -608,20 +608,20 @@ func (s *Server) handleMonitoringCharts(w http.ResponseWriter, r *http.Request) 
 		case "network":
 			chartData.Title = "Network Usage"
 			chartData.YAxisUnit = "MB/s"
-			
+
 			// Calculate network rates from consecutive data points
 			if len(batch.Metrics) > 1 {
 				for i := 1; i < len(batch.Metrics); i++ {
 					prev := batch.Metrics[i-1]
 					curr := batch.Metrics[i]
-					
+
 					timeDiff := curr.Timestamp.Sub(prev.Timestamp).Seconds()
 					if timeDiff > 0 && timeDiff < 120 { // Only use points within 2 minutes
 						// Calculate combined rate in MB/s
 						rxRate := float64(curr.NetworkRxBytes-prev.NetworkRxBytes) / timeDiff / 1024 / 1024
 						txRate := float64(curr.NetworkTxBytes-prev.NetworkTxBytes) / timeDiff / 1024 / 1024
 						totalRate := rxRate + txRate
-						
+
 						chartData.Points = append(chartData.Points, charts.DataPoint{
 							Time:  curr.Timestamp,
 							Value: totalRate,
@@ -690,7 +690,7 @@ func formatNetworkRate(bytesPerSecond float64) string {
 	if bytesPerSecond < 0 {
 		return "0 KB/s"
 	}
-	
+
 	if bytesPerSecond < 1024 {
 		return fmt.Sprintf("%.0f B/s", bytesPerSecond)
 	} else if bytesPerSecond < 1024*1024 {

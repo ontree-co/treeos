@@ -359,7 +359,7 @@ func (s *Server) Start() error {
 	// API routes
 	mux.HandleFunc("/api/docker/operations/", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeDockerOperations))))
 	mux.HandleFunc("/api/apps/", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeAPIApps))))
-	
+
 	// Dashboard partial routes (for monitoring cards on dashboard)
 	mux.HandleFunc("/partials/cpu", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleMonitoringCPUPartial))))
 	mux.HandleFunc("/partials/memory", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleMonitoringMemoryPartial))))
@@ -457,11 +457,11 @@ func (s *Server) cleanupOldVitals() {
 // startRealtimeMetricsCollection collects CPU and network metrics every second for real-time display
 func (s *Server) startRealtimeMetricsCollection() {
 	log.Printf("Real-time metrics collection started")
-	
+
 	// Run collection every second
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
-	
+
 	for range ticker.C {
 		// Get current system vitals
 		vitals, err := system.GetVitals()
@@ -469,10 +469,10 @@ func (s *Server) startRealtimeMetricsCollection() {
 			log.Printf("Failed to collect real-time metrics: %v", err)
 			continue
 		}
-		
+
 		// Store CPU metric
 		s.realtimeMetrics.AddCPU(vitals.CPUPercent)
-		
+
 		// Store network metrics
 		s.realtimeMetrics.AddNetwork(vitals.NetworkRxBytes, vitals.NetworkTxBytes)
 	}

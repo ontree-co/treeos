@@ -154,7 +154,7 @@ func generateXAxis(left, top, width, height int, startTime, endTime time.Time) s
 	if timeRange <= 0 {
 		timeRange = 24 * time.Hour // Default
 	}
-	
+
 	// Generate evenly spaced time labels across the time range
 	labelCount := 7
 	if timeRange < 1*time.Hour {
@@ -164,7 +164,7 @@ func generateXAxis(left, top, width, height int, startTime, endTime time.Time) s
 	for i := 0; i < labelCount; i++ {
 		// Calculate time for this label position
 		labelTime := startTime.Add(timeRange * time.Duration(i) / time.Duration(labelCount-1))
-		
+
 		// Calculate X position
 		elapsed := labelTime.Sub(startTime)
 		x := left + int(float64(elapsed)/float64(timeRange)*float64(width))
@@ -267,7 +267,7 @@ func generateDataLine(points []DataPoint, left, top, width, height int, minVal, 
 			// Calculate X based on actual timestamp
 			elapsed := point.Time.Sub(requestedStartTime)
 			x := left + int(float64(elapsed)/float64(timeRange)*float64(width))
-			
+
 			if i == 0 {
 				firstX = x
 			}

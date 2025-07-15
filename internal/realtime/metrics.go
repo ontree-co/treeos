@@ -13,7 +13,7 @@ type TimePoint struct {
 
 // NetworkPoint represents network metrics at a point in time
 type NetworkPoint struct {
-	Time   time.Time
+	Time    time.Time
 	RxBytes uint64
 	TxBytes uint64
 }
@@ -31,10 +31,10 @@ func NewMetrics() *Metrics {
 		cpu:     make([]TimePoint, 0, 65), // Slightly larger capacity to avoid frequent reallocations
 		network: make([]NetworkPoint, 0, 65),
 	}
-	
+
 	// Start cleanup goroutine to remove data older than 60 seconds
 	go m.cleanupLoop()
-	
+
 	return m
 }
 
@@ -42,7 +42,7 @@ func NewMetrics() *Metrics {
 func (m *Metrics) AddCPU(value float64) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	m.cpu = append(m.cpu, TimePoint{
 		Time:  time.Now(),
 		Value: value,
@@ -53,7 +53,7 @@ func (m *Metrics) AddCPU(value float64) {
 func (m *Metrics) AddNetwork(rxBytes, txBytes uint64) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	m.network = append(m.network, NetworkPoint{
 		Time:    time.Now(),
 		RxBytes: rxBytes,
@@ -65,17 +65,17 @@ func (m *Metrics) AddNetwork(rxBytes, txBytes uint64) {
 func (m *Metrics) GetCPU(duration time.Duration) []TimePoint {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	cutoff := time.Now().Add(-duration)
 	var result []TimePoint
-	
+
 	// Find first point after cutoff
 	for _, point := range m.cpu {
 		if point.Time.After(cutoff) {
 			result = append(result, point)
 		}
 	}
-	
+
 	return result
 }
 
@@ -83,17 +83,17 @@ func (m *Metrics) GetCPU(duration time.Duration) []TimePoint {
 func (m *Metrics) GetNetwork(duration time.Duration) []NetworkPoint {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	cutoff := time.Now().Add(-duration)
 	var result []NetworkPoint
-	
+
 	// Find first point after cutoff
 	for _, point := range m.network {
 		if point.Time.After(cutoff) {
 			result = append(result, point)
 		}
 	}
-	
+
 	return result
 }
 
@@ -101,11 +101,11 @@ func (m *Metrics) GetNetwork(duration time.Duration) []NetworkPoint {
 func (m *Metrics) GetLatestCPU() (TimePoint, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	if len(m.cpu) == 0 {
 		return TimePoint{}, false
 	}
-	
+
 	return m.cpu[len(m.cpu)-1], true
 }
 
@@ -113,11 +113,11 @@ func (m *Metrics) GetLatestCPU() (TimePoint, bool) {
 func (m *Metrics) GetLatestNetwork() (NetworkPoint, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	if len(m.network) == 0 {
 		return NetworkPoint{}, false
 	}
-	
+
 	return m.network[len(m.network)-1], true
 }
 
@@ -127,12 +127,12 @@ func (m *Metrics) GetAverageCPU(duration time.Duration) float64 {
 	if len(points) == 0 {
 		return 0
 	}
-	
+
 	var sum float64
 	for _, p := range points {
 		sum += p.Value
 	}
-	
+
 	return sum / float64(len(points))
 }
 
@@ -140,7 +140,7 @@ func (m *Metrics) GetAverageCPU(duration time.Duration) float64 {
 func (m *Metrics) cleanupLoop() {
 	ticker := time.NewTicker(10 * time.Second) // Clean up every 10 seconds
 	defer ticker.Stop()
-	
+
 	for range ticker.C {
 		m.cleanup()
 	}
@@ -150,9 +150,9 @@ func (m *Metrics) cleanupLoop() {
 func (m *Metrics) cleanup() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	cutoff := time.Now().Add(-60 * time.Second)
-	
+
 	// Find first CPU point to keep
 	cpuStart := 0
 	for i, point := range m.cpu {
@@ -161,8 +161,8 @@ func (m *Metrics) cleanup() {
 			break
 		}
 	}
-	
-	// Find first network point to keep  
+
+	// Find first network point to keep
 	netStart := 0
 	for i, point := range m.network {
 		if point.Time.After(cutoff) {
@@ -170,7 +170,7 @@ func (m *Metrics) cleanup() {
 			break
 		}
 	}
-	
+
 	// Remove old data
 	if cpuStart > 0 {
 		m.cpu = m.cpu[cpuStart:]

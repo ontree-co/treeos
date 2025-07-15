@@ -16,15 +16,15 @@ type TimeSeriesPoint struct {
 
 // TimeSeriesOptions configures how time series data is rendered
 type TimeSeriesOptions struct {
-	Width          int
-	Height         int
-	StrokeColor    string
-	StrokeWidth    float64
-	GapThreshold   time.Duration // If gap between points exceeds this, break the line
-	ShowNoData     bool          // Show "No data" message when empty
-	MinValue       float64       // For fixed scale (e.g., 0-100 for percentages)
-	MaxValue       float64       // For fixed scale
-	UseFixedScale  bool          // Whether to use MinValue/MaxValue or auto-scale
+	Width         int
+	Height        int
+	StrokeColor   string
+	StrokeWidth   float64
+	GapThreshold  time.Duration // If gap between points exceeds this, break the line
+	ShowNoData    bool          // Show "No data" message when empty
+	MinValue      float64       // For fixed scale (e.g., 0-100 for percentages)
+	MaxValue      float64       // For fixed scale
+	UseFixedScale bool          // Whether to use MinValue/MaxValue or auto-scale
 }
 
 // DefaultSparklineOptions returns default options for sparklines
@@ -220,7 +220,7 @@ func generateNoDataSVG(width, height int, message string) template.HTML {
 			</svg>`,
 			width, height, width, height, height/2, width, height/2))
 	}
-	
+
 	// For larger charts, show the message
 	return template.HTML(fmt.Sprintf(
 		`<svg width="%d" height="%d" viewBox="0 0 %d %d" xmlns="http://www.w3.org/2000/svg">
@@ -238,7 +238,7 @@ func generateSinglePointSVG(point TimeSeriesPoint, startTime, endTime time.Time,
 	}
 
 	x := calculateXPosition(point.Time, startTime, timeRange, opts.Width)
-	
+
 	// Determine Y position
 	minVal, maxVal := opts.MinValue, opts.MaxValue
 	if !opts.UseFixedScale {
@@ -249,7 +249,7 @@ func generateSinglePointSVG(point TimeSeriesPoint, startTime, endTime time.Time,
 			minVal = 0
 		}
 	}
-	
+
 	y := calculateYPosition(point.Value, minVal, maxVal, opts.Height)
 
 	return template.HTML(fmt.Sprintf(
