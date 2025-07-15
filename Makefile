@@ -9,7 +9,7 @@ GO=go
 GOTEST=$(GO) test
 GOBUILD=$(GO) build
 GOCLEAN=$(GO) clean
-GOLINT=golangci-lint
+GOLINT=$(shell go env GOPATH)/bin/golangci-lint
 
 # Platform detection for local builds
 GOOS ?= $(shell go env GOOS)
@@ -92,14 +92,14 @@ test-e2e:
 
 # Run linter
 .PHONY: lint
-lint:
+lint: embed-assets
 	@echo "Running linter..."
-	@if ! command -v golangci-lint > /dev/null 2>&1; then \
-		echo "golangci-lint not found. Please install it first."; \
-		echo "Run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest"; \
+	@if [ ! -f $(GOLINT) ]; then \
+		echo "golangci-lint v1.62.2 not found. Please install it first."; \
+		echo "Run: make install-tools"; \
 		exit 1; \
 	fi
-	golangci-lint run ./...
+	$(GOLINT) run ./...
 	@echo "Linting complete"
 
 # Clean build artifacts
@@ -136,8 +136,8 @@ vet:
 .PHONY: install-tools
 install-tools:
 	@echo "Installing development tools..."
-	@echo "Installing golangci-lint..."
-	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+	@echo "Installing golangci-lint v1.62.2..."
+	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.62.2
 	@echo "Installing goose for migrations..."
 	@go install github.com/pressly/goose/v3/cmd/goose@latest
 	@echo "Development tools installed"

@@ -1,5 +1,53 @@
 Update the CLAUDE.md after every meaningful change with concise information. Make use of CLAUDE.mds in every folder. Make sure that the information is where it needs to be, as far down in the folders as possible. this keeps the main CLAUDE.md lean and structured.
 
+## Development Setup
+
+### Installing Development Tools
+
+After cloning the repository, install development tools:
+
+```bash
+make install-tools
+```
+
+This installs:
+- golangci-lint v1.62.2 (for linting)
+- goose (for database migrations)
+
+### Pre-Commit Checklist
+
+Before committing any changes, always run the following commands:
+
+1. **Run tests**
+   ```bash
+   make test
+   ```
+
+2. **Run tests with race detector**
+   ```bash
+   make test-race
+   ```
+
+3. **Run go vet** (catches suspicious constructs)
+   ```bash
+   make vet
+   ```
+
+4. **Run golangci-lint** (comprehensive linting)
+   ```bash
+   make lint
+   ```
+
+All commands must pass without errors before committing. The CI will run these same checks, so catching issues locally saves time.
+
+**Note**: The lint target automatically runs `make embed-assets` first to ensure static files are copied to the internal/embeds directory.
+
+### CI/Linting Configuration
+
+- **golangci-lint version**: v1.62.2 (same in CI and local development)
+- **Configuration file**: `.golangci.yml`
+- **CI workflow**: `.github/workflows/test.yml`
+
 # Project Overview
 
 OnTree is a Docker container management application with a web interface for managing containerized applications.

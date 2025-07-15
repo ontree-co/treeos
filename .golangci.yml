@@ -1,4 +1,3 @@
-version: "2"
 run:
   build-tags:
     - integration
@@ -13,107 +12,82 @@ linters:
     - staticcheck
     - ineffassign
     - misspell
-  settings:
-    errcheck:
-      check-type-assertions: true
-      check-blank: true
-    gosec:
-      severity: medium
-      confidence: medium
-    revive:
-      severity: warning
-      enable-all-rules: false
-      rules:
-        - name: blank-imports
-        - name: context-as-argument
-        - name: context-keys-type
-        - name: dot-imports
-        - name: empty-block
-        - name: error-naming
-        - name: error-return
-        - name: error-strings
-        - name: errorf
-        - name: exported
-        - name: increment-decrement
-        - name: indent-error-flow
-        - name: package-comments
-        - name: range
-        - name: receiver-naming
-        - name: time-naming
-        - name: unexported-return
-        - name: var-declaration
-        - name: var-naming
-  exclusions:
-    generated: lax
+
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+  gosec:
+    severity: medium
+    confidence: medium
+  revive:
+    severity: warning
+    enable-all-rules: false
     rules:
-      - linters:
-          - errcheck
-          - gosec
-        path: _test\.go
-      - linters:
-          - govet
-        text: 'shadow: declaration of "err" shadows declaration'
-      - linters:
-          - govet
-        path: main\.go
-        text: exitAfterDefer
-      - linters:
-          - gosec
-        path: internal/docker/apps\.go
-        text: G304
-      - linters:
-          - gosec
-        path: internal/server/handlers\.go
-        text: G304
-      - linters:
-          - gosec
-        path: cmd/ontree-server/main\.go
-        text: G302
-      - linters:
-          - gosec
-        path: cmd/ontree-server/main\.go
-        text: G204
-      - linters:
-          - typecheck
-        path: internal/migrations/migrations\.go
-        text: 'pattern .*: no matching files found'
-      - linters:
-          - staticcheck
-        text: 'ST1005: error strings should not be capitalized'
-      - linters:
-          - errcheck
-        text: 'Error return value of `.*\.Close` is not checked'
-      - linters:
-          - errcheck
-        text: 'Error return value of `w\.Write` is not checked'
-      - linters:
-          - errcheck
-        text: 'Error return value of `s\.caddyClient\.DeleteRoute` is not checked'
-    paths:
-      - vendor
-      - third_party
-      - testdata
-      - examples
-      - node_modules
-      - apps/postgres-test/data
-      - third_party$
-      - builtin$
-      - examples$
+      - name: blank-imports
+      - name: context-as-argument
+      - name: context-keys-type
+      - name: dot-imports
+      - name: empty-block
+      - name: error-naming
+      - name: error-return
+      - name: error-strings
+      - name: errorf
+      - name: exported
+      - name: increment-decrement
+      - name: indent-error-flow
+      - name: package-comments
+      - name: range
+      - name: receiver-naming
+      - name: time-naming
+      - name: unexported-return
+      - name: var-declaration
+      - name: var-naming
+
 issues:
+  exclude-rules:
+    - linters:
+        - errcheck
+        - gosec
+      path: _test\.go
+    - linters:
+        - govet
+      text: 'shadow: declaration of "err" shadows declaration'
+    - linters:
+        - govet
+      path: main\.go
+      text: exitAfterDefer
+    - linters:
+        - gosec
+      path: internal/docker/apps\.go
+      text: G304
+    - linters:
+        - gosec
+      path: internal/server/handlers\.go
+      text: G304
+    - linters:
+        - gosec
+      path: cmd/ontree-server/main\.go
+      text: G302
+    - linters:
+        - gosec
+      path: cmd/ontree-server/main\.go
+      text: G204
+    - linters:
+        - typecheck
+      path: internal/migrations/migrations\.go
+      text: 'pattern .*: no matching files found'
+    - linters:
+        - staticcheck
+      text: 'ST1005: error strings should not be capitalized'
+    - linters:
+        - errcheck
+      text: 'Error return value of `.*\.Close` is not checked'
+    - linters:
+        - errcheck
+      text: 'Error return value of `w\.Write` is not checked'
+    - linters:
+        - errcheck
+      text: 'Error return value of `s\.caddyClient\.DeleteRoute` is not checked'
   max-issues-per-linter: 0
   max-same-issues: 0
-formatters:
-  enable:
-    - gofmt
-  exclusions:
-    generated: lax
-    paths:
-      - vendor
-      - third_party
-      - testdata
-      - examples
-      - node_modules
-      - apps/postgres-test/data
-      - third_party$
-      - builtin$
-      - examples$
