@@ -1,6 +1,0 @@
-version: '3'
-services:
-  web:
-    image: nginx:1.20
-    ports:
-      - "8082:80"
