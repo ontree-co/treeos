@@ -11,32 +11,32 @@ type FeatureItem = {
 
 const FeatureList: FeatureItem[] = [
   {
-    title: 'Easy to Use',
+    title: 'One-Click Deployment',
     Svg: require('@site/static/img/undraw_docusaurus_mountain.svg').default,
     description: (
       <>
-        Docusaurus was designed from the ground up to be easily installed and
-        used to get your website up and running quickly.
+        Deploy complex applications with a single click. OnTree handles all the
+        Docker configuration, networking, and storage setup automatically.
       </>
     ),
   },
   {
-    title: 'Focus on What Matters',
+    title: 'Beautiful Interface',
     Svg: require('@site/static/img/undraw_docusaurus_tree.svg').default,
     description: (
       <>
-        Docusaurus lets you focus on your docs, and we&apos;ll do the chores. Go
-        ahead and move your docs into the <code>docs</code> directory.
+        Modern, responsive UI powered by HTMX and Bootstrap. Manage containers,
+        view logs, and monitor resources without touching the command line.
       </>
     ),
   },
   {
-    title: 'Powered by React',
+    title: 'Production Ready',
     Svg: require('@site/static/img/undraw_docusaurus_react.svg').default,
     description: (
       <>
-        Extend or customize your website layout by reusing React. Docusaurus can
-        be extended while reusing the same header and footer.
+        Built-in monitoring, automatic HTTPS with Caddy, and domain management.
+        Everything you need to run applications in production.
       </>
     ),
   },

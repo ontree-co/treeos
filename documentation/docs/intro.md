@@ -2,46 +2,69 @@
 sidebar_position: 1
 ---
 
-# Tutorial Intro
+# Welcome to OnTree
 
-Let's discover **Docusaurus in less than 5 minutes**.
+OnTree is a self-hosted container management platform that makes running Docker applications as simple as clicking a button. Whether you're new to containers or an experienced developer, OnTree provides an intuitive web interface for deploying and managing your applications.
+
+## What is OnTree?
+
+OnTree bridges the gap between the power of Docker containers and the simplicity users expect. It provides:
+
+- **🚀 One-Click Deployments**: Deploy complex applications from pre-configured templates
+- **🎨 Beautiful Interface**: Modern, responsive UI powered by HTMX and Bootstrap
+- **📊 System Monitoring**: Real-time metrics and historical data visualization
+- **🌐 Domain Management**: Automatic HTTPS with Caddy integration
+- **🔒 Self-Contained**: Single binary with embedded assets - no dependencies
+
+## Why OnTree?
+
+### For Home Lab Enthusiasts
+Run your favorite self-hosted applications without wrestling with command lines or YAML files. Deploy Jellyfin, Nextcloud, Home Assistant, and more with just a few clicks.
+
+### For Developers
+Quickly spin up development environments, test applications, and manage multiple projects. The built-in YAML editor and operation logs give you full control when you need it.
+
+### For Teams
+Provide your team with a simple way to deploy internal tools and services. OnTree's domain management makes it easy to expose applications securely.
+
+## Key Features
+
+### Application Templates
+Start with our growing library of pre-configured templates:
+- **Open WebUI**: Run AI models locally with a ChatGPT-like interface
+- **Media Servers**: Jellyfin, Plex, Emby
+- **Productivity**: Nextcloud, Paperless-ngx, Bookstack
+- **Development**: Code-server, Gitea, Jenkins
+- And many more!
+
+### Container Management
+- Create, start, stop, and delete containers
+- View real-time logs and status
+- Edit docker-compose.yml files in-browser
+- Automatic container health monitoring
+
+### System Monitoring
+- CPU, memory, disk, and network usage
+- 24-hour historical trends
+- Interactive charts with multiple time ranges
+- Performance-optimized with caching
+
+### Domain & Access
+- Integrate with Caddy for automatic HTTPS
+- Support for public domains and Tailscale
+- Simple subdomain management
+- One-click expose/unexpose
 
 ## Getting Started
 
-Get started by **creating a new site**.
+Ready to dive in? Check out our [Installation Guide](/docs/getting-started/installation) to get OnTree up and running in minutes.
 
-Or **try Docusaurus immediately** with **[docusaurus.new](https://docusaurus.new)**.
+For a hands-on introduction, follow our [First App Tutorial](/docs/getting-started/first-app) where we'll deploy Open WebUI together.
 
-### What you'll need
+## Community & Support
 
-- [Node.js](https://nodejs.org/en/download/) version 18.0 or above:
-  - When installing Node.js, you are recommended to check all checkboxes related to dependencies.
+- **GitHub**: [github.com/ontree/ontree-node](https://github.com/ontree/ontree-node)
+- **Issues**: Report bugs or request features on GitHub
+- **Discussions**: Join the conversation in GitHub Discussions
 
-## Generate a new site
-
-Generate a new Docusaurus site using the **classic template**.
-
-The classic template will automatically be added to your project after you run the command:
-
-```bash
-npm init docusaurus@latest my-website classic
-```
-
-You can type this command into Command Prompt, Powershell, Terminal, or any other integrated terminal of your code editor.
-
-The command also installs all necessary dependencies you need to run Docusaurus.
-
-## Start your site
-
-Run the development server:
-
-```bash
-cd my-website
-npm run start
-```
-
-The `cd` command changes the directory you're working with. In order to work with your newly created Docusaurus site, you'll need to navigate the terminal there.
-
-The `npm run start` command builds your website locally and serves it through a development server, ready for you to view at http://localhost:3000/.
-
-Open `docs/intro.md` (this page) and edit some lines: the site **reloads automatically** and displays your changes.
+Welcome to the OnTree community! 🌳
