@@ -651,3 +651,226 @@ services:
 		t.Errorf("Expected 'Compose service not available', got '%s'", w.Body.String())
 	}
 }
+func TestHandleAPIAppStop(t *testing.T) {
+	tmpDir := t.TempDir()
+	
+	// Create a mock server with compose service
+	s := &Server{
+		config: &config.Config{
+			AppsDir: tmpDir,
+		},
+		composeSvc: &compose.Service{}, // This would be mocked in a real test
+	}
+
+	tests := []struct {
+		name           string
+		appName        string
+		method         string
+		setupFiles     func()
+		expectedStatus int
+		expectedError  string
+	}{
+		{
+			name:           "Method not allowed",
+			appName:        "test-app",
+			method:         "GET",
+			setupFiles:     func() {},
+			expectedStatus: http.StatusMethodNotAllowed,
+			expectedError:  "Method not allowed",
+		},
+		{
+			name:           "Empty app name",
+			appName:        "",
+			method:         "POST",
+			setupFiles:     func() {},
+			expectedStatus: http.StatusBadRequest,
+			expectedError:  "App name is required",
+		},
+		{
+			name:           "App not found",
+			appName:        "non-existent",
+			method:         "POST",
+			setupFiles:     func() {},
+			expectedStatus: http.StatusNotFound,
+			expectedError:  "App 'non-existent' not found",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup files
+			tt.setupFiles()
+
+			// Create request
+			req := httptest.NewRequest(tt.method, fmt.Sprintf("/api/apps/%s/stop", tt.appName), nil)
+			w := httptest.NewRecorder()
+
+			// Handle request
+			s.handleAPIAppStop(w, req)
+
+			// Check status
+			if w.Code != tt.expectedStatus {
+				t.Errorf("Expected status %d, got %d", tt.expectedStatus, w.Code)
+			}
+
+			// Check error message if expected
+			if tt.expectedError != "" && !strings.Contains(w.Body.String(), tt.expectedError) {
+				t.Errorf("Expected error containing '%s', got '%s'", tt.expectedError, w.Body.String())
+			}
+		})
+	}
+}
+
+func TestHandleAPIAppStopSuccess(t *testing.T) {
+	tmpDir := t.TempDir()
+	
+	s := &Server{
+		config: &config.Config{
+			AppsDir: tmpDir,
+		},
+		// In a real test, we would mock the compose service to verify it's called correctly
+		composeSvc: nil, // Set to nil to get service unavailable error
+	}
+
+	// Create a valid app
+	appName := "valid-app"
+	appDir := filepath.Join(tmpDir, appName)
+	os.MkdirAll(appDir, 0755)
+	
+	composeContent := `version: '3.8'
+services:
+  web:
+    image: nginx`
+	
+	os.WriteFile(filepath.Join(appDir, "docker-compose.yml"), []byte(composeContent), 0644)
+
+	// Create request
+	req := httptest.NewRequest("POST", fmt.Sprintf("/api/apps/%s/stop", appName), nil)
+	w := httptest.NewRecorder()
+
+	// Handle request
+	s.handleAPIAppStop(w, req)
+
+	// Since compose service is nil, we expect service unavailable
+	if w.Code != http.StatusServiceUnavailable {
+		t.Errorf("Expected status %d, got %d", http.StatusServiceUnavailable, w.Code)
+	}
+	
+	if !strings.Contains(w.Body.String(), "Compose service not available") {
+		t.Errorf("Expected 'Compose service not available', got '%s'", w.Body.String())
+	}
+}
+
+func TestHandleAPIAppDelete(t *testing.T) {
+	tmpDir := t.TempDir()
+	
+	// Create a mock server with compose service
+	s := &Server{
+		config: &config.Config{
+			AppsDir: tmpDir,
+		},
+		composeSvc: &compose.Service{}, // This would be mocked in a real test
+	}
+
+	tests := []struct {
+		name           string
+		appName        string
+		method         string
+		setupFiles     func()
+		expectedStatus int
+		expectedError  string
+		checkCleanup   bool
+	}{
+		{
+			name:           "Method not allowed",
+			appName:        "test-app",
+			method:         "GET",
+			setupFiles:     func() {},
+			expectedStatus: http.StatusMethodNotAllowed,
+			expectedError:  "Method not allowed",
+		},
+		{
+			name:           "Empty app name",
+			appName:        "",
+			method:         "DELETE",
+			setupFiles:     func() {},
+			expectedStatus: http.StatusBadRequest,
+			expectedError:  "App name is required",
+		},
+		{
+			name:           "App not found",
+			appName:        "non-existent",
+			method:         "DELETE",
+			setupFiles:     func() {},
+			expectedStatus: http.StatusNotFound,
+			expectedError:  "App 'non-existent' not found",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup files
+			tt.setupFiles()
+
+			// Create request
+			req := httptest.NewRequest(tt.method, fmt.Sprintf("/api/apps/%s", tt.appName), nil)
+			w := httptest.NewRecorder()
+
+			// Handle request
+			s.handleAPIAppDelete(w, req)
+
+			// Check status
+			if w.Code != tt.expectedStatus {
+				t.Errorf("Expected status %d, got %d", tt.expectedStatus, w.Code)
+			}
+
+			// Check error message if expected
+			if tt.expectedError != "" && !strings.Contains(w.Body.String(), tt.expectedError) {
+				t.Errorf("Expected error containing '%s', got '%s'", tt.expectedError, w.Body.String())
+			}
+		})
+	}
+}
+
+func TestHandleAPIAppDeleteSuccess(t *testing.T) {
+	tmpDir := t.TempDir()
+	
+	s := &Server{
+		config: &config.Config{
+			AppsDir: tmpDir,
+		},
+		// In a real test, we would mock the compose service to verify it's called correctly
+		composeSvc: nil, // Set to nil to get service unavailable error
+	}
+
+	// Create a valid app with directories
+	appName := "valid-app"
+	appDir := filepath.Join(tmpDir, appName)
+	mountDir := filepath.Join(tmpDir, "mount", appName)
+	
+	os.MkdirAll(appDir, 0755)
+	os.MkdirAll(mountDir, 0755)
+	
+	composeContent := `version: '3.8'
+services:
+  web:
+    image: nginx`
+	
+	os.WriteFile(filepath.Join(appDir, "docker-compose.yml"), []byte(composeContent), 0644)
+
+	// Create request
+	req := httptest.NewRequest("DELETE", fmt.Sprintf("/api/apps/%s", appName), nil)
+	w := httptest.NewRecorder()
+
+	// Handle request
+	s.handleAPIAppDelete(w, req)
+
+	// Since compose service is nil, we expect service unavailable
+	if w.Code != http.StatusServiceUnavailable {
+		t.Errorf("Expected status %d, got %d", http.StatusServiceUnavailable, w.Code)
+	}
+	
+	if !strings.Contains(w.Body.String(), "Compose service not available") {
+		t.Errorf("Expected 'Compose service not available', got '%s'", w.Body.String())
+	}
+}

@@ -328,3 +328,130 @@ func (s *Server) handleAPIAppStart(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Failed to encode response: %v", err)
 	}
 }
+
+// handleAPIAppStop handles POST /api/apps/{appName}/stop
+func (s *Server) handleAPIAppStop(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Extract app name from URL
+	path := strings.TrimPrefix(r.URL.Path, "/api/apps/")
+	appName := strings.TrimSuffix(path, "/stop")
+
+	if appName == "" {
+		http.Error(w, "App name is required", http.StatusBadRequest)
+		return
+	}
+
+	// Check if compose service is available
+	if s.composeSvc == nil {
+		http.Error(w, "Compose service not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	// Check if app exists
+	appDir := filepath.Join(s.config.AppsDir, appName)
+	if _, err := os.Stat(appDir); os.IsNotExist(err) {
+		http.Error(w, fmt.Sprintf("App '%s' not found", appName), http.StatusNotFound)
+		return
+	}
+
+	// Stop the app using compose SDK (without removing volumes)
+	ctx := context.Background()
+	opts := compose.Options{
+		ProjectName: fmt.Sprintf("ontree-%s", appName),
+		WorkingDir:  appDir,
+	}
+
+	// Stop the compose project without removing volumes
+	if err := s.composeSvc.Down(ctx, opts, false); err != nil {
+		log.Printf("Failed to stop app %s: %v", appName, err)
+		http.Error(w, fmt.Sprintf("Failed to stop app: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Return success response
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	response := map[string]interface{}{
+		"success": true,
+		"message": fmt.Sprintf("App '%s' stopped successfully", appName),
+		"app": map[string]string{
+			"name":        appName,
+			"projectName": fmt.Sprintf("ontree-%s", appName),
+		},
+	}
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("Failed to encode response: %v", err)
+	}
+}
+
+// handleAPIAppDelete handles DELETE /api/apps/{appName}
+func (s *Server) handleAPIAppDelete(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Extract app name from URL
+	path := strings.TrimPrefix(r.URL.Path, "/api/apps/")
+	appName := strings.TrimSuffix(path, "/")
+
+	if appName == "" {
+		http.Error(w, "App name is required", http.StatusBadRequest)
+		return
+	}
+
+	// Check if compose service is available
+	if s.composeSvc == nil {
+		http.Error(w, "Compose service not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	// Check if app exists
+	appDir := filepath.Join(s.config.AppsDir, appName)
+	if _, err := os.Stat(appDir); os.IsNotExist(err) {
+		http.Error(w, fmt.Sprintf("App '%s' not found", appName), http.StatusNotFound)
+		return
+	}
+
+	// Stop the app using compose SDK with volume removal
+	ctx := context.Background()
+	opts := compose.Options{
+		ProjectName: fmt.Sprintf("ontree-%s", appName),
+		WorkingDir:  appDir,
+	}
+
+	// Stop the compose project and remove volumes
+	if err := s.composeSvc.Down(ctx, opts, true); err != nil {
+		log.Printf("Failed to delete app %s: %v", appName, err)
+		http.Error(w, fmt.Sprintf("Failed to delete app: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Remove the app directory
+	if err := os.RemoveAll(appDir); err != nil {
+		log.Printf("Failed to remove app directory for %s: %v", appName, err)
+		// Continue, as Docker resources are already cleaned up
+	}
+
+	// Remove the mount directory
+	mountDir := filepath.Join(s.config.AppsDir, "mount", appName)
+	if err := os.RemoveAll(mountDir); err != nil {
+		log.Printf("Failed to remove mount directory for %s: %v", appName, err)
+		// Continue, as this is not critical
+	}
+
+	// Return success response
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	response := map[string]interface{}{
+		"success": true,
+		"message": fmt.Sprintf("App '%s' deleted successfully", appName),
+	}
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("Failed to encode response: %v", err)
+	}
+}

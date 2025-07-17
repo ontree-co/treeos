@@ -733,9 +733,16 @@ func (s *Server) routeAPIApps(w http.ResponseWriter, r *http.Request) {
 		s.handleAppStatusCheck(w, r)
 	} else if strings.HasSuffix(path, "/start") {
 		s.handleAPIAppStart(w, r)
+	} else if strings.HasSuffix(path, "/stop") {
+		s.handleAPIAppStop(w, r)
 	} else if strings.HasPrefix(path, "/api/apps/") {
-		// Handle app updates - extract app name and route
-		s.handleUpdateApp(w, r)
+		// Check if it's a DELETE request for app deletion
+		if r.Method == http.MethodDelete {
+			s.handleAPIAppDelete(w, r)
+		} else {
+			// Handle app updates - extract app name and route
+			s.handleUpdateApp(w, r)
+		}
 	} else {
 		http.NotFound(w, r)
 	}
