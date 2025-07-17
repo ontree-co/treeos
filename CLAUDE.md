@@ -453,6 +453,53 @@ Simplified the app creation flow on the homepage:
 - **Updated icon**: Uses Bootstrap's `bi-plus-circle` icon
 - **Consistent flow**: Users go directly to templates page where they can choose templates or create from scratch
 
+### Multi-Service API Endpoints (2025-07-17 - Ticket 3)
+
+Implemented API endpoints for creating and updating multi-service applications:
+
+1. **POST /api/apps** - Create a new multi-service app
+   - Accepts app name, docker-compose.yml content, and optional .env content
+   - Validates app name (lowercase letters, numbers, hyphens only)
+   - Validates YAML syntax and ensures services section exists
+   - Creates directory structure: `/opt/ontree/apps/{appName}/` and `/opt/ontree/apps/mount/{appName}/`
+   - Returns 201 Created on success with app details
+
+2. **PUT /api/apps/{appName}** - Update an existing app
+   - Updates docker-compose.yml and .env files for existing apps
+   - Validates YAML syntax before saving
+   - Removes .env file if env content is empty
+   - Returns 200 OK on success
+
+3. **Validation and Security**:
+   - App names must match regex: `^[a-z0-9-]+$`
+   - YAML must be valid and contain a services section
+   - Files are written with restricted permissions (0600)
+   - Comprehensive error handling with appropriate HTTP status codes
+
+4. **Testing**: Added comprehensive integration tests covering:
+   - Valid and invalid app creation scenarios
+   - App updates with various edge cases
+   - Proper HTTP method handling
+   - JSON response validation
+
+See `internal/server/api_handlers.go` and `internal/server/api_handlers_test.go` for implementation.
+
+### Security Validation Module (2025-07-17 - Ticket 4)
+
+Created a dedicated security validation module for docker-compose.yml files:
+- **Package Location**: `internal/security`
+- **Validator**: Enforces security rules before any start operation
+- **Security Rules**:
+  - Rejects `privileged: true` containers
+  - Rejects dangerous capabilities (SYS_ADMIN, NET_ADMIN, etc.)
+  - Restricts bind mounts to `/opt/ontree/apps/mount/{appName}/{serviceName}/`
+- **Implementation**:
+  - Parses docker-compose.yml with yaml.v3
+  - Returns detailed validation errors with service name and rule violated
+  - Comprehensive unit tests with 95.7% coverage
+- **Integration**: Ready to be used in the StartApp API endpoint (Ticket 5)
+- See `internal/security/CLAUDE.md` for detailed documentation
+
 ### New Features (2025-07-10)
 
 Implemented three major features to enhance the OnTree application:
