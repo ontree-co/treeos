@@ -630,3 +630,83 @@ func calculateAggregateStatus(services []ServiceStatusDetail) string {
 	}
 	return "partial"
 }
+
+// handleAPIAppLogs handles GET /api/apps/{appName}/logs
+func (s *Server) handleAPIAppLogs(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Extract app name from URL
+	path := strings.TrimPrefix(r.URL.Path, "/api/apps/")
+	appName := strings.TrimSuffix(path, "/logs")
+
+	if appName == "" {
+		http.Error(w, "App name is required", http.StatusBadRequest)
+		return
+	}
+
+	// Check if compose service is available
+	if s.composeSvc == nil {
+		http.Error(w, "Compose service not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	// Check if app exists
+	appDir := filepath.Join(s.config.AppsDir, appName)
+	if _, err := os.Stat(appDir); os.IsNotExist(err) {
+		http.Error(w, fmt.Sprintf("App '%s' not found", appName), http.StatusNotFound)
+		return
+	}
+
+	// Parse query parameters
+	serviceFilter := r.URL.Query().Get("service")
+	follow := r.URL.Query().Get("follow") == "true"
+
+	// Set up response headers for streaming
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	
+	// Set up services filter
+	var services []string
+	if serviceFilter != "" && serviceFilter != "all" {
+		services = []string{serviceFilter}
+	}
+	
+	// For streaming, disable buffering
+	if follow {
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("Connection", "keep-alive")
+		
+		// Flush headers
+		if f, ok := w.(http.Flusher); ok {
+			f.Flush()
+		}
+	}
+
+	// Create context that cancels when client disconnects
+	ctx := r.Context()
+	
+	// Set up compose options
+	opts := compose.Options{
+		ProjectName: fmt.Sprintf("ontree-%s", appName),
+		WorkingDir:  appDir,
+	}
+
+	// Create log writer that streams to HTTP response
+	logWriter := compose.LogWriter{
+		Out: w,
+		Err: w,
+	}
+
+	// Stream logs
+	err := s.composeSvc.Logs(ctx, opts, services, follow, logWriter)
+	if err != nil {
+		// If we haven't written anything yet, we can send an error
+		if !follow {
+			log.Printf("Failed to get logs for app %s: %v", appName, err)
+			fmt.Fprintf(w, "\nError retrieving logs: %v\n", err)
+		}
+	}
+}

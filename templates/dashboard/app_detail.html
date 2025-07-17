@@ -577,6 +577,44 @@
     </div>
 </div>
 
+<!-- Service Logs -->
+{{if .IsMultiService}}
+<div class="row mt-4 mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i>📋</i> Service Logs
+                </h5>
+                <div class="d-flex align-items-center gap-2">
+                    <select id="service-filter" class="form-select form-select-sm" style="width: auto;">
+                        <option value="all">All Services</option>
+                        {{if .AppStatus.Services}}
+                            {{range .AppStatus.Services}}
+                            <option value="{{.Name}}">{{.Name}}</option>
+                            {{end}}
+                        {{end}}
+                    </select>
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="loadServiceLogs()">
+                        <i>🔄</i> Refresh
+                    </button>
+                    <button type="button" class="btn btn-sm btn-primary" id="follow-logs-btn" onclick="toggleFollowLogs()">
+                        <i>▶️</i> Follow
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="service-logs-content" class="bg-dark text-light p-3 rounded" style="max-height: 500px; overflow-y: auto; font-family: monospace; font-size: 0.875rem;">
+                    <div class="text-muted text-center">
+                        <p>Click "Refresh" to load logs or "Follow" to stream logs in real-time.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{{end}}
+
 <!-- Delete App -->
 <div class="row mt-4">
     <div class="col-12">
@@ -916,6 +954,169 @@ document.addEventListener('DOMContentLoaded', function() {
         showLogsForOperation('{{.ActiveOperationID}}');
     }
     {{end}}
+});
+
+// Service logs functionality
+let followLogsActive = false;
+let logsEventSource = null;
+
+function loadServiceLogs() {
+    const appName = '{{.App.Name}}';
+    const serviceFilter = document.getElementById('service-filter').value;
+    const logsContent = document.getElementById('service-logs-content');
+    
+    // Stop any active following
+    if (followLogsActive) {
+        toggleFollowLogs();
+    }
+    
+    // Show loading
+    logsContent.innerHTML = '<div class="text-center"><span class="spinner-border spinner-border-sm" role="status"></span> Loading logs...</div>';
+    
+    // Build URL with service filter
+    let url = `/api/apps/${appName}/logs`;
+    if (serviceFilter !== 'all') {
+        url += `?service=${encodeURIComponent(serviceFilter)}`;
+    }
+    
+    // Fetch logs
+    fetch(url)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.text();
+        })
+        .then(logs => {
+            if (logs.trim()) {
+                logsContent.innerHTML = `<pre class="mb-0" style="white-space: pre-wrap;">${escapeHtml(logs)}</pre>`;
+            } else {
+                logsContent.innerHTML = '<div class="text-muted text-center">No logs available for the selected service(s).</div>';
+            }
+            // Scroll to bottom
+            logsContent.scrollTop = logsContent.scrollHeight;
+        })
+        .catch(error => {
+            console.error('Error loading logs:', error);
+            logsContent.innerHTML = '<div class="text-danger">Error loading logs. Please try again.</div>';
+        });
+}
+
+function toggleFollowLogs() {
+    const appName = '{{.App.Name}}';
+    const serviceFilter = document.getElementById('service-filter').value;
+    const logsContent = document.getElementById('service-logs-content');
+    const followBtn = document.getElementById('follow-logs-btn');
+    
+    if (followLogsActive) {
+        // Stop following
+        followLogsActive = false;
+        if (logsEventSource) {
+            logsEventSource.close();
+            logsEventSource = null;
+        }
+        followBtn.innerHTML = '<i>▶️</i> Follow';
+        followBtn.classList.remove('btn-danger');
+        followBtn.classList.add('btn-primary');
+    } else {
+        // Start following
+        followLogsActive = true;
+        followBtn.innerHTML = '<i>⏹️</i> Stop';
+        followBtn.classList.remove('btn-primary');
+        followBtn.classList.add('btn-danger');
+        
+        // Clear current content
+        logsContent.innerHTML = '<div class="text-muted">Waiting for logs...</div>';
+        
+        // Build URL with service filter and follow flag
+        let url = `/api/apps/${appName}/logs?follow=true`;
+        if (serviceFilter !== 'all') {
+            url += `&service=${encodeURIComponent(serviceFilter)}`;
+        }
+        
+        // Use fetch with streaming response
+        fetch(url)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+                
+                function processText(text) {
+                    // Clear initial waiting message
+                    if (logsContent.innerHTML.includes('Waiting for logs...')) {
+                        logsContent.innerHTML = '';
+                    }
+                    
+                    // Append new logs
+                    const pre = logsContent.querySelector('pre') || document.createElement('pre');
+                    pre.className = 'mb-0';
+                    pre.style.whiteSpace = 'pre-wrap';
+                    
+                    if (!logsContent.contains(pre)) {
+                        logsContent.appendChild(pre);
+                    }
+                    
+                    pre.textContent += text;
+                    
+                    // Auto-scroll to bottom
+                    logsContent.scrollTop = logsContent.scrollHeight;
+                }
+                
+                function readStream() {
+                    reader.read().then(({ done, value }) => {
+                        if (done || !followLogsActive) {
+                            return;
+                        }
+                        
+                        buffer += decoder.decode(value, { stream: true });
+                        
+                        // Process complete lines
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop() || ''; // Keep incomplete line in buffer
+                        
+                        for (const line of lines) {
+                            if (line) {
+                                processText(line + '\n');
+                            }
+                        }
+                        
+                        // Continue reading
+                        readStream();
+                    }).catch(error => {
+                        console.error('Stream reading error:', error);
+                        if (followLogsActive) {
+                            toggleFollowLogs(); // Stop following on error
+                        }
+                    });
+                }
+                
+                readStream();
+            })
+            .catch(error => {
+                console.error('Error following logs:', error);
+                logsContent.innerHTML = '<div class="text-danger">Error streaming logs. Please try again.</div>';
+                if (followLogsActive) {
+                    toggleFollowLogs(); // Reset button state
+                }
+            });
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Stop following logs when leaving the page
+window.addEventListener('beforeunload', function() {
+    if (followLogsActive) {
+        toggleFollowLogs();
+    }
 });
 </script>
 {{end}}
