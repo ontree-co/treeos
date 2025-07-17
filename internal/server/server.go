@@ -26,6 +26,7 @@ import (
 	"ontree-node/internal/version"
 	"ontree-node/internal/worker"
 	"ontree-node/internal/yamlutil"
+	"ontree-node/pkg/compose"
 )
 
 // Server represents the HTTP server
@@ -44,6 +45,7 @@ type Server struct {
 	platformSupportsCaddy bool
 	sparklineCache        *cache.Cache
 	realtimeMetrics       *realtime.Metrics
+	composeSvc            *compose.Service
 }
 
 // New creates a new server instance
@@ -99,6 +101,15 @@ func New(cfg *config.Config, versionInfo version.Info) (*Server, error) {
 		// Continue without Docker support
 	} else {
 		s.dockerSvc = dockerSvc
+	}
+
+	// Initialize Compose service
+	composeSvc, err := compose.NewService()
+	if err != nil {
+		log.Printf("Warning: Failed to initialize Compose service: %v", err)
+		// Continue without Compose support
+	} else {
+		s.composeSvc = composeSvc
 	}
 
 	// Load domain configuration from database if not set by environment
@@ -715,8 +726,16 @@ func (s *Server) routeAPIApps(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 
 	// Route based on the path pattern
-	if strings.HasSuffix(path, "/status") {
+	if path == "/api/apps" || path == "/api/apps/" {
+		// Handle app creation
+		s.handleCreateApp(w, r)
+	} else if strings.HasSuffix(path, "/status") {
 		s.handleAppStatusCheck(w, r)
+	} else if strings.HasSuffix(path, "/start") {
+		s.handleAPIAppStart(w, r)
+	} else if strings.HasPrefix(path, "/api/apps/") {
+		// Handle app updates - extract app name and route
+		s.handleUpdateApp(w, r)
 	} else {
 		http.NotFound(w, r)
 	}
