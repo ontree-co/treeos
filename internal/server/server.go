@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -507,9 +508,52 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Printf("Error scanning apps: %v", err)
 		} else {
-			// Convert to interface{} slice for template
+			// For each app, fetch its status from the multi-service API
 			for _, app := range dockerApps {
-				apps = append(apps, app)
+				// Create an enriched app struct with multi-service status
+				enrichedApp := struct {
+					*docker.App
+					MultiServiceStatus string
+					ServiceCount       int
+				}{
+					App: app,
+				}
+				
+				// Call the status API endpoint to get multi-service status
+				if s.composeSvc != nil {
+					// Use internal call to get status
+					appDir := filepath.Join(s.config.AppsDir, app.Name)
+					if _, err := os.Stat(appDir); err == nil {
+						ctx := context.Background()
+						opts := compose.Options{
+							ProjectName: fmt.Sprintf("ontree-%s", app.Name),
+							WorkingDir:  appDir,
+						}
+						
+						containers, err := s.composeSvc.PS(ctx, opts)
+						if err == nil && len(containers) > 0 {
+							// Calculate service count and aggregate status
+							services := make([]ServiceStatusDetail, 0)
+							for _, container := range containers {
+								serviceName := extractServiceName(container.Name, app.Name)
+								status := mapContainerState(container.State)
+								services = append(services, ServiceStatusDetail{
+									Name:   serviceName,
+									Status: status,
+								})
+							}
+							
+							enrichedApp.ServiceCount = len(services)
+							enrichedApp.MultiServiceStatus = calculateAggregateStatus(services)
+						} else {
+							// No containers or error - app is stopped
+							enrichedApp.MultiServiceStatus = "stopped"
+							enrichedApp.ServiceCount = 0
+						}
+					}
+				}
+				
+				apps = append(apps, enrichedApp)
 			}
 		}
 	}

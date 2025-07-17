@@ -129,21 +129,35 @@
                                 <tr>
                                     <td>
                                         <strong>{{if .Emoji}}{{.Emoji}} {{end}}{{.Name}}</strong>
-                                        {{if and .Config .Config.Container .Config.Container.Image}}
+                                        {{if gt .ServiceCount 0}}
+                                            <br><small class="text-muted">{{.ServiceCount}} Service{{if ne .ServiceCount 1}}s{{end}}</small>
+                                        {{else if and .Config .Config.Container .Config.Container.Image}}
                                             <br><small class="text-muted">{{.Config.Container.Image}}</small>
                                         {{end}}
                                     </td>
                                     <td>
-                                        {{if eq .Status "running"}}
-                                            <span class="badge bg-success">Running</span>
-                                        {{else if eq .Status "exited"}}
-                                            <span class="badge bg-warning">Stopped</span>
-                                        {{else if eq .Status "not_created"}}
-                                            <span class="badge bg-secondary">Not Created</span>
-                                        {{else if eq .Status "error"}}
-                                            <span class="badge bg-danger">Error</span>
+                                        {{if .MultiServiceStatus}}
+                                            {{if eq .MultiServiceStatus "running"}}
+                                                <span class="badge bg-success">Running</span>
+                                            {{else if eq .MultiServiceStatus "partial"}}
+                                                <span class="badge bg-warning">Partial</span>
+                                            {{else if eq .MultiServiceStatus "stopped"}}
+                                                <span class="badge bg-secondary">Stopped</span>
+                                            {{else}}
+                                                <span class="badge bg-info">{{.MultiServiceStatus}}</span>
+                                            {{end}}
                                         {{else}}
-                                            <span class="badge bg-info">{{.Status}}</span>
+                                            {{if eq .Status "running"}}
+                                                <span class="badge bg-success">Running</span>
+                                            {{else if eq .Status "exited"}}
+                                                <span class="badge bg-warning">Stopped</span>
+                                            {{else if eq .Status "not_created"}}
+                                                <span class="badge bg-secondary">Not Created</span>
+                                            {{else if eq .Status "error"}}
+                                                <span class="badge bg-danger">Error</span>
+                                            {{else}}
+                                                <span class="badge bg-info">{{.Status}}</span>
+                                            {{end}}
                                         {{end}}
                                     </td>
                                     <td>
