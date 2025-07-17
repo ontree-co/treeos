@@ -730,7 +730,14 @@ func (s *Server) routeAPIApps(w http.ResponseWriter, r *http.Request) {
 		// Handle app creation
 		s.handleCreateApp(w, r)
 	} else if strings.HasSuffix(path, "/status") {
-		s.handleAppStatusCheck(w, r)
+		// Route to different handlers based on content type
+		if r.Header.Get("Accept") == "application/json" || r.Method == http.MethodGet {
+			// Use the new API status handler for JSON responses
+			s.handleAPIAppStatus(w, r)
+		} else {
+			// Keep the old handler for HTML responses (subdomain checks)
+			s.handleAppStatusCheck(w, r)
+		}
 	} else if strings.HasSuffix(path, "/start") {
 		s.handleAPIAppStart(w, r)
 	} else if strings.HasSuffix(path, "/stop") {

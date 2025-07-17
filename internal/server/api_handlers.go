@@ -33,6 +33,24 @@ type UpdateAppRequest struct {
 	EnvContent  string `json:"env_content,omitempty"`
 }
 
+// AppStatusResponse represents the response for app status endpoint
+type AppStatusResponse struct {
+	Success  bool                   `json:"success"`
+	App      string                 `json:"app"`
+	Status   string                 `json:"status"`
+	Services []ServiceStatusDetail  `json:"services"`
+	Error    string                 `json:"error,omitempty"`
+}
+
+// ServiceStatusDetail represents status detail for a single service
+type ServiceStatusDetail struct {
+	Name   string `json:"name"`
+	Image  string `json:"image"`
+	Status string `json:"status"`
+	State  string `json:"state,omitempty"`
+	Error  string `json:"error,omitempty"`
+}
+
 // handleCreateApp handles POST /api/apps
 func (s *Server) handleCreateApp(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -454,4 +472,161 @@ func (s *Server) handleAPIAppDelete(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		log.Printf("Failed to encode response: %v", err)
 	}
+}
+
+// handleAPIAppStatus handles GET /api/apps/{appName}/status
+func (s *Server) handleAPIAppStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Extract app name from URL
+	path := strings.TrimPrefix(r.URL.Path, "/api/apps/")
+	appName := strings.TrimSuffix(path, "/status")
+
+	if appName == "" {
+		http.Error(w, "App name is required", http.StatusBadRequest)
+		return
+	}
+
+	// Check if compose service is available
+	if s.composeSvc == nil {
+		http.Error(w, "Compose service not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	// Check if app exists
+	appDir := filepath.Join(s.config.AppsDir, appName)
+	if _, err := os.Stat(appDir); os.IsNotExist(err) {
+		http.Error(w, fmt.Sprintf("App '%s' not found", appName), http.StatusNotFound)
+		return
+	}
+
+	// Get container status using compose SDK
+	ctx := context.Background()
+	opts := compose.Options{
+		ProjectName: fmt.Sprintf("ontree-%s", appName),
+		WorkingDir:  appDir,
+	}
+
+	containers, err := s.composeSvc.PS(ctx, opts)
+	if err != nil {
+		log.Printf("Failed to get status for app %s: %v", appName, err)
+		// Return a response indicating the error
+		response := AppStatusResponse{
+			Success: false,
+			App:     appName,
+			Status:  "error",
+			Error:   fmt.Sprintf("Failed to get container status: %v", err),
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			log.Printf("Failed to encode response: %v", err)
+		}
+		return
+	}
+
+	// Process container information into service status
+	services := make([]ServiceStatusDetail, 0)
+	for _, container := range containers {
+		// Extract service name from container name
+		// Container names follow the pattern: ontree-{appName}-{serviceName}-{index}
+		serviceName := extractServiceName(container.Name, appName)
+		
+		// Map container state to our status
+		status := mapContainerState(container.State)
+		
+		service := ServiceStatusDetail{
+			Name:   serviceName,
+			Image:  container.Image,
+			Status: status,
+			State:  container.State,
+		}
+		
+		// Add health status if available
+		if container.Health != "" && container.Health != "none" {
+			service.State = fmt.Sprintf("%s (health: %s)", container.State, container.Health)
+		}
+		
+		services = append(services, service)
+	}
+
+	// Calculate aggregate status
+	aggregateStatus := calculateAggregateStatus(services)
+
+	// Return status response
+	response := AppStatusResponse{
+		Success:  true,
+		App:      appName,
+		Status:   aggregateStatus,
+		Services: services,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("Failed to encode response: %v", err)
+	}
+}
+
+// extractServiceName extracts the service name from a container name
+func extractServiceName(containerName, appName string) string {
+	// Remove leading slash if present
+	containerName = strings.TrimPrefix(containerName, "/")
+	
+	// Expected format: ontree-{appName}-{serviceName}-{index}
+	prefix := fmt.Sprintf("ontree-%s-", appName)
+	if strings.HasPrefix(containerName, prefix) {
+		remainder := strings.TrimPrefix(containerName, prefix)
+		// Find the last dash to separate service name from index
+		lastDash := strings.LastIndex(remainder, "-")
+		if lastDash > 0 {
+			return remainder[:lastDash]
+		}
+		return remainder
+	}
+	
+	// Fallback: return the container name as-is
+	return containerName
+}
+
+// mapContainerState maps Docker container states to our ServiceStatus
+func mapContainerState(state string) string {
+	switch strings.ToLower(state) {
+	case "running":
+		return "running"
+	case "created", "restarting", "paused":
+		return "stopped"
+	case "exited", "dead", "removing":
+		return "stopped"
+	default:
+		return "unknown"
+	}
+}
+
+// calculateAggregateStatus calculates the overall app status based on service statuses
+func calculateAggregateStatus(services []ServiceStatusDetail) string {
+	if len(services) == 0 {
+		return "stopped"
+	}
+
+	runningCount := 0
+	totalCount := len(services)
+
+	for _, svc := range services {
+		if svc.Status == "running" {
+			runningCount++
+		}
+	}
+
+	// Determine aggregate status
+	if runningCount == totalCount {
+		return "running"
+	}
+	if runningCount == 0 {
+		return "stopped"
+	}
+	return "partial"
 }

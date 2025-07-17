@@ -53,6 +53,23 @@ func TestComposeIntegration(t *testing.T) {
 		time.Sleep(5 * time.Second)
 	})
 
+	// Test PS operation
+	t.Run("PS", func(t *testing.T) {
+		containers, err := service.PS(ctx, opts)
+		if err != nil {
+			t.Fatalf("Failed to list containers: %v", err)
+		}
+		
+		if len(containers) == 0 {
+			t.Fatal("Expected at least one container")
+		}
+		
+		t.Logf("Found %d containers", len(containers))
+		for _, container := range containers {
+			t.Logf("Container: %s, State: %s, Image: %s", container.Name, container.State, container.Image)
+		}
+	})
+
 	// Test Down operation (without removing volumes)
 	t.Run("Down", func(t *testing.T) {
 		err := service.Down(ctx, opts, false)

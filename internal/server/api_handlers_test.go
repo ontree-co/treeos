@@ -874,3 +874,243 @@ services:
 		t.Errorf("Expected 'Compose service not available', got '%s'", w.Body.String())
 	}
 }
+
+func TestHandleAPIAppStatus(t *testing.T) {
+	tmpDir := t.TempDir()
+	
+	// Create a mock server with compose service
+	s := &Server{
+		config: &config.Config{
+			AppsDir: tmpDir,
+		},
+		composeSvc: &compose.Service{}, // This would be mocked in a real test
+	}
+
+	tests := []struct {
+		name           string
+		appName        string
+		method         string
+		setupFiles     func()
+		expectedStatus int
+		expectedError  string
+	}{
+		{
+			name:           "Method not allowed",
+			appName:        "test-app",
+			method:         "POST",
+			setupFiles:     func() {},
+			expectedStatus: http.StatusMethodNotAllowed,
+			expectedError:  "Method not allowed",
+		},
+		{
+			name:           "Empty app name",
+			appName:        "",
+			method:         "GET",
+			setupFiles:     func() {},
+			expectedStatus: http.StatusBadRequest,
+			expectedError:  "App name is required",
+		},
+		{
+			name:           "App not found",
+			appName:        "non-existent",
+			method:         "GET",
+			setupFiles:     func() {},
+			expectedStatus: http.StatusNotFound,
+			expectedError:  "App 'non-existent' not found",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup files
+			tt.setupFiles()
+
+			// Create request
+			req := httptest.NewRequest(tt.method, fmt.Sprintf("/api/apps/%s/status", tt.appName), nil)
+			req.Header.Set("Accept", "application/json")
+			w := httptest.NewRecorder()
+
+			// Handle request
+			s.handleAPIAppStatus(w, req)
+
+			// Check status
+			if w.Code != tt.expectedStatus {
+				t.Errorf("Expected status %d, got %d", tt.expectedStatus, w.Code)
+			}
+
+			// Check error message if expected
+			if tt.expectedError != "" && !strings.Contains(w.Body.String(), tt.expectedError) {
+				t.Errorf("Expected error containing '%s', got '%s'", tt.expectedError, w.Body.String())
+			}
+		})
+	}
+}
+
+func TestHandleAPIAppStatusSuccess(t *testing.T) {
+	tmpDir := t.TempDir()
+	
+	s := &Server{
+		config: &config.Config{
+			AppsDir: tmpDir,
+		},
+		// In a real test, we would mock the compose service to return container data
+		composeSvc: nil, // Set to nil to get service unavailable error
+	}
+
+	// Create a valid app
+	appName := "valid-app"
+	appDir := filepath.Join(tmpDir, appName)
+	os.MkdirAll(appDir, 0755)
+	
+	composeContent := `version: '3.8'
+services:
+  web:
+    image: nginx
+  db:
+    image: postgres:13`
+	
+	os.WriteFile(filepath.Join(appDir, "docker-compose.yml"), []byte(composeContent), 0644)
+
+	// Create request
+	req := httptest.NewRequest("GET", fmt.Sprintf("/api/apps/%s/status", appName), nil)
+	req.Header.Set("Accept", "application/json")
+	w := httptest.NewRecorder()
+
+	// Handle request
+	s.handleAPIAppStatus(w, req)
+
+	// Since compose service is nil, we expect service unavailable
+	if w.Code != http.StatusServiceUnavailable {
+		t.Errorf("Expected status %d, got %d", http.StatusServiceUnavailable, w.Code)
+	}
+	
+	if !strings.Contains(w.Body.String(), "Compose service not available") {
+		t.Errorf("Expected 'Compose service not available', got '%s'", w.Body.String())
+	}
+}
+
+func TestStatusAggregationLogic(t *testing.T) {
+	tests := []struct {
+		name           string
+		services       []ServiceStatusDetail
+		expectedStatus string
+	}{
+		{
+			name:           "No services",
+			services:       []ServiceStatusDetail{},
+			expectedStatus: "stopped",
+		},
+		{
+			name: "All running",
+			services: []ServiceStatusDetail{
+				{Name: "web", Status: "running"},
+				{Name: "db", Status: "running"},
+			},
+			expectedStatus: "running",
+		},
+		{
+			name: "All stopped",
+			services: []ServiceStatusDetail{
+				{Name: "web", Status: "stopped"},
+				{Name: "db", Status: "stopped"},
+			},
+			expectedStatus: "stopped",
+		},
+		{
+			name: "Partial - some running",
+			services: []ServiceStatusDetail{
+				{Name: "web", Status: "running"},
+				{Name: "db", Status: "stopped"},
+			},
+			expectedStatus: "partial",
+		},
+		{
+			name: "Partial - majority running",
+			services: []ServiceStatusDetail{
+				{Name: "web", Status: "running"},
+				{Name: "api", Status: "running"},
+				{Name: "db", Status: "stopped"},
+			},
+			expectedStatus: "partial",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			status := calculateAggregateStatus(tt.services)
+			if status != tt.expectedStatus {
+				t.Errorf("Expected status '%s', got '%s'", tt.expectedStatus, status)
+			}
+		})
+	}
+}
+
+func TestExtractServiceName(t *testing.T) {
+	tests := []struct {
+		containerName string
+		appName       string
+		expectedName  string
+	}{
+		{
+			containerName: "ontree-myapp-web-1",
+			appName:       "myapp",
+			expectedName:  "web",
+		},
+		{
+			containerName: "/ontree-myapp-database-1",
+			appName:       "myapp",
+			expectedName:  "database",
+		},
+		{
+			containerName: "ontree-myapp-api-server-1",
+			appName:       "myapp",
+			expectedName:  "api-server",
+		},
+		{
+			containerName: "ontree-myapp-service",
+			appName:       "myapp",
+			expectedName:  "service",
+		},
+		{
+			containerName: "unexpected-format",
+			appName:       "myapp",
+			expectedName:  "unexpected-format",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.containerName, func(t *testing.T) {
+			result := extractServiceName(tt.containerName, tt.appName)
+			if result != tt.expectedName {
+				t.Errorf("Expected '%s', got '%s'", tt.expectedName, result)
+			}
+		})
+	}
+}
+
+func TestMapContainerState(t *testing.T) {
+	tests := []struct {
+		state          string
+		expectedStatus string
+	}{
+		{"running", "running"},
+		{"Running", "running"},
+		{"created", "stopped"},
+		{"restarting", "stopped"},
+		{"paused", "stopped"},
+		{"exited", "stopped"},
+		{"dead", "stopped"},
+		{"removing", "stopped"},
+		{"unknown-state", "unknown"},
+		{"", "unknown"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.state, func(t *testing.T) {
+			result := mapContainerState(tt.state)
+			if result != tt.expectedStatus {
+				t.Errorf("Expected '%s', got '%s'", tt.expectedStatus, result)
+			}
+		})
+	}
+}

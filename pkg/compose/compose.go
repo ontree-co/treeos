@@ -85,6 +85,21 @@ func (s *Service) Down(ctx context.Context, opts Options, removeVolumes bool) er
 	return s.service.Down(ctx, project.Name, downOptions)
 }
 
+// PS lists containers for a compose project (equivalent to docker-compose ps)
+func (s *Service) PS(ctx context.Context, opts Options) ([]api.ContainerSummary, error) {
+	project, err := s.loadProject(ctx, opts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load project: %w", err)
+	}
+
+	// List containers for the project
+	psOptions := api.PsOptions{
+		All: true, // Include stopped containers
+	}
+
+	return s.service.Ps(ctx, project.Name, psOptions)
+}
+
 // loadProject loads a compose project from the specified directory
 func (s *Service) loadProject(ctx context.Context, opts Options) (*types.Project, error) {
 	// Determine compose file path

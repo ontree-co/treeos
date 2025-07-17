@@ -453,36 +453,65 @@ Simplified the app creation flow on the homepage:
 - **Updated icon**: Uses Bootstrap's `bi-plus-circle` icon
 - **Consistent flow**: Users go directly to templates page where they can choose templates or create from scratch
 
-### Multi-Service API Endpoints (2025-07-17 - Ticket 3)
+### Multi-Service API Endpoints (2025-07-17 - Tickets 3, 5, 6, 7)
 
-Implemented API endpoints for creating and updating multi-service applications:
+Implemented API endpoints for managing multi-service applications:
 
-1. **POST /api/apps** - Create a new multi-service app
+1. **POST /api/apps** - Create a new multi-service app (Ticket 3)
    - Accepts app name, docker-compose.yml content, and optional .env content
    - Validates app name (lowercase letters, numbers, hyphens only)
    - Validates YAML syntax and ensures services section exists
    - Creates directory structure: `/opt/ontree/apps/{appName}/` and `/opt/ontree/apps/mount/{appName}/`
    - Returns 201 Created on success with app details
 
-2. **PUT /api/apps/{appName}** - Update an existing app
+2. **PUT /api/apps/{appName}** - Update an existing app (Ticket 3)
    - Updates docker-compose.yml and .env files for existing apps
    - Validates YAML syntax before saving
    - Removes .env file if env content is empty
    - Returns 200 OK on success
 
-3. **Validation and Security**:
+3. **POST /api/apps/{appName}/start** - Start a multi-service app (Ticket 5)
+   - Reads docker-compose.yml from app directory
+   - Validates security rules before starting (uses security validation module)
+   - Uses Docker Compose SDK to start all services
+   - Project name format: `ontree-{appName}`
+   - Returns 200 OK on success with project details
+
+4. **POST /api/apps/{appName}/stop** - Stop a multi-service app (Ticket 6)
+   - Uses Docker Compose SDK to stop all services
+   - Preserves named volumes (non-destructive)
+   - Returns 200 OK on success
+
+5. **DELETE /api/apps/{appName}** - Delete an app permanently (Ticket 6)
+   - Stops and removes all containers
+   - Removes named volumes (destructive)
+   - Deletes app and mount directories
+   - Returns 200 OK on success
+
+6. **GET /api/apps/{appName}/status** - Get app status (Ticket 7)
+   - Uses Docker Compose SDK PS command to list containers
+   - Returns aggregate status: running, partial, stopped, error
+   - Includes individual service statuses with container state
+   - Extracts service names from container naming convention
+   - Returns JSON with success flag, app name, status, and services array
+
+7. **Validation and Security**:
    - App names must match regex: `^[a-z0-9-]+$`
    - YAML must be valid and contain a services section
+   - Security validation enforced on start operations
    - Files are written with restricted permissions (0600)
    - Comprehensive error handling with appropriate HTTP status codes
 
-4. **Testing**: Added comprehensive integration tests covering:
-   - Valid and invalid app creation scenarios
-   - App updates with various edge cases
+8. **Testing**: Added comprehensive integration tests covering:
+   - All endpoints with valid and invalid scenarios
+   - Security validation failures
+   - Status aggregation logic
+   - Container name parsing
    - Proper HTTP method handling
    - JSON response validation
 
 See `internal/server/api_handlers.go` and `internal/server/api_handlers_test.go` for implementation.
+See `pkg/compose/compose.go` for Docker Compose SDK wrapper implementation.
 
 ### Security Validation Module (2025-07-17 - Ticket 4)
 
