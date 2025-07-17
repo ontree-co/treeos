@@ -513,6 +513,28 @@ Implemented API endpoints for managing multi-service applications:
 See `internal/server/api_handlers.go` and `internal/server/api_handlers_test.go` for implementation.
 See `pkg/compose/compose.go` for Docker Compose SDK wrapper implementation.
 
+### Single-to-Multi Service Migration Tool (2025-07-17 - Ticket 12)
+
+Created migration tool to convert legacy single-container apps to the new multi-service format:
+- **Command**: `./ontree-server migrate-single-to-multi [app1 app2 ...]`
+- **Features**:
+  - Identifies containers with naming pattern `ontree-{appName}` (single-service format)
+  - Generates docker-compose.yml based on existing container configuration
+  - Creates proper directory structure: `/opt/ontree/apps/{appName}/` and mount directories
+  - Renames containers to new format: `ontree-{appName}-{serviceName}-1` (using "app" as default service name)
+  - Preserves all container settings: environment variables, volumes, ports, restart policies
+  - Safely handles running containers (stops before rename, restarts after)
+  - Extracts sensitive environment variables to .env file
+  - Updates volume paths to use new mount directory structure
+- **Usage**:
+  - Migrate all legacy apps: `./ontree-server migrate-single-to-multi`
+  - Migrate specific apps: `./ontree-server migrate-single-to-multi myapp webapp`
+- **Safety**:
+  - Skips apps that already have docker-compose.yml files
+  - Logs detailed progress and errors
+  - Non-destructive: preserves container data and volumes
+- **Implementation**: See `internal/migration/migrate_single_to_multi.go`
+
 ### Security Validation Module (2025-07-17 - Ticket 4)
 
 Created a dedicated security validation module for docker-compose.yml files:
