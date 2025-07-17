@@ -1,0 +1,261 @@
+{{ define "content" }}
+<div class="row">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/">Dashboard</a></li>
+                <li class="breadcrumb-item active">Create Multi-Service App</li>
+            </ol>
+        </nav>
+        
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>🚀 Create Multi-Service Application</h1>
+            <div>
+                <a href="/" class="btn btn-outline-secondary">
+                    ← Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Introduction Section -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="alert alert-info">
+            <h5>💡 Multi-Service Applications</h5>
+            <p class="mb-2">
+                Multi-service applications allow you to run complex applications with multiple interconnected services 
+                (e.g., web frontend, API backend, database, cache) as a single cohesive unit.
+            </p>
+            <p class="mb-2">
+                Each service runs in its own container but can communicate with other services in the same application
+                using service names as hostnames.
+            </p>
+            <p class="mb-0">
+                <strong>Volume Mounting:</strong> All bind mounts must use the pattern 
+                <code>/opt/ontree/apps/mount/{appName}/{serviceName}/</code> for security reasons.
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- Example Section -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">📋 Example: WordPress with MySQL</h5>
+            </div>
+            <div class="card-body">
+                <pre class="bg-light p-3 rounded mb-3"><code>version: '3.8'
+
+services:
+  wordpress:
+    image: wordpress:latest
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+      WORDPRESS_DB_NAME: wordpress
+    volumes:
+      - /opt/ontree/apps/mount/my-blog/wordpress:/var/www/html
+
+  db:
+    image: mysql:5.7
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wordpress
+      MYSQL_PASSWORD: wordpress
+      MYSQL_ROOT_PASSWORD: somewordpress
+    volumes:
+      - /opt/ontree/apps/mount/my-blog/db:/var/lib/mysql</code></pre>
+                
+                <div class="alert alert-warning">
+                    <strong>Important:</strong> Services can communicate using their service names. In this example,
+                    WordPress connects to MySQL using <code>db:3306</code> as the hostname.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Creation Form -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">🚀 Create Your Multi-Service Application</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" action="/apps/multiservice/create">
+                    {{ if .Errors }}
+                        <div class="alert alert-danger">
+                            <ul class="mb-0">
+                                {{ range .Errors }}
+                                <li>{{ . }}</li>
+                                {{ end }}
+                            </ul>
+                        </div>
+                    {{ end }}
+                    
+                    <!-- App Name Field -->
+                    <div class="mb-4">
+                        <label for="app_name" class="form-label">
+                            <strong>App Name</strong>
+                        </label>
+                        <input type="text" class="form-control" id="app_name" name="app_name" 
+                               value="{{ .FormData.app_name }}" placeholder="my-wordpress-blog" required
+                               pattern="^[a-z0-9-]+$" maxlength="50">
+                        <div class="form-text">
+                            A unique name for the application. Use only lowercase letters, numbers, and hyphens.
+                        </div>
+                    </div>
+                    
+                    <!-- Emoji Picker -->
+                    <div class="mb-4">
+                        {{ template "emoji-picker.html" . }}
+                    </div>
+                    
+                    <!-- Docker Compose Content Field -->
+                    <div class="mb-4">
+                        <label for="compose_content" class="form-label">
+                            <strong>docker-compose.yml Content</strong>
+                        </label>
+                        <textarea class="form-control font-monospace" id="compose_content" name="compose_content" 
+                                  rows="20" required placeholder="version: '3.8'
+services:
+  web:
+    image: nginx:alpine
+    ports:
+      - &quot;8080:80&quot;
+    
+  api:
+    image: node:18-alpine
+    command: node server.js
+    environment:
+      - NODE_ENV=production">{{ .FormData.compose_content }}</textarea>
+                        <div class="form-text">
+                            Paste the full docker-compose.yml configuration for your multi-service application.
+                        </div>
+                    </div>
+                    
+                    <!-- Environment Variables Field -->
+                    <div class="mb-4">
+                        <label for="env_content" class="form-label">
+                            <strong>.env Content (Optional)</strong>
+                        </label>
+                        <textarea class="form-control font-monospace" id="env_content" name="env_content" 
+                                  rows="10" placeholder="# Environment variables
+DB_PASSWORD=secret123
+API_KEY=your-api-key-here
+DEBUG=false">{{ .FormData.env_content }}</textarea>
+                        <div class="form-text">
+                            Optional: Add environment variables that will be available to all services.
+                        </div>
+                    </div>
+                    
+                    <!-- Form Actions -->
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            🚀 Create Multi-Service App
+                        </button>
+                        <a href="/" class="btn btn-outline-secondary btn-lg">
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Additional Examples -->
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">🌐 Web App with Redis Cache</h6>
+            </div>
+            <div class="card-body">
+                <pre class="bg-light p-2 rounded small"><code>version: '3.8'
+services:
+  web:
+    image: my-web-app:latest
+    ports:
+      - "3000:3000"
+    environment:
+      REDIS_HOST: cache
+      REDIS_PORT: 6379
+    depends_on:
+      - cache
+
+  cache:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - /opt/ontree/apps/mount/my-app/redis:/data</code></pre>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">🐍 Django App with PostgreSQL</h6>
+            </div>
+            <div class="card-body">
+                <pre class="bg-light p-2 rounded small"><code>version: '3.8'
+services:
+  django:
+    image: django-app:latest
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://user:pass@postgres:5432/app
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: app
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+    volumes:
+      - /opt/ontree/apps/mount/django-app/postgres:/var/lib/postgresql/data</code></pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Custom styles for the form */
+.form-control:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.font-monospace {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.9em;
+}
+
+.invalid-feedback {
+    font-size: 0.9em;
+}
+
+pre code {
+    font-size: 0.85em;
+    line-height: 1.4;
+}
+
+.alert h5 {
+    margin-bottom: 0.75rem;
+}
+</style>
+{{ end }}

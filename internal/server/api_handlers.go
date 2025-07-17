@@ -631,6 +631,64 @@ func calculateAggregateStatus(services []ServiceStatusDetail) string {
 	return "partial"
 }
 
+// handleGetApp handles GET /api/apps/{appName}
+func (s *Server) handleGetApp(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Extract app name from URL
+	path := strings.TrimPrefix(r.URL.Path, "/api/apps/")
+	appName := strings.TrimSuffix(path, "/")
+
+	if appName == "" {
+		http.Error(w, "App name is required", http.StatusBadRequest)
+		return
+	}
+
+	// Check if app exists
+	appDir := filepath.Join(s.config.AppsDir, appName)
+	if _, err := os.Stat(appDir); os.IsNotExist(err) {
+		http.Error(w, fmt.Sprintf("App '%s' not found", appName), http.StatusNotFound)
+		return
+	}
+
+	// Read docker-compose.yml
+	composeFile := filepath.Join(appDir, "docker-compose.yml")
+	composeContent, err := os.ReadFile(composeFile)
+	if err != nil {
+		log.Printf("Failed to read docker-compose.yml for app %s: %v", appName, err)
+		http.Error(w, "Failed to read app configuration", http.StatusInternalServerError)
+		return
+	}
+
+	// Read .env file if it exists
+	var envContent []byte
+	envFile := filepath.Join(appDir, ".env")
+	if _, err := os.Stat(envFile); err == nil {
+		envContent, err = os.ReadFile(envFile)
+		if err != nil {
+			log.Printf("Failed to read .env file for app %s: %v", appName, err)
+			// Non-critical error, continue without env content
+		}
+	}
+
+	// Return app configuration
+	w.Header().Set("Content-Type", "application/json")
+	response := map[string]interface{}{
+		"success": true,
+		"app": map[string]interface{}{
+			"name":         appName,
+			"compose_yaml": string(composeContent),
+			"env_content":  string(envContent),
+		},
+	}
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("Failed to encode response: %v", err)
+	}
+}
+
 // handleAPIAppLogs handles GET /api/apps/{appName}/logs
 func (s *Server) handleAPIAppLogs(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {

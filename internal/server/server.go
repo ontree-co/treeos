@@ -242,6 +242,22 @@ func (s *Server) loadTemplates() error {
 	}
 	s.templates["app_compose_edit"] = tmpl
 
+	// Load multi-service app create template with emoji picker component
+	multiserviceCreateTemplate := filepath.Join("templates", "dashboard", "multiservice_create.html")
+	tmpl, err = embeds.ParseTemplate(baseTemplate, multiserviceCreateTemplate, emojiPickerTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse multiservice create template: %w", err)
+	}
+	s.templates["multiservice_create"] = tmpl
+
+	// Load multi-service app edit template with emoji picker component
+	multiserviceEditTemplate := filepath.Join("templates", "dashboard", "multiservice_edit.html")
+	tmpl, err = embeds.ParseTemplate(baseTemplate, multiserviceEditTemplate, emojiPickerTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse multiservice edit template: %w", err)
+	}
+	s.templates["multiservice_edit"] = tmpl
+
 	// Load monitoring template
 	monitoringTemplate := filepath.Join("templates", "dashboard", "monitoring.html")
 	tmpl, err = embeds.ParseTemplate(baseTemplate, monitoringTemplate)
@@ -733,6 +749,10 @@ func (s *Server) routeApps(w http.ResponseWriter, r *http.Request) {
 	// Route based on the path pattern
 	if path == "/apps/create" {
 		s.handleAppCreate(w, r)
+	} else if path == "/apps/multiservice/create" {
+		s.handleMultiServiceAppCreate(w, r)
+	} else if strings.HasSuffix(path, "/edit-multiservice") {
+		s.handleMultiServiceAppEdit(w, r)
 	} else if strings.HasSuffix(path, "/start") {
 		s.handleAppStart(w, r)
 	} else if strings.HasSuffix(path, "/stop") {
@@ -792,6 +812,9 @@ func (s *Server) routeAPIApps(w http.ResponseWriter, r *http.Request) {
 		// Check if it's a DELETE request for app deletion
 		if r.Method == http.MethodDelete {
 			s.handleAPIAppDelete(w, r)
+		} else if r.Method == http.MethodGet {
+			// Handle GET request to fetch app configuration
+			s.handleGetApp(w, r)
 		} else {
 			// Handle app updates - extract app name and route
 			s.handleUpdateApp(w, r)
