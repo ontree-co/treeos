@@ -160,13 +160,17 @@
     <div class="col-12">
         <div class="card">
             <div class="card-body">
-                <h5 class="card-title mb-3">Container Status</h5>
+                <h5 class="card-title mb-3">{{if .IsMultiService}}Application Status{{else}}Container Status{{end}}</h5>
                 <div class="d-flex align-items-center">
                     <span class="me-3">Status:</span>
                     {{if eq .App.Status "running"}}
                         <span class="badge bg-success">Running</span>
+                    {{else if eq .App.Status "partial"}}
+                        <span class="badge bg-warning">Partial</span>
                     {{else if eq .App.Status "exited"}}
                         <span class="badge bg-warning">Stopped</span>
+                    {{else if eq .App.Status "stopped"}}
+                        <span class="badge bg-secondary">Stopped</span>
                     {{else if eq .App.Status "not_created"}}
                         <span class="badge bg-secondary">Not Created</span>
                     {{else if eq .App.Status "error"}}
@@ -174,7 +178,11 @@
                     {{else}}
                         <span class="badge bg-info">{{.App.Status}}</span>
                     {{end}}
-                    {{if .ContainerInfo.name}}
+                    {{if .IsMultiService}}
+                        {{if .AppStatus}}
+                            <span class="ms-3 text-muted">{{len .AppStatus.Services}} Service{{if ne (len .AppStatus.Services) 1}}s{{end}}</span>
+                        {{end}}
+                    {{else if .ContainerInfo.name}}
                         <span class="ms-3 text-muted">Container: <code>{{.ContainerInfo.name}}</code></span>
                     {{end}}
                 </div>
@@ -183,9 +191,87 @@
     </div>
 </div>
 
+<!-- Services Table for Multi-Service Apps -->
+{{if and .IsMultiService .AppStatus}}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Services</h5>
+            </div>
+            <div class="card-body">
+                {{if .AppStatus.Services}}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Service Name</th>
+                                <th>Image</th>
+                                <th>Status</th>
+                                <th>State</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{range .AppStatus.Services}}
+                            <tr>
+                                <td><strong>{{.Name}}</strong></td>
+                                <td><code>{{.Image}}</code></td>
+                                <td>
+                                    {{if eq .Status "running"}}
+                                        <span class="badge bg-success">Running</span>
+                                    {{else if eq .Status "stopped"}}
+                                        <span class="badge bg-secondary">Stopped</span>
+                                    {{else}}
+                                        <span class="badge bg-warning">{{.Status}}</span>
+                                    {{end}}
+                                </td>
+                                <td><small class="text-muted">{{.State}}</small></td>
+                            </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                </div>
+                {{else}}
+                <p class="text-muted mb-0">No services found.</p>
+                {{end}}
+            </div>
+        </div>
+    </div>
+</div>
+{{end}}
+
 <!-- Container Controls -->
 <div class="row mb-3">
     <div class="col-12">
+        {{if .IsMultiService}}
+        <!-- Multi-Service Controls -->
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Master Controls</h5>
+                <div class="btn-group" role="group">
+                    {{if or (eq .App.Status "running") (eq .App.Status "partial")}}
+                        <form method="post" action="/api/apps/{{.App.Name}}/stop" class="d-inline"
+                              onsubmit="event.preventDefault(); handleMultiServiceAction(this, 'stop');">
+                            <button type="submit" class="btn btn-warning btn-lg confirm-action" 
+                                    data-action="Stop All"
+                                    data-confirm-text="Stop all services?">
+                                <i>⏹️</i> Stop All
+                            </button>
+                        </form>
+                    {{else}}
+                        <form method="post" action="/api/apps/{{.App.Name}}/start" class="d-inline"
+                              onsubmit="event.preventDefault(); handleMultiServiceAction(this, 'start');">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i>▶️</i> Start All
+                            </button>
+                        </form>
+                    {{end}}
+                </div>
+                <div id="multi-service-status" class="mt-3"></div>
+            </div>
+        </div>
+        {{else}}
+        <!-- Single Container Controls -->
         <div id="operation-status" class="mb-2">
             {{if .ActiveOperationID}}
                 <div hx-get="/api/docker/operations/{{.ActiveOperationID}}" 
@@ -239,6 +325,7 @@
             {{end}}
             
         </div>
+        {{end}}
     </div>
 </div>
 
@@ -515,11 +602,20 @@
                             <li>The entire app directory at <code>{{.App.Path}}</code></li>
                         </ul>
                         <p class="small text-danger"><strong>This action is irreversible!</strong></p>
+                        {{if .IsMultiService}}
+                        <form method="post" action="/api/apps/{{.App.Name}}" class="d-inline"
+                              onsubmit="event.preventDefault(); handleMultiServiceDelete(this);">
+                            <button type="button" class="btn btn-danger confirm-action" data-confirm-text="Are you sure? Click to confirm">
+                                <i class="fas fa-trash-alt me-1"></i> Delete App Permanently
+                            </button>
+                        </form>
+                        {{else}}
                         <form method="post" action="/apps/{{.App.Name}}/delete-complete" class="d-inline">
                             <button type="button" class="btn btn-danger confirm-action" data-confirm-text="Are you sure? Click to confirm">
                                 <i class="fas fa-trash-alt me-1"></i> Delete App Permanently
                             </button>
                         </form>
+                        {{end}}
                     </div>
                     
                     <div class="col-md-6 mb-3">
@@ -551,6 +647,91 @@
 </div>
 
 <script>
+// Handle multi-service API calls
+function handleMultiServiceAction(form, action) {
+    const appName = '{{.App.Name}}';
+    const statusDiv = document.getElementById('multi-service-status');
+    const button = form.querySelector('button[type="submit"]');
+    const originalButtonHTML = button.innerHTML;
+    
+    // Disable button and show spinner
+    button.disabled = true;
+    button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Processing...';
+    
+    // Make API call
+    fetch(form.action, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show success message
+            statusDiv.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
+            // Reload page after a short delay to update status
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        } else {
+            // Show error message
+            statusDiv.innerHTML = `<div class="alert alert-danger">Error: ${data.error || 'Operation failed'}</div>`;
+            // Re-enable button
+            button.disabled = false;
+            button.innerHTML = originalButtonHTML;
+        }
+    })
+    .catch(error => {
+        statusDiv.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+        // Re-enable button
+        button.disabled = false;
+        button.innerHTML = originalButtonHTML;
+    });
+}
+
+// Handle multi-service delete
+function handleMultiServiceDelete(form) {
+    const appName = '{{.App.Name}}';
+    const button = form.querySelector('button[type="submit"]');
+    
+    // Check if button is in confirming state (second click)
+    if (button.classList.contains('confirming')) {
+        const originalButtonHTML = button.innerHTML;
+        
+        // Disable button and show spinner
+        button.disabled = true;
+        button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Deleting...';
+        
+        // Make DELETE API call
+        fetch(form.action, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Redirect to dashboard
+                window.location.href = '/';
+            } else {
+                // Show error and restore button
+                alert('Error: ' + (data.error || 'Failed to delete app'));
+                button.disabled = false;
+                button.innerHTML = originalButtonHTML;
+                button.classList.remove('confirming');
+            }
+        })
+        .catch(error => {
+            alert('Error: ' + error.message);
+            button.disabled = false;
+            button.innerHTML = originalButtonHTML;
+            button.classList.remove('confirming');
+        });
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Two-step confirmation system
     const confirmButtons = document.querySelectorAll('.confirm-action');

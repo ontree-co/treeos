@@ -2,6 +2,7 @@ package server
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"log"
@@ -335,6 +336,41 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 	if app.Status != "not_created" && app.Status != "error" {
 		containerInfo = s.getContainerInfo(appName)
 	}
+	
+	// Fetch multi-service status if compose service is available
+	var appStatus *AppStatusResponse
+	var isMultiService bool
+	if s.composeSvc != nil {
+		// Make internal API call to get status
+		client := &http.Client{Timeout: 5 * time.Second}
+		// Extract port from ListenAddr (format is usually ":3001" or "0.0.0.0:3001")
+		listenAddr := s.config.ListenAddr
+		if listenAddr == "" {
+			listenAddr = ":3001"
+		}
+		// Extract just the port number
+		port := "3001"
+		if idx := strings.LastIndex(listenAddr, ":"); idx != -1 {
+			port = listenAddr[idx+1:]
+		}
+		statusURL := fmt.Sprintf("http://localhost:%s/api/apps/%s/status", port, appName)
+		resp, err := client.Get(statusURL)
+		if err == nil && resp.StatusCode == http.StatusOK {
+			defer resp.Body.Close()
+			var status AppStatusResponse
+			if err := json.NewDecoder(resp.Body).Decode(&status); err == nil {
+				appStatus = &status
+				// If we have services, this is a multi-service app
+				isMultiService = len(status.Services) > 0
+				// Override app status with multi-service status
+				if isMultiService {
+					app.Status = status.Status
+				}
+			}
+		} else if resp != nil {
+			resp.Body.Close()
+		}
+	}
 
 	// Clear any flash messages from session without displaying them
 	session, err := s.sessionStore.Get(r, "ontree-session")
@@ -398,6 +434,8 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 	data["Messages"] = messages
 	data["CSRFToken"] = ""
 	data["ActiveOperationID"] = activeOperationID
+	data["IsMultiService"] = isMultiService
+	data["AppStatus"] = appStatus
 
 	// Add deployed app information if available
 	if hasMetadata {
