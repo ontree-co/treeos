@@ -38,9 +38,16 @@ build: embed-assets
 	$(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) $(MAIN_PATH)
 	@echo "Build complete: $(BUILD_DIR)/$(BINARY_NAME)"
 
+# Check template syntax
+.PHONY: check-templates
+check-templates:
+	@echo "Checking template syntax..."
+	@$(GO) run cmd/template-check/main.go
+	@echo "Template check complete"
+
 # Prepare embedded assets
 .PHONY: embed-assets
-embed-assets:
+embed-assets: check-templates
 	@echo "Preparing embedded assets..."
 	@cp -r static internal/embeds/
 	@cp -r templates internal/embeds/
@@ -221,6 +228,7 @@ help:
 	@echo "  run             - Build and run the application"
 	@echo "  fmt             - Format Go code"
 	@echo "  vet             - Run go vet"
+	@echo "  check-templates - Check HTML template syntax"
 	@echo "  install-tools   - Install development tools"
 	@echo "  deps            - Download and tidy dependencies"
 	@echo "  coverage        - Generate test coverage report"

@@ -18,22 +18,27 @@ This installs:
 
 Before committing any changes, always run the following commands:
 
-1. **Run tests**
+1. **Check template syntax**
+   ```bash
+   make check-templates
+   ```
+
+2. **Run tests**
    ```bash
    make test
    ```
 
-2. **Run tests with race detector**
+3. **Run tests with race detector**
    ```bash
    make test-race
    ```
 
-3. **Run go vet** (catches suspicious constructs)
+4. **Run go vet** (catches suspicious constructs)
    ```bash
    make vet
    ```
 
-4. **Run golangci-lint** (comprehensive linting)
+5. **Run golangci-lint** (comprehensive linting)
    ```bash
    make lint
    ```
@@ -810,6 +815,17 @@ Fixed issue where old pending operations would show spinner indefinitely:
 - **Asset Embedding**: Static files and templates are embedded into the binary using Go's embed package
 
 ## Build Process
+
+### Template Syntax Checking (2025-07-18)
+Added automatic template syntax validation to catch errors before runtime:
+- Created `cmd/template-check/main.go` tool that validates all HTML templates
+- Integrated into build process - runs automatically before embedding assets
+- Added to CI workflow to prevent broken templates from being merged
+- Run manually with `make check-templates`
+- Validates:
+  - Template syntax (proper opening/closing of blocks)
+  - Compatibility with base template
+  - Component templates for standalone validity
 
 ### Asset Embedding (2025-07-07)
 The application now embeds all static assets (CSS, fonts) and HTML templates directly into the binary:

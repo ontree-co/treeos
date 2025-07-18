@@ -27,6 +27,9 @@ jobs:
     - name: Install dependencies
       run: make deps
 
+    - name: Check template syntax
+      run: make check-templates
+
     - name: Prepare embedded assets
       run: make embed-assets
 
@@ -61,6 +64,9 @@ jobs:
     - name: Install dependencies
       run: make deps
 
+    - name: Check template syntax
+      run: make check-templates
+
     - name: Prepare embedded assets
       run: make embed-assets
 
@@ -86,6 +92,9 @@ jobs:
 
     - name: Install dependencies
       run: make deps
+
+    - name: Check template syntax
+      run: make check-templates
 
     - name: Build application
       run: make build

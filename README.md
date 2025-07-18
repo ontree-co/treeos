@@ -155,6 +155,25 @@ For development with hot-reloading:
 go run cmd/ontree-server/main.go
 ```
 
+### Template Syntax Checking
+
+OnTree includes a template syntax checker to catch errors before runtime:
+
+```bash
+# Check all templates
+make check-templates
+
+# Template checking runs automatically during build
+make build
+```
+
+The template checker validates:
+- All HTML templates against the base template
+- Template syntax (proper opening/closing of blocks)
+- Component templates for standalone validity
+
+Template checking is enforced in CI to prevent broken templates from being merged.
+
 ## Building Releases
 
 OnTree uses [GoReleaser](https://goreleaser.com/) for automated release builds. The release process creates self-contained binaries with all assets embedded.
