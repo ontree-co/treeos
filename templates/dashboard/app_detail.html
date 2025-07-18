@@ -352,6 +352,25 @@
     </div>
 </div>
 
+<!-- Running Containers -->
+{{if or (eq .App.Status "running") (eq .App.Status "partial")}}
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Running Containers</h5>
+            </div>
+            <div class="card-body" 
+                 hx-get="/apps/{{.App.Name}}/containers" 
+                 hx-trigger="load, every 5s"
+                 hx-swap="innerHTML">
+                <div class="text-muted">Loading container information...</div>
+            </div>
+        </div>
+    </div>
+</div>
+{{end}}
+
 <!-- Application Information -->
 <div class="row">
     <div class="col-md-6 mb-4">

@@ -12,9 +12,12 @@ import (
 	"ontree-node/internal/docker"
 	"ontree-node/internal/yamlutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"gopkg.in/yaml.v3"
 )
 
 // handleSetup handles the initial setup page
@@ -331,6 +334,18 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 		composeContent = []byte("Failed to read docker-compose.yml")
 	}
 
+	// Detect if this is a multi-service app by parsing docker-compose.yml
+	var isMultiService bool
+	if len(composeContent) > 0 && string(composeContent) != "Failed to read docker-compose.yml" {
+		var composeData map[string]interface{}
+		if err := yaml.Unmarshal(composeContent, &composeData); err == nil {
+			if services, ok := composeData["services"].(map[string]interface{}); ok {
+				// Multi-service if there's more than one service defined
+				isMultiService = len(services) > 1
+			}
+		}
+	}
+
 	// Get container details if it exists
 	var containerInfo map[string]interface{}
 	if app.Status != "not_created" && app.Status != "error" {
@@ -339,8 +354,7 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 	
 	// Fetch multi-service status if compose service is available
 	var appStatus *AppStatusResponse
-	var isMultiService bool
-	if s.composeSvc != nil {
+	if s.composeSvc != nil && isMultiService {
 		// Make internal API call to get status
 		client := &http.Client{Timeout: 5 * time.Second}
 		// Extract port from ListenAddr (format is usually ":3001" or "0.0.0.0:3001")
@@ -360,12 +374,8 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 			var status AppStatusResponse
 			if err := json.NewDecoder(resp.Body).Decode(&status); err == nil {
 				appStatus = &status
-				// If we have services, this is a multi-service app
-				isMultiService = len(status.Services) > 0
 				// Override app status with multi-service status
-				if isMultiService {
-					app.Status = status.Status
-				}
+				app.Status = status.Status
 			}
 		} else if resp != nil {
 			resp.Body.Close()
@@ -1791,4 +1801,49 @@ func (s *Server) handleAppStatusCheck(w http.ResponseWriter, r *http.Request) {
 
 	html.WriteString(`</div>`)
 	_, _ = w.Write([]byte(html.String()))
+}
+
+// handleAppContainers returns the running containers for an app
+func (s *Server) handleAppContainers(w http.ResponseWriter, r *http.Request) {
+	// Extract app name from URL
+	path := strings.TrimPrefix(r.URL.Path, "/apps/")
+	appName := strings.TrimSuffix(path, "/containers")
+	
+	if appName == "" {
+		http.Error(w, "App name required", http.StatusBadRequest)
+		return
+	}
+
+	// Determine the project name based on whether this is a multi-service app
+	projectName := fmt.Sprintf("ontree-%s", appName)
+	
+	// Execute docker ps command with filter for the project
+	cmd := fmt.Sprintf(`docker ps --filter "label=com.docker.compose.project=%s" --format "table {{.Names}}\t{{.Status}}\t{{.Image}}"`, projectName)
+	
+	output, err := s.executeCommand(cmd)
+	if err != nil {
+		// If no containers found, check for single-service container
+		cmd = fmt.Sprintf(`docker ps --filter "name=^%s$" --format "table {{.Names}}\t{{.Status}}\t{{.Image}}"`, projectName)
+		output, err = s.executeCommand(cmd)
+		if err != nil {
+			w.Write([]byte(`<div class="text-muted">No running containers found</div>`))
+			return
+		}
+	}
+
+	// Return the output wrapped in a pre tag for proper formatting
+	html := fmt.Sprintf(`<pre class="mb-0" style="font-size: 0.875rem;">%s</pre>`, template.HTMLEscapeString(output))
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write([]byte(html))
+}
+
+// executeCommand executes a shell command and returns the output
+func (s *Server) executeCommand(cmd string) (string, error) {
+	// Use bash to execute the command
+	execCmd := exec.Command("bash", "-c", cmd)
+	output, err := execCmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("command failed: %v, output: %s", err, string(output))
+	}
+	return string(output), nil
 }

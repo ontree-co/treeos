@@ -779,6 +779,8 @@ func (s *Server) routeApps(w http.ResponseWriter, r *http.Request) {
 		} else {
 			s.handleAppComposeEdit(w, r)
 		}
+	} else if strings.HasSuffix(path, "/containers") {
+		s.handleAppContainers(w, r)
 	} else {
 		// Default to app detail page
 		s.handleAppDetail(w, r)

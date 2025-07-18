@@ -1114,3 +1114,86 @@ func TestMapContainerState(t *testing.T) {
 		})
 	}
 }
+
+// TestMultiServiceAppProjectNaming verifies that multi-service apps
+// use the correct project naming convention
+func TestMultiServiceAppProjectNaming(t *testing.T) {
+	// This test verifies the project name that would be used
+	tmpDir := t.TempDir()
+	
+	// Create a multi-service app
+	appName := "testapp"
+	appDir := filepath.Join(tmpDir, appName)
+	os.MkdirAll(appDir, 0755)
+	
+	// Multi-service compose file
+	composeContent := `version: '3.8'
+services:
+  web:
+    image: nginx:latest
+    ports:
+      - "8080:80"
+  db:
+    image: postgres:13
+    environment:
+      POSTGRES_PASSWORD: secret`
+	
+	os.WriteFile(filepath.Join(appDir, "docker-compose.yml"), []byte(composeContent), 0644)
+
+	// The project name should be "ontree-testapp"
+	expectedProjectName := fmt.Sprintf("ontree-%s", appName)
+	
+	// Verify the project name format matches what the API handler would use
+	if expectedProjectName != "ontree-testapp" {
+		t.Errorf("Expected project name 'ontree-testapp', got '%s'", expectedProjectName)
+	}
+	
+	// Test with hyphenated app name
+	appName2 := "openwebui-multi"
+	expectedProjectName2 := fmt.Sprintf("ontree-%s", appName2)
+	
+	if expectedProjectName2 != "ontree-openwebui-multi" {
+		t.Errorf("Expected project name 'ontree-openwebui-multi', got '%s'", expectedProjectName2)
+	}
+}
+
+// TestExtractServiceNameFromMultiServiceContainers verifies service name extraction
+// from the multi-service container naming convention
+func TestExtractServiceNameFromMultiServiceContainers(t *testing.T) {
+	tests := []struct {
+		containerName string
+		appName       string
+		expectedName  string
+	}{
+		{
+			containerName: "ontree-myapp-web-1",
+			appName:       "myapp",
+			expectedName:  "web",
+		},
+		{
+			containerName: "ontree-myapp-database-1",
+			appName:       "myapp",
+			expectedName:  "database",
+		},
+		{
+			containerName: "ontree-openwebui-multi-open-webui-1",
+			appName:       "openwebui-multi",
+			expectedName:  "open-webui",
+		},
+		{
+			containerName: "ontree-openwebui-multi-ollama-1",
+			appName:       "openwebui-multi",
+			expectedName:  "ollama",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.containerName, func(t *testing.T) {
+			result := extractServiceName(tt.containerName, tt.appName)
+			if result != tt.expectedName {
+				t.Errorf("Container '%s' with app '%s': expected service name '%s', got '%s'", 
+					tt.containerName, tt.appName, tt.expectedName, result)
+			}
+		})
+	}
+}

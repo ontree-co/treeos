@@ -525,6 +525,29 @@ Fixed UI validation error that prevented creation of multi-service apps:
   - Updated `ProcessTemplateContent` to support multi-service templates (no longer modifies service names)
 - **Result**: UI now accepts multi-service docker-compose files as intended by the specification
 
+### Multi-Service UI Detection Fix (2025-07-18)
+
+Fixed issue where multi-service apps were incorrectly started using single-service handler:
+- **Issue**: OpenWebUI Multi app only started one container (ollama) with wrong naming convention
+- **Root Cause**: Multi-service detection relied on running containers, creating chicken-and-egg problem
+- **Fix**:
+  - Updated `handleAppDetail` to detect multi-service apps by parsing docker-compose.yml
+  - Apps with more than one service defined now show multi-service controls immediately
+  - No longer relies on container status for detection
+- **Result**: New multi-service apps now correctly show "Start All" button and use multi-service API
+
+### Running Containers Display (2025-07-18)
+
+Added real-time container display for running applications:
+- **Feature**: New "Running Containers" card on app detail page
+- **Location**: Displays between operation logs and application information sections
+- **Implementation**:
+  - Added `/apps/{name}/containers` endpoint in `handlers.go`
+  - Uses `docker ps` with project label filter for multi-service apps
+  - Falls back to single container lookup for legacy apps
+  - Auto-refreshes every 5 seconds using HTMX
+- **Display**: Shows container names, status, and images in pre-formatted text
+
 ### Single-to-Multi Service Migration Tool (2025-07-17 - Ticket 12)
 
 Created migration tool to convert legacy single-container apps to the new multi-service format:
