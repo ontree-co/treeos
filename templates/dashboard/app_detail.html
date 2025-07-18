@@ -567,58 +567,22 @@
             <div class="card-body">
                 <div class="alert alert-danger mb-3">
                     <i class="fas fa-exclamation-triangle me-2"></i>
-                    <strong>Warning:</strong> Choose the deletion type carefully:
+                    <strong>Warning:</strong> This will permanently delete the application.
                 </div>
                 
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <h6 class="text-danger">Delete App Permanently</h6>
-                        <p class="small text-muted">This will delete:</p>
-                        <ul class="small text-muted">
-                            <li>The Docker container (if exists)</li>
-                            <li>All app data and configuration files</li>
-                            <li>The entire app directory at <code>{{.App.Path}}</code></li>
-                        </ul>
-                        <p class="small text-danger"><strong>This action is irreversible!</strong></p>
-                        {{if .IsMultiService}}
-                        <form method="post" action="/api/apps/{{.App.Name}}" class="d-inline"
-                              onsubmit="event.preventDefault(); handleMultiServiceDelete(this);">
-                            <button type="button" class="btn btn-danger confirm-action" data-confirm-text="Are you sure? Click to confirm">
-                                <i class="fas fa-trash-alt me-1"></i> Delete App Permanently
-                            </button>
-                        </form>
-                        {{else}}
-                        <form method="post" action="/apps/{{.App.Name}}/delete-complete" class="d-inline">
-                            <button type="button" class="btn btn-danger confirm-action" data-confirm-text="Are you sure? Click to confirm">
-                                <i class="fas fa-trash-alt me-1"></i> Delete App Permanently
-                            </button>
-                        </form>
-                        {{end}}
-                    </div>
-                    
-                    <div class="col-md-6 mb-3">
-                        <h6 class="text-warning">Delete Container Only</h6>
-                        <p class="small text-muted">This will delete:</p>
-                        <ul class="small text-muted">
-                            <li>The Docker container</li>
-                        </ul>
-                        <p class="small text-muted">The app configuration and data will remain intact.</p>
-                        {{if ne .App.Status "not_created"}}
-                        <form method="post" action="/apps/{{.App.Name}}/delete" class="d-inline">
-                            <button type="submit" class="btn btn-warning confirm-action" 
-                                    data-action="Delete Container"
-                                    data-confirm-text="Confirm Delete?">
-                                <i>🗑️</i> Delete Container Only
-                            </button>
-                        </form>
-                        {{else}}
-                        <button type="button" class="btn btn-secondary" disabled>
-                            <i>🗑️</i> Delete Container Only
-                        </button>
-                        <p class="small text-muted mt-1">No container exists to delete.</p>
-                        {{end}}
-                    </div>
-                </div>
+                <p class="small text-muted">This action will:</p>
+                <ul class="small text-muted">
+                    <li>Stop and remove all Docker containers</li>
+                    <li>Delete all app data and configuration files</li>
+                    <li>Remove the entire app directory at <code>{{.App.Path}}</code></li>
+                </ul>
+                <p class="small text-danger"><strong>This action cannot be undone!</strong></p>
+                <form method="post" action="/api/apps/{{.App.Name}}" class="d-inline"
+                      onsubmit="event.preventDefault(); handleMultiServiceDelete(this);">
+                    <button type="button" class="btn btn-danger confirm-action" data-confirm-text="Are you sure? Click to confirm">
+                        <i class="fas fa-trash-alt me-1"></i> Delete App Permanently
+                    </button>
+                </form>
             </div>
         </div>
     </div>

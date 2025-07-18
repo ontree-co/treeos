@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -441,6 +442,10 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 	data["HasDomainsConfigured"] = s.config.PublicBaseDomain != "" || s.config.TailscaleBaseDomain != ""
 	data["PublicBaseDomain"] = s.config.PublicBaseDomain
 	data["TailscaleBaseDomain"] = s.config.TailscaleBaseDomain
+	
+	// Add Caddy availability check
+	data["CaddyAvailable"] = s.caddyClient != nil
+	data["PlatformSupportsCaddy"] = runtime.GOOS == "linux"
 
 	// Render template
 	tmpl, ok := s.templates["app_detail"]
