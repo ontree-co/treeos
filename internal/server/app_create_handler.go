@@ -50,8 +50,8 @@ func (s *Server) handleAppCreate(w http.ResponseWriter, r *http.Request) {
 		if composeContent == "" {
 			errors = append(errors, "Docker compose content cannot be empty")
 		} else {
-			// Validate YAML and service name
-			if err := validateComposeContent(composeContent, appName); err != nil {
+			// Validate YAML syntax and structure
+			if err := yamlutil.ValidateComposeFile(composeContent); err != nil {
 				errors = append(errors, err.Error())
 			}
 		}
@@ -130,54 +130,6 @@ func isValidAppName(appName string) bool {
 	return match && len(appName) <= 50
 }
 
-// validateComposeContent validates the docker-compose.yml content
-func validateComposeContent(content string, appName string) error {
-	// Parse YAML
-	var data map[string]interface{}
-	err := yaml.Unmarshal([]byte(content), &data)
-	if err != nil {
-		return fmt.Errorf("Invalid YAML format: %v", err)
-	}
-
-	// Check for services section
-	services, ok := data["services"]
-	if !ok {
-		return fmt.Errorf("The YAML must contain a 'services' section")
-	}
-
-	servicesMap, ok := services.(map[string]interface{})
-	if !ok || len(servicesMap) == 0 {
-		return fmt.Errorf("The 'services' section must contain at least one service")
-	}
-
-	// Check that there's exactly one service
-	if len(servicesMap) != 1 {
-		return fmt.Errorf("Docker compose file must contain exactly one service")
-	}
-
-	// Get the service name
-	var serviceName string
-	for name := range servicesMap {
-		serviceName = name
-		break
-	}
-
-	// Check that service name matches app name
-	if serviceName != appName {
-		return fmt.Errorf("The service name ('%s') must match the App Name ('%s')", serviceName, appName)
-	}
-
-	// Check that service has an image
-	service, ok := servicesMap[serviceName].(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("Invalid service structure for '%s'", serviceName)
-	}
-	if _, ok := service["image"]; !ok {
-		return fmt.Errorf("The service '%s' must contain an 'image' key", serviceName)
-	}
-
-	return nil
-}
 
 // createAppScaffold creates the directory structure and docker-compose.yml for a new app
 func (s *Server) createAppScaffold(appName, composeContent, emoji string) error {

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/fs"
 	"path/filepath"
-	"strings"
 
 	"ontree-node/internal/embeds"
 )
@@ -96,18 +95,12 @@ func (s *Service) GetTemplateContent(template *Template) (string, error) {
 
 // ProcessTemplateContent replaces template variables with actual values
 func (s *Service) ProcessTemplateContent(content string, appName string) string {
-	// Replace the service name in the compose file with the app name
-	lines := strings.Split(content, "\n")
-
-	// For now, we'll do a simple replacement of the first service name
-	// In a real implementation, we'd parse the YAML properly
-	for i, line := range lines {
-		if i == 1 && strings.HasPrefix(line, "  ") && strings.HasSuffix(line, ":") {
-			// This is likely the service name
-			lines[i] = "  " + appName + ":"
-			break
-		}
-	}
-
-	return strings.Join(lines, "\n")
+	// For multi-service apps, we don't modify service names
+	// Service names in templates should be descriptive (e.g., "web", "db", "redis")
+	// rather than matching the app name
+	
+	// TODO: In the future, this could support variable substitution like:
+	// {{.Port}}, {{.AppName}}, {{.RandomString}}, etc.
+	
+	return content
 }

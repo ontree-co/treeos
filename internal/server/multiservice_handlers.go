@@ -127,8 +127,9 @@ func (s *Server) handleMultiServiceAppCreate(w http.ResponseWriter, r *http.Requ
 			if composeData["x-ontree"] == nil {
 				composeData["x-ontree"] = make(map[string]interface{})
 			}
-			ontreeData := composeData["x-ontree"].(map[string]interface{})
-			ontreeData["emoji"] = emoji
+			if ontreeData, ok := composeData["x-ontree"].(map[string]interface{}); ok {
+				ontreeData["emoji"] = emoji
+			}
 
 			// Marshal back to YAML
 			updatedYAML, err := yaml.Marshal(composeData)
@@ -358,8 +359,9 @@ func (s *Server) handleMultiServiceAppEdit(w http.ResponseWriter, r *http.Reques
 					if composeData["x-ontree"] == nil {
 						composeData["x-ontree"] = make(map[string]interface{})
 					}
-					ontreeData := composeData["x-ontree"].(map[string]interface{})
-					ontreeData["emoji"] = emoji
+					if ontreeData, ok := composeData["x-ontree"].(map[string]interface{}); ok {
+						ontreeData["emoji"] = emoji
+					}
 
 					// Marshal back to YAML
 					updatedYAML, err := yaml.Marshal(composeData)

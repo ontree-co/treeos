@@ -513,6 +513,18 @@ Implemented API endpoints for managing multi-service applications:
 See `internal/server/api_handlers.go` and `internal/server/api_handlers_test.go` for implementation.
 See `pkg/compose/compose.go` for Docker Compose SDK wrapper implementation.
 
+### Multi-Service Validation Fix (2025-07-17)
+
+Fixed UI validation error that prevented creation of multi-service apps:
+- **Issue**: App creation form showed "Docker compose file must contain exactly one service" error
+- **Root Cause**: Outdated `validateComposeContent` function enforced single-service restriction
+- **Fix**: 
+  - Removed the restrictive `validateComposeContent` function from `app_create_handler.go`
+  - Now uses `yamlutil.ValidateComposeFile` which only validates YAML syntax and structure
+  - Security validation happens at runtime via `security.ValidateCompose` when starting apps
+  - Updated `ProcessTemplateContent` to support multi-service templates (no longer modifies service names)
+- **Result**: UI now accepts multi-service docker-compose files as intended by the specification
+
 ### Single-to-Multi Service Migration Tool (2025-07-17 - Ticket 12)
 
 Created migration tool to convert legacy single-container apps to the new multi-service format:
