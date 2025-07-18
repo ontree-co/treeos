@@ -61,10 +61,11 @@ func (s *Service) Up(ctx context.Context, opts Options) error {
 	upOptions := api.UpOptions{
 		Create: api.CreateOptions{
 			RemoveOrphans: true,
+			Recreate:      api.RecreateForce,
 		},
 		Start: api.StartOptions{
-			Project: project,
-			Wait:    false,
+			Wait:   false,
+			Attach: nil,
 		},
 	}
 

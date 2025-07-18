@@ -604,7 +604,8 @@ function handleMultiServiceAction(form, action) {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-        }
+        },
+        credentials: 'same-origin' // Include cookies for authentication
     })
     .then(response => {
         // Check if we got redirected to login

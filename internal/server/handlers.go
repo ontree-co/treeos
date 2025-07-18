@@ -226,7 +226,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Failed to save session: %v", err)
 		}
 
-		log.Printf("User %s logged in successfully", username)
+		log.Printf("User %s logged in successfully with user_id=%d", username, user.ID)
 
 		// Redirect to next URL or dashboard
 		next := session.Values["next"]
