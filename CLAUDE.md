@@ -548,6 +548,23 @@ Added real-time container display for running applications:
   - Auto-refreshes every 5 seconds using HTMX
 - **Display**: Shows container names, status, and images in pre-formatted text
 
+### Single-Service Handler Removal (2025-07-18)
+
+Completed transition to multi-service architecture by removing all single-service handlers:
+- **Removed Handlers**:
+  - `handleAppStop` - replaced by `/api/apps/{appName}/stop`
+  - `handleAppRecreate` - no longer needed
+  - `handleAppDelete` - replaced by `/api/apps/{appName}` DELETE
+  - `handleAppDeleteComplete` - replaced by `/api/apps/{appName}` DELETE
+  - `handleAppUpdate` - no longer needed (image updates handled differently)
+  - `handleAppControls` - UI now calls API endpoints directly
+- **Benefits**:
+  - Unified API for both single and multi-service apps
+  - Consistent behavior across all app types
+  - Simplified codebase with less duplication
+  - All container operations go through Docker Compose SDK
+- **Migration**: Apps are transparently handled by the multi-service API regardless of service count
+
 ### Single-to-Multi Service Migration Tool (2025-07-17 - Ticket 12)
 
 Created migration tool to convert legacy single-container apps to the new multi-service format:
