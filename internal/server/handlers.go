@@ -15,8 +15,6 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-
-	"gopkg.in/yaml.v3"
 )
 
 // handleSetup handles the initial setup page
@@ -333,17 +331,6 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 		composeContent = []byte("Failed to read docker-compose.yml")
 	}
 
-	// Detect if this is a multi-service app by parsing docker-compose.yml
-	var isMultiService bool
-	if len(composeContent) > 0 && string(composeContent) != "Failed to read docker-compose.yml" {
-		var composeData map[string]interface{}
-		if err := yaml.Unmarshal(composeContent, &composeData); err == nil {
-			if services, ok := composeData["services"].(map[string]interface{}); ok {
-				// Multi-service if there's more than one service defined
-				isMultiService = len(services) > 1
-			}
-		}
-	}
 
 	// Get container details if it exists
 	var containerInfo map[string]interface{}
@@ -351,9 +338,9 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 		containerInfo = s.getContainerInfo(appName)
 	}
 	
-	// Fetch multi-service status if compose service is available
+	// Fetch app status from compose service
 	var appStatus *AppStatusResponse
-	if s.composeSvc != nil && isMultiService {
+	if s.composeSvc != nil {
 		// Make internal API call to get status
 		client := &http.Client{Timeout: 5 * time.Second}
 		// Extract port from ListenAddr (format is usually ":3001" or "0.0.0.0:3001")
@@ -397,22 +384,6 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 	// Don't pass messages to the template
 	var messages []interface{}
 
-	// Check for active operations for this app
-	// Only consider operations created in the last 5 minutes to avoid showing stale operations
-	var activeOperationID string
-	db := database.GetDB()
-	err = db.QueryRow(`
-		SELECT id 
-		FROM docker_operations 
-		WHERE app_name = ? 
-		AND status IN (?, ?)
-		AND created_at > datetime('now', '-5 minutes')
-		ORDER BY created_at DESC
-		LIMIT 1
-	`, appName, database.StatusPending, database.StatusInProgress).Scan(&activeOperationID)
-	if err != nil && err != sql.ErrNoRows {
-		log.Printf("Failed to check for active operations: %v", err)
-	}
 
 	// Fetch app metadata from docker-compose.yml using yamlutil
 	metadata, err := yamlutil.ReadComposeMetadata(app.Path)
@@ -442,8 +413,6 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 	data["ContainerInfo"] = containerInfo
 	data["Messages"] = messages
 	data["CSRFToken"] = ""
-	data["ActiveOperationID"] = activeOperationID
-	data["IsMultiService"] = isMultiService
 	data["AppStatus"] = appStatus
 
 	// Add deployed app information if available
@@ -500,78 +469,6 @@ func (s *Server) getContainerInfo(appName string) map[string]interface{} {
 }
 
 
-// handleAppCheckUpdate checks if a newer version of the Docker image is available
-func (s *Server) handleAppCheckUpdate(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	// Extract app name from URL
-	path := strings.TrimPrefix(r.URL.Path, "/apps/")
-	path = strings.TrimSuffix(path, "/check-update")
-	appName := path
-
-	if appName == "" {
-		http.Error(w, "App name required", http.StatusBadRequest)
-		return
-	}
-
-	// Check for image updates
-	if s.dockerSvc == nil {
-		s.renderUpdateStatus(w, &updateStatusData{
-			Error: "Docker service not available",
-		})
-		return
-	}
-
-	updateStatus, err := s.dockerSvc.CheckImageUpdate(appName)
-	if err != nil {
-		log.Printf("Failed to check image update for %s: %v", appName, err)
-		s.renderUpdateStatus(w, &updateStatusData{
-			Error: fmt.Sprintf("Failed to check for updates: %v", err),
-		})
-		return
-	}
-
-	// Render the update status partial
-	data := &updateStatusData{
-		AppName:         appName,
-		UpdateAvailable: updateStatus.UpdateAvailable,
-		CurrentImageID:  updateStatus.CurrentImageID,
-	}
-
-	if updateStatus.Error != "" {
-		data.Error = updateStatus.Error
-	}
-
-	s.renderUpdateStatus(w, data)
-}
-
-// updateStatusData holds data for the update status template
-type updateStatusData struct {
-	AppName         string
-	UpdateAvailable bool
-	CurrentImageID  string
-	Error           string
-}
-
-// renderUpdateStatus renders the update status partial template
-func (s *Server) renderUpdateStatus(w http.ResponseWriter, data *updateStatusData) {
-	// Create a simple template for the update status
-	tmplStr := `{{if .Error}}<span class="text-danger">{{.Error}}</span>{{else if .UpdateAvailable}}<span class="text-warning">Update available</span> <form method="post" action="/apps/{{.AppName}}/update" class="d-inline"><button type="submit" class="btn btn-sm btn-warning confirm-action" data-action="Update Image" data-confirm-text="Confirm Update?"><i>⬇️</i> Update Now</button></form>{{else}}<span class="text-success">Up to date</span>{{end}}`
-
-	tmpl, err := template.New("updateStatus").Parse(tmplStr)
-	if err != nil {
-		http.Error(w, "Template error", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := tmpl.Execute(w, data); err != nil {
-		http.Error(w, "Template execution error", http.StatusInternalServerError)
-	}
-}
 
 // handleAppComposeEdit shows the docker-compose.yml edit form
 func (s *Server) handleAppComposeEdit(w http.ResponseWriter, r *http.Request) {
@@ -699,14 +596,7 @@ func (s *Server) handleAppComposeUpdate(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if containerRunning {
-		// Queue a recreate operation
-		operationID, err := s.createDockerOperation("recreate_container", appName, nil)
-		if err == nil {
-			s.worker.EnqueueOperation(operationID)
-			session.AddFlash("Configuration saved. Container is being recreated with new settings.", "success")
-		} else {
-			session.AddFlash("Configuration saved. Please recreate the container manually to apply changes.", "warning")
-		}
+		session.AddFlash("Configuration saved. Please restart the container to apply changes.", "warning")
 	} else {
 		session.AddFlash("Configuration saved successfully.", "success")
 	}

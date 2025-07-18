@@ -29,6 +29,16 @@
       "filename": "nginx-test.yml",
       "port": "8080",
       "documentation_url": "https://nginx.org/en/docs/"
+    },
+    {
+      "id": "openwebui-amd",
+      "name": "OpenWebUI (AMD AI 395+)",
+      "description": "A user-friendly web interface for running AI models with AMD GPU support. Includes Ollama with ROCm optimization for AMD GPUs.",
+      "category": "AI Tools",
+      "icon": "bi-gpu-card",
+      "filename": "openwebui-amd.yml",
+      "port": "4000",
+      "documentation_url": "https://github.com/open-webui/open-webui"
     }
   ]
 }

@@ -41,6 +41,19 @@
                         </div>
                     </div>
                     
+                    {{if .Template.Port}}
+                    <div class="mb-4">
+                        <label for="port" class="form-label">
+                            <strong>Port</strong>
+                        </label>
+                        <input type="number" class="form-control" id="port" name="port" 
+                               placeholder="{{.Template.Port}}" min="1" max="65535">
+                        <div class="form-text">
+                            Leave empty to use the default port ({{.Template.Port}}), or specify a custom port number between 1 and 65535.
+                        </div>
+                    </div>
+                    {{end}}
+                    
                     <!-- Emoji Picker -->
                     <div class="mb-4">
                         {{ template "emoji-picker.html" . }}

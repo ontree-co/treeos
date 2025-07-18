@@ -112,6 +112,44 @@ Added Playwright E2E test for the app creation and exposure flow:
 
 **Note**: The exposure functionality requires proper domain configuration and Caddy availability, which are typically not present in CI environments. The test documents the expected behavior while ensuring CI passes.
 
+### Unified Docker Compose Architecture (2025-07-18)
+
+**Major Architecture Change**: Removed all single-service Docker implementations in favor of a unified Docker Compose approach.
+
+#### Changes Made:
+1. **Removed Single-Service Code**:
+   - Deleted all single-container Docker API methods (StartApp, StopApp, RecreateApp, DeleteAppContainer)
+   - Removed single-service HTTP routes and handlers
+   - Deleted the entire background worker system (internal/worker package)
+   - Removed docker_operations database table and related code
+
+2. **Unified API Endpoints**:
+   - All apps now use `/api/apps/{name}/start` and `/api/apps/{name}/stop` endpoints
+   - These endpoints use Docker Compose SDK exclusively
+   - No distinction between single and multi-service apps
+
+3. **Simplified UI**:
+   - Removed `IsMultiService` distinction from templates
+   - All apps show the same controls (Start/Stop buttons)
+   - Removed operation logs UI (no longer using background workers)
+
+4. **Container Naming**:
+   - All containers now use compose naming: `ontree-{appName}-{serviceName}-1`
+   - Updated status detection to handle compose-style container names
+   - Aggregate status for apps with multiple containers (running, partial, stopped)
+
+#### Benefits:
+- **Simplified codebase**: One implementation path for all apps
+- **Consistent behavior**: All apps work the same way
+- **Easier maintenance**: No dual implementations to maintain
+- **Future-proof**: Ready for complex compose features
+
+#### Migration:
+- Apps created with the old single-service system can be migrated using:
+  ```bash
+  ./ontree-server migrate-single-to-multi
+  ```
+
 ### Caddy Integration Fixes (2025-07-10)
 
 Fixed critical issues with Caddy integration that were causing 500 errors:
@@ -131,6 +169,31 @@ Fixed critical issues with Caddy integration that were causing 500 errors:
    - Helps diagnose configuration issues
 
 **Testing**: After these fixes, the expose functionality should work correctly. When you click "Expose App", check the server logs for detailed information about what's happening with the Caddy API.
+
+### Template Port Customization (2025-07-18)
+
+Added the ability to customize ports when creating apps from templates:
+- **Port Input Field**: Added optional port field to template creation form
+- **Dynamic Port Replacement**: Handler replaces all host ports in docker-compose.yml before saving
+- **Validation**: Port must be between 1-65535, defaults to template's port if not specified
+- **Implementation**: 
+  - `replacePortsInYAML` function in `template_handlers.go` parses and modifies YAML
+  - Preserves container ports while updating host ports
+  - Works with multi-service templates (updates all services)
+
+### New OpenWebUI AMD Template (2025-07-18)
+
+Added OpenWebUI template optimized for AMD GPUs:
+- **Template**: `openwebui-amd.yml` - Multi-service setup with Ollama ROCm support
+- **Services**:
+  - `ollama`: AMD ROCm optimized image with GPU device access
+  - `open-webui`: Web interface connected to local Ollama instance
+- **Features**:
+  - AMD GPU support via ROCm
+  - Proper device mounting (/dev/kfd, /dev/dri)
+  - Group permissions for video/render access
+  - Default port 4000 (customizable during creation)
+- **Icon**: Uses `bi-gpu-card` to indicate GPU support
 
 ### System Vitals Historical Data Collection (2025-07-10 - Usage Graph Ticket 1)
 

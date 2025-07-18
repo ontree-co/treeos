@@ -25,7 +25,6 @@ import (
 	"ontree-node/internal/system"
 	"ontree-node/internal/templates"
 	"ontree-node/internal/version"
-	"ontree-node/internal/worker"
 	"ontree-node/internal/yamlutil"
 	"ontree-node/pkg/compose"
 )
@@ -38,7 +37,6 @@ type Server struct {
 	dockerClient          *docker.Client
 	dockerSvc             *docker.Service
 	db                    *sql.DB
-	worker                *worker.Worker
 	templateSvc           *templates.Service
 	versionInfo           version.Info
 	caddyAvailable        bool
@@ -128,12 +126,6 @@ func New(cfg *config.Config, versionInfo version.Info) (*Server, error) {
 		s.caddyAvailable = false
 	}
 
-	// Initialize worker if Docker is available
-	if s.dockerSvc != nil && s.db != nil {
-		s.worker = worker.New(s.db, s.dockerSvc)
-		// Start workers (using 2 workers for now)
-		s.worker.Start(2)
-	}
 
 	// Initialize template service
 	templatesPath := "compose" // Path within the embedded templates directory
@@ -144,9 +136,6 @@ func New(cfg *config.Config, versionInfo version.Info) (*Server, error) {
 
 // Shutdown gracefully shuts down the server
 func (s *Server) Shutdown() {
-	if s.worker != nil {
-		s.worker.Stop()
-	}
 	if s.dockerSvc != nil {
 		if err := s.dockerSvc.Close(); err != nil {
 			log.Printf("Error closing docker service: %v", err)
@@ -385,7 +374,6 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/templates/", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeTemplates))))
 
 	// API routes
-	mux.HandleFunc("/api/docker/operations/", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeDockerOperations))))
 	mux.HandleFunc("/api/apps/", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeAPIApps))))
 
 	// Dashboard partial routes (for monitoring cards on dashboard)
@@ -753,8 +741,6 @@ func (s *Server) routeApps(w http.ResponseWriter, r *http.Request) {
 		s.handleMultiServiceAppCreate(w, r)
 	} else if strings.HasSuffix(path, "/edit-multiservice") {
 		s.handleMultiServiceAppEdit(w, r)
-	} else if strings.HasSuffix(path, "/check-update") {
-		s.handleAppCheckUpdate(w, r)
 	} else if strings.HasSuffix(path, "/expose") {
 		s.handleAppExpose(w, r)
 	} else if strings.HasSuffix(path, "/unexpose") {
@@ -812,18 +798,6 @@ func (s *Server) routeAPIApps(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// routeDockerOperations routes /api/docker/operations/* requests
-func (s *Server) routeDockerOperations(w http.ResponseWriter, r *http.Request) {
-	path := r.URL.Path
-
-	// Route based on the path pattern
-	if strings.HasSuffix(path, "/logs") {
-		s.handleDockerOperationLogs(w, r)
-	} else {
-		// Default to operation status
-		s.handleDockerOperationStatus(w, r)
-	}
-}
 
 // handleVersion returns version information as JSON
 func (s *Server) handleVersion(w http.ResponseWriter, r *http.Request) {

@@ -63,12 +63,3 @@ func TestDeleteAppComplete(t *testing.T) {
 	})
 }
 
-// TestServiceMethods tests that new methods are properly added to the Service
-func TestServiceMethods(t *testing.T) {
-	t.Run("Service should have DeleteAppComplete method", func(t *testing.T) {
-		// This is a compile-time test - if it compiles, the method exists
-		var s *Service
-		_ = s.DeleteAppComplete
-		t.Log("✓ DeleteAppComplete method exists on Service struct")
-	})
-}

@@ -160,7 +160,7 @@
     <div class="col-12">
         <div class="card">
             <div class="card-body">
-                <h5 class="card-title mb-3">{{if .IsMultiService}}Application Status{{else}}Container Status{{end}}</h5>
+                <h5 class="card-title mb-3">Application Status</h5>
                 <div class="d-flex align-items-center">
                     <span class="me-3">Status:</span>
                     {{if eq .App.Status "running"}}
@@ -178,10 +178,8 @@
                     {{else}}
                         <span class="badge bg-info">{{.App.Status}}</span>
                     {{end}}
-                    {{if .IsMultiService}}
-                        {{if .AppStatus}}
-                            <span class="ms-3 text-muted">{{len .AppStatus.Services}} Service{{if ne (len .AppStatus.Services) 1}}s{{end}}</span>
-                        {{end}}
+                    {{if .AppStatus}}
+                        <span class="ms-3 text-muted">{{len .AppStatus.Services}} Service{{if ne (len .AppStatus.Services) 1}}s{{end}}</span>
                     {{else if .ContainerInfo.name}}
                         <span class="ms-3 text-muted">Container: <code>{{.ContainerInfo.name}}</code></span>
                     {{end}}
@@ -192,7 +190,7 @@
 </div>
 
 <!-- Services Table for Multi-Service Apps -->
-{{if and .IsMultiService .AppStatus}}
+{{if .AppStatus}}
 <div class="row mb-4">
     <div class="col-12">
         <div class="card">
@@ -244,26 +242,24 @@
 <!-- Container Controls -->
 <div class="row mb-3">
     <div class="col-12">
-        {{if .IsMultiService}}
-        <!-- Multi-Service Controls -->
         <div class="card">
             <div class="card-body">
-                <h5 class="card-title mb-3">Master Controls</h5>
+                <h5 class="card-title mb-3">Controls</h5>
                 <div class="btn-group" role="group">
                     {{if or (eq .App.Status "running") (eq .App.Status "partial")}}
                         <form method="post" action="/api/apps/{{.App.Name}}/stop" class="d-inline"
                               onsubmit="event.preventDefault(); handleMultiServiceAction(this, 'stop');">
                             <button type="submit" class="btn btn-warning btn-lg confirm-action" 
-                                    data-action="Stop All"
+                                    data-action="Stop"
                                     data-confirm-text="Stop all services?">
-                                <i>⏹️</i> Stop All
+                                <i>⏹️</i> Stop
                             </button>
                         </form>
                     {{else}}
                         <form method="post" action="/api/apps/{{.App.Name}}/start" class="d-inline"
                               onsubmit="event.preventDefault(); handleMultiServiceAction(this, 'start');">
                             <button type="submit" class="btn btn-success btn-lg">
-                                <i>▶️</i> Start All
+                                <i>▶️</i> Start
                             </button>
                         </form>
                     {{end}}
@@ -271,87 +267,9 @@
                 <div id="multi-service-status" class="mt-3"></div>
             </div>
         </div>
-        {{else}}
-        <!-- Single Container Controls -->
-        <div id="operation-status" class="mb-2">
-            {{if .ActiveOperationID}}
-                <div hx-get="/api/docker/operations/{{.ActiveOperationID}}" 
-                     hx-trigger="load, every 2s" 
-                     hx-swap="innerHTML">
-                    <div class="alert alert-info">
-                        <span class="spinner-border spinner-border-sm" role="status"></span>
-                        Operation in progress...
-                    </div>
-                </div>
-            {{end}}
-        </div>
-        <div id="app-controls" class="btn-group" role="group" 
-             hx-get="/apps/{{.App.Name}}/controls" 
-             hx-trigger="operation-complete from:body"
-             hx-swap="innerHTML">
-            {{if .ActiveOperationID}}
-                <!-- Show disabled button with spinner during operation -->
-                <button type="button" class="btn btn-primary" disabled>
-                    <span class="spinner-border spinner-border-sm" role="status"></span>
-                    <span id="operation-button-text">
-                        {{if eq .App.Status "not_created"}}
-                            Creating & Starting...
-                        {{else}}
-                            Processing...
-                        {{end}}
-                    </span>
-                </button>
-            {{else}}
-                {{if eq .App.Status "running"}}
-                    <form method="post" action="/apps/{{.App.Name}}/stop" class="d-inline">
-                        <button type="submit" class="btn btn-warning confirm-action" 
-                                data-action="Stop"
-                                data-confirm-text="Confirm Stop?">
-                            <i>⏹️</i> Stop
-                        </button>
-                    </form>
-                {{else if ne .App.Status "not_created"}}
-                    <form method="post" action="/apps/{{.App.Name}}/start" class="d-inline">
-                        <button type="submit" class="btn btn-success">
-                            <i>▶️</i> Start
-                        </button>
-                    </form>
-                {{else}}
-                    <form method="post" action="/apps/{{.App.Name}}/start" class="d-inline">
-                        <button type="submit" class="btn btn-primary">
-                            <i>🚀</i> Create & Start
-                        </button>
-                    </form>
-                {{end}}
-            {{end}}
-            
-        </div>
-        {{end}}
     </div>
 </div>
 
-<!-- Operation Logs -->
-<div class="row mb-3" id="operation-logs-container" style="display: none;">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h6 class="mb-0">
-                    <i>📋</i> Operation Logs
-                </h6>
-                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleLogs()">
-                    <span id="logs-toggle-text">Hide</span>
-                </button>
-            </div>
-            <div class="card-body" id="logs-panel">
-                <div class="logs-content-wrapper" style="max-height: 400px; overflow-y: auto; background: #f8f9fa; padding: 1rem; border-radius: 4px; font-family: monospace; font-size: 0.875rem;">
-                    <div id="logs-content">
-                        <div class="text-muted">No logs available yet...</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 
 <!-- Running Containers -->
 {{if or (eq .App.Status "running") (eq .App.Status "partial")}}
@@ -598,7 +516,7 @@
 </div>
 
 <!-- Service Logs -->
-{{if .IsMultiService}}
+{{if true}}
 <div class="row mt-4 mb-4">
     <div class="col-12">
         <div class="card">
@@ -843,139 +761,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Log viewer functionality
-    let currentOperationId = null;
-    let logsVisible = false;
-    let logPollingInterval = null;
-    
-    function toggleLogs() {
-        const container = document.getElementById('operation-logs-container');
-        const toggleText = document.getElementById('logs-toggle-text');
-        const panel = document.getElementById('logs-panel');
-        
-        if (logsVisible) {
-            panel.style.display = 'none';
-            toggleText.textContent = 'Show';
-            logsVisible = false;
-            stopLogPolling();
-        } else {
-            panel.style.display = 'block';
-            toggleText.textContent = 'Hide';
-            logsVisible = true;
-            if (currentOperationId) {
-                startLogPolling(currentOperationId);
-            }
-        }
-    }
-    
-    function showLogsForOperation(operationId) {
-        currentOperationId = operationId;
-        const container = document.getElementById('operation-logs-container');
-        container.style.display = 'block';
-        
-        if (!logsVisible) {
-            toggleLogs();
-        }
-        
-        startLogPolling(operationId);
-    }
-    
-    function startLogPolling(operationId) {
-        // Clear any existing interval
-        stopLogPolling();
-        
-        // Load logs immediately
-        loadLogs(operationId);
-        
-        // Set up polling every 2 seconds
-        logPollingInterval = setInterval(() => {
-            loadLogs(operationId);
-        }, 2000);
-    }
-    
-    function stopLogPolling() {
-        if (logPollingInterval) {
-            clearInterval(logPollingInterval);
-            logPollingInterval = null;
-        }
-    }
-    
-    function loadLogs(operationId) {
-        const logsContent = document.getElementById('logs-content');
-        const wrapper = logsContent.parentElement;
-        
-        fetch(`/api/docker/operations/${operationId}/logs`)
-            .then(response => response.text())
-            .then(html => {
-                // Check if we should auto-scroll
-                const shouldScroll = wrapper.scrollHeight - wrapper.scrollTop <= wrapper.clientHeight + 50;
-                
-                // Update content
-                logsContent.innerHTML = html;
-                
-                // Auto-scroll to bottom if we were near the bottom
-                if (shouldScroll) {
-                    wrapper.scrollTop = wrapper.scrollHeight;
-                }
-                
-                // Check if operation is complete to stop polling
-                if (html.includes('<!-- Operation complete, polling stopped -->')) {
-                    stopLogPolling();
-                    
-                    // Small delay to ensure HTMX is ready
-                    setTimeout(() => {
-                        const controlsDiv = document.getElementById('app-controls');
-                        if (controlsDiv && htmx) {
-                            // Process HTMX on the element first
-                            htmx.process(controlsDiv);
-                            // Then trigger the event
-                            htmx.trigger(controlsDiv, 'operation-complete');
-                        }
-                    }, 100);
-                }
-            })
-            .catch(error => {
-                console.error('Failed to load logs:', error);
-                logsContent.innerHTML = '<div class="text-danger">Failed to load logs</div>';
-            });
-    }
-    
-    // Listen for operation status updates
-    document.addEventListener('htmx:afterSwap', function(evt) {
-        // Check if this is an operation status update
-        if (evt.detail.target.id === 'operation-status') {
-            // Look for operation ID in the response
-            const operationDiv = evt.detail.target.querySelector('[hx-get*="/api/docker/operations/"]');
-            if (operationDiv) {
-                const hxGet = operationDiv.getAttribute('hx-get');
-                const match = hxGet.match(/\/api\/docker\/operations\/([^\/]+)/);
-                if (match && match[1]) {
-                    showLogsForOperation(match[1]);
-                }
-            } else {
-                // Operation might be complete, stop polling
-                stopLogPolling();
-            }
-        }
-    });
-    
-    // Clean up on page unload
-    window.addEventListener('beforeunload', function() {
-        stopLogPolling();
-    });
-    
-    // Check if there's an active operation on page load
-    {{if .ActiveOperationID}}
-    // Check if DOM is already loaded
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function() {
-            showLogsForOperation('{{.ActiveOperationID}}');
-        });
-    } else {
-        // DOM is already loaded, call directly
-        showLogsForOperation('{{.ActiveOperationID}}');
-    }
-    {{end}}
 });
 
 // Service logs functionality

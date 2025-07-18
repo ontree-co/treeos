@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
+	
+	"gopkg.in/yaml.v3"
 )
 
 // handleTemplates handles the templates list page
@@ -108,8 +111,8 @@ func (s *Server) handleCreateFromTemplate(w http.ResponseWriter, r *http.Request
 		}
 
 		appName := strings.TrimSpace(r.FormValue("name"))
-		autoStart := r.FormValue("auto_start") == "on"
 		emoji := strings.TrimSpace(r.FormValue("emoji"))
+		customPort := strings.TrimSpace(r.FormValue("port"))
 
 		// Validate app name
 		if appName == "" {
@@ -125,7 +128,17 @@ func (s *Server) handleCreateFromTemplate(w http.ResponseWriter, r *http.Request
 			return
 		}
 
-		// Process template content (replace service name)
+		// If custom port is provided, replace ports in the YAML
+		if customPort != "" {
+			content, err = s.replacePortsInYAML(content, customPort)
+			if err != nil {
+				log.Printf("Error replacing ports in YAML: %v", err)
+				http.Error(w, "Failed to update port configuration", http.StatusInternalServerError)
+				return
+			}
+		}
+
+		// Process template content (for any other replacements)
 		processedContent := s.templateSvc.ProcessTemplateContent(content, appName)
 
 		// Create the app using existing scaffold logic
@@ -135,19 +148,7 @@ func (s *Server) handleCreateFromTemplate(w http.ResponseWriter, r *http.Request
 			return
 		}
 
-		// If auto-start is enabled, queue a start operation
-		if autoStart && s.worker != nil {
-			metadata := map[string]string{
-				"template_id": template.ID,
-				"auto_start":  "true",
-			}
-			operationID, err := s.createDockerOperation("start_container", appName, metadata)
-			if err != nil {
-				log.Printf("Error creating operation: %v", err)
-			} else {
-				s.worker.EnqueueOperation(operationID)
-			}
-		}
+		// Auto-start is no longer supported - users must manually start apps
 
 		// Redirect to app detail page
 		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusSeeOther)
@@ -155,4 +156,73 @@ func (s *Server) handleCreateFromTemplate(w http.ResponseWriter, r *http.Request
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
+}
+
+// replacePortsInYAML replaces all host ports in the docker-compose YAML with the custom port
+func (s *Server) replacePortsInYAML(content string, customPort string) (string, error) {
+	// Validate port number
+	port, err := strconv.Atoi(customPort)
+	if err != nil || port < 1 || port > 65535 {
+		return "", fmt.Errorf("invalid port number: %s", customPort)
+	}
+
+	// Parse YAML
+	var data map[string]interface{}
+	if err := yaml.Unmarshal([]byte(content), &data); err != nil {
+		return "", fmt.Errorf("failed to parse YAML: %w", err)
+	}
+
+	// Get services
+	services, ok := data["services"].(map[string]interface{})
+	if !ok {
+		return content, nil // No services, return as-is
+	}
+
+	// Process each service
+	for _, service := range services {
+		serviceMap, ok := service.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		// Check for ports
+		ports, ok := serviceMap["ports"]
+		if !ok {
+			continue
+		}
+
+		// Process ports array
+		portsArray, ok := ports.([]interface{})
+		if !ok {
+			continue
+		}
+
+		// Replace host port in each port mapping
+		for i, portEntry := range portsArray {
+			portStr, ok := portEntry.(string)
+			if !ok {
+				continue
+			}
+
+			// Parse port mapping (e.g., "4000:8080" or just "8080")
+			if strings.Contains(portStr, ":") {
+				parts := strings.Split(portStr, ":")
+				if len(parts) >= 2 {
+					// Replace host port, keep container port
+					portsArray[i] = fmt.Sprintf("%s:%s", customPort, parts[1])
+				}
+			} else {
+				// Single port format, replace with explicit mapping
+				portsArray[i] = fmt.Sprintf("%s:%s", customPort, portStr)
+			}
+		}
+	}
+
+	// Marshal back to YAML
+	output, err := yaml.Marshal(data)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal YAML: %w", err)
+	}
+
+	return string(output), nil
 }
