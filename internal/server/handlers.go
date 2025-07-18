@@ -1,8 +1,8 @@
 package server
 
 import (
+	"context"
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"html/template"
 	"log"
@@ -10,6 +10,7 @@ import (
 	"ontree-node/internal/caddy"
 	"ontree-node/internal/database"
 	"ontree-node/internal/yamlutil"
+	"ontree-node/pkg/compose"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -339,33 +340,68 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 		containerInfo = s.getContainerInfo(appName)
 	}
 	
-	// Fetch app status from compose service
+	// Fetch app status from compose service directly
 	var appStatus *AppStatusResponse
 	if s.composeSvc != nil {
-		// Make internal API call to get status
-		client := &http.Client{Timeout: 5 * time.Second}
-		// Extract port from ListenAddr (format is usually ":3001" or "0.0.0.0:3001")
-		listenAddr := s.config.ListenAddr
-		if listenAddr == "" {
-			listenAddr = ":3001"
+		// Get container status using compose SDK directly
+		ctx := context.Background()
+		opts := compose.Options{
+			ProjectName: fmt.Sprintf("ontree-%s", appName),
+			WorkingDir:  app.Path,
 		}
-		// Extract just the port number
-		port := "3001"
-		if idx := strings.LastIndex(listenAddr, ":"); idx != -1 {
-			port = listenAddr[idx+1:]
-		}
-		statusURL := fmt.Sprintf("http://localhost:%s/api/apps/%s/status", port, appName)
-		resp, err := client.Get(statusURL)
-		if err == nil && resp.StatusCode == http.StatusOK {
-			defer resp.Body.Close()
-			var status AppStatusResponse
-			if err := json.NewDecoder(resp.Body).Decode(&status); err == nil {
-				appStatus = &status
-				// Override app status with multi-service status
-				app.Status = status.Status
+
+		containers, err := s.composeSvc.PS(ctx, opts)
+		if err != nil {
+			log.Printf("Failed to get status for app %s: %v", appName, err)
+		} else {
+			// Build status response
+			appStatus = &AppStatusResponse{
+				Success: true,
+				App:     appName,
+				Services: []ServiceStatusDetail{},
 			}
-		} else if resp != nil {
-			resp.Body.Close()
+
+			// Process containers to get service information
+			for _, container := range containers {
+				// Extract service name from container name
+				// Format: ontree-{appName}-{serviceName}-1
+				serviceName := ""
+				if parts := strings.Split(container.Name, "-"); len(parts) >= 3 {
+					serviceName = parts[2]
+				}
+
+				service := ServiceStatusDetail{
+					Name:   serviceName,
+					Image:  container.Image,
+					Status: strings.ToLower(container.State),
+					State:  container.Status,
+				}
+				appStatus.Services = append(appStatus.Services, service)
+			}
+
+			// Determine aggregate status
+			runningCount := 0
+			stoppedCount := 0
+			for _, svc := range appStatus.Services {
+				if svc.Status == "running" {
+					runningCount++
+				} else {
+					stoppedCount++
+				}
+			}
+
+			if runningCount > 0 && stoppedCount > 0 {
+				appStatus.Status = "partial"
+			} else if runningCount > 0 {
+				appStatus.Status = "running"
+			} else if stoppedCount > 0 {
+				appStatus.Status = "stopped"
+			} else {
+				appStatus.Status = "not_created"
+			}
+
+			// Override app status with multi-service status
+			app.Status = appStatus.Status
 		}
 	}
 

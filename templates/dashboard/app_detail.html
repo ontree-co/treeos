@@ -606,7 +606,18 @@ function handleMultiServiceAction(form, action) {
             'Content-Type': 'application/json',
         }
     })
-    .then(response => response.json())
+    .then(response => {
+        // Check if we got redirected to login
+        if (response.redirected || !response.ok) {
+            throw new Error('Session expired. Please login again.');
+        }
+        // Check content type
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+            throw new Error('Invalid response from server. Please refresh the page and try again.');
+        }
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
             // Show success message
