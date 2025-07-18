@@ -753,22 +753,8 @@ func (s *Server) routeApps(w http.ResponseWriter, r *http.Request) {
 		s.handleMultiServiceAppCreate(w, r)
 	} else if strings.HasSuffix(path, "/edit-multiservice") {
 		s.handleMultiServiceAppEdit(w, r)
-	} else if strings.HasSuffix(path, "/start") {
-		s.handleAppStart(w, r)
-	} else if strings.HasSuffix(path, "/stop") {
-		s.handleAppStop(w, r)
-	} else if strings.HasSuffix(path, "/recreate") {
-		s.handleAppRecreate(w, r)
-	} else if strings.HasSuffix(path, "/delete") {
-		s.handleAppDelete(w, r)
-	} else if strings.HasSuffix(path, "/delete-complete") {
-		s.handleAppDeleteComplete(w, r)
 	} else if strings.HasSuffix(path, "/check-update") {
 		s.handleAppCheckUpdate(w, r)
-	} else if strings.HasSuffix(path, "/update") {
-		s.handleAppUpdate(w, r)
-	} else if strings.HasSuffix(path, "/controls") {
-		s.handleAppControls(w, r)
 	} else if strings.HasSuffix(path, "/expose") {
 		s.handleAppExpose(w, r)
 	} else if strings.HasSuffix(path, "/unexpose") {
