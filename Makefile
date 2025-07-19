@@ -92,10 +92,49 @@ test-coverage:
 
 # Run Playwright E2E tests
 .PHONY: test-e2e
-test-e2e:
+test-e2e: build
 	@echo "Running E2E tests..."
-	cd tests/e2e && npm test
-	@echo "E2E tests complete"
+	@echo "Checking if server is already running on port 3001..."
+	@if lsof -Pi :3001 -sTCP:LISTEN -t >/dev/null 2>&1; then \
+		echo "⚠️  Server already running on port 3001. Using existing server."; \
+	else \
+		echo "📦 Building application if needed..."; \
+		$(MAKE) build; \
+		echo "🚀 Starting server on port 3001..."; \
+		LISTEN_ADDR=:3001 nohup ./$(BUILD_DIR)/$(BINARY_NAME) > server.log 2>&1 & \
+		SERVER_PID=$$!; \
+		echo "Server started with PID $$SERVER_PID"; \
+		echo "⏳ Waiting for server to be ready..."; \
+		for i in $$(seq 1 30); do \
+			if curl -s -f http://localhost:3001/ > /dev/null 2>&1; then \
+				echo "✅ Server is ready!"; \
+				break; \
+			fi; \
+			if [ $$i -eq 30 ]; then \
+				echo "❌ Server failed to start after 30 seconds"; \
+				kill $$SERVER_PID 2>/dev/null || true; \
+				exit 1; \
+			fi; \
+			sleep 1; \
+		done; \
+	fi
+	@echo "🧪 Running Playwright tests..."
+	@cd tests/e2e && npm test || (echo "❌ E2E tests failed"; exit 1)
+	@echo "📊 Test reports generated in tests/e2e/playwright-report/"
+	@echo "✅ E2E tests complete"
+
+# Run all tests (unit, integration, and E2E)
+.PHONY: test-all
+test-all:
+	@echo "🧪 Running all tests..."
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "1️⃣  Running unit and integration tests..."
+	@$(MAKE) test || (echo "❌ Unit/integration tests failed"; exit 1)
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "2️⃣  Running E2E tests..."
+	@$(MAKE) test-e2e || (echo "❌ E2E tests failed"; exit 1)
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "✅ All tests passed successfully!"
 
 # Run linter
 .PHONY: lint
@@ -223,6 +262,7 @@ help:
 	@echo "  test-race       - Run tests with race detector"
 	@echo "  test-coverage   - Run tests and generate coverage report"
 	@echo "  test-e2e        - Run Playwright E2E tests"
+	@echo "  test-all        - Run all tests (unit, integration, and E2E)"
 	@echo "  lint            - Run golangci-lint"
 	@echo "  clean           - Remove build artifacts"
 	@echo "  run             - Build and run the application"

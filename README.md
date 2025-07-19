@@ -137,16 +137,51 @@ monitoring_enabled = false
 
 ### Running Tests
 
+OnTree includes comprehensive test suites for unit, integration, and end-to-end testing.
+
 ```bash
-# Run unit tests
+# Run unit and integration tests
 make test
 
-# Run E2E tests
+# Run tests with race detector
+make test-race
+
+# Run tests with coverage report
+make test-coverage
+
+# Run Playwright E2E tests
 make test-e2e
+
+# Run all tests (unit, integration, and E2E)
+make test-all
 
 # Run linting
 make lint
 ```
+
+#### E2E Testing Details
+
+The E2E test suite uses Playwright to test the application through real browser interactions:
+
+- **Automatic Setup**: The `make test-e2e` command automatically:
+  - Builds the application if needed
+  - Starts the server on port 3001
+  - Waits for the server to be ready
+  - Runs the Playwright test suite
+  - Generates HTML reports in `tests/e2e/playwright-report/`
+
+- **Test Coverage**: E2E tests cover:
+  - Authentication flows (login/logout)
+  - Dashboard functionality and system vitals
+  - Simple app lifecycle (create, start, stop, delete)
+  - Complex multi-service app lifecycle
+  - Docker container naming conventions
+
+- **Environment Variables**: Configure E2E tests with:
+  - `TEST_BASE_URL`: Base URL for tests (default: http://localhost:3001)
+  - `TEST_PORT`: Port for test server (default: 3001)
+  - `KEEP_SERVER_RUNNING`: Keep server running after tests (default: false)
+  - `KEEP_TEST_DATA`: Preserve test data after cleanup (default: false)
 
 ### Development Mode
 

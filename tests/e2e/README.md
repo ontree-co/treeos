@@ -5,8 +5,8 @@ This directory contains end-to-end tests for the OnTree Node application using P
 ## Prerequisites
 
 - Node.js and npm installed
-- OnTree server running on port 3001
 - Docker installed and running (for app management tests)
+- Go and Make installed (for using Makefile commands)
 
 ## Installation
 
@@ -16,6 +16,29 @@ npx playwright install chromium
 ```
 
 ## Running Tests
+
+### Using Makefile (Recommended)
+
+The project includes Makefile commands that handle the complete test lifecycle:
+
+```bash
+# From the project root directory:
+
+# Run E2E tests with automatic server management
+make test-e2e
+
+# Run all tests (unit, integration, and E2E)
+make test-all
+```
+
+The `make test-e2e` command automatically:
+- Builds the application if needed
+- Starts the server on port 3001 (or uses existing server)
+- Waits for server readiness
+- Runs the Playwright test suite
+- Generates reports in `playwright-report/`
+
+### Direct npm Commands
 
 ### Run all tests
 ```bash
