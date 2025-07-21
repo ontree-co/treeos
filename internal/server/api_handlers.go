@@ -35,11 +35,11 @@ type UpdateAppRequest struct {
 
 // AppStatusResponse represents the response for app status endpoint
 type AppStatusResponse struct {
-	Success  bool                   `json:"success"`
-	App      string                 `json:"app"`
-	Status   string                 `json:"status"`
-	Services []ServiceStatusDetail  `json:"services"`
-	Error    string                 `json:"error,omitempty"`
+	Success  bool                  `json:"success"`
+	App      string                `json:"app"`
+	Status   string                `json:"status"`
+	Services []ServiceStatusDetail `json:"services"`
+	Error    string                `json:"error,omitempty"`
 }
 
 // ServiceStatusDetail represents status detail for a single service
@@ -148,6 +148,41 @@ func (s *Server) handleCreateApp(w http.ResponseWriter, r *http.Request) {
 			os.RemoveAll(mountDir)
 			http.Error(w, "Failed to write .env file", http.StatusInternalServerError)
 			return
+		}
+	}
+
+	// Automatically create and start containers if compose service is available
+	if s.composeSvc != nil {
+		log.Printf("Starting containers for newly created app: %s at path: %s", req.Name, appDir)
+
+		// Validate security rules first
+		validator := security.NewValidator(req.Name)
+		if err := validator.ValidateCompose([]byte(req.ComposeYAML)); err != nil {
+			log.Printf("Security validation failed for app %s: %v", req.Name, err)
+			// Don't fail app creation, just skip container creation
+		} else {
+			// Start the app using compose SDK
+			ctx := context.Background()
+			opts := compose.Options{
+				WorkingDir: appDir,
+			}
+
+			// Check if .env file exists
+			envFile := filepath.Join(appDir, ".env")
+			if _, err := os.Stat(envFile); err == nil {
+				opts.EnvFile = envFile
+			}
+
+			log.Printf("Calling compose.Up with WorkingDir: %s", opts.WorkingDir)
+
+			// Create and start the compose project
+			if err := s.composeSvc.Up(ctx, opts); err != nil {
+				log.Printf("Failed to start containers for app %s: %v", req.Name, err)
+				// Don't fail app creation if containers can't be started
+				// User can manually start them later
+			} else {
+				log.Printf("Successfully started containers for app: %s", req.Name)
+			}
 		}
 	}
 
@@ -290,7 +325,7 @@ func (s *Server) handleAPIAppStart(w http.ResponseWriter, r *http.Request) {
 	// Check if app exists
 	appDir := filepath.Join(s.config.AppsDir, appName)
 	composeFile := filepath.Join(appDir, "docker-compose.yml")
-	
+
 	// Read docker-compose.yml content
 	yamlContent, err := os.ReadFile(composeFile)
 	if err != nil {
@@ -314,8 +349,7 @@ func (s *Server) handleAPIAppStart(w http.ResponseWriter, r *http.Request) {
 	// Start the app using compose SDK
 	ctx := context.Background()
 	opts := compose.Options{
-		ProjectName: fmt.Sprintf("ontree-%s", appName),
-		WorkingDir:  appDir,
+		WorkingDir: appDir,
 	}
 
 	// Check if .env file exists
@@ -379,8 +413,7 @@ func (s *Server) handleAPIAppStop(w http.ResponseWriter, r *http.Request) {
 	// Stop the app using compose SDK (without removing volumes)
 	ctx := context.Background()
 	opts := compose.Options{
-		ProjectName: fmt.Sprintf("ontree-%s", appName),
-		WorkingDir:  appDir,
+		WorkingDir: appDir,
 	}
 
 	// Stop the compose project without removing volumes
@@ -438,8 +471,7 @@ func (s *Server) handleAPIAppDelete(w http.ResponseWriter, r *http.Request) {
 	// Stop the app using compose SDK with volume removal
 	ctx := context.Background()
 	opts := compose.Options{
-		ProjectName: fmt.Sprintf("ontree-%s", appName),
-		WorkingDir:  appDir,
+		WorkingDir: appDir,
 	}
 
 	// Stop the compose project and remove volumes
@@ -506,8 +538,7 @@ func (s *Server) handleAPIAppStatus(w http.ResponseWriter, r *http.Request) {
 	// Get container status using compose SDK
 	ctx := context.Background()
 	opts := compose.Options{
-		ProjectName: fmt.Sprintf("ontree-%s", appName),
-		WorkingDir:  appDir,
+		WorkingDir: appDir,
 	}
 
 	containers, err := s.composeSvc.PS(ctx, opts)
@@ -534,22 +565,22 @@ func (s *Server) handleAPIAppStatus(w http.ResponseWriter, r *http.Request) {
 		// Extract service name from container name
 		// Container names follow the pattern: ontree-{appName}-{serviceName}-{index}
 		serviceName := extractServiceName(container.Name, appName)
-		
+
 		// Map container state to our status
 		status := mapContainerState(container.State)
-		
+
 		service := ServiceStatusDetail{
 			Name:   serviceName,
 			Image:  container.Image,
 			Status: status,
 			State:  container.State,
 		}
-		
+
 		// Add health status if available
 		if container.Health != "" && container.Health != "none" {
 			service.State = fmt.Sprintf("%s (health: %s)", container.State, container.Health)
 		}
-		
+
 		services = append(services, service)
 	}
 
@@ -575,9 +606,9 @@ func (s *Server) handleAPIAppStatus(w http.ResponseWriter, r *http.Request) {
 func extractServiceName(containerName, appName string) string {
 	// Remove leading slash if present
 	containerName = strings.TrimPrefix(containerName, "/")
-	
-	// Expected format: ontree-{appName}-{serviceName}-{index}
-	prefix := fmt.Sprintf("ontree-%s-", appName)
+
+	// Expected format: {appName}-{serviceName}-{index}
+	prefix := fmt.Sprintf("%s-", appName)
 	if strings.HasPrefix(containerName, prefix) {
 		remainder := strings.TrimPrefix(containerName, prefix)
 		// Find the last dash to separate service name from index
@@ -587,7 +618,7 @@ func extractServiceName(containerName, appName string) string {
 		}
 		return remainder
 	}
-	
+
 	// Fallback: return the container name as-is
 	return containerName
 }
@@ -725,18 +756,18 @@ func (s *Server) handleAPIAppLogs(w http.ResponseWriter, r *http.Request) {
 	// Set up response headers for streaming
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
-	
+
 	// Set up services filter
 	var services []string
 	if serviceFilter != "" && serviceFilter != "all" {
 		services = []string{serviceFilter}
 	}
-	
+
 	// For streaming, disable buffering
 	if follow {
 		w.Header().Set("Cache-Control", "no-cache")
 		w.Header().Set("Connection", "keep-alive")
-		
+
 		// Flush headers
 		if f, ok := w.(http.Flusher); ok {
 			f.Flush()
@@ -745,11 +776,10 @@ func (s *Server) handleAPIAppLogs(w http.ResponseWriter, r *http.Request) {
 
 	// Create context that cancels when client disconnects
 	ctx := r.Context()
-	
+
 	// Set up compose options
 	opts := compose.Options{
-		ProjectName: fmt.Sprintf("ontree-%s", appName),
-		WorkingDir:  appDir,
+		WorkingDir: appDir,
 	}
 
 	// Create log writer that streams to HTTP response

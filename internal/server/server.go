@@ -126,7 +126,6 @@ func New(cfg *config.Config, versionInfo version.Info) (*Server, error) {
 		s.caddyAvailable = false
 	}
 
-
 	// Initialize template service
 	templatesPath := "compose" // Path within the embedded templates directory
 	s.templateSvc = templates.NewService(templatesPath)
@@ -522,7 +521,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 				}{
 					App: app,
 				}
-				
+
 				// Call the status API endpoint to get multi-service status
 				if s.composeSvc != nil {
 					// Use internal call to get status
@@ -530,10 +529,9 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 					if _, err := os.Stat(appDir); err == nil {
 						ctx := context.Background()
 						opts := compose.Options{
-							ProjectName: fmt.Sprintf("ontree-%s", app.Name),
-							WorkingDir:  appDir,
+							WorkingDir: appDir,
 						}
-						
+
 						containers, err := s.composeSvc.PS(ctx, opts)
 						if err == nil && len(containers) > 0 {
 							// Calculate service count and aggregate status
@@ -546,7 +544,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 									Status: status,
 								})
 							}
-							
+
 							enrichedApp.ServiceCount = len(services)
 							enrichedApp.MultiServiceStatus = calculateAggregateStatus(services)
 						} else {
@@ -556,7 +554,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 						}
 					}
 				}
-				
+
 				apps = append(apps, enrichedApp)
 			}
 		}
@@ -797,7 +795,6 @@ func (s *Server) routeAPIApps(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 	}
 }
-
 
 // handleVersion returns version information as JSON
 func (s *Server) handleVersion(w http.ResponseWriter, r *http.Request) {

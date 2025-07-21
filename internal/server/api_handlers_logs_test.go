@@ -67,7 +67,7 @@ func TestHandleAPIAppLogs(t *testing.T) {
 				if err := os.MkdirAll(appDir, 0755); err != nil {
 					t.Fatal(err)
 				}
-				
+
 				// Create a docker-compose.yml file
 				composeContent := `version: '3'
 services:

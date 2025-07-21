@@ -90,8 +90,8 @@ func (s *Server) handleMultiServiceAppCreate(w http.ResponseWriter, r *http.Requ
 	// If there are errors, show the form again with errors
 	if len(errors) > 0 {
 		data := map[string]interface{}{
-			"User":         user,
-			"Title":        "Create Multi-Service App",
+			"User":  user,
+			"Title": "Create Multi-Service App",
 			"FormData": map[string]string{
 				"app_name":        appName,
 				"compose_content": composeContent,
@@ -146,8 +146,8 @@ func (s *Server) handleMultiServiceAppCreate(w http.ResponseWriter, r *http.Requ
 		errors = append(errors, "Failed to process request")
 		// Show form with errors
 		data := map[string]interface{}{
-			"User":         user,
-			"Title":        "Create Multi-Service App",
+			"User":  user,
+			"Title": "Create Multi-Service App",
 			"FormData": map[string]string{
 				"app_name":        appName,
 				"compose_content": composeContent,
@@ -212,8 +212,8 @@ func (s *Server) handleMultiServiceAppCreate(w http.ResponseWriter, r *http.Requ
 
 	// Show form with errors
 	data := map[string]interface{}{
-		"User":         user,
-		"Title":        "Create Multi-Service App",
+		"User":  user,
+		"Title": "Create Multi-Service App",
 		"FormData": map[string]string{
 			"app_name":        appName,
 			"compose_content": composeContent,
@@ -301,9 +301,9 @@ func (s *Server) handleMultiServiceAppEdit(w http.ResponseWriter, r *http.Reques
 
 		// Show the edit form
 		data := map[string]interface{}{
-			"User":         user,
-			"Title":        fmt.Sprintf("Edit Multi-Service App: %s", appName),
-			"AppName":      appName,
+			"User":    user,
+			"Title":   fmt.Sprintf("Edit Multi-Service App: %s", appName),
+			"AppName": appName,
 			"FormData": map[string]string{
 				"compose_content": apiResp.App.ComposeYAML,
 				"env_content":     apiResp.App.EnvContent,
@@ -376,9 +376,9 @@ func (s *Server) handleMultiServiceAppEdit(w http.ResponseWriter, r *http.Reques
 	// If there are errors, show the form again with errors
 	if len(errors) > 0 {
 		data := map[string]interface{}{
-			"User":         user,
-			"Title":        fmt.Sprintf("Edit Multi-Service App: %s", appName),
-			"AppName":      appName,
+			"User":    user,
+			"Title":   fmt.Sprintf("Edit Multi-Service App: %s", appName),
+			"AppName": appName,
 			"FormData": map[string]string{
 				"compose_content": composeContent,
 				"env_content":     envContent,
@@ -410,9 +410,9 @@ func (s *Server) handleMultiServiceAppEdit(w http.ResponseWriter, r *http.Reques
 		errors = append(errors, "Failed to process request")
 		// Show form with errors
 		data := map[string]interface{}{
-			"User":         user,
-			"Title":        fmt.Sprintf("Edit Multi-Service App: %s", appName),
-			"AppName":      appName,
+			"User":    user,
+			"Title":   fmt.Sprintf("Edit Multi-Service App: %s", appName),
+			"AppName": appName,
 			"FormData": map[string]string{
 				"compose_content": composeContent,
 				"env_content":     envContent,
@@ -476,9 +476,9 @@ func (s *Server) handleMultiServiceAppEdit(w http.ResponseWriter, r *http.Reques
 
 	// Show form with errors
 	data := map[string]interface{}{
-		"User":         user,
-		"Title":        fmt.Sprintf("Edit Multi-Service App: %s", appName),
-		"AppName":      appName,
+		"User":    user,
+		"Title":   fmt.Sprintf("Edit Multi-Service App: %s", appName),
+		"AppName": appName,
 		"FormData": map[string]string{
 			"compose_content": composeContent,
 			"env_content":     envContent,

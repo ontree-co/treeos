@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 	"time"
-	
+
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 )
@@ -41,8 +41,7 @@ func TestComposeIntegration(t *testing.T) {
 	defer cancel()
 
 	opts := Options{
-		ProjectName: "ontree-test-compose",
-		WorkingDir:  testdataDir,
+		WorkingDir: testdataDir,
 	}
 
 	// Test Up operation
@@ -151,14 +150,9 @@ func TestComposeProjectNaming(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			opts := Options{
-				ProjectName: "ontree-" + tt.appName,
-				WorkingDir:  "/test/path",
-			}
-
-			if opts.ProjectName != tt.expectedProject {
-				t.Errorf("Expected project name '%s', got '%s'", tt.expectedProject, opts.ProjectName)
-			}
+			// With the simplified approach, Docker Compose derives project name from directory
+			// These tests are no longer relevant as we don't set project names explicitly
+			t.Skip("Project names are now derived from directory names by Docker Compose")
 		})
 	}
 }
@@ -189,8 +183,7 @@ func TestComposeNamingConventionIntegration(t *testing.T) {
 	// Test with a specific project name following the convention
 	appName := "testapp"
 	opts := Options{
-		ProjectName: "ontree-" + appName,
-		WorkingDir:  testdataDir,
+		WorkingDir: testdataDir,
 	}
 
 	// Bring up the stack
@@ -235,26 +228,25 @@ func startsWith(s, prefix string) bool {
 	return len(s) >= len(prefix) && s[:len(prefix)] == prefix
 }
 
-
 // TestComposeErrorHandling tests the retry logic for various error scenarios
 func TestComposeErrorHandling(t *testing.T) {
 	// This test validates the error handling logic without requiring Docker
-	
+
 	tests := []struct {
-		name            string
-		errorMsg        string
-		shouldRetry     bool
-		retryStrategy   string
+		name          string
+		errorMsg      string
+		shouldRetry   bool
+		retryStrategy string
 	}{
 		{
 			name:          "Container name conflict",
-			errorMsg:      `Error response from daemon: Conflict. The container name "/ontree-test1-nginx-1" is already in use`,
+			errorMsg:      `Error response from daemon: Conflict. The container name "/test1-nginx-1" is already in use`,
 			shouldRetry:   true,
 			retryStrategy: "remove and recreate",
 		},
 		{
 			name:          "No container found",
-			errorMsg:      `no container found for project "ontree-test1": not found`,
+			errorMsg:      `no container found for project "test1": not found`,
 			shouldRetry:   true,
 			retryStrategy: "force recreate",
 		},
@@ -265,16 +257,16 @@ func TestComposeErrorHandling(t *testing.T) {
 			retryStrategy: "none",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Test if error would trigger retry logic
-			hasConflict := contains(tt.errorMsg, "Conflict. The container name") && 
-			              contains(tt.errorMsg, "is already in use")
+			hasConflict := contains(tt.errorMsg, "Conflict. The container name") &&
+				contains(tt.errorMsg, "is already in use")
 			hasNoContainer := contains(tt.errorMsg, "no container found")
-			
+
 			shouldRetry := hasConflict || hasNoContainer
-			
+
 			if shouldRetry != tt.shouldRetry {
 				t.Errorf("Expected retry=%v for error: %s", tt.shouldRetry, tt.errorMsg)
 			}
@@ -283,27 +275,27 @@ func TestComposeErrorHandling(t *testing.T) {
 }
 
 func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && 
+	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) &&
 		(s[:len(substr)] == substr || contains(s[1:], substr)))
 }
 
 // TestContainerLabelsIntegration tests that containers are created with proper Docker Compose labels
 func TestContainerLabelsIntegration(t *testing.T) {
-	// Skip if not running integration tests  
+	// Skip if not running integration tests
 	if os.Getenv("RUN_INTEGRATION_TESTS") != "true" {
 		t.Skip("Skipping integration test. Set RUN_INTEGRATION_TESTS=true to run.")
 	}
-	
+
 	// Create compose service
 	service, err := NewService()
 	if err != nil {
 		t.Fatalf("Failed to create compose service: %v", err)
 	}
 	defer service.Close()
-	
+
 	// Create a temporary directory for test
 	tmpDir := t.TempDir()
-	
+
 	// Create a simple docker-compose.yml
 	composeContent := `version: '3.8'
 services:
@@ -315,20 +307,19 @@ services:
 	if err := os.WriteFile(composeFile, []byte(composeContent), 0644); err != nil {
 		t.Fatalf("Failed to write compose file: %v", err)
 	}
-	
+
 	// Test with specific project name
-	projectName := "ontree-labeltest"
+	projectName := "labeltest"
 	opts := Options{
-		ProjectName: projectName,
-		WorkingDir:  tmpDir,
+		WorkingDir: tmpDir,
 	}
-	
+
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	
+
 	// Clean up any existing containers
 	_ = service.Down(ctx, opts, true)
-	
+
 	// Start the containers
 	err = service.Up(ctx, opts)
 	if err != nil {
@@ -337,64 +328,64 @@ services:
 			t.Fatalf("Failed to start compose stack: %v", err)
 		}
 		t.Logf("Got expected error: %v", err)
-		
+
 		// For this test, we want to check the labels even if start failed
 		// because the issue is that containers are created without labels
 	}
-	
+
 	// Clean up after test
 	defer func() {
 		downCtx, downCancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer downCancel()
 		_ = service.Down(downCtx, opts, true)
 	}()
-	
+
 	// Give container a moment to start
 	time.Sleep(2 * time.Second)
-	
+
 	// List all containers (including non-running) by name pattern
 	// Since PS might not return containers without labels, we'll use docker directly
 	containerList, err := service.dockerClient.ContainerList(ctx, container.ListOptions{
-		All: true,
+		All:     true,
 		Filters: filters.NewArgs(filters.Arg("name", projectName)),
 	})
 	if err != nil {
 		t.Fatalf("Failed to list containers: %v", err)
 	}
-	
+
 	if len(containerList) == 0 {
 		t.Fatal("No containers found")
 	}
-	
+
 	t.Logf("Found %d containers", len(containerList))
-	
+
 	// Check labels on the found containers
 	for _, cont := range containerList {
 		// Container names include ID or name
 		containerID := cont.ID
-		
+
 		// Log container info
 		containerName := "unknown"
 		if len(cont.Names) > 0 {
 			containerName = strings.TrimPrefix(cont.Names[0], "/")
 		}
 		t.Logf("Checking container: %s (ID: %s)", containerName, containerID[:12])
-		
+
 		// Check for required labels
 		labels := cont.Labels
-		
+
 		// Check com.docker.compose.project label
 		if projectLabel, exists := labels["com.docker.compose.project"]; !exists {
 			t.Errorf("Container %s missing 'com.docker.compose.project' label", containerName)
 		} else if projectLabel != projectName {
 			t.Errorf("Container %s has project label '%s', expected '%s'", containerName, projectLabel, projectName)
 		}
-		
-		// Check com.docker.compose.service label  
+
+		// Check com.docker.compose.service label
 		if _, exists := labels["com.docker.compose.service"]; !exists {
 			t.Errorf("Container %s missing 'com.docker.compose.service' label", containerName)
 		}
-		
+
 		// Log all labels for debugging
 		t.Logf("Container %s labels:", containerName)
 		for k, v := range labels {

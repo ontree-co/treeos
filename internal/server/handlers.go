@@ -333,21 +333,19 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 		composeContent = []byte("Failed to read docker-compose.yml")
 	}
 
-
 	// Get container details if it exists
 	var containerInfo map[string]interface{}
 	if app.Status != "not_created" && app.Status != "error" {
 		containerInfo = s.getContainerInfo(appName)
 	}
-	
+
 	// Fetch app status from compose service directly
 	var appStatus *AppStatusResponse
 	if s.composeSvc != nil {
 		// Get container status using compose SDK directly
 		ctx := context.Background()
 		opts := compose.Options{
-			ProjectName: fmt.Sprintf("ontree-%s", appName),
-			WorkingDir:  app.Path,
+			WorkingDir: app.Path,
 		}
 
 		containers, err := s.composeSvc.PS(ctx, opts)
@@ -356,18 +354,18 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 		} else {
 			// Build status response
 			appStatus = &AppStatusResponse{
-				Success: true,
-				App:     appName,
+				Success:  true,
+				App:      appName,
 				Services: []ServiceStatusDetail{},
 			}
 
 			// Process containers to get service information
 			for _, container := range containers {
 				// Extract service name from container name
-				// Format: ontree-{appName}-{serviceName}-1
+				// Format: {appName}-{serviceName}-1
 				serviceName := ""
-				if parts := strings.Split(container.Name, "-"); len(parts) >= 3 {
-					serviceName = parts[2]
+				if parts := strings.Split(container.Name, "-"); len(parts) >= 2 {
+					serviceName = parts[1]
 				}
 
 				service := ServiceStatusDetail{
@@ -420,7 +418,6 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 
 	// Don't pass messages to the template
 	var messages []interface{}
-
 
 	// Fetch app metadata from docker-compose.yml using yamlutil
 	metadata, err := yamlutil.ReadComposeMetadata(app.Path)
@@ -478,7 +475,7 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 	data["HasDomainsConfigured"] = s.config.PublicBaseDomain != "" || s.config.TailscaleBaseDomain != ""
 	data["PublicBaseDomain"] = s.config.PublicBaseDomain
 	data["TailscaleBaseDomain"] = s.config.TailscaleBaseDomain
-	
+
 	// Add Caddy availability check
 	data["CaddyAvailable"] = s.caddyClient != nil
 	data["PlatformSupportsCaddy"] = runtime.GOOS == "linux"
@@ -504,12 +501,10 @@ func (s *Server) getContainerInfo(appName string) map[string]interface{} {
 
 	// For now, return basic info
 	// This will be expanded when we implement container management
-	info["name"] = fmt.Sprintf("ontree-%s", appName)
+	info["name"] = appName
 
 	return info
 }
-
-
 
 // handleAppComposeEdit shows the docker-compose.yml edit form
 func (s *Server) handleAppComposeEdit(w http.ResponseWriter, r *http.Request) {
@@ -1240,18 +1235,18 @@ func (s *Server) handleAppContainers(w http.ResponseWriter, r *http.Request) {
 	// Extract app name from URL
 	path := strings.TrimPrefix(r.URL.Path, "/apps/")
 	appName := strings.TrimSuffix(path, "/containers")
-	
+
 	if appName == "" {
 		http.Error(w, "App name required", http.StatusBadRequest)
 		return
 	}
 
-	// Determine the project name based on whether this is a multi-service app
-	projectName := fmt.Sprintf("ontree-%s", appName)
-	
+	// Use the app name as the project name (Docker Compose will use directory name)
+	projectName := appName
+
 	// Execute docker ps command with filter for the project
 	cmd := fmt.Sprintf(`docker ps --filter "label=com.docker.compose.project=%s" --format "table {{.Names}}\t{{.Status}}\t{{.Image}}"`, projectName)
-	
+
 	output, err := s.executeCommand(cmd)
 	if err != nil {
 		// If no containers found, check for single-service container

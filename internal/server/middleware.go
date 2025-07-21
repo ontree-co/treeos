@@ -86,7 +86,7 @@ func (s *Server) AuthRequiredMiddleware(next http.HandlerFunc) http.HandlerFunc 
 		if !pathPublic {
 			// Log request details for debugging
 			log.Printf("AuthMiddleware: Checking auth for %s %s", r.Method, r.URL.Path)
-			
+
 			// Check if user is authenticated
 			session, err := s.sessionStore.Get(r, "ontree-session")
 			if err != nil {
@@ -97,7 +97,7 @@ func (s *Server) AuthRequiredMiddleware(next http.HandlerFunc) http.HandlerFunc 
 
 			userID, ok := session.Values["user_id"].(int)
 			log.Printf("AuthMiddleware: Session values for %s: user_id=%v (type=%T), ok=%v", r.URL.Path, session.Values["user_id"], session.Values["user_id"], ok)
-			
+
 			if !ok || userID == 0 {
 				log.Printf("AuthMiddleware: No valid user_id in session for %s (ok=%v, userID=%d, session.IsNew=%v)", r.URL.Path, ok, userID, session.IsNew)
 				// Save the original URL for redirect after login, but exclude favicon.ico

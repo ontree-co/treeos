@@ -2,15 +2,19 @@
 package server
 
 import (
+	"context"
 	"fmt"
-	"gopkg.in/yaml.v3"
 	"log"
 	"net/http"
-	"ontree-node/internal/yamlutil"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"gopkg.in/yaml.v3"
+	"ontree-node/internal/security"
+	"ontree-node/internal/yamlutil"
+	"ontree-node/pkg/compose"
 )
 
 // handleAppCreate handles the application creation page
@@ -130,7 +134,6 @@ func isValidAppName(appName string) bool {
 	return match && len(appName) <= 50
 }
 
-
 // createAppScaffold creates the directory structure and docker-compose.yml for a new app
 func (s *Server) createAppScaffold(appName, composeContent, emoji string) error {
 	appPath := filepath.Join(s.config.AppsDir, appName)
@@ -171,7 +174,7 @@ func (s *Server) createAppScaffold(appName, composeContent, emoji string) error 
 	}
 
 	// Add OnTree metadata to the compose file
-	compose, err := yamlutil.ReadComposeWithMetadata(composePath)
+	yamlData, err := yamlutil.ReadComposeWithMetadata(composePath)
 	if err != nil {
 		log.Printf("Warning: Failed to read compose file for metadata: %v", err)
 		// Continue anyway - app is created on disk
@@ -183,16 +186,63 @@ func (s *Server) createAppScaffold(appName, composeContent, emoji string) error 
 			IsExposed: false,
 			Emoji:     emoji,
 		}
-		yamlutil.SetOnTreeMetadata(compose, metadata)
+		yamlutil.SetOnTreeMetadata(yamlData, metadata)
 
 		// Write back with metadata
-		err = yamlutil.WriteComposeWithMetadata(composePath, compose)
+		err = yamlutil.WriteComposeWithMetadata(composePath, yamlData)
 		if err != nil {
 			log.Printf("Warning: Failed to write compose metadata: %v", err)
 			// Continue anyway - app is created without metadata
 		}
 	}
 
+	// Automatically create and start containers if compose service is available
+	if s.composeSvc != nil {
+		// Start containers after creation
+		err := s.startContainersForNewApp(appName, appPath, composeContent)
+		if err != nil {
+			log.Printf("Warning: Failed to start containers for app %s: %v", appName, err)
+			// Don't fail app creation if containers can't be started
+			// User can manually start them later
+		}
+	}
+
+	return nil
+}
+
+// startContainersForNewApp starts containers for a newly created app
+func (s *Server) startContainersForNewApp(appName, appPath, composeContent string) error {
+	log.Printf("Starting containers for newly created app: %s at path: %s", appName, appPath)
+
+	// Validate security rules first
+	validator := security.NewValidator(appName)
+	if err := validator.ValidateCompose([]byte(composeContent)); err != nil {
+		log.Printf("Security validation failed for app %s: %v", appName, err)
+		// Don't fail app creation, just skip container creation
+		return fmt.Errorf("security validation failed: %v", err)
+	}
+
+	// Start the app using compose SDK
+	ctx := context.Background()
+	opts := compose.Options{
+		WorkingDir: appPath,
+	}
+
+	// Check if .env file exists
+	envFile := filepath.Join(appPath, ".env")
+	if _, err := os.Stat(envFile); err == nil {
+		opts.EnvFile = envFile
+	}
+
+	log.Printf("Calling compose.Up with WorkingDir: %s", opts.WorkingDir)
+
+	// Create and start the compose project
+	if err := s.composeSvc.Up(ctx, opts); err != nil {
+		log.Printf("Failed to start containers for app %s: %v", appName, err)
+		return fmt.Errorf("failed to start containers: %v", err)
+	}
+
+	log.Printf("Successfully started containers for app: %s", appName)
 	return nil
 }
 

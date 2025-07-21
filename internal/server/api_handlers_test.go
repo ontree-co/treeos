@@ -19,14 +19,14 @@ import (
 func TestCreateApp(t *testing.T) {
 	// Create temporary directory for tests
 	tempDir := t.TempDir()
-	
+
 	// Create test server
 	cfg := &config.Config{
 		AppsDir:      tempDir,
 		DatabasePath: filepath.Join(tempDir, "test.db"),
 		ListenAddr:   ":8080",
 	}
-	
+
 	s := &Server{
 		config: cfg,
 	}
@@ -152,7 +152,7 @@ services:
 			if tt.expectedStatus == http.StatusCreated {
 				appDir := filepath.Join(tempDir, tt.request.Name)
 				composeFile := filepath.Join(appDir, "docker-compose.yml")
-				
+
 				// Check docker-compose.yml exists
 				if _, err := os.Stat(composeFile); os.IsNotExist(err) {
 					t.Errorf("docker-compose.yml was not created")
@@ -173,7 +173,7 @@ services:
 					if _, err := os.Stat(envFile); os.IsNotExist(err) {
 						t.Errorf(".env file was not created")
 					}
-					
+
 					envContent, err := os.ReadFile(envFile)
 					if err != nil {
 						t.Errorf("Failed to read .env file: %v", err)
@@ -221,14 +221,14 @@ services:
 func TestUpdateApp(t *testing.T) {
 	// Create temporary directory for tests
 	tempDir := t.TempDir()
-	
+
 	// Create test server
 	cfg := &config.Config{
 		AppsDir:      tempDir,
 		DatabasePath: filepath.Join(tempDir, "test.db"),
 		ListenAddr:   ":8080",
 	}
-	
+
 	s := &Server{
 		config: cfg,
 	}
@@ -340,7 +340,7 @@ services:
 			if tt.expectedStatus == http.StatusOK {
 				appDir := filepath.Join(tempDir, tt.appName)
 				composeFile := filepath.Join(appDir, "docker-compose.yml")
-				
+
 				// Check docker-compose.yml was updated
 				content, err := os.ReadFile(composeFile)
 				if err != nil {
@@ -429,7 +429,7 @@ func TestHTTPMethods(t *testing.T) {
 func TestJSONResponse(t *testing.T) {
 	// Create temporary directory for tests
 	tempDir := t.TempDir()
-	
+
 	// Create test server
 	s := &Server{
 		config: &config.Config{
@@ -492,7 +492,7 @@ services:
 
 func TestHandleAPIAppStart(t *testing.T) {
 	tmpDir := t.TempDir()
-	
+
 	// Create a mock server with compose service
 	s := &Server{
 		config: &config.Config{
@@ -609,7 +609,7 @@ func TestHandleAPIAppStartSuccess(t *testing.T) {
 	// This test would require mocking the compose service
 	// For now, we'll just verify the validation passes for a valid compose file
 	tmpDir := t.TempDir()
-	
+
 	s := &Server{
 		config: &config.Config{
 			AppsDir: tmpDir,
@@ -622,18 +622,18 @@ func TestHandleAPIAppStartSuccess(t *testing.T) {
 	appName := "valid-app"
 	appDir := filepath.Join(tmpDir, appName)
 	os.MkdirAll(appDir, 0755)
-	
+
 	// Create mount directory as required by security rules
 	mountDir := filepath.Join(tmpDir, "mount", appName, "web")
 	os.MkdirAll(mountDir, 0755)
-	
+
 	composeContent := fmt.Sprintf(`version: '3.8'
 services:
   web:
     image: nginx
     volumes:
       - %s:/var/www/html`, mountDir)
-	
+
 	os.WriteFile(filepath.Join(appDir, "docker-compose.yml"), []byte(composeContent), 0644)
 
 	// Create request
@@ -647,14 +647,14 @@ services:
 	if w.Code != http.StatusServiceUnavailable {
 		t.Errorf("Expected status %d, got %d", http.StatusServiceUnavailable, w.Code)
 	}
-	
+
 	if !strings.Contains(w.Body.String(), "Compose service not available") {
 		t.Errorf("Expected 'Compose service not available', got '%s'", w.Body.String())
 	}
 }
 func TestHandleAPIAppStop(t *testing.T) {
 	tmpDir := t.TempDir()
-	
+
 	// Create a mock server with compose service
 	s := &Server{
 		config: &config.Config{
@@ -724,7 +724,7 @@ func TestHandleAPIAppStop(t *testing.T) {
 
 func TestHandleAPIAppStopSuccess(t *testing.T) {
 	tmpDir := t.TempDir()
-	
+
 	s := &Server{
 		config: &config.Config{
 			AppsDir: tmpDir,
@@ -737,12 +737,12 @@ func TestHandleAPIAppStopSuccess(t *testing.T) {
 	appName := "valid-app"
 	appDir := filepath.Join(tmpDir, appName)
 	os.MkdirAll(appDir, 0755)
-	
+
 	composeContent := `version: '3.8'
 services:
   web:
     image: nginx`
-	
+
 	os.WriteFile(filepath.Join(appDir, "docker-compose.yml"), []byte(composeContent), 0644)
 
 	// Create request
@@ -756,7 +756,7 @@ services:
 	if w.Code != http.StatusServiceUnavailable {
 		t.Errorf("Expected status %d, got %d", http.StatusServiceUnavailable, w.Code)
 	}
-	
+
 	if !strings.Contains(w.Body.String(), "Compose service not available") {
 		t.Errorf("Expected 'Compose service not available', got '%s'", w.Body.String())
 	}
@@ -764,7 +764,7 @@ services:
 
 func TestHandleAPIAppDelete(t *testing.T) {
 	tmpDir := t.TempDir()
-	
+
 	// Create a mock server with compose service
 	s := &Server{
 		config: &config.Config{
@@ -835,7 +835,7 @@ func TestHandleAPIAppDelete(t *testing.T) {
 
 func TestHandleAPIAppDeleteSuccess(t *testing.T) {
 	tmpDir := t.TempDir()
-	
+
 	s := &Server{
 		config: &config.Config{
 			AppsDir: tmpDir,
@@ -848,15 +848,15 @@ func TestHandleAPIAppDeleteSuccess(t *testing.T) {
 	appName := "valid-app"
 	appDir := filepath.Join(tmpDir, appName)
 	mountDir := filepath.Join(tmpDir, "mount", appName)
-	
+
 	os.MkdirAll(appDir, 0755)
 	os.MkdirAll(mountDir, 0755)
-	
+
 	composeContent := `version: '3.8'
 services:
   web:
     image: nginx`
-	
+
 	os.WriteFile(filepath.Join(appDir, "docker-compose.yml"), []byte(composeContent), 0644)
 
 	// Create request
@@ -870,7 +870,7 @@ services:
 	if w.Code != http.StatusServiceUnavailable {
 		t.Errorf("Expected status %d, got %d", http.StatusServiceUnavailable, w.Code)
 	}
-	
+
 	if !strings.Contains(w.Body.String(), "Compose service not available") {
 		t.Errorf("Expected 'Compose service not available', got '%s'", w.Body.String())
 	}
@@ -878,7 +878,7 @@ services:
 
 func TestHandleAPIAppStatus(t *testing.T) {
 	tmpDir := t.TempDir()
-	
+
 	// Create a mock server with compose service
 	s := &Server{
 		config: &config.Config{
@@ -949,7 +949,7 @@ func TestHandleAPIAppStatus(t *testing.T) {
 
 func TestHandleAPIAppStatusSuccess(t *testing.T) {
 	tmpDir := t.TempDir()
-	
+
 	s := &Server{
 		config: &config.Config{
 			AppsDir: tmpDir,
@@ -962,14 +962,14 @@ func TestHandleAPIAppStatusSuccess(t *testing.T) {
 	appName := "valid-app"
 	appDir := filepath.Join(tmpDir, appName)
 	os.MkdirAll(appDir, 0755)
-	
+
 	composeContent := `version: '3.8'
 services:
   web:
     image: nginx
   db:
     image: postgres:13`
-	
+
 	os.WriteFile(filepath.Join(appDir, "docker-compose.yml"), []byte(composeContent), 0644)
 
 	// Create request
@@ -984,7 +984,7 @@ services:
 	if w.Code != http.StatusServiceUnavailable {
 		t.Errorf("Expected status %d, got %d", http.StatusServiceUnavailable, w.Code)
 	}
-	
+
 	if !strings.Contains(w.Body.String(), "Compose service not available") {
 		t.Errorf("Expected 'Compose service not available', got '%s'", w.Body.String())
 	}
@@ -1053,7 +1053,7 @@ func TestExtractServiceName(t *testing.T) {
 		expectedName  string
 	}{
 		{
-			containerName: "ontree-myapp-web-1",
+			containerName: "myapp-web-1",
 			appName:       "myapp",
 			expectedName:  "web",
 		},
@@ -1063,12 +1063,12 @@ func TestExtractServiceName(t *testing.T) {
 			expectedName:  "database",
 		},
 		{
-			containerName: "ontree-myapp-api-server-1",
+			containerName: "myapp-api-server-1",
 			appName:       "myapp",
 			expectedName:  "api-server",
 		},
 		{
-			containerName: "ontree-myapp-service",
+			containerName: "myapp-service",
 			appName:       "myapp",
 			expectedName:  "service",
 		},
@@ -1121,12 +1121,12 @@ func TestMapContainerState(t *testing.T) {
 func TestMultiServiceAppProjectNaming(t *testing.T) {
 	// This test verifies the project name that would be used
 	tmpDir := t.TempDir()
-	
+
 	// Create a multi-service app
 	appName := "testapp"
 	appDir := filepath.Join(tmpDir, appName)
 	os.MkdirAll(appDir, 0755)
-	
+
 	// Multi-service compose file
 	composeContent := `version: '3.8'
 services:
@@ -1138,23 +1138,23 @@ services:
     image: postgres:13
     environment:
       POSTGRES_PASSWORD: secret`
-	
+
 	os.WriteFile(filepath.Join(appDir, "docker-compose.yml"), []byte(composeContent), 0644)
 
-	// The project name should be "ontree-testapp"
-	expectedProjectName := fmt.Sprintf("ontree-%s", appName)
-	
-	// Verify the project name format matches what the API handler would use
-	if expectedProjectName != "ontree-testapp" {
-		t.Errorf("Expected project name 'ontree-testapp', got '%s'", expectedProjectName)
+	// The project name should match the directory name "testapp"
+	expectedProjectName := appName
+
+	// Verify the project name format matches the directory name
+	if expectedProjectName != "testapp" {
+		t.Errorf("Expected project name 'testapp', got '%s'", expectedProjectName)
 	}
-	
+
 	// Test with hyphenated app name
 	appName2 := "openwebui-multi"
-	expectedProjectName2 := fmt.Sprintf("ontree-%s", appName2)
-	
-	if expectedProjectName2 != "ontree-openwebui-multi" {
-		t.Errorf("Expected project name 'ontree-openwebui-multi', got '%s'", expectedProjectName2)
+	expectedProjectName2 := appName2
+
+	if expectedProjectName2 != "openwebui-multi" {
+		t.Errorf("Expected project name 'openwebui-multi', got '%s'", expectedProjectName2)
 	}
 }
 
@@ -1162,65 +1162,65 @@ services:
 // for containers, networks, and volumes follows the expected pattern
 func TestNamingConventionForAllResources(t *testing.T) {
 	tests := []struct {
-		name                string
-		appName             string
-		serviceName         string
-		index               int
-		expectedContainer   string
-		expectedNetwork     string
-		expectedVolume      string
+		name              string
+		appName           string
+		serviceName       string
+		index             int
+		expectedContainer string
+		expectedNetwork   string
+		expectedVolume    string
 	}{
 		{
 			name:              "Single service app",
 			appName:           "myapp",
 			serviceName:       "web",
 			index:             1,
-			expectedContainer: "ontree-myapp-web-1",
-			expectedNetwork:   "ontree-myapp_default",
-			expectedVolume:    "ontree-myapp_data",
+			expectedContainer: "myapp-web-1",
+			expectedNetwork:   "myapp_default",
+			expectedVolume:    "myapp_data",
 		},
 		{
 			name:              "Multi-service app - web service",
 			appName:           "complex-app",
 			serviceName:       "web",
 			index:             1,
-			expectedContainer: "ontree-complex-app-web-1",
-			expectedNetwork:   "ontree-complex-app_default",
-			expectedVolume:    "ontree-complex-app_web-data",
+			expectedContainer: "complex-app-web-1",
+			expectedNetwork:   "complex-app_default",
+			expectedVolume:    "complex-app_web-data",
 		},
 		{
 			name:              "Multi-service app - database service",
 			appName:           "complex-app",
 			serviceName:       "database",
 			index:             1,
-			expectedContainer: "ontree-complex-app-database-1",
-			expectedNetwork:   "ontree-complex-app_default",
-			expectedVolume:    "ontree-complex-app_db-data",
+			expectedContainer: "complex-app-database-1",
+			expectedNetwork:   "complex-app_default",
+			expectedVolume:    "complex-app_db-data",
 		},
 		{
 			name:              "App with underscores in name",
 			appName:           "my_app",
 			serviceName:       "api",
 			index:             1,
-			expectedContainer: "ontree-my_app-api-1",
-			expectedNetwork:   "ontree-my_app_default",
-			expectedVolume:    "ontree-my_app_api-data",
+			expectedContainer: "my_app-api-1",
+			expectedNetwork:   "my_app_default",
+			expectedVolume:    "my_app_api-data",
 		},
 		{
 			name:              "Multiple instances of same service",
 			appName:           "scaled-app",
 			serviceName:       "worker",
 			index:             3,
-			expectedContainer: "ontree-scaled-app-worker-3",
-			expectedNetwork:   "ontree-scaled-app_default",
-			expectedVolume:    "ontree-scaled-app_worker-data",
+			expectedContainer: "scaled-app-worker-3",
+			expectedNetwork:   "scaled-app_default",
+			expectedVolume:    "scaled-app_worker-data",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Test container naming
-			projectName := fmt.Sprintf("ontree-%s", tt.appName)
+			projectName := tt.appName
 			containerName := fmt.Sprintf("%s-%s-%d", projectName, tt.serviceName, tt.index)
 			if containerName != tt.expectedContainer {
 				t.Errorf("Container name: expected '%s', got '%s'", tt.expectedContainer, containerName)
@@ -1245,7 +1245,7 @@ func TestNamingConventionForAllResources(t *testing.T) {
 			} else {
 				volumeName = fmt.Sprintf("%s_%s-data", projectName, tt.serviceName)
 			}
-			
+
 			if volumeName != tt.expectedVolume {
 				t.Errorf("Volume name: expected '%s', got '%s'", tt.expectedVolume, volumeName)
 			}
@@ -1342,22 +1342,22 @@ func TestExtractServiceNameFromMultiServiceContainers(t *testing.T) {
 		expectedName  string
 	}{
 		{
-			containerName: "ontree-myapp-web-1",
+			containerName: "myapp-web-1",
 			appName:       "myapp",
 			expectedName:  "web",
 		},
 		{
-			containerName: "ontree-myapp-database-1",
+			containerName: "myapp-database-1",
 			appName:       "myapp",
 			expectedName:  "database",
 		},
 		{
-			containerName: "ontree-openwebui-multi-open-webui-1",
+			containerName: "openwebui-multi-open-webui-1",
 			appName:       "openwebui-multi",
 			expectedName:  "open-webui",
 		},
 		{
-			containerName: "ontree-openwebui-multi-ollama-1",
+			containerName: "openwebui-multi-ollama-1",
 			appName:       "openwebui-multi",
 			expectedName:  "ollama",
 		},
@@ -1367,7 +1367,7 @@ func TestExtractServiceNameFromMultiServiceContainers(t *testing.T) {
 		t.Run(tt.containerName, func(t *testing.T) {
 			result := extractServiceName(tt.containerName, tt.appName)
 			if result != tt.expectedName {
-				t.Errorf("Container '%s' with app '%s': expected service name '%s', got '%s'", 
+				t.Errorf("Container '%s' with app '%s': expected service name '%s', got '%s'",
 					tt.containerName, tt.appName, tt.expectedName, result)
 			}
 		})

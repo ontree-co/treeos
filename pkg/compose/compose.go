@@ -14,6 +14,8 @@ import (
 	"github.com/docker/cli/cli/flags"
 	"github.com/docker/compose/v2/pkg/api"
 	"github.com/docker/compose/v2/pkg/compose"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 )
 
@@ -62,9 +64,8 @@ func (s *Service) Close() error {
 
 // Options represents options for compose operations
 type Options struct {
-	ProjectName string
-	WorkingDir  string
-	EnvFile     string
+	WorkingDir string
+	EnvFile    string
 }
 
 // Up starts a compose project (equivalent to docker-compose up)
@@ -74,37 +75,58 @@ func (s *Service) Up(ctx context.Context, opts Options) error {
 		return fmt.Errorf("failed to load project: %w", err)
 	}
 
-	// First, try to start with no recreation (handles most cases efficiently)
-	upOptions := api.UpOptions{
-		Create: api.CreateOptions{
-			RemoveOrphans: true,
-			Recreate:      api.RecreateNever, // Never recreate, just start existing containers
-		},
-		Start: api.StartOptions{
-			Wait:   false,
-			Attach: nil,
-		},
+	// First check if containers already exist for this project
+	existingContainers, err := s.service.Ps(ctx, project.Name, api.PsOptions{All: true})
+	if err == nil && len(existingContainers) > 0 {
+		// Containers exist, just start them
+		for _, cont := range existingContainers {
+			if cont.State != "running" {
+				// Use docker client directly to start the container
+				err := s.dockerClient.ContainerStart(ctx, cont.ID, container.StartOptions{})
+				if err != nil {
+					return fmt.Errorf("failed to start container %s: %w", cont.Name, err)
+				}
+			}
+		}
+		return nil
 	}
 
-	err = s.service.Up(ctx, project, upOptions)
-
-	// Handle specific error cases
-	if err != nil && strings.Contains(err.Error(), "no container found") {
-		// This can happen when containers are in a "created" but not "started" state
-		// Try to start the containers without creating them
-		startOpts := api.StartOptions{
-			Wait:   false,
-			Attach: nil,
-		}
-		startErr := s.service.Start(ctx, project.Name, startOpts)
-		if startErr == nil {
-			// Successfully started existing containers
-			return nil
-		}
-		// If start didn't work, return the original error
+	// No existing containers, create and start them
+	err = s.service.Create(ctx, project, api.CreateOptions{
+		RemoveOrphans: true,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create containers: %w", err)
 	}
 
-	return err
+	// Now start the containers
+	err = s.service.Start(ctx, project.Name, api.StartOptions{})
+	if err != nil {
+		// If we get "no container found" error, try starting containers directly
+		if strings.Contains(err.Error(), "no container found") {
+			// List all containers and start them directly
+			filters := filters.NewArgs()
+			filters.Add("label", fmt.Sprintf("com.docker.compose.project=%s", project.Name))
+			containers, err := s.dockerClient.ContainerList(ctx, container.ListOptions{
+				All:     true,
+				Filters: filters,
+			})
+			if err == nil {
+				for _, c := range containers {
+					if c.State != "running" {
+						err := s.dockerClient.ContainerStart(ctx, c.ID, container.StartOptions{})
+						if err != nil {
+							return fmt.Errorf("failed to start container %s: %w", c.Names[0], err)
+						}
+					}
+				}
+				return nil
+			}
+		}
+		return fmt.Errorf("failed to start containers: %w", err)
+	}
+
+	return nil
 }
 
 // Down stops and removes a compose project (equivalent to docker-compose down)
@@ -214,7 +236,7 @@ func (s *Service) loadProject(ctx context.Context, opts Options) (*types.Project
 		}
 	}
 
-	// Set up config details with proper environment
+	// Set up config details
 	configDetails := types.ConfigDetails{
 		WorkingDir: opts.WorkingDir,
 		ConfigFiles: []types.ConfigFile{
@@ -223,7 +245,7 @@ func (s *Service) loadProject(ctx context.Context, opts Options) (*types.Project
 			},
 		},
 		Environment: map[string]string{
-			"COMPOSE_PROJECT_NAME": opts.ProjectName,
+			"COMPOSE_PROJECT_NAME": filepath.Base(opts.WorkingDir),
 		},
 	}
 
@@ -237,31 +259,13 @@ func (s *Service) loadProject(ctx context.Context, opts Options) (*types.Project
 		}
 	}
 
-	// Load the project with explicit project name
+	// Load the project
 	project, err := loader.LoadWithContext(ctx, configDetails, func(options *loader.Options) {
-		options.SetProjectName(opts.ProjectName, true)
-		// Don't skip interpolation - we want environment variables to be used
-		options.SkipInterpolation = false
+		// Set the project name from the directory name
+		options.SetProjectName(filepath.Base(opts.WorkingDir), true)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to load compose file: %w", err)
-	}
-
-	// Ensure project name is set
-	project.Name = opts.ProjectName
-	
-	// Apply project labels to all services
-	// This ensures containers get the correct compose labels
-	for serviceName, service := range project.Services {
-		if service.CustomLabels == nil {
-			service.CustomLabels = make(map[string]string)
-		}
-		// Add essential Docker Compose labels
-		service.CustomLabels["com.docker.compose.project"] = project.Name
-		service.CustomLabels["com.docker.compose.service"] = serviceName
-		
-		// Update the service in the project
-		project.Services[serviceName] = service
 	}
 
 	return project, nil
