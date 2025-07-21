@@ -578,7 +578,8 @@
                 <p class="small text-danger"><strong>This action cannot be undone!</strong></p>
                 <form method="post" action="/api/apps/{{.App.Name}}" class="d-inline"
                       onsubmit="event.preventDefault(); handleMultiServiceDelete(this);">
-                    <button type="button" class="btn btn-danger confirm-action" data-confirm-text="Are you sure? Click to confirm">
+                    <button type="button" class="btn btn-danger confirm-action" data-confirm-text="Are you sure? Click to confirm"
+                            data-custom-action="delete">
                         <i class="fas fa-trash-alt me-1"></i> Delete App Permanently
                     </button>
                 </form>
@@ -654,10 +655,10 @@ function handleMultiServiceAction(form, action) {
 // Handle multi-service delete
 function handleMultiServiceDelete(form) {
     const appName = '{{.App.Name}}';
-    const button = form.querySelector('button[type="submit"]');
+    const button = form.querySelector('button');
     
     // Check if button is in confirming state (second click)
-    if (button.classList.contains('confirming')) {
+    if (button && button.classList.contains('confirming')) {
         const originalButtonHTML = button.innerHTML;
         
         // Disable button and show spinner
@@ -709,17 +710,27 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             
             if (button.classList.contains('confirming')) {
-                // Second click - submit the form
-                // Track app action if PostHog is available
-                {{if .PostHogEnabled}}
-                if (typeof posthog !== 'undefined' && form.action.includes('/start')) {
-                    posthog.capture('app_started', {
-                        app_name: '{{.App.Name}}',
-                        timestamp: new Date().toISOString()
+                // Second click - check for custom action
+                if (button.dataset.customAction === 'delete') {
+                    // Trigger the form's onsubmit handler for delete
+                    const submitEvent = new Event('submit', {
+                        bubbles: true,
+                        cancelable: true
                     });
+                    form.dispatchEvent(submitEvent);
+                } else {
+                    // Normal form submission
+                    // Track app action if PostHog is available
+                    {{if .PostHogEnabled}}
+                    if (typeof posthog !== 'undefined' && form.action.includes('/start')) {
+                        posthog.capture('app_started', {
+                            app_name: '{{.App.Name}}',
+                            timestamp: new Date().toISOString()
+                        });
+                    }
+                    {{end}}
+                    form.submit();
                 }
-                {{end}}
-                form.submit();
             } else {
                 // First click - enter confirmation mode
                 button.classList.add('confirming');

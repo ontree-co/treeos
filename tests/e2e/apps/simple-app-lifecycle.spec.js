@@ -11,16 +11,8 @@ test.describe('Simple App Lifecycle (Nginx)', () => {
   });
 
   test.afterEach(async ({ page }) => {
-    // Minimal cleanup - let global teardown handle Docker containers
-    try {
-      await page.goto(`/apps/${testAppName}`, { waitUntil: 'domcontentloaded' });
-      const deleteAppBtn = page.locator('button:has-text("Delete App")');
-      if (await deleteAppBtn.isVisible({ timeout: 2000 })) {
-        await deleteAppBtn.click();
-      }
-    } catch (error) {
-      // Ignore cleanup errors
-    }
+    // Minimal cleanup - app should be deleted by the test itself
+    // Global teardown will handle any remaining Docker containers
   });
 
   test('complete lifecycle: create, verify, stop, start, and delete', async ({ page }) => {
@@ -98,11 +90,41 @@ services:
     //    as seen in teardown: ontree-test-nginx-TIMESTAMP-test-nginx-TIMESTAMP-1
     // 4. Start/stop operations work (container exists in teardown)
     
-    // Skip the problematic delete button UI interaction
-    // The global teardown will clean up the test containers
+    // 6. DELETE APPLICATION
+    // Scroll to the delete section
+    await page.evaluate(() => {
+      const deleteCard = document.querySelector('.card-header:has-text("Delete Application")');
+      if (deleteCard) {
+        deleteCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+    
+    // Click the delete button (first click - confirmation)
+    const deleteBtn = page.locator('button:has-text("Delete App Permanently")');
+    await expect(deleteBtn).toBeVisible();
+    await deleteBtn.click();
+    
+    // Button should change to confirmation text
+    await expect(deleteBtn).toContainText('Are you sure? Click to confirm');
+    
+    // Second click to confirm deletion
+    await deleteBtn.click();
+    
+    // Should show spinner during deletion
+    await expect(deleteBtn).toContainText('Deleting...');
+    
+    // Wait for redirect to dashboard after deletion
+    await page.waitForURL('/', { timeout: 10000 });
+    
+    // Verify we're on the dashboard
+    await expect(page.locator('h1')).toContainText('Applications');
+    
+    // Verify the app is no longer in the list
+    const appCard = page.locator('.card').filter({ hasText: testAppName });
+    await expect(appCard).toHaveCount(0);
     
     // VERIFICATION OF CONTAINER NAMING CONVENTION:
-    // The global teardown consistently shows containers with pattern:
+    // The test confirms containers follow the pattern:
     // ontree-test-nginx-TIMESTAMP-test-nginx-TIMESTAMP-1
     // This confirms the naming convention works correctly.
   });

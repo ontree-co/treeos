@@ -1,3 +1,6 @@
 {
-  "makefile.configureOnOpen": false
+  "makefile.configureOnOpen": false,
+  "go.delveConfig": {
+    "dlvPath": "/home/ontree/go/bin/dlv"
+  }
 }
