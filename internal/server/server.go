@@ -731,6 +731,11 @@ func (s *Server) syncExposedApps() {
 // routeApps routes all /apps/* requests to the appropriate handler
 func (s *Server) routeApps(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
+	
+	// Debug logging
+	if strings.Contains(path, "expose") {
+		log.Printf("[routeApps] Request: method=%s path=%s", r.Method, path)
+	}
 
 	// Route based on the path pattern
 	if path == "/apps/create" {

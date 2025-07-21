@@ -72,6 +72,11 @@ func (c *Client) HealthCheck() error {
 
 // AddOrUpdateRoute adds or updates a route in Caddy's configuration
 func (c *Client) AddOrUpdateRoute(route *RouteConfig) error {
+	// First ensure the HTTP app exists
+	if err := c.ensureHTTPApp(); err != nil {
+		return fmt.Errorf("failed to ensure HTTP app exists: %w", err)
+	}
+
 	jsonData, err := json.Marshal(route)
 	if err != nil {
 		return fmt.Errorf("failed to marshal route config: %w", err)
@@ -104,6 +109,63 @@ func (c *Client) AddOrUpdateRoute(route *RouteConfig) error {
 
 	log.Printf("[Caddy] Successfully added/updated route %s", route.ID)
 
+	return nil
+}
+
+// ensureHTTPApp ensures that the HTTP app exists in Caddy's configuration
+func (c *Client) ensureHTTPApp() error {
+	// Check if HTTP app exists
+	resp, err := c.httpClient.Get(c.baseURL + "/config/apps/http")
+	if err != nil {
+		return fmt.Errorf("failed to check HTTP app: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	// If HTTP app exists, we're done
+	if resp.StatusCode == http.StatusOK {
+		return nil
+	}
+
+	// Create the HTTP app with a default server
+	log.Printf("[Caddy] HTTP app not found, initializing...")
+
+	// Define the HTTP app configuration
+	httpApp := map[string]interface{}{
+		"servers": map[string]interface{}{
+			"srv0": map[string]interface{}{
+				"listen": []string{":80", ":443"},
+				"routes": []interface{}{},
+			},
+		},
+	}
+
+	jsonData, err := json.Marshal(httpApp)
+	if err != nil {
+		return fmt.Errorf("failed to marshal HTTP app config: %w", err)
+	}
+
+	// Create the HTTP app
+	req, err := http.NewRequest(http.MethodPut, c.baseURL+"/config/apps/http", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return fmt.Errorf("failed to create HTTP app request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err = c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to create HTTP app: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("failed to create HTTP app, status %d (failed to read body: %w)", resp.StatusCode, err)
+		}
+		return fmt.Errorf("failed to create HTTP app, status %d: %s", resp.StatusCode, string(body))
+	}
+
+	log.Printf("[Caddy] Successfully initialized HTTP app")
 	return nil
 }
 
