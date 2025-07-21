@@ -37,9 +37,8 @@ async function createTestApp(page, appName, dockerImage = 'nginx:latest') {
   
   const composeContent = `version: '3'
 services:
-  ${appName}:
+  web:
     image: ${dockerImage}
-    container_name: ontree-${appName}
     ports:
       - "8080:80"`;
   

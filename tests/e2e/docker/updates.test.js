@@ -69,9 +69,8 @@ test.describe('Docker Image Updates', () => {
       await page.fill('input[name="app_name"]', appName);
       await page.fill('textarea[name="compose_content"]', `version: '3'
 services:
-  ${appName}:
+  web:
     image: nginx:1.20
-    container_name: ontree-${appName}
     ports:
       - "9999:80"`);
       await page.click('button[type="submit"]');
@@ -144,9 +143,8 @@ services:
       await page.fill('input[name="app_name"]', appName);
       await page.fill('textarea[name="compose_content"]', `version: '3'
 services:
-  ${appName}:
-    image: nonexistent/image:latest
-    container_name: ontree-${appName}`);
+  web:
+    image: nonexistent/image:latest`);
       await page.click('button[type="submit"]');
       await page.waitForURL(`/apps/${appName}`);
     }

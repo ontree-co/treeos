@@ -14,11 +14,13 @@ import (
 	"github.com/docker/cli/cli/flags"
 	"github.com/docker/compose/v2/pkg/api"
 	"github.com/docker/compose/v2/pkg/compose"
+	"github.com/docker/docker/client"
 )
 
 // Service wraps the Docker Compose SDK functionality
 type Service struct {
-	service api.Service
+	service      api.Service
+	dockerClient *client.Client
 }
 
 // NewService creates a new instance of the compose service
@@ -35,12 +37,27 @@ func NewService() (*Service, error) {
 		return nil, fmt.Errorf("failed to initialize docker cli: %w", err)
 	}
 
+	// Create a standard Docker client for direct container operations
+	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return nil, fmt.Errorf("failed to create docker client: %w", err)
+	}
+
 	// Create the compose service
 	composeService := compose.NewComposeService(dockerCli)
-	
+
 	return &Service{
-		service: composeService,
+		service:      composeService,
+		dockerClient: dockerClient,
 	}, nil
+}
+
+// Close closes the Docker client connections
+func (s *Service) Close() error {
+	if s.dockerClient != nil {
+		return s.dockerClient.Close()
+	}
+	return nil
 }
 
 // Options represents options for compose operations
@@ -57,11 +74,11 @@ func (s *Service) Up(ctx context.Context, opts Options) error {
 		return fmt.Errorf("failed to load project: %w", err)
 	}
 
-	// Create and start the services with detached mode
+	// First, try to start with no recreation (handles most cases efficiently)
 	upOptions := api.UpOptions{
 		Create: api.CreateOptions{
 			RemoveOrphans: true,
-			Recreate:      api.RecreateForce,
+			Recreate:      api.RecreateNever, // Never recreate, just start existing containers
 		},
 		Start: api.StartOptions{
 			Wait:   false,
@@ -69,7 +86,25 @@ func (s *Service) Up(ctx context.Context, opts Options) error {
 		},
 	}
 
-	return s.service.Up(ctx, project, upOptions)
+	err = s.service.Up(ctx, project, upOptions)
+
+	// Handle specific error cases
+	if err != nil && strings.Contains(err.Error(), "no container found") {
+		// This can happen when containers are in a "created" but not "started" state
+		// Try to start the containers without creating them
+		startOpts := api.StartOptions{
+			Wait:   false,
+			Attach: nil,
+		}
+		startErr := s.service.Start(ctx, project.Name, startOpts)
+		if startErr == nil {
+			// Successfully started existing containers
+			return nil
+		}
+		// If start didn't work, return the original error
+	}
+
+	return err
 }
 
 // Down stops and removes a compose project (equivalent to docker-compose down)
@@ -123,7 +158,7 @@ func (l *LogConsumerWriter) Log(containerName, message string) {
 		// Take the service name part(s), excluding "ontree", app name, and index
 		serviceName = strings.Join(parts[2:len(parts)-1], "-")
 	}
-	
+
 	// Format: [service-name] message
 	fmt.Fprintf(l.writer.Out, "[%s] %s", serviceName, message)
 }
@@ -179,13 +214,16 @@ func (s *Service) loadProject(ctx context.Context, opts Options) (*types.Project
 		}
 	}
 
-	// Set up config details
+	// Set up config details with proper environment
 	configDetails := types.ConfigDetails{
 		WorkingDir: opts.WorkingDir,
 		ConfigFiles: []types.ConfigFile{
 			{
 				Filename: composeFile,
 			},
+		},
+		Environment: map[string]string{
+			"COMPOSE_PROJECT_NAME": opts.ProjectName,
 		},
 	}
 
@@ -199,12 +237,31 @@ func (s *Service) loadProject(ctx context.Context, opts Options) (*types.Project
 		}
 	}
 
-	// Load the project
+	// Load the project with explicit project name
 	project, err := loader.LoadWithContext(ctx, configDetails, func(options *loader.Options) {
 		options.SetProjectName(opts.ProjectName, true)
+		// Don't skip interpolation - we want environment variables to be used
+		options.SkipInterpolation = false
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to load compose file: %w", err)
+	}
+
+	// Ensure project name is set
+	project.Name = opts.ProjectName
+	
+	// Apply project labels to all services
+	// This ensures containers get the correct compose labels
+	for serviceName, service := range project.Services {
+		if service.CustomLabels == nil {
+			service.CustomLabels = make(map[string]string)
+		}
+		// Add essential Docker Compose labels
+		service.CustomLabels["com.docker.compose.project"] = project.Name
+		service.CustomLabels["com.docker.compose.service"] = serviceName
+		
+		// Update the service in the project
+		project.Services[serviceName] = service
 	}
 
 	return project, nil
