@@ -71,6 +71,7 @@ func (s *Server) AuthRequiredMiddleware(next http.HandlerFunc) http.HandlerFunc 
 			"/setup",
 			"/static/",
 			"/patterns/",
+			"/favicon.ico",
 		}
 
 		// Check if current path is public
@@ -99,8 +100,10 @@ func (s *Server) AuthRequiredMiddleware(next http.HandlerFunc) http.HandlerFunc 
 			
 			if !ok || userID == 0 {
 				log.Printf("AuthMiddleware: No valid user_id in session for %s (ok=%v, userID=%d, session.IsNew=%v)", r.URL.Path, ok, userID, session.IsNew)
-				// Save the original URL for redirect after login
-				session.Values["next"] = r.URL.Path
+				// Save the original URL for redirect after login, but exclude favicon.ico
+				if r.URL.Path != "/favicon.ico" {
+					session.Values["next"] = r.URL.Path
+				}
 				if err := session.Save(r, w); err != nil {
 					log.Printf("Error saving session: %v", err)
 				}
