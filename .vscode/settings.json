@@ -5,5 +5,20 @@
   },
   "github-actions.workflows.pinned.workflows": [
     ".github/workflows/test.yml"
-  ]
+  ],
+  "go.testEnvVars": {
+    "CGO_ENABLED": "1"
+  },
+  "go.testFlags": ["-v"],
+  "go.testTimeout": "30s",
+  "go.coverOnSave": false,
+  "go.coverageDecorator": {
+    "type": "gutter",
+    "coveredHighlightColor": "rgba(64,128,64,0.5)",
+    "uncoveredHighlightColor": "rgba(128,64,64,0.25)",
+    "coveredGutterStyle": "blockgreen",
+    "uncoveredGutterStyle": "blockred"
+  },
+  "go.testExplorer.enable": true,
+  "go.testExplorer.showOutput": true
 }

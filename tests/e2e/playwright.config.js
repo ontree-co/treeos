@@ -49,9 +49,7 @@ module.exports = defineConfig({
   /* Test timeout */
   timeout: 60 * 1000,
 
-  /* Global setup/teardown - only in local development */
-  ...(process.env.CI ? {} : {
-    globalSetup: require.resolve('./global-setup.js'),
-    globalTeardown: require.resolve('./global-teardown.js'),
-  }),
+  /* Global setup/teardown - always run to ensure proper test environment */
+  globalSetup: require.resolve('./global-setup.js'),
+  globalTeardown: require.resolve('./global-teardown.js'),
 });

@@ -32,6 +32,33 @@
                 "isDefault": true
             },
             "problemMatcher": ["$go"]
+        },
+        {
+            "label": "test",
+            "type": "shell",
+            "command": "make",
+            "args": ["test"],
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "problemMatcher": ["$go"]
+        },
+        {
+            "label": "test-e2e",
+            "type": "shell",
+            "command": "make",
+            "args": ["test-e2e"],
+            "group": "test",
+            "problemMatcher": []
+        },
+        {
+            "label": "test-all",
+            "type": "shell",
+            "command": "make",
+            "args": ["test-all"],
+            "group": "test",
+            "problemMatcher": ["$go"]
         }
     ]
 }
