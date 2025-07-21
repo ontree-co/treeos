@@ -247,7 +247,7 @@ services:
       - /etc/passwd:/etc/passwd:ro
 `,
 			shouldFail: true,
-			errorMsg:   "is not within allowed directory",
+			errorMsg:   "is not allowed. Use named volumes instead",
 		},
 		{
 			name:    "bind mount in allowed directory but wrong service path",
@@ -303,7 +303,7 @@ services:
       - ./data:/usr/share/nginx/html
 `,
 			shouldFail: true,
-			errorMsg:   "is not within allowed directory",
+			errorMsg:   "is not allowed. Use named volumes instead",
 		},
 		{
 			name:    "long-form volume syntax with bind mount",
@@ -334,7 +334,7 @@ services:
         target: /logs
 `,
 			shouldFail: true,
-			errorMsg:   "is not within allowed directory",
+			errorMsg:   "is not allowed. Use named volumes instead",
 		},
 		{
 			name:    "mixed volume types",

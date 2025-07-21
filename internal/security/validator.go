@@ -158,7 +158,7 @@ func (v *Validator) validateBindMounts(serviceName string, service ServiceConfig
 						return ValidationError{
 							Service: serviceName,
 							Rule:    "bind mount path",
-							Detail:  fmt.Sprintf("bind mount path '%s' is not within allowed directory '%s'", hostPath, allowedPrefix),
+							Detail:  fmt.Sprintf("bind mount path '%s' is not allowed. Use named volumes instead (e.g., 'mydata:/path') or absolute paths within '%s'", hostPath, allowedPrefix),
 						}
 					}
 					
@@ -189,7 +189,7 @@ func (v *Validator) validateBindMounts(serviceName string, service ServiceConfig
 						return ValidationError{
 							Service: serviceName,
 							Rule:    "bind mount path",
-							Detail:  fmt.Sprintf("bind mount path '%s' is not within allowed directory '%s'", source, allowedPrefix),
+							Detail:  fmt.Sprintf("bind mount path '%s' is not allowed. Use named volumes instead (e.g., 'mydata:/path') or absolute paths within '%s'", source, allowedPrefix),
 						}
 					}
 					

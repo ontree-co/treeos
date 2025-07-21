@@ -609,9 +609,17 @@ function handleMultiServiceAction(form, action) {
     })
     .then(response => {
         // Check if we got redirected to login
-        if (response.redirected || !response.ok) {
+        if (response.redirected) {
             throw new Error('Session expired. Please login again.');
         }
+        
+        // For non-OK responses, try to get the error message from the response body
+        if (!response.ok) {
+            return response.text().then(text => {
+                throw new Error(text || `Request failed with status ${response.status}`);
+            });
+        }
+        
         // Check content type
         const contentType = response.headers.get("content-type");
         if (!contentType || !contentType.includes("application/json")) {
