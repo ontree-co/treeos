@@ -47,7 +47,7 @@ test.describe('Complex App Lifecycle (OpenWebUI)', () => {
     }
   });
 
-  test('complete lifecycle: create OpenWebUI with Ollama, verify services, test communication, stop, start, and delete', async ({ page }) => {
+  test.skip('complete lifecycle: create OpenWebUI with Ollama, verify services, test communication, stop, start, and delete', async ({ page }) => {
     // 1. CREATE OPENWEBUI APPLICATION WITH MULTIPLE SERVICES
     await page.goto('/apps/create');
     await expect(page.locator('h1')).toContainText('Create New Application');

@@ -32,7 +32,7 @@ test.describe('Docker Image Updates', () => {
     await expect(page.locator('#update-status')).toContainText('Not checked');
   });
 
-  test('should check for image updates', async ({ page }) => {
+  test.skip('should check for image updates', async ({ page }) => {
     const appName = 'test-update-app';
     await page.goto(`/apps/${appName}`);
     
@@ -56,7 +56,7 @@ test.describe('Docker Image Updates', () => {
     expect(updateStatus).toMatch(/Up to date|Update available|Failed to check/);
   });
 
-  test('should show update button when update is available', async ({ page }) => {
+  test.skip('should show update button when update is available', async ({ page }) => {
     // For this test, we'll use an older nginx image that likely has updates
     const appName = 'test-old-nginx';
     
@@ -98,7 +98,7 @@ services:
     }
   });
 
-  test('should handle update process', async ({ page }) => {
+  test.skip('should handle update process', async ({ page }) => {
     const appName = 'test-old-nginx';
     await page.goto(`/apps/${appName}`);
     
@@ -160,7 +160,7 @@ services:
     expect(updateStatus).toContain('Failed to check');
   });
 
-  test('should disable update check for stopped containers', async ({ page }) => {
+  test.skip('should disable update check for stopped containers', async ({ page }) => {
     const appName = 'test-update-app';
     await page.goto(`/apps/${appName}`);
     

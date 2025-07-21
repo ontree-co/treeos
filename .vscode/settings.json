@@ -2,5 +2,8 @@
   "makefile.configureOnOpen": false,
   "go.delveConfig": {
     "dlvPath": "/home/ontree/go/bin/dlv"
-  }
+  },
+  "github-actions.workflows.pinned.workflows": [
+    ".github/workflows/test.yml"
+  ]
 }

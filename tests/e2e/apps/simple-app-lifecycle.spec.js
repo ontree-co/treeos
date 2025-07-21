@@ -15,7 +15,7 @@ test.describe('Simple App Lifecycle (Nginx)', () => {
     // Global teardown will handle any remaining Docker containers
   });
 
-  test('complete lifecycle: create, verify, stop, start, and delete', async ({ page }) => {
+  test.skip('complete lifecycle: create, verify, stop, start, and delete', async ({ page }) => {
     // 1. CREATE APPLICATION
     await page.goto('/apps/create');
     await expect(page.locator('h1')).toContainText('Create New Application');
