@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -14,8 +16,6 @@ import (
 	"github.com/docker/cli/cli/flags"
 	"github.com/docker/compose/v2/pkg/api"
 	"github.com/docker/compose/v2/pkg/compose"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 )
 
@@ -75,74 +75,74 @@ func (s *Service) Up(ctx context.Context, opts Options) error {
 		return fmt.Errorf("failed to load project: %w", err)
 	}
 
-	// First check if containers already exist for this project
-	existingContainers, err := s.service.Ps(ctx, project.Name, api.PsOptions{All: true})
-	if err == nil && len(existingContainers) > 0 {
-		// Containers exist, just start them
-		for _, cont := range existingContainers {
-			if cont.State != "running" {
-				// Use docker client directly to start the container
-				err := s.dockerClient.ContainerStart(ctx, cont.ID, container.StartOptions{})
-				if err != nil {
-					return fmt.Errorf("failed to start container %s: %w", cont.Name, err)
-				}
-			}
-		}
-		return nil
-	}
+	// WORKAROUND: Docker Compose v2 SDK has issues with project labels
+	// The SDK doesn't properly set the com.docker.compose.project label on containers,
+	// which causes "no container found" errors on subsequent operations.
+	// As a temporary workaround, we'll use the Docker Compose CLI directly.
+	log.Printf("INFO: Using docker-compose CLI for project %s due to SDK label limitations", project.Name)
+	
+	// Use docker-compose CLI as a workaround
+	return s.upUsingCLI(ctx, opts)
+}
 
-	// No existing containers, create and start them
-	err = s.service.Create(ctx, project, api.CreateOptions{
-		RemoveOrphans: true,
-	})
+// upUsingCLI uses docker-compose CLI as a workaround for SDK label issues
+func (s *Service) upUsingCLI(ctx context.Context, opts Options) error {
+	// Build docker-compose command
+	args := []string{"-f", filepath.Join(opts.WorkingDir, "docker-compose.yml")}
+	
+	// Set project name from directory
+	projectName := filepath.Base(opts.WorkingDir)
+	args = append(args, "-p", projectName)
+	
+	// Add env file if specified
+	if opts.EnvFile != "" {
+		args = append(args, "--env-file", filepath.Join(opts.WorkingDir, opts.EnvFile))
+	}
+	
+	// Add the "up" command with detached mode
+	args = append(args, "up", "-d")
+	
+	// Execute docker-compose command
+	cmd := exec.CommandContext(ctx, "docker-compose", args...)
+	cmd.Dir = opts.WorkingDir
+	
+	// Capture output
+	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("failed to create containers: %w", err)
+		return fmt.Errorf("docker-compose up failed: %w\nOutput: %s", err, string(output))
 	}
-
-	// Now start the containers
-	err = s.service.Start(ctx, project.Name, api.StartOptions{})
-	if err != nil {
-		// If we get "no container found" error, try starting containers directly
-		if strings.Contains(err.Error(), "no container found") {
-			// List all containers and start them directly
-			filters := filters.NewArgs()
-			filters.Add("label", fmt.Sprintf("com.docker.compose.project=%s", project.Name))
-			containers, err := s.dockerClient.ContainerList(ctx, container.ListOptions{
-				All:     true,
-				Filters: filters,
-			})
-			if err == nil {
-				for _, c := range containers {
-					if c.State != "running" {
-						err := s.dockerClient.ContainerStart(ctx, c.ID, container.StartOptions{})
-						if err != nil {
-							return fmt.Errorf("failed to start container %s: %w", c.Names[0], err)
-						}
-					}
-				}
-				return nil
-			}
-		}
-		return fmt.Errorf("failed to start containers: %w", err)
-	}
-
+	
+	log.Printf("INFO: Successfully started containers using docker-compose CLI for project %s", projectName)
 	return nil
 }
 
+
 // Down stops and removes a compose project (equivalent to docker-compose down)
 func (s *Service) Down(ctx context.Context, opts Options, removeVolumes bool) error {
-	project, err := s.loadProject(ctx, opts)
+	// Use docker-compose CLI for consistency with Up
+	projectName := filepath.Base(opts.WorkingDir)
+	
+	// Build docker-compose command
+	args := []string{"-f", filepath.Join(opts.WorkingDir, "docker-compose.yml")}
+	args = append(args, "-p", projectName)
+	args = append(args, "down")
+	
+	if removeVolumes {
+		args = append(args, "-v")
+	}
+	
+	// Execute docker-compose command
+	cmd := exec.CommandContext(ctx, "docker-compose", args...)
+	cmd.Dir = opts.WorkingDir
+	
+	// Capture output
+	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("failed to load project: %w", err)
+		return fmt.Errorf("docker-compose down failed: %w\nOutput: %s", err, string(output))
 	}
-
-	// Stop and remove the services
-	downOptions := api.DownOptions{
-		RemoveOrphans: true,
-		Volumes:       removeVolumes,
-	}
-
-	return s.service.Down(ctx, project.Name, downOptions)
+	
+	log.Printf("INFO: Successfully stopped containers using docker-compose CLI for project %s", projectName)
+	return nil
 }
 
 // PS lists containers for a compose project (equivalent to docker-compose ps)

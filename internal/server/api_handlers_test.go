@@ -1058,7 +1058,7 @@ func TestExtractServiceName(t *testing.T) {
 			expectedName:  "web",
 		},
 		{
-			containerName: "/ontree-myapp-database-1",
+			containerName: "/myapp-database-1",
 			appName:       "myapp",
 			expectedName:  "database",
 		},

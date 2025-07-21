@@ -373,7 +373,7 @@ func (s *Server) handleAPIAppStart(w http.ResponseWriter, r *http.Request) {
 		"message": fmt.Sprintf("App '%s' started successfully", appName),
 		"app": map[string]string{
 			"name":        appName,
-			"projectName": fmt.Sprintf("ontree-%s", appName),
+			"projectName": appName,
 		},
 	}
 	if err := json.NewEncoder(w).Encode(response); err != nil {
@@ -431,7 +431,7 @@ func (s *Server) handleAPIAppStop(w http.ResponseWriter, r *http.Request) {
 		"message": fmt.Sprintf("App '%s' stopped successfully", appName),
 		"app": map[string]string{
 			"name":        appName,
-			"projectName": fmt.Sprintf("ontree-%s", appName),
+			"projectName": appName,
 		},
 	}
 	if err := json.NewEncoder(w).Encode(response); err != nil {
@@ -563,7 +563,7 @@ func (s *Server) handleAPIAppStatus(w http.ResponseWriter, r *http.Request) {
 	services := make([]ServiceStatusDetail, 0)
 	for _, container := range containers {
 		// Extract service name from container name
-		// Container names follow the pattern: ontree-{appName}-{serviceName}-{index}
+		// Container names follow the pattern: {appName}-{serviceName}-{index}
 		serviceName := extractServiceName(container.Name, appName)
 
 		// Map container state to our status
