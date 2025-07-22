@@ -112,6 +112,35 @@ x-ontree:
   is_exposed: true`,
 			wantErr: false,
 		},
+		{
+			name: "Service with null environment",
+			content: `version: '3.8'
+services:
+  app:
+    image: nginx:latest
+    environment: null`,
+			wantErr: true,
+			errMsg:  "null environment field",
+		},
+		{
+			name: "Service with empty environment object",
+			content: `version: '3.8'
+services:
+  app:
+    image: nginx:latest
+    environment: {}`,
+			wantErr: false,
+		},
+		{
+			name: "Service with environment variables",
+			content: `version: '3.8'
+services:
+  app:
+    image: nginx:latest
+    environment:
+      FOO: bar`,
+			wantErr: false,
+		},
 	}
 
 	for _, tt := range tests {

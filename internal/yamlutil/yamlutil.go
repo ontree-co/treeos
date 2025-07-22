@@ -301,6 +301,11 @@ func ValidateComposeFile(content string) error {
 		if !hasImage && !hasBuild {
 			return fmt.Errorf("service '%s' must have either 'image' or 'build' field", name)
 		}
+
+		// Check for null environment field
+		if env, hasEnv := svcMap["environment"]; hasEnv && env == nil {
+			return fmt.Errorf("service '%s' has null environment field - remove the empty environment section or add actual environment variables", name)
+		}
 	}
 
 	return nil

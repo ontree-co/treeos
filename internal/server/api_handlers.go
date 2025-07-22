@@ -12,8 +12,8 @@ import (
 	"regexp"
 	"strings"
 
-	"gopkg.in/yaml.v3"
 	"ontree-node/internal/security"
+	"ontree-node/internal/yamlutil"
 	"ontree-node/pkg/compose"
 )
 
@@ -89,16 +89,9 @@ func (s *Server) handleCreateApp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Parse YAML to validate it
-	var composeData map[string]interface{}
-	if err := yaml.Unmarshal([]byte(req.ComposeYAML), &composeData); err != nil {
-		http.Error(w, fmt.Sprintf("Invalid YAML: %v", err), http.StatusBadRequest)
-		return
-	}
-
-	// Check if services section exists
-	if _, ok := composeData["services"]; !ok {
-		http.Error(w, "Docker Compose YAML must contain a 'services' section", http.StatusBadRequest)
+	// Validate compose file
+	if err := yamlutil.ValidateComposeFile(req.ComposeYAML); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -238,16 +231,9 @@ func (s *Server) handleUpdateApp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Parse YAML to validate it
-	var composeData map[string]interface{}
-	if err := yaml.Unmarshal([]byte(req.ComposeYAML), &composeData); err != nil {
-		http.Error(w, fmt.Sprintf("Invalid YAML: %v", err), http.StatusBadRequest)
-		return
-	}
-
-	// Check if services section exists
-	if _, ok := composeData["services"]; !ok {
-		http.Error(w, "Docker Compose YAML must contain a 'services' section", http.StatusBadRequest)
+	// Validate compose file
+	if err := yamlutil.ValidateComposeFile(req.ComposeYAML); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 

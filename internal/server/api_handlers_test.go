@@ -96,7 +96,7 @@ services:
 				ComposeYAML: "invalid: yaml: content:",
 			},
 			expectedStatus: http.StatusBadRequest,
-			expectedError:  "Invalid YAML",
+			expectedError:  "invalid YAML syntax",
 		},
 		{
 			name: "YAML without services",
@@ -105,7 +105,7 @@ services:
 				ComposeYAML: "version: '3.8'",
 			},
 			expectedStatus: http.StatusBadRequest,
-			expectedError:  "must contain a 'services' section",
+			expectedError:  "missing 'services' section",
 		},
 		{
 			name: "Duplicate app",
@@ -304,7 +304,7 @@ services:
 				ComposeYAML: "invalid: yaml: content:",
 			},
 			expectedStatus: http.StatusBadRequest,
-			expectedError:  "Invalid YAML",
+			expectedError:  "invalid YAML syntax",
 		},
 	}
 

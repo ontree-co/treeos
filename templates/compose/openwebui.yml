@@ -8,10 +8,11 @@ services:
     volumes:
       - openwebui_data:/app/backend/data
       - ollama_data:/root/.ollama
-    environment:
-      # OpenWebUI environment variables
-      # You can customize these as needed
-      # OLLAMA_API_BASE_URL: http://localhost:11434/api
+    # OpenWebUI environment variables
+    # You can customize these as needed
+    # Uncomment and modify the environment section if needed:
+    # environment:
+    #   OLLAMA_API_BASE_URL: http://localhost:11434/api
 
 volumes:
   openwebui_data:

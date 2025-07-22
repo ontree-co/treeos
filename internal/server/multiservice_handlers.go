@@ -61,15 +61,9 @@ func (s *Server) handleMultiServiceAppCreate(w http.ResponseWriter, r *http.Requ
 	if composeContent == "" {
 		errors = append(errors, "Docker Compose YAML is required")
 	} else {
-		// Parse YAML to validate it
-		var composeData map[string]interface{}
-		if err := yaml.Unmarshal([]byte(composeContent), &composeData); err != nil {
-			errors = append(errors, fmt.Sprintf("Invalid YAML: %v", err))
-		} else {
-			// Check if services section exists
-			if _, ok := composeData["services"]; !ok {
-				errors = append(errors, "Docker Compose YAML must contain a 'services' section")
-			}
+		// Use centralized validation
+		if err := yamlutil.ValidateComposeFile(composeContent); err != nil {
+			errors = append(errors, err.Error())
 		}
 	}
 
@@ -339,15 +333,14 @@ func (s *Server) handleMultiServiceAppEdit(w http.ResponseWriter, r *http.Reques
 	if composeContent == "" {
 		errors = append(errors, "Docker Compose YAML is required")
 	} else {
-		// Parse YAML to validate it
+		// Use centralized validation first
+		if err := yamlutil.ValidateComposeFile(composeContent); err != nil {
+			errors = append(errors, err.Error())
+		}
+		
+		// Parse YAML for emoji processing
 		var composeData map[string]interface{}
-		if err := yaml.Unmarshal([]byte(composeContent), &composeData); err != nil {
-			errors = append(errors, fmt.Sprintf("Invalid YAML: %v", err))
-		} else {
-			// Check if services section exists
-			if _, ok := composeData["services"]; !ok {
-				errors = append(errors, "Docker Compose YAML must contain a 'services' section")
-			}
+		if err := yaml.Unmarshal([]byte(composeContent), &composeData); err == nil {
 
 			// Add emoji to the compose file if provided
 			if emoji != "" {
