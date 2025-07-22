@@ -24,6 +24,9 @@ jobs:
           cache: true
           cache-dependency-path: go.sum
 
+      - name: Prepare embedded assets
+        run: make embed-assets
+
       - name: Run tests
         run: go test ./...
 
@@ -43,6 +46,9 @@ jobs:
           go-version: '1.21'
           cache: true
           cache-dependency-path: go.sum
+
+      - name: Prepare embedded assets
+        run: make embed-assets
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
