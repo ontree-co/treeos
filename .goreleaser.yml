@@ -21,6 +21,9 @@ builds:
     goarch:
       - amd64
       - arm64
+    tags:
+      - netgo
+      - osusergo
     ldflags:
       - -s -w
       - -X {{.ModulePath}}/internal/version.Version={{.Version}}
@@ -88,9 +91,9 @@ release:
     sudo mv ontree-node /usr/local/bin/
     ```
     
-    ### Linux (ARM64)
+    ### macOS (ARM64 - Apple Silicon)
     ```bash
-    wget https://github.com/stefanmunz/ontree-node/releases/download/{{ .Tag }}/ontree-node_{{ .Version }}_linux_arm64.tar.gz
-    tar -xzf ontree-node_{{ .Version }}_linux_arm64.tar.gz
+    wget https://github.com/stefanmunz/ontree-node/releases/download/{{ .Tag }}/ontree-node_{{ .Version }}_darwin_arm64.tar.gz
+    tar -xzf ontree-node_{{ .Version }}_darwin_arm64.tar.gz
     sudo mv ontree-node /usr/local/bin/
     ```
