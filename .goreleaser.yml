@@ -1,5 +1,6 @@
 # GoReleaser configuration for OnTree
 # This file configures the release process for multi-architecture builds
+version: 2
 
 project_name: ontree-node
 
@@ -17,15 +18,9 @@ builds:
       - CGO_ENABLED=0
     goos:
       - linux
-      - darwin
     goarch:
       - amd64
       - arm64
-    ignore:
-      - goos: darwin
-        goarch: amd64
-      - goos: linux
-        goarch: arm64
     ldflags:
       - -s -w
       - -X {{.ModulePath}}/internal/version.Version={{.Version}}
@@ -42,17 +37,15 @@ archives:
       {{- else if eq .Arch "386" }}i386
       {{- else }}{{ .Arch }}{{ end }}
       {{- if .Arm }}v{{ .Arm }}{{ end }}
-    format_overrides:
-      - goos: windows
-        format: zip
     # Only include the binaries, no additional files
-    meta: true
+    files:
+      - none*
 
 checksum:
   name_template: 'checksums.txt'
 
 snapshot:
-  name_template: "{{ incpatch .Version }}-next"
+  version_template: "{{ incpatch .Version }}-next"
 
 changelog:
   sort: asc
@@ -90,14 +83,14 @@ release:
     
     ### Linux (AMD64)
     ```bash
-    wget https://github.com/[owner]/[repo]/releases/download/{{ .Tag }}/ontree-node_{{ .Version }}_linux_x86_64.tar.gz
+    wget https://github.com/stefanmunz/ontree-node/releases/download/{{ .Tag }}/ontree-node_{{ .Version }}_linux_x86_64.tar.gz
     tar -xzf ontree-node_{{ .Version }}_linux_x86_64.tar.gz
     sudo mv ontree-node /usr/local/bin/
     ```
     
-    ### macOS (ARM64)
+    ### Linux (ARM64)
     ```bash
-    wget https://github.com/[owner]/[repo]/releases/download/{{ .Tag }}/ontree-node_{{ .Version }}_darwin_arm64.tar.gz
-    tar -xzf ontree-node_{{ .Version }}_darwin_arm64.tar.gz
+    wget https://github.com/stefanmunz/ontree-node/releases/download/{{ .Tag }}/ontree-node_{{ .Version }}_linux_arm64.tar.gz
+    tar -xzf ontree-node_{{ .Version }}_linux_arm64.tar.gz
     sudo mv ontree-node /usr/local/bin/
     ```
