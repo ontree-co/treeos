@@ -756,6 +756,10 @@ func (s *Server) routeApps(w http.ResponseWriter, r *http.Request) {
 		}
 	} else if strings.HasSuffix(path, "/containers") {
 		s.handleAppContainers(w, r)
+	} else if strings.HasSuffix(path, "/check-update") {
+		s.handleAppCheckUpdate(w, r)
+	} else if strings.HasSuffix(path, "/update") {
+		s.handleAppUpdate(w, r)
 	} else {
 		// Default to app detail page
 		s.handleAppDetail(w, r)
