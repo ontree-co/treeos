@@ -1,0 +1,171 @@
+---
+# OnTreeNode Update Playbook
+# This playbook updates an existing OnTreeNode installation to a new version.
+# It stops the service, downloads the new binary, runs migrations, and restarts.
+# Prerequisites:
+# - OnTreeNode must already be installed and configured
+# - GitHub token for accessing private releases
+# Usage: ansible-playbook -i inventory.ini ontreenode-update-playbook.yaml
+
+- name: Update OnTreeNode to new version
+  hosts: ontreenodes
+  become: yes
+
+  vars:
+    github_repo: "stefanmunz/ontree-node" # GitHub owner/repo
+    github_token: "{{ lookup('env', 'GITHUB_ONTREE_DEPLOY_KEY') }}" # GitHub token from environment
+    app_name: "ontree-node"
+    app_user: "ontree"
+    app_root_dir: "/opt/ontree"
+    app_path: "{{ app_root_dir }}/{{ app_name }}"
+    app_port: 3000
+    binary_name: "ontree-node"
+    # Detect architecture
+    arch_map:
+      x86_64: "x86_64"
+      aarch64: "arm64"
+    target_arch: "{{ arch_map[ansible_architecture] | default(ansible_architecture) }}"
+
+  tasks:
+    # Phase 0: Get latest release version
+    - name: Get latest release from GitHub API
+      ansible.builtin.uri:
+        url: "https://api.github.com/repos/{{ github_repo }}/releases/latest"
+        method: GET
+        headers:
+          Accept: "application/vnd.github.v3+json"
+          Authorization: "token {{ github_token }}"
+      register: latest_release
+    
+    - name: Set release version from latest
+      set_fact:
+        release_version: "{{ latest_release.json.tag_name }}"
+    
+    - name: Display version to be installed
+      ansible.builtin.debug:
+        msg: "Updating to latest version: {{ release_version }}"
+
+    # Phase 1: Stop the service
+    - name: Stop ontreenode service
+      ansible.builtin.systemd:
+        name: "{{ app_name }}"
+        state: stopped
+      register: service_stop
+      failed_when: service_stop.failed and "Could not find the requested service" not in service_stop.msg
+
+    # Phase 2: Backup current binary
+    - name: Backup current binary
+      ansible.builtin.command:
+        cmd: "cp {{ app_path }}/{{ binary_name }} {{ app_path }}/{{ binary_name }}.backup-{{ ansible_date_time.epoch }}"
+      ignore_errors: yes
+
+    # Phase 3: Download new version
+    - name: Get release information from GitHub API
+      ansible.builtin.uri:
+        url: "https://api.github.com/repos/{{ github_repo }}/releases/tags/{{ release_version }}"
+        method: GET
+        headers:
+          Accept: "application/vnd.github.v3+json"
+          Authorization: "token {{ github_token }}"
+      register: release_info
+
+    - name: Set expected filename
+      set_fact:
+        expected_filename: "ontree-node_{{ release_version | regex_replace('^v', '') }}_linux_{{ target_arch }}.tar.gz"
+    
+    - name: Find the correct asset URL
+      set_fact:
+        asset_url: "{{ item.url }}"
+      loop: "{{ release_info.json.assets }}"
+      when: item.name == expected_filename
+
+    - name: Download release binary from GitHub API
+      ansible.builtin.uri:
+        url: "{{ asset_url }}"
+        method: GET
+        headers:
+          Authorization: "token {{ github_token }}"
+          Accept: "application/octet-stream"
+        dest: "/tmp/{{ binary_name }}_{{ release_version }}.tar.gz"
+        follow_redirects: all
+      register: download_result
+
+    - name: Extract binary
+      ansible.builtin.unarchive:
+        src: "/tmp/{{ binary_name }}_{{ release_version }}.tar.gz"
+        dest: "{{ app_path }}"
+        remote_src: yes
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: '0755'
+      when: download_result is succeeded
+
+    - name: Ensure binary is executable
+      ansible.builtin.file:
+        path: "{{ app_path }}/{{ binary_name }}"
+        mode: '0755'
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+
+    # Phase 4: Update migration files
+    - name: Get list of migration files from repository
+      ansible.builtin.uri:
+        url: "https://api.github.com/repos/{{ github_repo }}/contents/migrations?ref={{ release_version }}"
+        method: GET
+        headers:
+          Accept: "application/vnd.github.v3+json"
+          Authorization: "token {{ github_token }}"
+      register: migration_files
+
+    - name: Download all migration files
+      ansible.builtin.get_url:
+        url: "https://raw.githubusercontent.com/{{ github_repo }}/{{ release_version }}/migrations/{{ item.name }}"
+        dest: "{{ app_path }}/migrations/{{ item.name }}"
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: '0644'
+        headers:
+          Authorization: "token {{ github_token }}"
+      loop: "{{ migration_files.json }}"
+      when: item.type == 'file' and item.name.endswith('.sql')
+
+    # Phase 5: Run database migrations
+    - name: Run database migrations
+      ansible.builtin.command:
+        cmd: "goose -dir {{ app_path }}/migrations sqlite3 {{ app_path }}/ontree.db up"
+      become_user: "{{ app_user }}"
+      register: migration_result
+      changed_when: "'migration' in migration_result.stdout"
+
+    # Phase 6: Restart service
+    - name: Start ontreenode service
+      ansible.builtin.systemd:
+        name: "{{ app_name }}"
+        state: started
+        enabled: yes
+
+    - name: Wait for service to be ready
+      ansible.builtin.wait_for:
+        port: "{{ app_port }}"
+        delay: 5
+        timeout: 30
+
+    - name: Check service health
+      ansible.builtin.uri:
+        url: "http://localhost:{{ app_port }}/"
+        method: GET
+        status_code: [200, 301, 302]
+        timeout: 5
+      register: health_check
+      retries: 3
+      delay: 10
+      until: health_check.status in [200, 301, 302]
+
+    - name: Display update status
+      ansible.builtin.debug:
+        msg:
+          - "✅ Update completed successfully!"
+          - "{{ app_name }} has been updated to {{ release_version }}"
+          - "Service is running on {{ inventory_hostname }}:{{ app_port }}"
+          - ""
+          - "Previous binary backed up as: {{ app_name }}.backup-{{ ansible_date_time.epoch }}"
