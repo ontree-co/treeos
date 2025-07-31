@@ -11,19 +11,32 @@ before:
     - go mod download
 
 builds:
-  - id: ontree-node
+  - id: ontree-node-amd64
     main: ./cmd/ontree-server
     binary: ontree-node
     env:
-      - CGO_ENABLED=0
+      - CGO_ENABLED=1
     goos:
       - linux
     goarch:
       - amd64
+    ldflags:
+      - -s -w
+      - -X {{.ModulePath}}/internal/version.Version={{.Version}}
+      - -X {{.ModulePath}}/internal/version.Commit={{.Commit}}
+      - -X {{.ModulePath}}/internal/version.BuildDate={{.Date}}
+  
+  - id: ontree-node-arm64
+    main: ./cmd/ontree-server
+    binary: ontree-node
+    env:
+      - CGO_ENABLED=1
+      - CC=aarch64-linux-gnu-gcc
+      - CXX=aarch64-linux-gnu-g++
+    goos:
+      - linux
+    goarch:
       - arm64
-    tags:
-      - netgo
-      - osusergo
     ldflags:
       - -s -w
       - -X {{.ModulePath}}/internal/version.Version={{.Version}}
