@@ -7,7 +7,7 @@ import (
 
 func TestValidateCompose_ValidConfiguration(t *testing.T) {
 	validator := NewValidator("test-app")
-	
+
 	// Valid configuration with proper bind mounts and no security issues
 	yamlContent := `
 version: '3.8'
@@ -30,7 +30,7 @@ volumes:
   nginx-config:
   db-backup:
 `
-	
+
 	err := validator.ValidateCompose([]byte(yamlContent))
 	if err != nil {
 		t.Errorf("Expected valid configuration to pass validation, got error: %v", err)
@@ -39,7 +39,7 @@ volumes:
 
 func TestValidateCompose_InvalidYAML(t *testing.T) {
 	validator := NewValidator("test-app")
-	
+
 	yamlContent := `
 version: '3.8'
 services:
@@ -47,7 +47,7 @@ services:
     image: nginx:latest
     invalid yaml here
 `
-	
+
 	err := validator.ValidateCompose([]byte(yamlContent))
 	if err == nil {
 		t.Error("Expected invalid YAML to fail validation")
@@ -98,12 +98,12 @@ services:
 			shouldFail: false,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			validator := NewValidator("test-app")
 			err := validator.ValidateCompose([]byte(tt.yamlContent))
-			
+
 			if tt.shouldFail {
 				if err == nil {
 					t.Error("Expected validation to fail but it passed")
@@ -193,12 +193,12 @@ services:
 			errorMsg:   "capability 'sys_admin' is not allowed",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			validator := NewValidator("test-app")
 			err := validator.ValidateCompose([]byte(tt.yamlContent))
-			
+
 			if tt.shouldFail {
 				if err == nil {
 					t.Error("Expected validation to fail but it passed")
@@ -357,12 +357,12 @@ volumes:
 			shouldFail: false,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			validator := NewValidator(tt.appName)
 			err := validator.ValidateCompose([]byte(tt.yamlContent))
-			
+
 			if tt.shouldFail {
 				if err == nil {
 					t.Error("Expected validation to fail but it passed")
@@ -384,7 +384,7 @@ func TestValidationError(t *testing.T) {
 		Rule:    "privileged mode",
 		Detail:  "privileged mode is not allowed for security reasons",
 	}
-	
+
 	expected := "security validation failed for service 'web': privileged mode - privileged mode is not allowed for security reasons"
 	if err.Error() != expected {
 		t.Errorf("Expected error message '%s', got '%s'", expected, err.Error())
@@ -454,12 +454,12 @@ services:
 			errorMsg:   "is not allowed for security reasons",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			validator := NewValidator(tt.appName)
 			err := validator.ValidateCompose([]byte(tt.yamlContent))
-			
+
 			if tt.shouldFail {
 				if err == nil {
 					t.Error("Expected validation to fail but it passed")

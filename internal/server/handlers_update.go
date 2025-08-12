@@ -11,17 +11,15 @@ import (
 
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
-	"ontree-node/internal/docker"
-	"ontree-node/internal/yamlutil"
 )
 
 // ImageUpdateInfo contains information about available image updates
 type ImageUpdateInfo struct {
-	CurrentImage   string `json:"current_image"`
-	CurrentDigest  string `json:"current_digest"`
-	LatestDigest   string `json:"latest_digest"`
+	CurrentImage    string `json:"current_image"`
+	CurrentDigest   string `json:"current_digest"`
+	LatestDigest    string `json:"latest_digest"`
 	UpdateAvailable bool   `json:"update_available"`
-	Error          string `json:"error,omitempty"`
+	Error           string `json:"error,omitempty"`
 }
 
 // PullStatus represents the status of a docker pull operation
@@ -30,29 +28,24 @@ type PullStatus struct {
 	ID     string `json:"id,omitempty"`
 }
 
-// handleAppCheckUpdate checks for available updates for an app's Docker image
+// handleAppCheckUpdate checks for available updates for a specific service's Docker image
 func (s *Server) handleAppCheckUpdate(w http.ResponseWriter, r *http.Request) {
 	// Extract app name from path
 	appName := strings.TrimPrefix(r.URL.Path, "/apps/")
 	appName = strings.TrimSuffix(appName, "/check-update")
 
-	log.Printf("Checking for updates for app: %s", appName)
+	// Get service name from query parameter
+	serviceName := r.URL.Query().Get("service")
 
-	// Get app details using ScanApps and find the specific app
-	apps, err := s.dockerSvc.ScanApps()
+	log.Printf("Checking for updates for app: %s, service: %s", appName, serviceName)
+
+	// Get app details
+	app, err := s.dockerSvc.GetAppDetails(appName)
 	if err != nil {
-		log.Printf("Failed to scan apps: %v", err)
+		log.Printf("Failed to get app details: %v", err)
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		fmt.Fprintf(w, `<span class="text-danger">Failed to get app details</span>`)
 		return
-	}
-
-	var app *docker.App
-	for _, a := range apps {
-		if a.Name == appName {
-			app = a
-			break
-		}
 	}
 
 	if app == nil {
@@ -62,18 +55,22 @@ func (s *Server) handleAppCheckUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Read metadata from compose file (unused for now but kept for future use)
-	_, err = yamlutil.ReadComposeMetadata(app.Path)
-	if err != nil {
-		log.Printf("Failed to read metadata for app %s: %v", appName, err)
+	// If no service specified, return error
+	if serviceName == "" {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		fmt.Fprintf(w, `<span class="text-danger">Service name required</span>`)
+		return
 	}
 
-	// Get the image name
-	var imageName string
-	if app.Config != nil && app.Config.Container.Image != "" {
-		imageName = app.Config.Container.Image
+	// Find the service
+	service, found := app.Services[serviceName]
+	if !found {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		fmt.Fprintf(w, `<span class="text-danger">Service %s not found</span>`, serviceName)
+		return
 	}
 
+	imageName := service.Image
 	if imageName == "" {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		fmt.Fprintf(w, `<span class="text-muted">No image configured</span>`)
@@ -89,22 +86,38 @@ func (s *Server) handleAppCheckUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Extract current version/tag
+	currentTag := "latest"
+	if strings.Contains(imageName, ":") {
+		parts := strings.Split(imageName, ":")
+		currentTag = parts[1]
+	}
+
 	// Prepare response based on update availability
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	
+
 	if updateInfo.UpdateAvailable {
-		// Extract version from digest if possible
-		latestVersion := "latest"
-		if strings.Contains(imageName, ":") {
-			parts := strings.Split(imageName, ":")
-			latestVersion = parts[1]
-		}
-		
-		// Show yellow text indicating update is available
-		fmt.Fprintf(w, `<span class="text-warning"><i>⬆️</i> Update available! Use the Recreate button to update to %s</span>`, latestVersion)
+		// Show update available with version info
+		fmt.Fprintf(w, `
+			<div class="d-flex align-items-center gap-2">
+				<span class="text-warning">
+					<i>⬆️</i> Update available
+				</span>
+				<span class="text-muted small">%s → newer version</span>
+				<button class="btn btn-sm btn-warning" 
+					onclick="recreateService('%s', '%s')">
+					Recreate
+				</button>
+			</div>`, currentTag, appName, serviceName)
 	} else {
-		// Show green text indicating up to date
-		fmt.Fprintf(w, `<span class="text-success"><i>✓</i> This is the newest version</span>`)
+		// Show current version and up-to-date status
+		fmt.Fprintf(w, `
+			<div class="d-flex align-items-center gap-2">
+				<span class="text-success">
+					<i>✓</i> Up to date
+				</span>
+				<span class="text-muted small">(%s)</span>
+			</div>`, currentTag)
 	}
 }
 
@@ -153,7 +166,7 @@ func (s *Server) checkImageUpdate(imageName string) (*ImageUpdateInfo, error) {
 	if err != nil {
 		log.Printf("Error reading pull output: %v", err)
 	}
-	
+
 	// Check if the pull output indicates a new image was downloaded
 	pullOutputStr := string(pullOutput)
 	var updateDetected bool
@@ -213,6 +226,6 @@ func (s *Server) handleAppUpdate(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Failed to save session: %v", err)
 		}
 	}
-	
+
 	http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusSeeOther)
 }

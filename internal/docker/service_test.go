@@ -62,4 +62,3 @@ func TestDeleteAppComplete(t *testing.T) {
 		t.Log("5. Use telemetry to track the operation")
 	})
 }
-

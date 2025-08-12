@@ -14,28 +14,20 @@ import (
 
 // App represents a discovered application
 type App struct {
-	Name   string     `json:"name"`
-	Path   string     `json:"path"`
-	Status string     `json:"status"`
-	Config *AppConfig `json:"config,omitempty"`
-	Error  string     `json:"error,omitempty"`
-	Emoji  string     `json:"emoji,omitempty"`
-}
-
-// AppConfig represents the application configuration from docker-compose.yml
-type AppConfig struct {
-	Container struct {
-		Image string `json:"image"`
-	} `json:"container"`
-	Ports map[string]string `json:"ports,omitempty"`
+	Name     string                    `json:"name"`
+	Path     string                    `json:"path"`
+	Status   string                    `json:"status"`
+	Services map[string]ComposeService `json:"services,omitempty"`
+	Error    string                    `json:"error,omitempty"`
+	Emoji    string                    `json:"emoji,omitempty"`
 }
 
 // ComposeService represents a service definition in docker-compose.yml
 type ComposeService struct {
-	Image       string   `yaml:"image"`
-	Ports       []string `yaml:"ports,omitempty"`
-	Environment []string `yaml:"environment,omitempty"`
-	Volumes     []string `yaml:"volumes,omitempty"`
+	Image       string   `json:"image" yaml:"image"`
+	Ports       []string `json:"ports,omitempty" yaml:"ports,omitempty"`
+	Environment []string `json:"environment,omitempty" yaml:"environment,omitempty"`
+	Volumes     []string `json:"volumes,omitempty" yaml:"volumes,omitempty"`
 }
 
 // Compose represents the docker-compose.yml structure
@@ -86,12 +78,12 @@ func (c *Client) ScanApps(appsDir string) ([]*App, error) {
 		}
 
 		// Parse docker-compose.yml
-		config, emoji, err := parseDockerCompose(composePath)
+		services, emoji, err := parseDockerCompose(composePath)
 		if err != nil {
 			app.Status = "error"
 			app.Error = fmt.Sprintf("Failed to parse docker-compose.yml: %v", err)
 		} else {
-			app.Config = config
+			app.Services = services
 			app.Emoji = emoji
 			// Get container status
 			app.Status = c.getContainerStatus(app.Name)
@@ -103,8 +95,8 @@ func (c *Client) ScanApps(appsDir string) ([]*App, error) {
 	return apps, nil
 }
 
-// parseDockerCompose parses a docker-compose.yml file
-func parseDockerCompose(path string) (*AppConfig, string, error) {
+// parseDockerCompose parses a docker-compose.yml file and returns all services
+func parseDockerCompose(path string) (map[string]ComposeService, string, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, "", err
@@ -115,38 +107,20 @@ func parseDockerCompose(path string) (*AppConfig, string, error) {
 		return nil, "", err
 	}
 
-	// Extract configuration from the first service
-	config := &AppConfig{
-		Ports: make(map[string]string),
-	}
-
-	for _, service := range compose.Services {
-		config.Container.Image = service.Image
-
-		// Parse ports
-		for _, port := range service.Ports {
-			parts := strings.Split(port, ":")
-			if len(parts) == 2 {
-				config.Ports[parts[0]] = parts[1]
-			}
-		}
-
-		break // Use first service for now
-	}
-
 	// Extract emoji from x-ontree metadata
 	emoji := ""
 	if compose.XOnTree != nil {
 		emoji = compose.XOnTree.Emoji
 	}
 
-	return config, emoji, nil
+	// Return all services
+	return compose.Services, emoji, nil
 }
 
 // getContainerStatus gets the status of containers for a compose app
 func (c *Client) getContainerStatus(appName string) string {
 	ctx := context.Background()
-	
+
 	// List containers (including stopped ones)
 	containers, err := c.dockerClient.ContainerList(ctx, container.ListOptions{All: true})
 	if err != nil {
@@ -156,7 +130,7 @@ func (c *Client) getContainerStatus(appName string) string {
 	// Look for containers with compose naming pattern: ontree-{appName}-{serviceName}-1
 	prefix := fmt.Sprintf("ontree-%s-", appName)
 	var runningCount, stoppedCount int
-	
+
 	for _, cont := range containers {
 		for _, name := range cont.Names {
 			// Container names start with / in Docker API
@@ -179,7 +153,7 @@ func (c *Client) getContainerStatus(appName string) string {
 	} else if stoppedCount > 0 {
 		return "exited"
 	}
-	
+
 	return "not_created"
 }
 
@@ -199,16 +173,15 @@ func (c *Client) GetAppDetails(appsDir, appName string) (*App, error) {
 	}
 
 	// Parse docker-compose.yml
-	config, emoji, err := parseDockerCompose(composePath)
+	services, emoji, err := parseDockerCompose(composePath)
 	if err != nil {
 		app.Status = "error"
 		app.Error = fmt.Sprintf("Failed to parse docker-compose.yml: %v", err)
 	} else {
-		app.Config = config
+		app.Services = services
 		app.Emoji = emoji
 		app.Status = c.getContainerStatus(appName)
 	}
 
 	return app, nil
 }
-

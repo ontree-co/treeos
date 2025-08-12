@@ -75,7 +75,6 @@ func (s *Service) GetAppDetails(appName string) (*App, error) {
 	return app, err
 }
 
-
 // ProgressCallback is called with progress updates during image operations
 type ProgressCallback func(progress int, message string)
 
@@ -89,100 +88,109 @@ func (s *Service) PullImagesWithProgress(appName string, progressCallback Progre
 		attribute.String("app.name", appName),
 	)
 
-	// Get app details to find the image
+	// Get app details to find the images
 	app, err := s.GetAppDetails(appName)
 	if err != nil {
 		span.RecordError(err)
 		return fmt.Errorf("failed to get app details: %w", err)
 	}
 
-	if app.Config == nil || app.Config.Container.Image == "" {
-		return fmt.Errorf("no image configured for app: %s", appName)
+	if app.Services == nil || len(app.Services) == 0 {
+		return fmt.Errorf("no services configured for app: %s", appName)
 	}
-	imageName := app.Config.Container.Image
-	span.SetAttributes(
-		attribute.String("image.name", imageName),
-	)
 
-	// Start pulling the image
-	reader, err := s.client.dockerClient.ImagePull(ctx, imageName, image.PullOptions{})
-	if err != nil {
-		span.RecordError(err)
-		return fmt.Errorf("failed to pull image: %w", err)
-	}
-	defer func() {
-		if err := reader.Close(); err != nil {
-			// Log error but don't fail the operation
-			fmt.Printf("Failed to close reader: %v\n", err)
+	// Pull images for all services
+	for serviceName, service := range app.Services {
+		if service.Image == "" {
+			continue
 		}
-	}()
+		imageName := service.Image
+		span.SetAttributes(
+			attribute.String("service.name", serviceName),
+			attribute.String("image.name", imageName),
+		)
 
-	// Parse the JSON stream for progress updates
-	decoder := json.NewDecoder(reader)
-	var totalProgress int
-	layerProgress := make(map[string]int)
+		progressCallback(0, fmt.Sprintf("Pulling image for service %s: %s", serviceName, imageName))
 
-	for {
-		var event map[string]interface{}
-		if err := decoder.Decode(&event); err != nil {
-			if err == io.EOF {
-				break
-			}
-			return fmt.Errorf("failed to decode progress: %w", err)
+		// Start pulling the image
+		reader, err := s.client.dockerClient.ImagePull(ctx, imageName, image.PullOptions{})
+		if err != nil {
+			span.RecordError(err)
+			return fmt.Errorf("failed to pull image for service %s: %w", serviceName, err)
 		}
+		defer func() {
+			if err := reader.Close(); err != nil {
+				// Log error but don't fail the operation
+				fmt.Printf("Failed to close reader: %v\n", err)
+			}
+		}()
 
-		// Extract progress information
-		if status, ok := event["status"].(string); ok {
-			id, ok := event["id"].(string)
-			if !ok {
-				id = ""
+		// Parse the JSON stream for progress updates
+		decoder := json.NewDecoder(reader)
+		var totalProgress int
+		layerProgress := make(map[string]int)
+
+		for {
+			var event map[string]interface{}
+			if err := decoder.Decode(&event); err != nil {
+				if err == io.EOF {
+					break
+				}
+				return fmt.Errorf("failed to decode progress: %w", err)
 			}
 
-			// Handle different status messages
-			switch {
-			case strings.HasPrefix(status, "Pulling from"):
-				progressCallback(0, fmt.Sprintf("Pulling image %s", imageName))
+			// Extract progress information
+			if status, ok := event["status"].(string); ok {
+				id, ok := event["id"].(string)
+				if !ok {
+					id = ""
+				}
 
-			case status == "Downloading":
-				if progressDetail, ok := event["progressDetail"].(map[string]interface{}); ok {
-					if current, ok := progressDetail["current"].(float64); ok {
-						if total, ok := progressDetail["total"].(float64); ok && total > 0 {
-							layerProgress[id] = int((current / total) * 100)
+				// Handle different status messages
+				switch {
+				case strings.HasPrefix(status, "Pulling from"):
+					progressCallback(0, fmt.Sprintf("[%s] Pulling image %s", serviceName, imageName))
+
+				case status == "Downloading":
+					if progressDetail, ok := event["progressDetail"].(map[string]interface{}); ok {
+						if current, ok := progressDetail["current"].(float64); ok {
+							if total, ok := progressDetail["total"].(float64); ok && total > 0 {
+								layerProgress[id] = int((current / total) * 100)
+							}
 						}
 					}
-				}
 
-				// Calculate overall progress
-				if len(layerProgress) > 0 {
-					sum := 0
-					for _, progress := range layerProgress {
-						sum += progress
+					// Calculate overall progress
+					if len(layerProgress) > 0 {
+						sum := 0
+						for _, progress := range layerProgress {
+							sum += progress
+						}
+						totalProgress = sum / len(layerProgress)
+						progressCallback(totalProgress, fmt.Sprintf("[%s] Downloading layers... %d%%", serviceName, totalProgress))
 					}
-					totalProgress = sum / len(layerProgress)
-					progressCallback(totalProgress, fmt.Sprintf("Downloading layers... %d%%", totalProgress))
+
+				case status == "Download complete":
+					layerProgress[id] = 100
+
+				case status == "Extracting":
+					progressCallback(90, fmt.Sprintf("[%s] Extracting layers...", serviceName))
+
+				case strings.Contains(status, "Pull complete"):
+					progressCallback(95, fmt.Sprintf("[%s] Finalizing...", serviceName))
+
+				case strings.Contains(status, "Downloaded newer image"):
+					progressCallback(100, fmt.Sprintf("[%s] Image pull completed", serviceName))
+
+				case strings.Contains(status, "Image is up to date"):
+					progressCallback(100, fmt.Sprintf("[%s] Image is up to date", serviceName))
 				}
-
-			case status == "Download complete":
-				layerProgress[id] = 100
-
-			case status == "Extracting":
-				progressCallback(90, "Extracting layers...")
-
-			case strings.Contains(status, "Pull complete"):
-				progressCallback(95, "Finalizing...")
-
-			case strings.Contains(status, "Downloaded newer image"):
-				progressCallback(100, "Image pull completed")
-
-			case strings.Contains(status, "Image is up to date"):
-				progressCallback(100, "Image is up to date")
 			}
 		}
-	}
 
-	// Ensure we report 100% completion
-	progressCallback(100, "Image ready")
+		// Ensure we report 100% completion for this service
+		progressCallback(100, fmt.Sprintf("[%s] Image ready", serviceName))
+	}
 
 	return nil
 }
-

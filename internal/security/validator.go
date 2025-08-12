@@ -28,22 +28,22 @@ type ComposeConfig struct {
 
 // ServiceConfig represents a service configuration in docker-compose.yml
 type ServiceConfig struct {
-	Privileged   bool                   `yaml:"privileged"`
-	CapAdd       []string               `yaml:"cap_add"`
-	Volumes      []interface{}          `yaml:"volumes"`
-	Build        interface{}            `yaml:"build"`
-	Image        string                 `yaml:"image"`
-	Environment  interface{}            `yaml:"environment"`
-	Ports        []interface{}          `yaml:"ports"`
-	Networks     interface{}            `yaml:"networks"`
-	RestartPolicy string                `yaml:"restart"`
-	Command      interface{}            `yaml:"command"`
-	Entrypoint   interface{}            `yaml:"entrypoint"`
-	WorkingDir   string                 `yaml:"working_dir"`
-	User         string                 `yaml:"user"`
-	ExtraHosts   []string               `yaml:"extra_hosts"`
-	DependsOn    interface{}            `yaml:"depends_on"`
-	Deploy       interface{}            `yaml:"deploy"`
+	Privileged    bool          `yaml:"privileged"`
+	CapAdd        []string      `yaml:"cap_add"`
+	Volumes       []interface{} `yaml:"volumes"`
+	Build         interface{}   `yaml:"build"`
+	Image         string        `yaml:"image"`
+	Environment   interface{}   `yaml:"environment"`
+	Ports         []interface{} `yaml:"ports"`
+	Networks      interface{}   `yaml:"networks"`
+	RestartPolicy string        `yaml:"restart"`
+	Command       interface{}   `yaml:"command"`
+	Entrypoint    interface{}   `yaml:"entrypoint"`
+	WorkingDir    string        `yaml:"working_dir"`
+	User          string        `yaml:"user"`
+	ExtraHosts    []string      `yaml:"extra_hosts"`
+	DependsOn     interface{}   `yaml:"depends_on"`
+	Deploy        interface{}   `yaml:"deploy"`
 }
 
 // ValidationError represents a security validation error
@@ -72,30 +72,30 @@ func NewValidator(appName string) *Validator {
 // ValidateCompose validates a docker-compose.yml content against security rules
 func (v *Validator) ValidateCompose(yamlContent []byte) error {
 	var config ComposeConfig
-	
+
 	// Parse YAML
 	if err := yaml.Unmarshal(yamlContent, &config); err != nil {
 		return fmt.Errorf("failed to parse docker-compose.yml: %w", err)
 	}
-	
+
 	// Validate each service
 	for serviceName, service := range config.Services {
 		// Check privileged mode
 		if err := v.validatePrivilegedMode(serviceName, service); err != nil {
 			return err
 		}
-		
+
 		// Check capabilities
 		if err := v.validateCapabilities(serviceName, service); err != nil {
 			return err
 		}
-		
+
 		// Check bind mounts
 		if err := v.validateBindMounts(serviceName, service); err != nil {
 			return err
 		}
 	}
-	
+
 	return nil
 }
 
@@ -116,7 +116,7 @@ func (v *Validator) validateCapabilities(serviceName string, service ServiceConf
 	for _, cap := range service.CapAdd {
 		// Normalize capability name (remove CAP_ prefix if present)
 		normalizedCap := strings.TrimPrefix(strings.ToUpper(cap), "CAP_")
-		
+
 		for _, dangerous := range DangerousCapabilities {
 			if normalizedCap == dangerous {
 				return ValidationError{
@@ -134,7 +134,7 @@ func (v *Validator) validateCapabilities(serviceName string, service ServiceConf
 func (v *Validator) validateBindMounts(serviceName string, service ServiceConfig) error {
 	allowedPrefix := fmt.Sprintf("/opt/ontree/apps/mount/%s/", v.appName)
 	requiredPrefix := fmt.Sprintf("/opt/ontree/apps/mount/%s/%s/", v.appName, serviceName)
-	
+
 	for _, volume := range service.Volumes {
 		// Volumes can be strings (bind mounts) or maps (named volumes)
 		switch v := volume.(type) {
@@ -144,15 +144,15 @@ func (v *Validator) validateBindMounts(serviceName string, service ServiceConfig
 				parts := strings.SplitN(v, ":", 3)
 				if len(parts) >= 2 {
 					hostPath := parts[0]
-					
+
 					// Skip named volumes (don't start with / or .)
 					if !strings.HasPrefix(hostPath, "/") && !strings.HasPrefix(hostPath, ".") {
 						continue
 					}
-					
+
 					// Normalize path
 					hostPath = strings.TrimSuffix(hostPath, "/")
-					
+
 					// Check if path is within allowed directory
 					if !strings.HasPrefix(hostPath, allowedPrefix) {
 						return ValidationError{
@@ -161,7 +161,7 @@ func (v *Validator) validateBindMounts(serviceName string, service ServiceConfig
 							Detail:  fmt.Sprintf("bind mount path '%s' is not allowed. Use named volumes instead (e.g., 'mydata:/path') or absolute paths within '%s'", hostPath, allowedPrefix),
 						}
 					}
-					
+
 					// Check if path follows the required naming scheme
 					if !strings.HasPrefix(hostPath, requiredPrefix) {
 						return ValidationError{
@@ -180,10 +180,10 @@ func (v *Validator) validateBindMounts(serviceName string, service ServiceConfig
 					if !strings.HasPrefix(source, "/") && !strings.HasPrefix(source, ".") {
 						continue
 					}
-					
+
 					// Normalize path
 					source = strings.TrimSuffix(source, "/")
-					
+
 					// Check if path is within allowed directory
 					if !strings.HasPrefix(source, allowedPrefix) {
 						return ValidationError{
@@ -192,7 +192,7 @@ func (v *Validator) validateBindMounts(serviceName string, service ServiceConfig
 							Detail:  fmt.Sprintf("bind mount path '%s' is not allowed. Use named volumes instead (e.g., 'mydata:/path') or absolute paths within '%s'", source, allowedPrefix),
 						}
 					}
-					
+
 					// Check if path follows the required naming scheme
 					if !strings.HasPrefix(source, requiredPrefix) {
 						return ValidationError{
@@ -205,6 +205,6 @@ func (v *Validator) validateBindMounts(serviceName string, service ServiceConfig
 			}
 		}
 	}
-	
+
 	return nil
 }

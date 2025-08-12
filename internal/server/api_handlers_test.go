@@ -1116,18 +1116,18 @@ func TestMapContainerState(t *testing.T) {
 	}
 }
 
-// TestMultiServiceAppProjectNaming verifies that multi-service apps
+// TestAppProjectNaming verifies that apps
 // use the correct project naming convention
-func TestMultiServiceAppProjectNaming(t *testing.T) {
+func TestAppProjectNaming(t *testing.T) {
 	// This test verifies the project name that would be used
 	tmpDir := t.TempDir()
 
-	// Create a multi-service app
+	// Create an app with multiple services
 	appName := "testapp"
 	appDir := filepath.Join(tmpDir, appName)
 	os.MkdirAll(appDir, 0755)
 
-	// Multi-service compose file
+	// Compose file with multiple services
 	composeContent := `version: '3.8'
 services:
   web:
@@ -1180,7 +1180,7 @@ func TestNamingConventionForAllResources(t *testing.T) {
 			expectedVolume:    "myapp_data",
 		},
 		{
-			name:              "Multi-service app - web service",
+			name:              "App with multiple services - web service",
 			appName:           "complex-app",
 			serviceName:       "web",
 			index:             1,
@@ -1189,7 +1189,7 @@ func TestNamingConventionForAllResources(t *testing.T) {
 			expectedVolume:    "complex-app_web-data",
 		},
 		{
-			name:              "Multi-service app - database service",
+			name:              "App with multiple services - database service",
 			appName:           "complex-app",
 			serviceName:       "database",
 			index:             1,
@@ -1333,9 +1333,9 @@ func TestInvalidAppNames(t *testing.T) {
 	}
 }
 
-// TestExtractServiceNameFromMultiServiceContainers verifies service name extraction
-// from the multi-service container naming convention
-func TestExtractServiceNameFromMultiServiceContainers(t *testing.T) {
+// TestExtractServiceNameFromContainers verifies service name extraction
+// from the container naming convention
+func TestExtractServiceNameFromContainers(t *testing.T) {
 	tests := []struct {
 		containerName string
 		appName       string

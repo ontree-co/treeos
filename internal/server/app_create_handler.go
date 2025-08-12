@@ -32,6 +32,7 @@ func (s *Server) handleAppCreate(w http.ResponseWriter, r *http.Request) {
 
 		appName := r.FormValue("app_name")
 		composeContent := r.FormValue("compose_content")
+		envContent := r.FormValue("env_content")
 		emoji := r.FormValue("emoji")
 
 		// Validate
@@ -62,7 +63,7 @@ func (s *Server) handleAppCreate(w http.ResponseWriter, r *http.Request) {
 
 		if len(errors) == 0 && s.dockerClient != nil {
 			// Create the application
-			err := s.createAppScaffold(appName, composeContent, emoji)
+			err := s.createAppScaffold(appName, composeContent, envContent, emoji)
 			if err != nil {
 				errors = append(errors, fmt.Sprintf("Failed to create application: %v", err))
 			} else {
@@ -91,6 +92,7 @@ func (s *Server) handleAppCreate(w http.ResponseWriter, r *http.Request) {
 		data["FormData"] = map[string]string{
 			"app_name":        appName,
 			"compose_content": composeContent,
+			"env_content":     envContent,
 			"emoji":           emoji,
 		}
 		data["CSRFToken"] = ""
@@ -135,7 +137,7 @@ func isValidAppName(appName string) bool {
 }
 
 // createAppScaffold creates the directory structure and docker-compose.yml for a new app
-func (s *Server) createAppScaffold(appName, composeContent, emoji string) error {
+func (s *Server) createAppScaffold(appName, composeContent, envContent, emoji string) error {
 	appPath := filepath.Join(s.config.AppsDir, appName)
 
 	// Create app directory
@@ -164,6 +166,15 @@ func (s *Server) createAppScaffold(appName, composeContent, emoji string) error 
 			log.Printf("Failed to clean up app directory: %v", err)
 		}
 		return fmt.Errorf("failed to write docker-compose.yml: %v", err)
+	}
+
+	// Create .env file if content provided
+	if envContent != "" {
+		envPath := filepath.Join(appPath, ".env")
+		err = os.WriteFile(envPath, []byte(envContent), 0640)
+		if err != nil {
+			return fmt.Errorf("failed to create .env file: %v", err)
+		}
 	}
 
 	// Extract host port from compose content

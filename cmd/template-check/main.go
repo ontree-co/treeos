@@ -23,7 +23,7 @@ func main() {
 	}
 
 	baseTemplatePath := filepath.Join(templatesDir, "layouts", "base.html")
-	
+
 	// Check if base template exists
 	if _, err := os.Stat(baseTemplatePath); os.IsNotExist(err) {
 		log.Fatalf("Base template not found: %s", baseTemplatePath)
@@ -54,7 +54,7 @@ func main() {
 		}
 
 		checked++
-		
+
 		// Try to parse the template with base
 		tmpl := template.New("test")
 		_, err = tmpl.ParseFiles(baseTemplatePath, path)
@@ -82,7 +82,7 @@ func main() {
 
 	// Report results
 	fmt.Printf("\nChecked %d templates\n", checked)
-	
+
 	if len(errors) > 0 {
 		fmt.Printf("\n❌ Found %d template errors:\n\n", len(errors))
 		for _, err := range errors {

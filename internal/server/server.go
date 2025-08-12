@@ -230,22 +230,6 @@ func (s *Server) loadTemplates() error {
 	}
 	s.templates["app_compose_edit"] = tmpl
 
-	// Load multi-service app create template with emoji picker component
-	multiserviceCreateTemplate := filepath.Join("templates", "dashboard", "multiservice_create.html")
-	tmpl, err = embeds.ParseTemplate(baseTemplate, multiserviceCreateTemplate, emojiPickerTemplate)
-	if err != nil {
-		return fmt.Errorf("failed to parse multiservice create template: %w", err)
-	}
-	s.templates["multiservice_create"] = tmpl
-
-	// Load multi-service app edit template with emoji picker component
-	multiserviceEditTemplate := filepath.Join("templates", "dashboard", "multiservice_edit.html")
-	tmpl, err = embeds.ParseTemplate(baseTemplate, multiserviceEditTemplate, emojiPickerTemplate)
-	if err != nil {
-		return fmt.Errorf("failed to parse multiservice edit template: %w", err)
-	}
-	s.templates["multiservice_edit"] = tmpl
-
 	// Load monitoring template
 	monitoringTemplate := filepath.Join("templates", "dashboard", "monitoring.html")
 	tmpl, err = embeds.ParseTemplate(baseTemplate, monitoringTemplate)
@@ -511,18 +495,17 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Printf("Error scanning apps: %v", err)
 		} else {
-			// For each app, fetch its status from the multi-service API
+			// For each app, enrich with additional status information
 			for _, app := range dockerApps {
-				// Create an enriched app struct with multi-service status
+				// Create an enriched app struct with additional status
 				enrichedApp := struct {
 					*docker.App
-					MultiServiceStatus string
-					ServiceCount       int
+					ServiceCount int
 				}{
 					App: app,
 				}
 
-				// Call the status API endpoint to get multi-service status
+				// Get container status for the app
 				if s.composeSvc != nil {
 					// Use internal call to get status
 					appDir := filepath.Join(s.config.AppsDir, app.Name)
@@ -546,10 +529,9 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 							}
 
 							enrichedApp.ServiceCount = len(services)
-							enrichedApp.MultiServiceStatus = calculateAggregateStatus(services)
+							// Status is already in app.Status from docker.ScanApps
 						} else {
-							// No containers or error - app is stopped
-							enrichedApp.MultiServiceStatus = "stopped"
+							// No containers or error
 							enrichedApp.ServiceCount = 0
 						}
 					}
@@ -731,7 +713,7 @@ func (s *Server) syncExposedApps() {
 // routeApps routes all /apps/* requests to the appropriate handler
 func (s *Server) routeApps(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
-	
+
 	// Debug logging
 	if strings.Contains(path, "expose") {
 		log.Printf("[routeApps] Request: method=%s path=%s", r.Method, path)
@@ -740,10 +722,6 @@ func (s *Server) routeApps(w http.ResponseWriter, r *http.Request) {
 	// Route based on the path pattern
 	if path == "/apps/create" {
 		s.handleAppCreate(w, r)
-	} else if path == "/apps/multiservice/create" {
-		s.handleMultiServiceAppCreate(w, r)
-	} else if strings.HasSuffix(path, "/edit-multiservice") {
-		s.handleMultiServiceAppEdit(w, r)
 	} else if strings.HasSuffix(path, "/expose") {
 		s.handleAppExpose(w, r)
 	} else if strings.HasSuffix(path, "/unexpose") {

@@ -141,6 +141,21 @@ services:
                         </div>
                     </div>
                     
+                    <!-- Environment Variables Field -->
+                    <div class="mb-4">
+                        <label for="env_content" class="form-label">
+                            <strong>.env File (Optional)</strong>
+                        </label>
+                        <textarea class="form-control font-monospace" id="env_content" name="env_content" 
+                                  rows="5" placeholder="# Optional environment variables
+# DATABASE_URL=postgresql://user:pass@host:5432/db
+# API_KEY=your-secret-key
+# DEBUG=false">{{ .FormData.env_content }}</textarea>
+                        <div class="form-text">
+                            Optional: Add environment variables that will be saved to a .env file in the app directory.
+                        </div>
+                    </div>
+                    
                     <!-- Form Actions -->
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-primary btn-lg">

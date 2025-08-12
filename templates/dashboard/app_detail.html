@@ -189,7 +189,7 @@
     </div>
 </div>
 
-<!-- Services Table for Multi-Service Apps -->
+<!-- Services Table -->
 {{if .AppStatus}}
 <div class="row mb-4">
     <div class="col-12">
@@ -207,14 +207,16 @@
                                 <th>Service Name</th>
                                 <th>Image</th>
                                 <th>Status</th>
-                                <th>State</th>
+                                <th>Updates</th>
                             </tr>
                         </thead>
                         <tbody>
                             {{range .AppStatus.Services}}
                             <tr>
                                 <td><strong>{{.Name}}</strong></td>
-                                <td><code>{{.Image}}</code></td>
+                                <td>
+                                    <code>{{.Image}}</code>
+                                </td>
                                 <td>
                                     {{if eq .Status "running"}}
                                         <span class="badge bg-success">Running</span>
@@ -223,8 +225,24 @@
                                     {{else}}
                                         <span class="badge bg-warning">{{.Status}}</span>
                                     {{end}}
+                                    {{if .State}}
+                                        <small class="text-muted d-block">{{.State}}</small>
+                                    {{end}}
                                 </td>
-                                <td><small class="text-muted">{{.State}}</small></td>
+                                <td>
+                                    <div id="update-status-{{.Name}}">
+                                        <button type="button" 
+                                                class="btn btn-sm btn-outline-primary"
+                                                hx-get="/apps/{{$.App.Name}}/check-update?service={{.Name}}"
+                                                hx-target="#update-status-{{.Name}}"
+                                                hx-indicator="#update-spinner-{{.Name}}">
+                                            <i>🔍</i> Check
+                                        </button>
+                                        <span id="update-spinner-{{.Name}}" class="htmx-indicator spinner-border spinner-border-sm ms-2" role="status">
+                                            <span class="visually-hidden">Checking...</span>
+                                        </span>
+                                    </div>
+                                </td>
                             </tr>
                             {{end}}
                         </tbody>
@@ -248,7 +266,7 @@
                 <div class="btn-group" role="group">
                     {{if or (eq .App.Status "running") (eq .App.Status "partial")}}
                         <form method="post" action="/api/apps/{{.App.Name}}/stop" class="d-inline"
-                              onsubmit="event.preventDefault(); handleMultiServiceAction(this, 'stop');">
+                              onsubmit="event.preventDefault(); handleAppAction(this, 'stop');">
                             <button type="submit" class="btn btn-warning btn-lg confirm-action" 
                                     data-action="Stop"
                                     data-confirm-text="Stop all services?">
@@ -257,14 +275,14 @@
                         </form>
                     {{else}}
                         <form method="post" action="/api/apps/{{.App.Name}}/start" class="d-inline"
-                              onsubmit="event.preventDefault(); handleMultiServiceAction(this, 'start');">
+                              onsubmit="event.preventDefault(); handleAppAction(this, 'start');">
                             <button type="submit" class="btn btn-success btn-lg">
                                 <i>▶️</i> Start
                             </button>
                         </form>
                     {{end}}
                 </div>
-                <div id="multi-service-status" class="mt-3"></div>
+                <div id="app-action-status" class="mt-3"></div>
             </div>
         </div>
     </div>
@@ -300,24 +318,20 @@
             <div class="card-body">
                 <table class="table table-sm">
                     <tr>
-                        <th>Name:</th>
+                        <th>Project Name:</th>
                         <td><code>ontree-{{.App.Name}}</code></td>
                     </tr>
                     <tr>
-                        <th>Image:</th>
+                        <th>Services:</th>
                         <td>
-                            {{if and .App.Config .App.Config.Container .App.Config.Container.Image}}<code>{{.App.Config.Container.Image}}</code>{{else}}<span class="text-muted">N/A</span>{{end}}
-                            <button type="button" 
-                                    class="btn btn-sm btn-outline-primary ms-2"
-                                    hx-get="/apps/{{.App.Name}}/check-update"
-                                    hx-target="#update-status"
-                                    hx-indicator="#update-spinner">
-                                <i>🔍</i> Check for Updates
-                            </button>
-                            <span id="update-spinner" class="htmx-indicator spinner-border spinner-border-sm ms-2" role="status">
-                                <span class="visually-hidden">Checking...</span>
-                            </span>
-                            <span id="update-status" class="ms-2"></span>
+                            {{if .App.Services}}
+                                {{len .App.Services}} service{{if ne (len .App.Services) 1}}s{{end}}
+                                {{range $name, $service := .App.Services}}
+                                    <span class="badge bg-secondary ms-1">{{$name}}</span>
+                                {{end}}
+                            {{else}}
+                                <span class="text-muted">No services configured</span>
+                            {{end}}
                         </td>
                     </tr>
                     <tr>
@@ -335,30 +349,39 @@
                 <h5 class="mb-0">Network & Ports</h5>
             </div>
             <div class="card-body">
-                {{if and .App.Config .App.Config.Ports}}
+                {{$hasPorts := false}}
+                {{range $serviceName, $service := .App.Services}}
+                    {{if $service.Ports}}
+                        {{$hasPorts = true}}
+                    {{end}}
+                {{end}}
+                
+                {{if $hasPorts}}
                     <table class="table table-sm">
                         <thead>
                             <tr>
-                                <th>Host Port</th>
-                                <th>Container Port</th>
+                                <th>Service</th>
+                                <th>Port Mapping</th>
                                 <th>Access</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {{range $host, $container := .App.Config.Ports}}
-                            <tr>
-                                <td><code>{{$host}}</code></td>
-                                <td><code>{{$container}}</code></td>
-                                <td>
-                                    {{if eq $.App.Status "running"}}
-                                        <a href="http://localhost:{{$host}}" target="_blank" class="btn btn-sm btn-outline-primary">
-                                            Open
-                                        </a>
-                                    {{else}}
-                                        <span class="text-muted">Not running</span>
-                                    {{end}}
-                                </td>
-                            </tr>
+                            {{range $serviceName, $service := .App.Services}}
+                                {{range $service.Ports}}
+                                <tr>
+                                    <td><span class="badge bg-secondary">{{$serviceName}}</span></td>
+                                    <td><code>{{.}}</code></td>
+                                    <td>
+                                        {{if eq $.App.Status "running"}}
+                                            <a href="#" onclick="openPort('{{.}}')" class="btn btn-sm btn-outline-primary">
+                                                Open
+                                            </a>
+                                        {{else}}
+                                            <span class="text-muted">Not running</span>
+                                        {{end}}
+                                    </td>
+                                </tr>
+                                {{end}}
                             {{end}}
                         </tbody>
                     </table>
@@ -371,7 +394,13 @@
 </div>
 
 <!-- Domain & Access -->
-{{if and .App.Config .App.Config.Ports}}
+{{$hasPorts := false}}
+{{range $serviceName, $service := .App.Services}}
+    {{if $service.Ports}}
+        {{$hasPorts = true}}
+    {{end}}
+{{end}}
+{{if $hasPorts}}
 <div class="row mb-4">
     <div class="col-12">
         <div class="card">
@@ -577,7 +606,7 @@
                 </ul>
                 <p class="small text-danger"><strong>This action cannot be undone!</strong></p>
                 <form method="post" action="/api/apps/{{.App.Name}}" class="d-inline"
-                      onsubmit="event.preventDefault(); handleMultiServiceDelete(this);">
+                      onsubmit="event.preventDefault(); handleAppDelete(this);">
                     <button type="button" class="btn btn-danger confirm-action" data-confirm-text="Are you sure? Click to confirm"
                             data-custom-action="delete">
                         <i class="fas fa-trash-alt me-1"></i> Delete App Permanently
@@ -589,10 +618,10 @@
 </div>
 
 <script>
-// Handle multi-service API calls
-function handleMultiServiceAction(form, action) {
+// Handle app API calls
+function handleAppAction(form, action) {
     const appName = '{{.App.Name}}';
-    const statusDiv = document.getElementById('multi-service-status');
+    const statusDiv = document.getElementById('app-action-status');
     const button = form.querySelector('button[type="submit"]');
     const originalButtonHTML = button.innerHTML;
     
@@ -652,8 +681,8 @@ function handleMultiServiceAction(form, action) {
     });
 }
 
-// Handle multi-service delete
-function handleMultiServiceDelete(form) {
+// Handle app delete
+function handleAppDelete(form) {
     const appName = '{{.App.Name}}';
     const button = form.querySelector('button');
     
@@ -710,27 +739,23 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             
             if (button.classList.contains('confirming')) {
-                // Second click - check for custom action
-                if (button.dataset.customAction === 'delete') {
-                    // Trigger the form's onsubmit handler for delete
-                    const submitEvent = new Event('submit', {
-                        bubbles: true,
-                        cancelable: true
+                // Second click - trigger the form's onsubmit handler
+                // Track app action if PostHog is available
+                {{if .PostHogEnabled}}
+                if (typeof posthog !== 'undefined' && form.action.includes('/start')) {
+                    posthog.capture('app_started', {
+                        app_name: '{{.App.Name}}',
+                        timestamp: new Date().toISOString()
                     });
-                    form.dispatchEvent(submitEvent);
-                } else {
-                    // Normal form submission
-                    // Track app action if PostHog is available
-                    {{if .PostHogEnabled}}
-                    if (typeof posthog !== 'undefined' && form.action.includes('/start')) {
-                        posthog.capture('app_started', {
-                            app_name: '{{.App.Name}}',
-                            timestamp: new Date().toISOString()
-                        });
-                    }
-                    {{end}}
-                    form.submit();
                 }
+                {{end}}
+                
+                // Trigger the form's onsubmit handler (which handles preventDefault and API calls)
+                const submitEvent = new Event('submit', {
+                    bubbles: true,
+                    cancelable: true
+                });
+                form.dispatchEvent(submitEvent);
             } else {
                 // First click - enter confirmation mode
                 button.classList.add('confirming');
@@ -919,6 +944,37 @@ window.addEventListener('beforeunload', function() {
         toggleFollowLogs();
     }
 });
+
+// Recreate a specific service with the latest image
+function recreateService(appName, serviceName) {
+    if (!confirm(`Recreate service ${serviceName} with the latest image? This will stop and restart the service.`)) {
+        return;
+    }
+    
+    // For now, just reload the page after confirmation
+    // TODO: Implement actual recreate API endpoint
+    fetch(`/api/apps/${appName}/recreate?service=${serviceName}`, {
+        method: 'POST'
+    }).then(response => {
+        if (response.ok) {
+            window.location.reload();
+        } else {
+            alert('Failed to recreate service');
+        }
+    }).catch(error => {
+        alert('Error: ' + error.message);
+    });
+}
+
+// Open port mapping
+function openPort(portMapping) {
+    // Parse port mapping (e.g., "8080:80")
+    const parts = portMapping.split(':');
+    if (parts.length >= 1) {
+        const hostPort = parts[0];
+        window.open(`http://localhost:${hostPort}`, '_blank');
+    }
+}
 </script>
 {{end}}
 {{end}}

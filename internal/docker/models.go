@@ -15,29 +15,19 @@ const (
 type AppStatus string
 
 const (
-	AppStatusRunning AppStatus = "running"  // All services are running
-	AppStatusPartial AppStatus = "partial"  // Some services are running
-	AppStatusStopped AppStatus = "stopped"  // All services are stopped
-	AppStatusError   AppStatus = "error"    // One or more services have errors
-	AppStatusUnknown AppStatus = "unknown"  // Status cannot be determined
+	AppStatusRunning AppStatus = "running" // All services are running
+	AppStatusPartial AppStatus = "partial" // Some services are running
+	AppStatusStopped AppStatus = "stopped" // All services are stopped
+	AppStatusError   AppStatus = "error"   // One or more services have errors
+	AppStatusUnknown AppStatus = "unknown" // Status cannot be determined
 )
 
-// AppService represents a single service within a multi-service app
+// AppService represents a single service's runtime status
 type AppService struct {
 	Name   string        `json:"name"`
 	Image  string        `json:"image"`
 	Status ServiceStatus `json:"status"`
 	Error  string        `json:"error,omitempty"`
-}
-
-// MultiServiceApp represents a multi-service application managed by OnTree
-type MultiServiceApp struct {
-	Name     string       `json:"name"`
-	Path     string       `json:"path"`
-	Status   AppStatus    `json:"status"`    // Aggregate status
-	Services []AppService `json:"services"`  // List of services in this app
-	Error    string       `json:"error,omitempty"`
-	Emoji    string       `json:"emoji,omitempty"`
 }
 
 // CalculateAggregateStatus calculates the aggregate status based on service statuses

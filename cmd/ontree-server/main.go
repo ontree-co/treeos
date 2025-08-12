@@ -55,19 +55,6 @@ func main() {
 				os.Exit(1)
 			}
 			return
-		case "migrate-single-to-multi":
-			// Get optional app names from command line
-			var appNames []string
-			if len(os.Args) > 2 {
-				appNames = os.Args[2:]
-			}
-
-			// Run migration
-			if err := migration.MigrateSingleToMultiServiceApps(cfg, appNames); err != nil {
-				fmt.Fprintf(os.Stderr, "Migration failed: %v\n", err)
-				os.Exit(1)
-			}
-			return
 		}
 	}
 

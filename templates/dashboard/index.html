@@ -131,46 +131,47 @@
                                         <strong>{{if .Emoji}}{{.Emoji}} {{end}}{{.Name}}</strong>
                                         {{if gt .ServiceCount 0}}
                                             <br><small class="text-muted">{{.ServiceCount}} Service{{if ne .ServiceCount 1}}s{{end}}</small>
-                                        {{else if and .Config .Config.Container .Config.Container.Image}}
-                                            <br><small class="text-muted">{{.Config.Container.Image}}</small>
+                                        {{else if .Services}}
+                                            <br><small class="text-muted">{{len .Services}} Service{{if ne (len .Services) 1}}s{{end}}</small>
                                         {{end}}
                                     </td>
                                     <td>
-                                        {{if .MultiServiceStatus}}
-                                            {{if eq .MultiServiceStatus "running"}}
-                                                <span class="badge bg-success">Running</span>
-                                            {{else if eq .MultiServiceStatus "partial"}}
-                                                <span class="badge bg-warning">Partial</span>
-                                            {{else if eq .MultiServiceStatus "stopped"}}
-                                                <span class="badge bg-secondary">Stopped</span>
-                                            {{else}}
-                                                <span class="badge bg-info">{{.MultiServiceStatus}}</span>
-                                            {{end}}
+                                        {{if eq .Status "running"}}
+                                            <span class="badge bg-success">Running</span>
+                                        {{else if eq .Status "partial"}}
+                                            <span class="badge bg-warning">Partial</span>
+                                        {{else if eq .Status "exited"}}
+                                            <span class="badge bg-secondary">Stopped</span>
+                                        {{else if eq .Status "stopped"}}
+                                            <span class="badge bg-secondary">Stopped</span>
+                                        {{else if eq .Status "not_created"}}
+                                            <span class="badge bg-light text-dark">Not Created</span>
+                                        {{else if eq .Status "error"}}
+                                            <span class="badge bg-danger">Error</span>
                                         {{else}}
-                                            {{if eq .Status "running"}}
-                                                <span class="badge bg-success">Running</span>
-                                            {{else if eq .Status "exited"}}
-                                                <span class="badge bg-warning">Stopped</span>
-                                            {{else if eq .Status "not_created"}}
-                                                <span class="badge bg-secondary">Not Created</span>
-                                            {{else if eq .Status "error"}}
-                                                <span class="badge bg-danger">Error</span>
-                                            {{else}}
-                                                <span class="badge bg-info">{{.Status}}</span>
-                                            {{end}}
+                                            <span class="badge bg-info">{{.Status}}</span>
                                         {{end}}
                                     </td>
                                     <td>
-                                        {{if and .Config .Config.Container.Image}}
-                                            <code class="small">{{.Config.Container.Image}}</code>
+                                        {{if .Services}}
+                                            {{range $name, $service := .Services}}
+                                                <span class="badge bg-secondary me-1" title="{{$service.Image}}">{{$name}}</span>
+                                            {{end}}
                                         {{else}}
                                             <span class="text-muted">-</span>
                                         {{end}}
                                     </td>
                                     <td>
-                                        {{if and .Config .Config.Ports}}
-                                            {{range $host, $container := .Config.Ports}}
-                                                <span class="badge bg-light text-dark">{{$host}}:{{$container}}</span>
+                                        {{if .Services}}
+                                            {{$hasPorts := false}}
+                                            {{range $name, $service := .Services}}
+                                                {{range $port := $service.Ports}}
+                                                    {{$hasPorts = true}}
+                                                    <span class="badge bg-light text-dark">{{$port}}</span>
+                                                {{end}}
+                                            {{end}}
+                                            {{if not $hasPorts}}
+                                                <span class="text-muted">-</span>
                                             {{end}}
                                         {{else}}
                                             <span class="text-muted">-</span>

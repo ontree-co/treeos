@@ -80,7 +80,7 @@ func (s *Service) Up(ctx context.Context, opts Options) error {
 	// which causes "no container found" errors on subsequent operations.
 	// As a temporary workaround, we'll use the Docker Compose CLI directly.
 	log.Printf("INFO: Using docker-compose CLI for project %s due to SDK label limitations", project.Name)
-	
+
 	// Use docker-compose CLI as a workaround
 	return s.upUsingCLI(ctx, opts)
 }
@@ -89,13 +89,13 @@ func (s *Service) Up(ctx context.Context, opts Options) error {
 func (s *Service) upUsingCLI(ctx context.Context, opts Options) error {
 	// Build docker-compose command arguments
 	projectName := filepath.Base(opts.WorkingDir)
-	
+
 	// Try "docker compose" first (v2), then fall back to "docker-compose" (v1)
 	output, err := s.runComposeCommand(ctx, opts, "up", "-d")
 	if err != nil {
 		return fmt.Errorf("failed to start containers: %w\nOutput: %s", err, string(output))
 	}
-	
+
 	log.Printf("INFO: Successfully started containers using docker-compose CLI for project %s", projectName)
 	return nil
 }
@@ -107,66 +107,65 @@ func (s *Service) runComposeCommand(ctx context.Context, opts Options, command .
 	if err != nil {
 		return nil, fmt.Errorf("invalid working directory: %w", err)
 	}
-	
+
 	// Build base arguments
 	composeFile := filepath.Join(absPath, "docker-compose.yml")
 	baseArgs := []string{"-f", composeFile}
-	
+
 	// Set project name from directory
 	projectName := filepath.Base(absPath)
 	baseArgs = append(baseArgs, "-p", projectName)
-	
+
 	// Add env file if specified
 	if opts.EnvFile != "" {
 		envFile := filepath.Join(absPath, opts.EnvFile)
 		baseArgs = append(baseArgs, "--env-file", envFile)
 	}
-	
+
 	// Add the command and its arguments
 	args := append(baseArgs, command...)
-	
+
 	// Try "docker compose" first (v2)
 	// #nosec G204 - Command arguments are validated and come from trusted sources
 	cmd := exec.CommandContext(ctx, "docker", append([]string{"compose"}, args...)...)
 	cmd.Dir = absPath
 	output, err := cmd.CombinedOutput()
-	
+
 	if err == nil {
 		return output, nil
 	}
-	
+
 	// If v2 failed, try "docker-compose" (v1)
 	// #nosec G204 - Command arguments are validated and come from trusted sources
 	cmd = exec.CommandContext(ctx, "docker-compose", args...)
 	cmd.Dir = absPath
 	output2, err2 := cmd.CombinedOutput()
-	
+
 	if err2 == nil {
 		return output2, nil
 	}
-	
+
 	// Return the v2 error as it's more likely to be available in modern environments
 	return output, err
 }
-
 
 // Down stops and removes a compose project (equivalent to docker-compose down)
 func (s *Service) Down(ctx context.Context, opts Options, removeVolumes bool) error {
 	// Use docker-compose CLI for consistency with Up
 	projectName := filepath.Base(opts.WorkingDir)
-	
+
 	// Build command arguments
 	cmdArgs := []string{"down"}
 	if removeVolumes {
 		cmdArgs = append(cmdArgs, "-v")
 	}
-	
+
 	// Try "docker compose" first (v2), then fall back to "docker-compose" (v1)
 	output, err := s.runComposeCommand(ctx, opts, cmdArgs...)
 	if err != nil {
 		return fmt.Errorf("failed to stop containers: %w\nOutput: %s", err, string(output))
 	}
-	
+
 	log.Printf("INFO: Successfully stopped containers using docker-compose CLI for project %s", projectName)
 	return nil
 }

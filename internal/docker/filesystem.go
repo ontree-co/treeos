@@ -50,61 +50,61 @@ func (fs *FileSystemManager) ProvisionAppDirectories(appName string) error {
 // ReadDockerComposeFile reads the docker-compose.yml file for an app
 func (fs *FileSystemManager) ReadDockerComposeFile(appName string) ([]byte, error) {
 	composePath := filepath.Join(BaseAppsDir, appName, "docker-compose.yml")
-	
+
 	data, err := os.ReadFile(composePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read docker-compose.yml: %w", err)
 	}
-	
+
 	return data, nil
 }
 
 // WriteDockerComposeFile writes the docker-compose.yml file for an app
 func (fs *FileSystemManager) WriteDockerComposeFile(appName string, content []byte) error {
 	composePath := filepath.Join(BaseAppsDir, appName, "docker-compose.yml")
-	
+
 	// Ensure the app directory exists
 	appDir := filepath.Join(BaseAppsDir, appName)
 	if err := os.MkdirAll(appDir, 0755); err != nil {
 		return fmt.Errorf("failed to create app directory: %w", err)
 	}
-	
+
 	// Write the file with proper permissions
 	if err := os.WriteFile(composePath, content, 0600); err != nil {
 		return fmt.Errorf("failed to write docker-compose.yml: %w", err)
 	}
-	
+
 	return nil
 }
 
 // ReadEnvFile reads the .env file for an app
 func (fs *FileSystemManager) ReadEnvFile(appName string) ([]byte, error) {
 	envPath := filepath.Join(BaseAppsDir, appName, ".env")
-	
+
 	// Check if file exists
 	if _, err := os.Stat(envPath); os.IsNotExist(err) {
 		// Return empty content if file doesn't exist (optional file)
 		return []byte{}, nil
 	}
-	
+
 	data, err := os.ReadFile(envPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read .env file: %w", err)
 	}
-	
+
 	return data, nil
 }
 
 // WriteEnvFile writes the .env file for an app
 func (fs *FileSystemManager) WriteEnvFile(appName string, content []byte) error {
 	envPath := filepath.Join(BaseAppsDir, appName, ".env")
-	
+
 	// Ensure the app directory exists
 	appDir := filepath.Join(BaseAppsDir, appName)
 	if err := os.MkdirAll(appDir, 0755); err != nil {
 		return fmt.Errorf("failed to create app directory: %w", err)
 	}
-	
+
 	// If content is empty, remove the file if it exists
 	if len(content) == 0 {
 		if err := os.Remove(envPath); err != nil && !os.IsNotExist(err) {
@@ -112,12 +112,12 @@ func (fs *FileSystemManager) WriteEnvFile(appName string, content []byte) error 
 		}
 		return nil
 	}
-	
+
 	// Write the file with proper permissions
 	if err := os.WriteFile(envPath, content, 0600); err != nil {
 		return fmt.Errorf("failed to write .env file: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -146,23 +146,23 @@ func (fs *FileSystemManager) DeleteAppDirectories(appName string) error {
 	if err := os.RemoveAll(appDir); err != nil {
 		return fmt.Errorf("failed to remove app directory: %w", err)
 	}
-	
+
 	// Remove app mount directory
 	mountDir := filepath.Join(BaseMountDir, appName)
 	if err := os.RemoveAll(mountDir); err != nil {
 		return fmt.Errorf("failed to remove mount directory: %w", err)
 	}
-	
+
 	return nil
 }
 
 // CreateServiceMountDirectory creates a mount directory for a specific service
 func (fs *FileSystemManager) CreateServiceMountDirectory(appName, serviceName string) error {
 	mountPath := filepath.Join(BaseMountDir, appName, serviceName)
-	
+
 	if err := os.MkdirAll(mountPath, 0755); err != nil {
 		return fmt.Errorf("failed to create service mount directory: %w", err)
 	}
-	
+
 	return nil
 }

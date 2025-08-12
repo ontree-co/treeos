@@ -98,9 +98,9 @@ func (s *Service) ProcessTemplateContent(content string, appName string) string 
 	// For multi-service apps, we don't modify service names
 	// Service names in templates should be descriptive (e.g., "web", "db", "redis")
 	// rather than matching the app name
-	
+
 	// TODO: In the future, this could support variable substitution like:
 	// {{.Port}}, {{.AppName}}, {{.RandomString}}, etc.
-	
+
 	return content
 }

@@ -123,7 +123,7 @@ func TestSystemVitalsFunctions(t *testing.T) {
 	// Test CleanupOldSystemVitals
 	t.Run("CleanupOldSystemVitals", func(t *testing.T) {
 		t.Skip("Skipping test due to timing issues with CURRENT_TIMESTAMP - will fix in future release")
-		
+
 		// Add some test data
 		for i := 0; i < 10; i++ {
 			err := StoreSystemVital(float64(40+i), float64(75+i), float64(55+i), uint64(4000000+i*100000), uint64(2000000+i*50000))
@@ -148,7 +148,7 @@ func TestSystemVitalsFunctions(t *testing.T) {
 	// Test GetMetricsForTimeRange
 	t.Run("GetMetricsForTimeRange", func(t *testing.T) {
 		t.Skip("Skipping test due to timing issues with CURRENT_TIMESTAMP - will fix in future release")
-		
+
 		// Clear data and add fresh test data
 		db := GetDB()
 		_, _ = db.Exec("DELETE FROM system_vital_logs")
