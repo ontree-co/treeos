@@ -112,10 +112,21 @@ func createTables() error {
 			details TEXT,
 			FOREIGN KEY (operation_id) REFERENCES docker_operations(id)
 		)`,
+		`CREATE TABLE IF NOT EXISTS chat_messages (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			app_id TEXT NOT NULL,
+			timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+			status_level TEXT NOT NULL CHECK (status_level IN ('OK', 'WARNING', 'CRITICAL')),
+			message_summary TEXT NOT NULL,
+			message_details TEXT,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)`,
 		`CREATE INDEX IF NOT EXISTS idx_system_vital_logs_timestamp ON system_vital_logs(timestamp)`,
 		`CREATE INDEX IF NOT EXISTS idx_docker_operations_status_created ON docker_operations(status, created_at)`,
 		`CREATE INDEX IF NOT EXISTS idx_docker_operations_app_created ON docker_operations(app_name, created_at)`,
 		`CREATE INDEX IF NOT EXISTS idx_docker_operation_logs_operation_timestamp ON docker_operation_logs(operation_id, timestamp)`,
+		`CREATE INDEX IF NOT EXISTS idx_chat_messages_app_id_timestamp ON chat_messages(app_id, timestamp DESC)`,
+		`CREATE INDEX IF NOT EXISTS idx_chat_messages_status_timestamp ON chat_messages(status_level, timestamp DESC)`,
 	}
 
 	for _, query := range queries {
