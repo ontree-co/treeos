@@ -68,6 +68,17 @@ type DockerOperationLog struct {
 	Details     sql.NullString
 }
 
+// ChatMessage represents an agent chat message for an application.
+type ChatMessage struct {
+	ID             int
+	AppID          string
+	Timestamp      time.Time
+	StatusLevel    string
+	MessageSummary string
+	MessageDetails sql.NullString
+	CreatedAt      time.Time
+}
+
 const (
 	// OpTypePullImage indicates a Docker image pull operation.
 	OpTypePullImage = "pull_image"
@@ -97,4 +108,11 @@ const (
 	LogLevelWarning = "warning"
 	// LogLevelError indicates an error log level.
 	LogLevelError = "error"
+
+	// ChatStatusOK indicates all systems are nominal.
+	ChatStatusOK = "OK"
+	// ChatStatusWarning indicates non-critical issues.
+	ChatStatusWarning = "WARNING"
+	// ChatStatusCritical indicates critical failures.
+	ChatStatusCritical = "CRITICAL"
 )

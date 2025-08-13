@@ -767,6 +767,8 @@ func (s *Server) routeAPIApps(w http.ResponseWriter, r *http.Request) {
 		s.handleAPIAppStop(w, r)
 	} else if strings.HasSuffix(path, "/logs") {
 		s.handleAPIAppLogs(w, r)
+	} else if strings.HasSuffix(path, "/chat") {
+		s.handleAPIAppChat(w, r)
 	} else if strings.HasPrefix(path, "/api/apps/") {
 		// Check if it's a DELETE request for app deletion
 		if r.Method == http.MethodDelete {
