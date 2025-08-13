@@ -1,7 +1,9 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -116,5 +118,43 @@ func (s *Server) handleAPIAppChat(w http.ResponseWriter, r *http.Request) {
 		Total:    total,
 		Limit:    limit,
 		Offset:   offset,
+	})
+}
+
+// handleTestAgentRun handles POST /api/test/agent-run
+// This endpoint is for testing purposes only - it triggers an agent check cycle
+func (s *Server) handleTestAgentRun(w http.ResponseWriter, r *http.Request) {
+	// Only allow POST requests
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Check if agent is enabled
+	if s.agentOrchestrator == nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"error":   "Agent is not enabled",
+		})
+		return
+	}
+
+	// Run the agent check in a goroutine to avoid blocking the HTTP response
+	go func() {
+		ctx := context.Background()
+		if err := s.agentOrchestrator.RunCheck(ctx); err != nil {
+			// Log the error but don't return it to the client since we're async
+			log.Printf("Test agent run failed: %v", err)
+		}
+	}()
+
+	// Return success immediately (agent runs async)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Agent check triggered successfully",
 	})
 }

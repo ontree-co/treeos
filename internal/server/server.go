@@ -445,6 +445,10 @@ func (s *Server) Start() error {
 
 	// API routes
 	mux.HandleFunc("/api/apps/", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeAPIApps))))
+	
+	// Test endpoint for triggering agent runs (for testing purposes)
+	// This endpoint is protected by auth middleware so only authenticated users can trigger it
+	mux.HandleFunc("/api/test/agent-run", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleTestAgentRun))))
 
 	// Dashboard partial routes (for monitoring cards on dashboard)
 	mux.HandleFunc("/partials/cpu", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleMonitoringCPUPartial))))
