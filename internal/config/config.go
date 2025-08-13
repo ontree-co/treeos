@@ -32,15 +32,27 @@ type Config struct {
 
 	// Monitoring feature flag
 	MonitoringEnabled bool `toml:"monitoring_enabled"`
+
+	// Agent configuration
+	AgentEnabled       bool   `toml:"agent_enabled"`
+	AgentCheckInterval string `toml:"agent_check_interval"` // e.g., "5m", "1h"
+	AgentLLMAPIKey     string `toml:"agent_llm_api_key"`
+	AgentLLMAPIURL     string `toml:"agent_llm_api_url"`
+	AgentLLMModel      string `toml:"agent_llm_model"`
+	AgentConfigDir     string `toml:"agent_config_dir"`     // Directory with app.homeserver.yaml files
+	UptimeKumaBaseURL  string `toml:"uptime_kuma_base_url"` // Base URL for Uptime Kuma API
 }
 
 // defaultConfig returns the default configuration based on the platform
 func defaultConfig() *Config {
 	config := &Config{
-		DatabasePath:      "ontree.db",
-		ListenAddr:        DefaultPort,
-		PostHogHost:       "https://app.posthog.com",
-		MonitoringEnabled: true, // Enabled by default
+		DatabasePath:       "ontree.db",
+		ListenAddr:         DefaultPort,
+		PostHogHost:        "https://app.posthog.com",
+		MonitoringEnabled:  true, // Enabled by default
+		AgentEnabled:       false, // Disabled by default until configured
+		AgentCheckInterval: "5m",  // Default 5 minutes
+		AgentConfigDir:     "/opt/homeserver-config",
 	}
 
 	// Platform-specific defaults for AppsDir
@@ -100,6 +112,35 @@ func Load() (*Config, error) {
 
 	if monitoringEnabled := os.Getenv("MONITORING_ENABLED"); monitoringEnabled != "" {
 		config.MonitoringEnabled = monitoringEnabled == "true" || monitoringEnabled == "1"
+	}
+
+	// Agent environment variables
+	if agentEnabled := os.Getenv("AGENT_ENABLED"); agentEnabled != "" {
+		config.AgentEnabled = agentEnabled == "true" || agentEnabled == "1"
+	}
+
+	if agentCheckInterval := os.Getenv("AGENT_CHECK_INTERVAL"); agentCheckInterval != "" {
+		config.AgentCheckInterval = agentCheckInterval
+	}
+
+	if agentLLMAPIKey := os.Getenv("AGENT_LLM_API_KEY"); agentLLMAPIKey != "" {
+		config.AgentLLMAPIKey = agentLLMAPIKey
+	}
+
+	if agentLLMAPIURL := os.Getenv("AGENT_LLM_API_URL"); agentLLMAPIURL != "" {
+		config.AgentLLMAPIURL = agentLLMAPIURL
+	}
+
+	if agentLLMModel := os.Getenv("AGENT_LLM_MODEL"); agentLLMModel != "" {
+		config.AgentLLMModel = agentLLMModel
+	}
+
+	if agentConfigDir := os.Getenv("AGENT_CONFIG_DIR"); agentConfigDir != "" {
+		config.AgentConfigDir = agentConfigDir
+	}
+
+	if uptimeKumaBaseURL := os.Getenv("UPTIME_KUMA_BASE_URL"); uptimeKumaBaseURL != "" {
+		config.UptimeKumaBaseURL = uptimeKumaBaseURL
 	}
 
 	// Ensure AppsDir is absolute

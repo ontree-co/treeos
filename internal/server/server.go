@@ -15,6 +15,8 @@ import (
 	"time"
 
 	"github.com/gorilla/sessions"
+	"github.com/robfig/cron/v3"
+	"ontree-node/internal/agent"
 	"ontree-node/internal/cache"
 	"ontree-node/internal/caddy"
 	"ontree-node/internal/config"
@@ -45,6 +47,8 @@ type Server struct {
 	sparklineCache        *cache.Cache
 	realtimeMetrics       *realtime.Metrics
 	composeSvc            *compose.Service
+	agentOrchestrator     *agent.Orchestrator
+	agentCron             *cron.Cron
 }
 
 // New creates a new server instance
@@ -130,11 +134,63 @@ func New(cfg *config.Config, versionInfo version.Info) (*Server, error) {
 	templatesPath := "compose" // Path within the embedded templates directory
 	s.templateSvc = templates.NewService(templatesPath)
 
+	// Initialize agent orchestrator if enabled
+	if cfg.AgentEnabled {
+		if cfg.AgentLLMAPIKey == "" {
+			log.Printf("Warning: Agent is enabled but AGENT_LLM_API_KEY is not set. Agent will run in fallback mode.")
+		}
+
+		// Parse check interval
+		checkInterval, err := time.ParseDuration(cfg.AgentCheckInterval)
+		if err != nil {
+			log.Printf("Warning: Invalid agent check interval '%s', using default 5m: %v", cfg.AgentCheckInterval, err)
+			checkInterval = 5 * time.Minute
+		}
+
+		orchestratorConfig := agent.OrchestratorConfig{
+			ConfigRootDir:     cfg.AgentConfigDir,
+			UptimeKumaBaseURL: cfg.UptimeKumaBaseURL,
+			LLMConfig: agent.LLMConfig{
+				APIKey: cfg.AgentLLMAPIKey,
+				APIURL: cfg.AgentLLMAPIURL,
+				Model:  cfg.AgentLLMModel,
+			},
+			CheckInterval: checkInterval,
+		}
+
+		orchestrator, err := agent.NewOrchestrator(orchestratorConfig)
+		if err != nil {
+			log.Printf("Warning: Failed to initialize agent orchestrator: %v", err)
+			// Continue without agent support
+		} else {
+			s.agentOrchestrator = orchestrator
+			// Initialize cron scheduler
+			s.agentCron = cron.New(cron.WithSeconds())
+			log.Printf("Agent orchestrator initialized with check interval: %v", checkInterval)
+		}
+	} else {
+		log.Println("Agent is disabled. Set AGENT_ENABLED=true to enable.")
+	}
+
 	return s, nil
 }
 
 // Shutdown gracefully shuts down the server
 func (s *Server) Shutdown() {
+	// Stop agent cron if running
+	if s.agentCron != nil {
+		log.Println("Stopping agent cron scheduler...")
+		ctx := s.agentCron.Stop()
+		<-ctx.Done()
+	}
+	
+	// Close agent orchestrator
+	if s.agentOrchestrator != nil {
+		if err := s.agentOrchestrator.Close(); err != nil {
+			log.Printf("Error closing agent orchestrator: %v", err)
+		}
+	}
+	
 	if s.dockerSvc != nil {
 		if err := s.dockerSvc.Close(); err != nil {
 			log.Printf("Error closing docker service: %v", err)
@@ -333,6 +389,37 @@ func (s *Server) Start() error {
 	// Start background jobs
 	go s.startVitalsCleanup()
 	go s.startRealtimeMetricsCollection()
+	
+	// Start agent cron job if configured
+	if s.agentOrchestrator != nil && s.agentCron != nil {
+		// Schedule the periodic check
+		checkInterval := s.config.AgentCheckInterval
+		cronSpec := fmt.Sprintf("@every %s", checkInterval)
+		
+		_, err := s.agentCron.AddFunc(cronSpec, func() {
+			ctx := context.Background()
+			if err := s.agentOrchestrator.RunCheck(ctx); err != nil {
+				log.Printf("Agent check failed: %v", err)
+			}
+		})
+		
+		if err != nil {
+			log.Printf("Warning: Failed to schedule agent cron job: %v", err)
+		} else {
+			// Start the cron scheduler
+			s.agentCron.Start()
+			log.Printf("Agent cron job started with interval: %s", checkInterval)
+			
+			// Run initial check
+			go func() {
+				ctx := context.Background()
+				log.Println("Running initial agent check...")
+				if err := s.agentOrchestrator.RunCheck(ctx); err != nil {
+					log.Printf("Initial agent check failed: %v", err)
+				}
+			}()
+		}
+	}
 
 	// Set up routes
 	mux := http.NewServeMux()
