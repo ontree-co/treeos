@@ -30,6 +30,13 @@ type SystemSetup struct {
 	NodeDescription     sql.NullString
 	PublicBaseDomain    sql.NullString
 	TailscaleBaseDomain sql.NullString
+	AgentEnabled        sql.NullInt64
+	AgentCheckInterval  sql.NullString
+	AgentLLMAPIKey      sql.NullString
+	AgentLLMAPIURL      sql.NullString
+	AgentLLMModel       sql.NullString
+	AgentConfigDir      sql.NullString
+	UptimeKumaBaseURL   sql.NullString
 }
 
 // SystemVitalLog stores system performance metrics.

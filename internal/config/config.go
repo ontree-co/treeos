@@ -49,7 +49,7 @@ func defaultConfig() *Config {
 		DatabasePath:       "ontree.db",
 		ListenAddr:         DefaultPort,
 		PostHogHost:        "https://app.posthog.com",
-		MonitoringEnabled:  true, // Enabled by default
+		MonitoringEnabled:  true,  // Enabled by default
 		AgentEnabled:       false, // Disabled by default until configured
 		AgentCheckInterval: "5m",  // Default 5 minutes
 		AgentConfigDir:     "/opt/homeserver-config",

@@ -115,9 +115,9 @@ func New(cfg *config.Config, versionInfo version.Info) (*Server, error) {
 		s.composeSvc = composeSvc
 	}
 
-	// Load domain configuration from database if not set by environment
-	if err := s.loadDomainConfig(); err != nil {
-		log.Printf("Warning: Failed to load domain config from database: %v", err)
+	// Load configuration from database if not set by environment
+	if err := s.loadConfigFromDatabase(); err != nil {
+		log.Printf("Warning: Failed to load config from database: %v", err)
 	}
 
 	// Initialize Caddy client only on Linux
@@ -134,63 +134,15 @@ func New(cfg *config.Config, versionInfo version.Info) (*Server, error) {
 	templatesPath := "compose" // Path within the embedded templates directory
 	s.templateSvc = templates.NewService(templatesPath)
 
-	// Initialize agent orchestrator if enabled
-	if cfg.AgentEnabled {
-		if cfg.AgentLLMAPIKey == "" {
-			log.Printf("Warning: Agent is enabled but AGENT_LLM_API_KEY is not set. Agent will run in fallback mode.")
-		}
-
-		// Parse check interval
-		checkInterval, err := time.ParseDuration(cfg.AgentCheckInterval)
-		if err != nil {
-			log.Printf("Warning: Invalid agent check interval '%s', using default 5m: %v", cfg.AgentCheckInterval, err)
-			checkInterval = 5 * time.Minute
-		}
-
-		orchestratorConfig := agent.OrchestratorConfig{
-			ConfigRootDir:     cfg.AgentConfigDir,
-			UptimeKumaBaseURL: cfg.UptimeKumaBaseURL,
-			LLMConfig: agent.LLMConfig{
-				APIKey: cfg.AgentLLMAPIKey,
-				APIURL: cfg.AgentLLMAPIURL,
-				Model:  cfg.AgentLLMModel,
-			},
-			CheckInterval: checkInterval,
-		}
-
-		orchestrator, err := agent.NewOrchestrator(orchestratorConfig)
-		if err != nil {
-			log.Printf("Warning: Failed to initialize agent orchestrator: %v", err)
-			// Continue without agent support
-		} else {
-			s.agentOrchestrator = orchestrator
-			// Initialize cron scheduler
-			s.agentCron = cron.New(cron.WithSeconds())
-			log.Printf("Agent orchestrator initialized with check interval: %v", checkInterval)
-		}
-	} else {
-		log.Println("Agent is disabled. Set AGENT_ENABLED=true to enable.")
-	}
+	// Agent will be initialized in Start() if enabled
 
 	return s, nil
 }
 
 // Shutdown gracefully shuts down the server
 func (s *Server) Shutdown() {
-	// Stop agent cron if running
-	if s.agentCron != nil {
-		log.Println("Stopping agent cron scheduler...")
-		ctx := s.agentCron.Stop()
-		<-ctx.Done()
-	}
-	
-	// Close agent orchestrator
-	if s.agentOrchestrator != nil {
-		if err := s.agentOrchestrator.Close(); err != nil {
-			log.Printf("Error closing agent orchestrator: %v", err)
-		}
-	}
-	
+	s.stopAgent()
+
 	if s.dockerSvc != nil {
 		if err := s.dockerSvc.Close(); err != nil {
 			log.Printf("Error closing docker service: %v", err)
@@ -389,27 +341,27 @@ func (s *Server) Start() error {
 	// Start background jobs
 	go s.startVitalsCleanup()
 	go s.startRealtimeMetricsCollection()
-	
+
 	// Start agent cron job if configured
 	if s.agentOrchestrator != nil && s.agentCron != nil {
 		// Schedule the periodic check
 		checkInterval := s.config.AgentCheckInterval
 		cronSpec := fmt.Sprintf("@every %s", checkInterval)
-		
+
 		_, err := s.agentCron.AddFunc(cronSpec, func() {
 			ctx := context.Background()
 			if err := s.agentOrchestrator.RunCheck(ctx); err != nil {
 				log.Printf("Agent check failed: %v", err)
 			}
 		})
-		
+
 		if err != nil {
 			log.Printf("Warning: Failed to schedule agent cron job: %v", err)
 		} else {
 			// Start the cron scheduler
 			s.agentCron.Start()
 			log.Printf("Agent cron job started with interval: %s", checkInterval)
-			
+
 			// Run initial check
 			go func() {
 				ctx := context.Background()
@@ -445,7 +397,7 @@ func (s *Server) Start() error {
 
 	// API routes
 	mux.HandleFunc("/api/apps/", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeAPIApps))))
-	
+
 	// Test endpoint for triggering agent runs (for testing purposes)
 	// This endpoint is protected by auth middleware so only authenticated users can trigger it
 	mux.HandleFunc("/api/test/agent-run", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleTestAgentRun))))
@@ -479,6 +431,13 @@ func (s *Server) Start() error {
 	if s.config.MonitoringEnabled {
 		mux.HandleFunc("/monitoring", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleMonitoring))))
 		mux.HandleFunc("/monitoring/", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeMonitoring))))
+	}
+
+	// Start agent if configured
+	if s.config.AgentEnabled {
+		if err := s.restartAgent(); err != nil {
+			log.Printf("Failed to start agent: %v", err)
+		}
 	}
 
 	// Start server
@@ -725,37 +684,152 @@ func (s *Server) checkCaddyHealth() {
 	}
 }
 
-// loadDomainConfig loads domain configuration from database if not set by environment
-func (s *Server) loadDomainConfig() error {
-	// Skip if environment variables are set
-	if os.Getenv("PUBLIC_BASE_DOMAIN") != "" && os.Getenv("TAILSCALE_BASE_DOMAIN") != "" {
-		return nil
-	}
-
-	// Query database for domain configuration
-	var publicDomain, tailscaleDomain sql.NullString
+// loadConfigFromDatabase loads configuration from database if not set by environment
+func (s *Server) loadConfigFromDatabase() error {
+	// Query database for all configuration
+	var setup database.SystemSetup
 	err := s.db.QueryRow(`
-		SELECT public_base_domain, tailscale_base_domain 
+		SELECT id, public_base_domain, tailscale_base_domain,
+		       agent_enabled, agent_check_interval, agent_llm_api_key,
+		       agent_llm_api_url, agent_llm_model, agent_config_dir,
+		       uptime_kuma_base_url
 		FROM system_setup 
 		WHERE id = 1
-	`).Scan(&publicDomain, &tailscaleDomain)
+	`).Scan(&setup.ID, &setup.PublicBaseDomain, &setup.TailscaleBaseDomain,
+		&setup.AgentEnabled, &setup.AgentCheckInterval, &setup.AgentLLMAPIKey,
+		&setup.AgentLLMAPIURL, &setup.AgentLLMModel, &setup.AgentConfigDir,
+		&setup.UptimeKumaBaseURL)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
 			// No config yet, that's OK
 			return nil
 		}
-		return fmt.Errorf("failed to query domain config: %w", err)
+		return fmt.Errorf("failed to query config: %w", err)
 	}
 
-	// Update config if not overridden by environment
-	if os.Getenv("PUBLIC_BASE_DOMAIN") == "" && publicDomain.Valid {
-		s.config.PublicBaseDomain = publicDomain.String
+	// Update domain config if not overridden by environment
+	if os.Getenv("PUBLIC_BASE_DOMAIN") == "" && setup.PublicBaseDomain.Valid {
+		s.config.PublicBaseDomain = setup.PublicBaseDomain.String
 	}
-	if os.Getenv("TAILSCALE_BASE_DOMAIN") == "" && tailscaleDomain.Valid {
-		s.config.TailscaleBaseDomain = tailscaleDomain.String
+	if os.Getenv("TAILSCALE_BASE_DOMAIN") == "" && setup.TailscaleBaseDomain.Valid {
+		s.config.TailscaleBaseDomain = setup.TailscaleBaseDomain.String
 	}
 
+	// Update agent config if not overridden by environment
+	if os.Getenv("AGENT_ENABLED") == "" && setup.AgentEnabled.Valid {
+		s.config.AgentEnabled = setup.AgentEnabled.Int64 == 1
+	}
+	if os.Getenv("AGENT_CHECK_INTERVAL") == "" && setup.AgentCheckInterval.Valid {
+		s.config.AgentCheckInterval = setup.AgentCheckInterval.String
+	}
+	if os.Getenv("AGENT_LLM_API_KEY") == "" && setup.AgentLLMAPIKey.Valid {
+		s.config.AgentLLMAPIKey = setup.AgentLLMAPIKey.String
+	}
+	if os.Getenv("AGENT_LLM_API_URL") == "" && setup.AgentLLMAPIURL.Valid {
+		s.config.AgentLLMAPIURL = setup.AgentLLMAPIURL.String
+	}
+	if os.Getenv("AGENT_LLM_MODEL") == "" && setup.AgentLLMModel.Valid {
+		s.config.AgentLLMModel = setup.AgentLLMModel.String
+	}
+	if os.Getenv("AGENT_CONFIG_DIR") == "" && setup.AgentConfigDir.Valid {
+		s.config.AgentConfigDir = setup.AgentConfigDir.String
+	}
+	if os.Getenv("UPTIME_KUMA_BASE_URL") == "" && setup.UptimeKumaBaseURL.Valid {
+		s.config.UptimeKumaBaseURL = setup.UptimeKumaBaseURL.String
+	}
+
+	return nil
+}
+
+// stopAgent stops the agent cron scheduler and orchestrator
+func (s *Server) stopAgent() {
+	// Stop agent cron if running
+	if s.agentCron != nil {
+		log.Println("Stopping agent cron scheduler...")
+		ctx := s.agentCron.Stop()
+		<-ctx.Done()
+		s.agentCron = nil
+	}
+
+	// Close agent orchestrator
+	if s.agentOrchestrator != nil {
+		if err := s.agentOrchestrator.Close(); err != nil {
+			log.Printf("Error closing agent orchestrator: %v", err)
+		}
+		s.agentOrchestrator = nil
+	}
+}
+
+// restartAgent restarts the agent with updated configuration
+func (s *Server) restartAgent() error {
+	// Stop existing agent
+	s.stopAgent()
+
+	// Check if agent should be enabled
+	if !s.config.AgentEnabled {
+		log.Println("Agent is disabled")
+		return nil
+	}
+
+	if s.config.AgentLLMAPIKey == "" {
+		log.Printf("Warning: Agent is enabled but AGENT_LLM_API_KEY is not set. Agent will run in fallback mode.")
+	}
+
+	// Parse check interval
+	checkInterval, err := time.ParseDuration(s.config.AgentCheckInterval)
+	if err != nil {
+		log.Printf("Warning: Invalid agent check interval '%s', using default 5m: %v", s.config.AgentCheckInterval, err)
+		checkInterval = 5 * time.Minute
+	}
+
+	orchestratorConfig := agent.OrchestratorConfig{
+		ConfigRootDir:     s.config.AgentConfigDir,
+		UptimeKumaBaseURL: s.config.UptimeKumaBaseURL,
+		LLMConfig: agent.LLMConfig{
+			APIKey: s.config.AgentLLMAPIKey,
+			APIURL: s.config.AgentLLMAPIURL,
+			Model:  s.config.AgentLLMModel,
+		},
+		CheckInterval: checkInterval,
+	}
+
+	orchestrator, err := agent.NewOrchestrator(orchestratorConfig)
+	if err != nil {
+		return fmt.Errorf("failed to initialize agent orchestrator: %w", err)
+	}
+
+	s.agentOrchestrator = orchestrator
+
+	// Initialize and start cron scheduler
+	s.agentCron = cron.New(cron.WithSeconds())
+
+	// Schedule the agent check
+	_, err = s.agentCron.AddFunc(fmt.Sprintf("@every %s", checkInterval), func() {
+		ctx := context.Background()
+		if err := s.agentOrchestrator.RunCheck(ctx); err != nil {
+			log.Printf("ERROR: Agent check failed: %v", err)
+		}
+	})
+	if err != nil {
+		s.agentOrchestrator.Close()
+		s.agentOrchestrator = nil
+		s.agentCron = nil
+		return fmt.Errorf("failed to schedule agent cron job: %w", err)
+	}
+
+	// Start the cron scheduler
+	s.agentCron.Start()
+
+	// Run initial check
+	go func() {
+		ctx := context.Background()
+		if err := s.agentOrchestrator.RunCheck(ctx); err != nil {
+			log.Printf("ERROR: Initial agent check failed: %v", err)
+		}
+	}()
+
+	log.Printf("Agent orchestrator started with check interval: %v", checkInterval)
 	return nil
 }
 

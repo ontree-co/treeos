@@ -138,6 +138,126 @@
                 </ul>
             </div>
         </div>
+
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">AI Agent Configuration</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-4">
+                    Configure the AI SysAdmin Agent that monitors your applications and infrastructure.
+                </p>
+                
+                <form method="post" action="/settings">
+                    <div class="form-check mb-4">
+                        <input class="form-check-input" type="checkbox" id="agent_enabled" name="agent_enabled" {{if .AgentEnabled}}checked{{end}}>
+                        <label class="form-check-label" for="agent_enabled">
+                            <strong>Enable AI Agent</strong>
+                        </label>
+                        <small class="form-text text-muted d-block">
+                            When enabled, the agent will periodically check your applications and post status updates to the chat log.
+                        </small>
+                        {{if and .ConfigAgentEnabled (ne .ConfigAgentEnabled .AgentEnabled)}}  
+                            <div class="alert alert-warning mt-2 mb-0">
+                                <small>
+                                    <i>⚠️</i> Currently {{if .ConfigAgentEnabled}}enabled{{else}}disabled{{end}} via environment variable
+                                </small>
+                            </div>
+                        {{end}}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="agent_check_interval" class="form-label">Check Interval</label>
+                        <input type="text" class="form-control" id="agent_check_interval" name="agent_check_interval" 
+                               value="{{.AgentCheckInterval}}" placeholder="5m">
+                        <small class="form-text text-muted">
+                            How often to run checks (e.g., "5m" for 5 minutes, "1h" for 1 hour)
+                        </small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="agent_config_dir" class="form-label">Configuration Directory</label>
+                        <input type="text" class="form-control" id="agent_config_dir" name="agent_config_dir" 
+                               value="{{.AgentConfigDir}}" placeholder="/opt/homeserver-config">
+                        <small class="form-text text-muted">
+                            Directory containing app.homeserver.yaml files for each application
+                        </small>
+                    </div>
+
+                    <h6 class="mt-4 mb-3">LLM Configuration</h6>
+                    
+                    <div class="mb-3">
+                        <label for="agent_llm_api_key" class="form-label">
+                            API Key
+                            {{if .ConfigAgentLLMAPIKey}}<span class="badge bg-info">Set via env</span>{{end}}
+                        </label>
+                        <input type="password" class="form-control" id="agent_llm_api_key" name="agent_llm_api_key" 
+                               value="{{.AgentLLMAPIKey}}" placeholder="sk-...">
+                        <small class="form-text text-muted">
+                            Your OpenAI API key or key for OpenAI-compatible service
+                        </small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="agent_llm_api_url" class="form-label">
+                            API URL <span class="badge bg-secondary">Optional</span>
+                        </label>
+                        <input type="text" class="form-control" id="agent_llm_api_url" name="agent_llm_api_url" 
+                               value="{{.AgentLLMAPIURL}}" placeholder="https://api.openai.com/v1/chat/completions">
+                        <small class="form-text text-muted">
+                            Leave empty for OpenAI, or specify URL for local LLM (e.g., http://localhost:11434/v1/chat/completions for Ollama)
+                        </small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="agent_llm_model" class="form-label">
+                            Model <span class="badge bg-secondary">Optional</span>
+                        </label>
+                        <input type="text" class="form-control" id="agent_llm_model" name="agent_llm_model" 
+                               value="{{.AgentLLMModel}}" placeholder="gpt-4-turbo-preview">
+                        <small class="form-text text-muted">
+                            Model name (e.g., "gpt-4", "llama2" for local models)
+                        </small>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i>💾</i> Save Agent Settings
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">Uptime Kuma Integration</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-4">
+                    Connect to Uptime Kuma for external monitoring of your applications.
+                </p>
+                
+                <form method="post" action="/settings">
+                    <div class="mb-3">
+                        <label for="uptime_kuma_base_url" class="form-label">Uptime Kuma Base URL</label>
+                        <input type="text" class="form-control" id="uptime_kuma_base_url" name="uptime_kuma_base_url" 
+                               value="{{.UptimeKumaBaseURL}}" placeholder="http://localhost:3001">
+                        <small class="form-text text-muted">
+                            The base URL of your Uptime Kuma instance (e.g., http://localhost:3001)
+                        </small>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <small>
+                            <i>ℹ️</i> <strong>Note:</strong> Monitor names in Uptime Kuma should match the names configured in your app.homeserver.yaml files.
+                        </small>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i>💾</i> Save Uptime Kuma Settings  
+                    </button>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
 {{end}}

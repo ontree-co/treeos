@@ -929,10 +929,16 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	// Get current system setup
 	var setup database.SystemSetup
 	err := s.db.QueryRow(`
-		SELECT id, public_base_domain, tailscale_base_domain 
+		SELECT id, public_base_domain, tailscale_base_domain,
+		       agent_enabled, agent_check_interval, agent_llm_api_key,
+		       agent_llm_api_url, agent_llm_model, agent_config_dir,
+		       uptime_kuma_base_url
 		FROM system_setup 
 		WHERE id = 1
-	`).Scan(&setup.ID, &setup.PublicBaseDomain, &setup.TailscaleBaseDomain)
+	`).Scan(&setup.ID, &setup.PublicBaseDomain, &setup.TailscaleBaseDomain,
+		&setup.AgentEnabled, &setup.AgentCheckInterval, &setup.AgentLLMAPIKey,
+		&setup.AgentLLMAPIURL, &setup.AgentLLMModel, &setup.AgentConfigDir,
+		&setup.UptimeKumaBaseURL)
 
 	if err != nil && err != sql.ErrNoRows {
 		log.Printf("Failed to get system setup: %v", err)
@@ -972,6 +978,13 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	data["Messages"] = messages
 	data["PublicBaseDomain"] = ""
 	data["TailscaleBaseDomain"] = ""
+	data["AgentEnabled"] = false
+	data["AgentCheckInterval"] = "5m"
+	data["AgentLLMAPIKey"] = ""
+	data["AgentLLMAPIURL"] = ""
+	data["AgentLLMModel"] = ""
+	data["AgentConfigDir"] = "/opt/homeserver-config"
+	data["UptimeKumaBaseURL"] = ""
 
 	if setup.PublicBaseDomain.Valid {
 		data["PublicBaseDomain"] = setup.PublicBaseDomain.String
@@ -979,10 +992,33 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	if setup.TailscaleBaseDomain.Valid {
 		data["TailscaleBaseDomain"] = setup.TailscaleBaseDomain.String
 	}
+	if setup.AgentEnabled.Valid {
+		data["AgentEnabled"] = setup.AgentEnabled.Int64 == 1
+	}
+	if setup.AgentCheckInterval.Valid {
+		data["AgentCheckInterval"] = setup.AgentCheckInterval.String
+	}
+	if setup.AgentLLMAPIKey.Valid {
+		data["AgentLLMAPIKey"] = setup.AgentLLMAPIKey.String
+	}
+	if setup.AgentLLMAPIURL.Valid {
+		data["AgentLLMAPIURL"] = setup.AgentLLMAPIURL.String
+	}
+	if setup.AgentLLMModel.Valid {
+		data["AgentLLMModel"] = setup.AgentLLMModel.String
+	}
+	if setup.AgentConfigDir.Valid {
+		data["AgentConfigDir"] = setup.AgentConfigDir.String
+	}
+	if setup.UptimeKumaBaseURL.Valid {
+		data["UptimeKumaBaseURL"] = setup.UptimeKumaBaseURL.String
+	}
 
 	// Also show current values from config (to show if env vars are overriding)
 	data["ConfigPublicDomain"] = s.config.PublicBaseDomain
 	data["ConfigTailscaleDomain"] = s.config.TailscaleBaseDomain
+	data["ConfigAgentEnabled"] = s.config.AgentEnabled
+	data["ConfigAgentLLMAPIKey"] = s.config.AgentLLMAPIKey != ""
 
 	// Render template
 	tmpl, ok := s.templates["settings"]
@@ -1014,6 +1050,19 @@ func (s *Server) handleSettingsUpdate(w http.ResponseWriter, r *http.Request) {
 
 	publicDomain := strings.TrimSpace(r.FormValue("public_base_domain"))
 	tailscaleDomain := strings.TrimSpace(r.FormValue("tailscale_base_domain"))
+	agentEnabled := r.FormValue("agent_enabled") == "on"
+	agentCheckInterval := strings.TrimSpace(r.FormValue("agent_check_interval"))
+	agentLLMAPIKey := strings.TrimSpace(r.FormValue("agent_llm_api_key"))
+	agentLLMAPIURL := strings.TrimSpace(r.FormValue("agent_llm_api_url"))
+	agentLLMModel := strings.TrimSpace(r.FormValue("agent_llm_model"))
+	agentConfigDir := strings.TrimSpace(r.FormValue("agent_config_dir"))
+	uptimeKumaBaseURL := strings.TrimSpace(r.FormValue("uptime_kuma_base_url"))
+
+	// Convert bool to int for database
+	agentEnabledInt := 0
+	if agentEnabled {
+		agentEnabledInt = 1
+	}
 
 	// Ensure system_setup record exists
 	_, err := s.db.Exec(`
@@ -1027,9 +1076,14 @@ func (s *Server) handleSettingsUpdate(w http.ResponseWriter, r *http.Request) {
 	// Update database
 	_, err = s.db.Exec(`
 		UPDATE system_setup 
-		SET public_base_domain = ?, tailscale_base_domain = ?
+		SET public_base_domain = ?, tailscale_base_domain = ?,
+		    agent_enabled = ?, agent_check_interval = ?, agent_llm_api_key = ?,
+		    agent_llm_api_url = ?, agent_llm_model = ?, agent_config_dir = ?,
+		    uptime_kuma_base_url = ?
 		WHERE id = 1
-	`, publicDomain, tailscaleDomain)
+	`, publicDomain, tailscaleDomain, agentEnabledInt, agentCheckInterval,
+		agentLLMAPIKey, agentLLMAPIURL, agentLLMModel, agentConfigDir,
+		uptimeKumaBaseURL)
 
 	if err != nil {
 		log.Printf("Failed to update settings: %v", err)
@@ -1053,9 +1107,35 @@ func (s *Server) handleSettingsUpdate(w http.ResponseWriter, r *http.Request) {
 	if os.Getenv("TAILSCALE_BASE_DOMAIN") == "" {
 		s.config.TailscaleBaseDomain = tailscaleDomain
 	}
+	if os.Getenv("AGENT_ENABLED") == "" {
+		s.config.AgentEnabled = agentEnabled
+	}
+	if os.Getenv("AGENT_CHECK_INTERVAL") == "" {
+		s.config.AgentCheckInterval = agentCheckInterval
+	}
+	if os.Getenv("AGENT_LLM_API_KEY") == "" {
+		s.config.AgentLLMAPIKey = agentLLMAPIKey
+	}
+	if os.Getenv("AGENT_LLM_API_URL") == "" {
+		s.config.AgentLLMAPIURL = agentLLMAPIURL
+	}
+	if os.Getenv("AGENT_LLM_MODEL") == "" {
+		s.config.AgentLLMModel = agentLLMModel
+	}
+	if os.Getenv("AGENT_CONFIG_DIR") == "" {
+		s.config.AgentConfigDir = agentConfigDir
+	}
+	if os.Getenv("UPTIME_KUMA_BASE_URL") == "" {
+		s.config.UptimeKumaBaseURL = uptimeKumaBaseURL
+	}
 
 	// Re-check Caddy health since domains may have changed
 	s.checkCaddyHealth()
+
+	// Restart agent if configuration changed
+	if err := s.restartAgent(); err != nil {
+		log.Printf("Failed to restart agent: %v", err)
+	}
 
 	// Success message
 	session, err := s.sessionStore.Get(r, "ontree-session")
