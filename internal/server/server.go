@@ -280,6 +280,30 @@ func (s *Server) loadTemplates() error {
 	}
 	s.templates["_network_card"] = netTmpl
 
+	// Load GPU card template
+	gpuCardTemplate := filepath.Join("templates", "dashboard", "_gpu_card.html")
+	gpuTmpl, err := embeds.ParseTemplate(gpuCardTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse gpu card template: %w", err)
+	}
+	s.templates["_gpu_card"] = gpuTmpl
+
+	// Load Download card template
+	downloadCardTemplate := filepath.Join("templates", "dashboard", "_download_card.html")
+	downloadTmpl, err := embeds.ParseTemplate(downloadCardTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse download card template: %w", err)
+	}
+	s.templates["_download_card"] = downloadTmpl
+
+	// Load Upload card template
+	uploadCardTemplate := filepath.Join("templates", "dashboard", "_upload_card.html")
+	uploadTmpl, err := embeds.ParseTemplate(uploadCardTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse upload card template: %w", err)
+	}
+	s.templates["_upload_card"] = uploadTmpl
+
 	// Load pattern library templates
 	// Pattern library index
 	patternsIndexTemplate := filepath.Join("templates", "pattern_library", "index.html")
@@ -416,6 +440,9 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/partials/memory", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleMonitoringMemoryPartial))))
 	mux.HandleFunc("/partials/disk", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleMonitoringDiskPartial))))
 	mux.HandleFunc("/partials/network", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleMonitoringNetworkPartial))))
+	mux.HandleFunc("/partials/gpu", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleMonitoringGPUPartial))))
+	mux.HandleFunc("/partials/download", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleMonitoringDownloadPartial))))
+	mux.HandleFunc("/partials/upload", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleMonitoringUploadPartial))))
 
 	// Version endpoint (no auth required for automation/monitoring)
 	mux.HandleFunc("/version", s.TracingMiddleware(s.handleVersion))
@@ -678,6 +705,35 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	// Get Tailscale IP
 	tailscaleIP := getTailscaleIP()
 
+	// Get latest monitoring data from database
+	latest, err := database.GetLatestMetric("")
+	if err != nil {
+		log.Printf("Failed to get latest metric for dashboard: %v", err)
+	}
+
+	// Prepare monitoring data with formatting
+	var monitoringData map[string]interface{}
+	if latest != nil {
+		monitoringData = map[string]interface{}{
+			"CPUPercent":       fmt.Sprintf("%.1f", latest.CPUPercent),
+			"MemoryPercent":    fmt.Sprintf("%.1f", latest.MemoryPercent),
+			"DiskUsagePercent": fmt.Sprintf("%.1f", latest.DiskUsagePercent),
+			"GPULoad":          fmt.Sprintf("%.1f", latest.GPULoad),
+			"UploadRate":       formatNetworkRate(float64(latest.UploadRate)),
+			"DownloadRate":     formatNetworkRate(float64(latest.DownloadRate)),
+		}
+	} else {
+		// Default values if no data available
+		monitoringData = map[string]interface{}{
+			"CPUPercent":       "0.0",
+			"MemoryPercent":    "0.0",
+			"DiskUsagePercent": "0.0",
+			"GPULoad":          "0.0",
+			"UploadRate":       "0 B/s",
+			"DownloadRate":     "0 B/s",
+		}
+	}
+
 	// Prepare template data
 	data := s.baseTemplateData(user)
 	data["Apps"] = apps
@@ -687,6 +743,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	data["Hostname"] = hostname
 	data["LocalIP"] = localIP
 	data["TailscaleIP"] = tailscaleIP
+	data["MonitoringData"] = monitoringData
 
 	// Render template
 	tmpl, ok := s.templates["dashboard"]

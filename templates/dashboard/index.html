@@ -14,33 +14,28 @@
                         <!-- First Row: CPU, GPU, Memory -->
                         <!-- CPU Card -->
                         <div class="col-12 col-md-6 col-lg-4">
-                            <div id="cpu-card" 
-                                 hx-get="/partials/cpu" 
-                                 hx-trigger="load, every 1s" 
-                                 hx-swap="outerHTML">
+                            <div id="cpu-card">
                                 <div class="card monitoring-card bg-white">
-                                    <div class="card-body metric-loading">
-                                        <div class="text-center">
-                                            <div class="spinner-border text-primary" role="status">
-                                                <span class="visually-hidden">Loading CPU data...</span>
-                                            </div>
-                                            <p class="mt-2 text-muted mb-0">Loading CPU data...</p>
+                                    <div class="card-body">
+                                        <h6 class="metric-title">CPU Usage</h6>
+                                        <div class="metric-value">{{.MonitoringData.CPUPercent}}%</div>
+                                        <div class="sparkline-container" data-metric="cpu">
+                                            <!-- Sparkline will be loaded via HTMX if needed -->
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                         
-                        <!-- GPU Card (Stub) -->
+                        <!-- GPU Card -->
                         <div class="col-12 col-md-6 col-lg-4">
                             <div id="gpu-card">
                                 <div class="card monitoring-card bg-white">
-                                    <div class="card-body metric-loading">
-                                        <div class="text-center">
-                                            <div class="spinner-border text-primary" role="status">
-                                                <span class="visually-hidden">Loading GPU data...</span>
-                                            </div>
-                                            <p class="mt-2 text-muted mb-0">Loading GPU data...</p>
+                                    <div class="card-body">
+                                        <h6 class="metric-title">GPU Load</h6>
+                                        <div class="metric-value">{{.MonitoringData.GPULoad}}%</div>
+                                        <div class="sparkline-container" data-metric="gpu">
+                                            <!-- Sparkline will be loaded via HTMX if needed -->
                                         </div>
                                     </div>
                                 </div>
@@ -49,17 +44,13 @@
                         
                         <!-- Memory Card -->
                         <div class="col-12 col-md-6 col-lg-4">
-                            <div id="memory-card" 
-                                 hx-get="/partials/memory" 
-                                 hx-trigger="load, every 60s" 
-                                 hx-swap="outerHTML">
+                            <div id="memory-card">
                                 <div class="card monitoring-card bg-white">
-                                    <div class="card-body metric-loading">
-                                        <div class="text-center">
-                                            <div class="spinner-border text-primary" role="status">
-                                                <span class="visually-hidden">Loading memory data...</span>
-                                            </div>
-                                            <p class="mt-2 text-muted mb-0">Loading memory data...</p>
+                                    <div class="card-body">
+                                        <h6 class="metric-title">Memory Usage</h6>
+                                        <div class="metric-value">{{.MonitoringData.MemoryPercent}}%</div>
+                                        <div class="sparkline-container" data-metric="memory">
+                                            <!-- Sparkline will be loaded via HTMX if needed -->
                                         </div>
                                     </div>
                                 </div>
@@ -69,17 +60,13 @@
                         <!-- Second Row: Disk, Download, Upload -->
                         <!-- Disk Card -->
                         <div class="col-12 col-md-6 col-lg-4">
-                            <div id="disk-card" 
-                                 hx-get="/partials/disk" 
-                                 hx-trigger="load, every 60s" 
-                                 hx-swap="outerHTML">
+                            <div id="disk-card">
                                 <div class="card monitoring-card bg-white">
-                                    <div class="card-body metric-loading">
-                                        <div class="text-center">
-                                            <div class="spinner-border text-primary" role="status">
-                                                <span class="visually-hidden">Loading disk data...</span>
-                                            </div>
-                                            <p class="mt-2 text-muted mb-0">Loading disk data...</p>
+                                    <div class="card-body">
+                                        <h6 class="metric-title">Disk Usage (/)</h6>
+                                        <div class="metric-value">{{.MonitoringData.DiskUsagePercent}}%</div>
+                                        <div class="sparkline-container" data-metric="disk">
+                                            <!-- Sparkline will be loaded via HTMX if needed -->
                                         </div>
                                     </div>
                                 </div>
@@ -88,17 +75,13 @@
                         
                         <!-- Download Card -->
                         <div class="col-12 col-md-6 col-lg-4">
-                            <div id="download-card" 
-                                 hx-get="/partials/download" 
-                                 hx-trigger="load, every 1s" 
-                                 hx-swap="outerHTML">
+                            <div id="download-card">
                                 <div class="card monitoring-card bg-white">
-                                    <div class="card-body metric-loading">
-                                        <div class="text-center">
-                                            <div class="spinner-border text-primary" role="status">
-                                                <span class="visually-hidden">Loading download data...</span>
-                                            </div>
-                                            <p class="mt-2 text-muted mb-0">Loading download data...</p>
+                                    <div class="card-body">
+                                        <h6 class="metric-title">Download</h6>
+                                        <div class="metric-value">{{.MonitoringData.DownloadRate}}</div>
+                                        <div class="sparkline-container" data-metric="download">
+                                            <!-- Sparkline will be loaded via HTMX if needed -->
                                         </div>
                                     </div>
                                 </div>
@@ -107,17 +90,13 @@
                         
                         <!-- Upload Card -->
                         <div class="col-12 col-md-6 col-lg-4">
-                            <div id="upload-card" 
-                                 hx-get="/partials/upload" 
-                                 hx-trigger="load, every 1s" 
-                                 hx-swap="outerHTML">
+                            <div id="upload-card">
                                 <div class="card monitoring-card bg-white">
-                                    <div class="card-body metric-loading">
-                                        <div class="text-center">
-                                            <div class="spinner-border text-primary" role="status">
-                                                <span class="visually-hidden">Loading upload data...</span>
-                                            </div>
-                                            <p class="mt-2 text-muted mb-0">Loading upload data...</p>
+                                    <div class="card-body">
+                                        <h6 class="metric-title">Upload</h6>
+                                        <div class="metric-value">{{.MonitoringData.UploadRate}}</div>
+                                        <div class="sparkline-container" data-metric="upload">
+                                            <!-- Sparkline will be loaded via HTMX if needed -->
                                         </div>
                                     </div>
                                 </div>

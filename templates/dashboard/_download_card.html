@@ -1,0 +1,22 @@
+{{ define "download-card-partial" }}
+<div id="download-card" 
+     hx-get="/partials/download" 
+     hx-trigger="every 1s" 
+     hx-swap="outerHTML">
+    <div class="card monitoring-card">
+        <div class="card-body">
+            <h5 class="metric-title">
+                <i class="bi bi-arrow-down"></i> Download
+            </h5>
+            <div class="metric-value">{{ .CurrentRate }}</div>
+            <div class="sparkline-container" 
+                 title="Click for detailed view"
+                 role="button"
+                 aria-label="Download rate sparkline chart">
+                {{ .SparklineSVG }}
+            </div>
+            <small class="text-muted">Last 24 hours</small>
+        </div>
+    </div>
+</div>
+{{ end }}

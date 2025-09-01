@@ -606,6 +606,20 @@ func (s *Server) handleMonitoringCharts(w http.ResponseWriter, r *http.Request) 
 				})
 			}
 
+		case "gpu":
+			chartData.Title = "GPU Load"
+			chartData.YAxisUnit = "%"
+			chartData.MinValue = 0
+			chartData.MaxValue = 100
+
+			// Convert to DataPoints
+			for _, metric := range batch.Metrics {
+				chartData.Points = append(chartData.Points, charts.DataPoint{
+					Time:  metric.Timestamp,
+					Value: metric.GPULoad,
+				})
+			}
+
 		case "network":
 			chartData.Title = "Network Usage"
 			chartData.YAxisUnit = "MB/s"
@@ -629,6 +643,30 @@ func (s *Server) handleMonitoringCharts(w http.ResponseWriter, r *http.Request) 
 						})
 					}
 				}
+			}
+
+		case "download":
+			chartData.Title = "Download Rate"
+			chartData.YAxisUnit = "MB/s"
+
+			// Convert to DataPoints
+			for _, metric := range batch.Metrics {
+				chartData.Points = append(chartData.Points, charts.DataPoint{
+					Time:  metric.Timestamp,
+					Value: float64(metric.DownloadRate) / 1024 / 1024, // Convert to MB/s
+				})
+			}
+
+		case "upload":
+			chartData.Title = "Upload Rate"
+			chartData.YAxisUnit = "MB/s"
+
+			// Convert to DataPoints
+			for _, metric := range batch.Metrics {
+				chartData.Points = append(chartData.Points, charts.DataPoint{
+					Time:  metric.Timestamp,
+					Value: float64(metric.UploadRate) / 1024 / 1024, // Convert to MB/s
+				})
 			}
 
 		default:
@@ -686,6 +724,182 @@ func ifElse(condition bool, trueVal, falseVal string) string {
 		return trueVal
 	}
 	return falseVal
+}
+
+// handleMonitoringGPUPartial returns the GPU monitoring card partial
+func (s *Server) handleMonitoringGPUPartial(w http.ResponseWriter, r *http.Request) {
+	// Get latest metric from database
+	latest, err := database.GetLatestMetric("")
+	if err != nil {
+		log.Printf("Failed to get latest GPU metric: %v", err)
+		latest = &database.SystemVitalLog{GPULoad: 0}
+	}
+
+	// Get historical GPU data for the last 24 hours
+	now := time.Now()
+	startTime := now.Add(-24 * time.Hour)
+
+	historicalData, err := database.GetMetricsLast24Hours("gpu")
+	if err != nil {
+		log.Printf("Failed to get historical GPU data: %v", err)
+		historicalData = []database.SystemVitalLog{}
+	}
+
+	// Convert to time series points
+	var timeSeriesData []charts.TimeSeriesPoint
+	for _, metric := range historicalData {
+		timeSeriesData = append(timeSeriesData, charts.TimeSeriesPoint{
+			Time:  metric.Timestamp,
+			Value: metric.GPULoad,
+		})
+	}
+
+	// Generate sparkline SVG with time awareness
+	opts := charts.DefaultPercentageOptions()
+	sparklineSVG := charts.GenerateTimeAwareSparkline(timeSeriesData, startTime, now, opts)
+
+	// Prepare data for the template
+	data := struct {
+		CurrentLoad  string
+		SparklineSVG template.HTML
+	}{
+		CurrentLoad:  fmt.Sprintf("%.1f", latest.GPULoad),
+		SparklineSVG: sparklineSVG,
+	}
+
+	// Get the GPU card template
+	tmpl, ok := s.templates["_gpu_card"]
+	if !ok {
+		log.Printf("GPU card template not found")
+		http.Error(w, "Template not found", http.StatusInternalServerError)
+		return
+	}
+
+	// Render the partial template
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := tmpl.ExecuteTemplate(w, "gpu-card-partial", data); err != nil {
+		log.Printf("Error rendering GPU card template: %v", err)
+		http.Error(w, "Error rendering template", http.StatusInternalServerError)
+		return
+	}
+}
+
+// handleMonitoringDownloadPartial returns the download monitoring card partial
+func (s *Server) handleMonitoringDownloadPartial(w http.ResponseWriter, r *http.Request) {
+	// Get latest metric from database
+	latest, err := database.GetLatestMetric("")
+	if err != nil {
+		log.Printf("Failed to get latest download metric: %v", err)
+		latest = &database.SystemVitalLog{DownloadRate: 0}
+	}
+
+	// Get historical data for the last 24 hours
+	now := time.Now()
+	startTime := now.Add(-24 * time.Hour)
+
+	historicalData, err := database.GetMetricsForTimeRange(startTime, now)
+	if err != nil {
+		log.Printf("Failed to get historical download data: %v", err)
+		historicalData = []database.SystemVitalLog{}
+	}
+
+	// Convert to time series points (in MB/s for sparkline)
+	var timeSeriesData []charts.TimeSeriesPoint
+	for _, metric := range historicalData {
+		timeSeriesData = append(timeSeriesData, charts.TimeSeriesPoint{
+			Time:  metric.Timestamp,
+			Value: float64(metric.DownloadRate) / 1024 / 1024, // Convert to MB/s
+		})
+	}
+
+	// Generate sparkline SVG
+	opts := charts.DefaultSparklineOptions()
+	opts.ShowNoData = true
+	sparklineSVG := charts.GenerateTimeAwareSparkline(timeSeriesData, startTime, now, opts)
+
+	// Prepare data for the template
+	data := struct {
+		CurrentRate  string
+		SparklineSVG template.HTML
+	}{
+		CurrentRate:  formatNetworkRate(float64(latest.DownloadRate)),
+		SparklineSVG: sparklineSVG,
+	}
+
+	// Get the download card template
+	tmpl, ok := s.templates["_download_card"]
+	if !ok {
+		log.Printf("Download card template not found")
+		http.Error(w, "Template not found", http.StatusInternalServerError)
+		return
+	}
+
+	// Render the partial template
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := tmpl.ExecuteTemplate(w, "download-card-partial", data); err != nil {
+		log.Printf("Error rendering download card template: %v", err)
+		http.Error(w, "Error rendering template", http.StatusInternalServerError)
+		return
+	}
+}
+
+// handleMonitoringUploadPartial returns the upload monitoring card partial
+func (s *Server) handleMonitoringUploadPartial(w http.ResponseWriter, r *http.Request) {
+	// Get latest metric from database
+	latest, err := database.GetLatestMetric("")
+	if err != nil {
+		log.Printf("Failed to get latest upload metric: %v", err)
+		latest = &database.SystemVitalLog{UploadRate: 0}
+	}
+
+	// Get historical data for the last 24 hours
+	now := time.Now()
+	startTime := now.Add(-24 * time.Hour)
+
+	historicalData, err := database.GetMetricsForTimeRange(startTime, now)
+	if err != nil {
+		log.Printf("Failed to get historical upload data: %v", err)
+		historicalData = []database.SystemVitalLog{}
+	}
+
+	// Convert to time series points (in MB/s for sparkline)
+	var timeSeriesData []charts.TimeSeriesPoint
+	for _, metric := range historicalData {
+		timeSeriesData = append(timeSeriesData, charts.TimeSeriesPoint{
+			Time:  metric.Timestamp,
+			Value: float64(metric.UploadRate) / 1024 / 1024, // Convert to MB/s
+		})
+	}
+
+	// Generate sparkline SVG
+	opts := charts.DefaultSparklineOptions()
+	opts.ShowNoData = true
+	sparklineSVG := charts.GenerateTimeAwareSparkline(timeSeriesData, startTime, now, opts)
+
+	// Prepare data for the template
+	data := struct {
+		CurrentRate  string
+		SparklineSVG template.HTML
+	}{
+		CurrentRate:  formatNetworkRate(float64(latest.UploadRate)),
+		SparklineSVG: sparklineSVG,
+	}
+
+	// Get the upload card template
+	tmpl, ok := s.templates["_upload_card"]
+	if !ok {
+		log.Printf("Upload card template not found")
+		http.Error(w, "Template not found", http.StatusInternalServerError)
+		return
+	}
+
+	// Render the partial template
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := tmpl.ExecuteTemplate(w, "upload-card-partial", data); err != nil {
+		log.Printf("Error rendering upload card template: %v", err)
+		http.Error(w, "Error rendering template", http.StatusInternalServerError)
+		return
+	}
 }
 
 // formatNetworkRate formats bytes per second into human-readable format

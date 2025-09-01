@@ -1,0 +1,22 @@
+{{ define "upload-card-partial" }}
+<div id="upload-card" 
+     hx-get="/partials/upload" 
+     hx-trigger="every 1s" 
+     hx-swap="outerHTML">
+    <div class="card monitoring-card">
+        <div class="card-body">
+            <h5 class="metric-title">
+                <i class="bi bi-arrow-up"></i> Upload
+            </h5>
+            <div class="metric-value">{{ .CurrentRate }}</div>
+            <div class="sparkline-container" 
+                 title="Click for detailed view"
+                 role="button"
+                 aria-label="Upload rate sparkline chart">
+                {{ .SparklineSVG }}
+            </div>
+            <small class="text-muted">Last 24 hours</small>
+        </div>
+    </div>
+</div>
+{{ end }}
