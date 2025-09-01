@@ -90,8 +90,9 @@
 <!-- Monitoring Grid -->
 <div class="monitoring-grid">
     <div class="row g-4">
+        <!-- First Row -->
         <!-- CPU Card -->
-        <div class="col-12 col-md-6 col-lg-3">
+        <div class="col-12 col-md-6 col-lg-4">
             <div id="cpu-card" 
                  hx-get="/monitoring/partials/cpu" 
                  hx-trigger="load, every 1s" 
@@ -109,8 +110,27 @@
             </div>
         </div>
         
+        <!-- GPU Card -->
+        <div class="col-12 col-md-6 col-lg-4">
+            <div id="gpu-card" 
+                 hx-get="/monitoring/partials/gpu" 
+                 hx-trigger="load, every 1s" 
+                 hx-swap="outerHTML">
+                <div class="card monitoring-card">
+                    <div class="card-body metric-loading">
+                        <div class="text-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading GPU data...</span>
+                            </div>
+                            <p class="mt-2 text-muted mb-0">Loading GPU data...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <!-- Memory Card -->
-        <div class="col-12 col-md-6 col-lg-3">
+        <div class="col-12 col-md-6 col-lg-4">
             <div id="memory-card" 
                  hx-get="/monitoring/partials/memory" 
                  hx-trigger="load, every 60s" 
@@ -128,8 +148,9 @@
             </div>
         </div>
         
+        <!-- Second Row -->
         <!-- Disk Card -->
-        <div class="col-12 col-md-6 col-lg-3">
+        <div class="col-12 col-md-6 col-lg-4">
             <div id="disk-card" 
                  hx-get="/monitoring/partials/disk" 
                  hx-trigger="load, every 60s" 
@@ -147,19 +168,38 @@
             </div>
         </div>
         
-        <!-- Network Card -->
-        <div class="col-12 col-md-6 col-lg-3">
-            <div id="network-card" 
-                 hx-get="/monitoring/partials/network" 
+        <!-- Download Card -->
+        <div class="col-12 col-md-6 col-lg-4">
+            <div id="download-card" 
+                 hx-get="/monitoring/partials/download" 
                  hx-trigger="load, every 1s" 
                  hx-swap="outerHTML">
                 <div class="card monitoring-card">
                     <div class="card-body metric-loading">
                         <div class="text-center">
                             <div class="spinner-border text-primary" role="status">
-                                <span class="visually-hidden">Loading network data...</span>
+                                <span class="visually-hidden">Loading download data...</span>
                             </div>
-                            <p class="mt-2 text-muted mb-0">Loading network data...</p>
+                            <p class="mt-2 text-muted mb-0">Loading download data...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Upload Card -->
+        <div class="col-12 col-md-6 col-lg-4">
+            <div id="upload-card" 
+                 hx-get="/monitoring/partials/upload" 
+                 hx-trigger="load, every 1s" 
+                 hx-swap="outerHTML">
+                <div class="card monitoring-card">
+                    <div class="card-body metric-loading">
+                        <div class="text-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading upload data...</span>
+                            </div>
+                            <p class="mt-2 text-muted mb-0">Loading upload data...</p>
                         </div>
                     </div>
                 </div>

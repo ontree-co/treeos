@@ -64,6 +64,12 @@ func (s *Server) routeMonitoring(w http.ResponseWriter, r *http.Request) {
 		s.handleMonitoringDiskPartial(w, r)
 	case path == "/monitoring/partials/network":
 		s.handleMonitoringNetworkPartial(w, r)
+	case path == "/monitoring/partials/gpu":
+		s.handleMonitoringGPUPartial(w, r)
+	case path == "/monitoring/partials/upload":
+		s.handleMonitoringUploadPartial(w, r)
+	case path == "/monitoring/partials/download":
+		s.handleMonitoringDownloadPartial(w, r)
 	case strings.HasPrefix(path, "/monitoring/charts/"):
 		s.handleMonitoringCharts(w, r)
 	default:
