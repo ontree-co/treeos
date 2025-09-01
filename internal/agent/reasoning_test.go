@@ -53,7 +53,7 @@ func TestNewReasoningService(t *testing.T) {
 			if !tt.wantErr && rs == nil {
 				t.Error("NewReasoningService() returned nil service")
 			}
-			
+
 			// Check defaults were applied
 			if !tt.wantErr && tt.config.APIURL == "" && rs.apiURL != "https://api.openai.com/v1/chat/completions" {
 				t.Errorf("Default API URL not set correctly: got %s", rs.apiURL)
@@ -68,7 +68,7 @@ func TestNewReasoningService(t *testing.T) {
 // TestGeneratePrompt tests prompt generation from SystemSnapshot
 func TestGeneratePrompt(t *testing.T) {
 	rs := &ReasoningService{}
-	
+
 	snapshot := &SystemSnapshot{
 		Timestamp: time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC),
 		ServerHealth: ServerHealth{

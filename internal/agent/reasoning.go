@@ -159,8 +159,7 @@ func (rs *ReasoningService) callLLM(ctx context.Context, prompt string) (string,
 				"content": prompt,
 			},
 		},
-		"temperature": 0.3, // Lower temperature for more consistent responses
-		"max_tokens":  2000,
+		"max_completion_tokens": 2000,
 	}
 
 	// Marshal request body
@@ -231,7 +230,7 @@ func (rs *ReasoningService) callLLM(ctx context.Context, prompt string) (string,
 func (rs *ReasoningService) parseResponse(responseText string) (*LLMResponse, error) {
 	// Clean up the response text (remove any potential markdown formatting)
 	responseText = strings.TrimSpace(responseText)
-	
+
 	// Remove markdown code block markers if present
 	if strings.HasPrefix(responseText, "```json") {
 		responseText = strings.TrimPrefix(responseText, "```json")
@@ -249,7 +248,7 @@ func (rs *ReasoningService) parseResponse(responseText string) (*LLMResponse, er
 		// If parsing fails, try to extract JSON from the text
 		startIdx := strings.Index(responseText, "{")
 		endIdx := strings.LastIndex(responseText, "}")
-		
+
 		if startIdx >= 0 && endIdx > startIdx {
 			jsonStr := responseText[startIdx : endIdx+1]
 			if err := json.Unmarshal([]byte(jsonStr), &response); err != nil {
@@ -305,7 +304,7 @@ func (rs *ReasoningService) validateResponse(response *LLMResponse) error {
 		if !validActionKeys[action.ActionKey] {
 			return fmt.Errorf("invalid action_key for recommended action %d: %s", i, action.ActionKey)
 		}
-		
+
 		// Validate required parameters for specific actions
 		switch action.ActionKey {
 		case ActionPersistChatMessage:

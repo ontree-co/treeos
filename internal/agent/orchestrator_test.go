@@ -9,7 +9,6 @@ import (
 	"ontree-node/internal/database"
 )
 
-
 // TestOrchestratorRunCheck is skipped for now since it requires full integration
 // The orchestrator is tested through integration tests instead
 func TestOrchestratorRunCheckSkipped(t *testing.T) {
@@ -262,4 +261,3 @@ func TestCreateFallbackResponseHighRestartCount(t *testing.T) {
 		}
 	}
 }
-

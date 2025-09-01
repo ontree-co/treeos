@@ -101,4 +101,3 @@ const (
 	UptimeKumaStatusUp   = "UP"
 	UptimeKumaStatusDown = "DOWN"
 )
-

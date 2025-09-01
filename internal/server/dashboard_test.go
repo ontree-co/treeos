@@ -85,7 +85,7 @@ func TestHandleDashboard_DisplaysApps(t *testing.T) {
 
 	if len(missingApps) > 0 {
 		t.Errorf("Dashboard does not display the following apps: %v", missingApps)
-		
+
 		// Log what the dashboard is actually showing
 		startIdx := strings.Index(body, "Applications")
 		if startIdx != -1 {

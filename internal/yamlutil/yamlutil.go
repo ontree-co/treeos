@@ -238,7 +238,7 @@ func updateYAMLNode(node *yaml.Node, compose *ComposeFile) error {
 		if err := valueNode.Encode(compose.Services); err != nil {
 			return fmt.Errorf("failed to encode services: %w", err)
 		}
-		
+
 		// Add services after version
 		insertIndex := len(node.Content)
 		for i := 0; i < len(node.Content); i += 2 {
@@ -247,7 +247,7 @@ func updateYAMLNode(node *yaml.Node, compose *ComposeFile) error {
 				break
 			}
 		}
-		
+
 		node.Content = append(node.Content[:insertIndex],
 			append([]*yaml.Node{keyNode, valueNode}, node.Content[insertIndex:]...)...)
 	}

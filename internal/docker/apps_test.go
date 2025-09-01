@@ -146,7 +146,7 @@ services:
 func TestScanApps_RealDirectory(t *testing.T) {
 	// Test scanning the actual /opt/ontree/apps directory if it exists
 	appsDir := "/opt/ontree/apps"
-	
+
 	// Check if directory exists
 	if _, err := os.Stat(appsDir); os.IsNotExist(err) {
 		t.Skip("Apps directory does not exist:", appsDir)
@@ -168,7 +168,7 @@ func TestScanApps_RealDirectory(t *testing.T) {
 	// Log what we found
 	t.Logf("Found %d apps in %s:", len(apps), appsDir)
 	for _, app := range apps {
-		t.Logf("  - %s (emoji: %s, status: %s, services: %d)", 
+		t.Logf("  - %s (emoji: %s, status: %s, services: %d)",
 			app.Name, app.Emoji, app.Status, len(app.Services))
 		for serviceName, service := range app.Services {
 			t.Logf("    - Service %s: %s", serviceName, service.Image)

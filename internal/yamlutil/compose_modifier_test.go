@@ -142,10 +142,10 @@ func TestRemoveTailscaleSidecar(t *testing.T) {
 				"hostname": "testhost",
 			},
 			"webapp": map[string]interface{}{
-				"image":           "nginx:alpine",
-				"network_mode":    "service:tailscale",
+				"image":            "nginx:alpine",
+				"network_mode":     "service:tailscale",
 				"x-original-ports": []interface{}{"8080:80"},
-				"depends_on":      []interface{}{"tailscale", "db"},
+				"depends_on":       []interface{}{"tailscale", "db"},
 			},
 			"db": map[string]interface{}{
 				"image": "postgres:13",

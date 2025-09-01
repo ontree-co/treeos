@@ -42,7 +42,6 @@ type Config struct {
 	AgentLLMAPIKey     string `toml:"agent_llm_api_key"`
 	AgentLLMAPIURL     string `toml:"agent_llm_api_url"`
 	AgentLLMModel      string `toml:"agent_llm_model"`
-	AgentConfigDir     string `toml:"agent_config_dir"`     // Directory with app.homeserver.yaml files
 	UptimeKumaBaseURL  string `toml:"uptime_kuma_base_url"` // Base URL for Uptime Kuma API
 }
 
@@ -55,7 +54,6 @@ func defaultConfig() *Config {
 		MonitoringEnabled:  true,  // Enabled by default
 		AgentEnabled:       false, // Disabled by default until configured
 		AgentCheckInterval: "5m",  // Default 5 minutes
-		AgentConfigDir:     "/opt/homeserver-config",
 	}
 
 	// Platform-specific defaults for AppsDir
@@ -140,10 +138,6 @@ func Load() (*Config, error) {
 
 	if agentLLMModel := os.Getenv("AGENT_LLM_MODEL"); agentLLMModel != "" {
 		config.AgentLLMModel = agentLLMModel
-	}
-
-	if agentConfigDir := os.Getenv("AGENT_CONFIG_DIR"); agentConfigDir != "" {
-		config.AgentConfigDir = agentConfigDir
 	}
 
 	if uptimeKumaBaseURL := os.Getenv("UPTIME_KUMA_BASE_URL"); uptimeKumaBaseURL != "" {

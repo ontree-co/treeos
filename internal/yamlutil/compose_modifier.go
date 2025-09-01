@@ -56,7 +56,7 @@ func AddTailscaleSidecar(compose *ComposeFile, appName, hostname, authKey string
 
 		// Set network mode to use Tailscale container
 		mainServiceMap["network_mode"] = "service:tailscale"
-		
+
 		// Add dependency on Tailscale container
 		if deps, exists := mainServiceMap["depends_on"]; exists {
 			// Append to existing dependencies
@@ -219,7 +219,7 @@ func convertToStringSlice(ports interface{}) []string {
 func CreateEnvFile(appPath, authKey string) error {
 	envContent := fmt.Sprintf("TS_AUTHKEY=%s\n", authKey)
 	envPath := fmt.Sprintf("%s/.env", strings.TrimSuffix(appPath, "/"))
-	
+
 	// Write .env file with restrictive permissions
 	lock := getFileLock(envPath)
 	lock.Lock()
@@ -247,7 +247,7 @@ func writeFileWithPermissions(path string, data []byte, perm os.FileMode) error 
 // ModifyComposeForTailscale reads, modifies, and writes back a compose file with Tailscale sidecar
 func ModifyComposeForTailscale(appPath, appName, hostname, authKey string) error {
 	composePath := fmt.Sprintf("%s/docker-compose.yml", strings.TrimSuffix(appPath, "/"))
-	
+
 	// Read existing compose file
 	compose, err := ReadComposeWithMetadata(composePath)
 	if err != nil {
@@ -275,7 +275,7 @@ func ModifyComposeForTailscale(appPath, appName, hostname, authKey string) error
 // RestoreComposeFromTailscale removes Tailscale modifications from a compose file
 func RestoreComposeFromTailscale(appPath string) error {
 	composePath := fmt.Sprintf("%s/docker-compose.yml", strings.TrimSuffix(appPath, "/"))
-	
+
 	// Read existing compose file
 	compose, err := ReadComposeWithMetadata(composePath)
 	if err != nil {

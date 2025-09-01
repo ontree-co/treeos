@@ -15,11 +15,8 @@ func TestFilesystemProvider_GetAll(t *testing.T) {
 	}
 	defer os.RemoveAll(tempDir)
 
-	// Create apps directory
-	appsDir := filepath.Join(tempDir, "apps")
-	if err := os.MkdirAll(appsDir, 0755); err != nil {
-		t.Fatalf("Failed to create apps directory: %v", err)
-	}
+	// Use tempDir directly as the apps directory
+	appsDir := tempDir
 
 	// Test case 1: Valid configuration
 	t.Run("ValidConfiguration", func(t *testing.T) {
@@ -29,7 +26,7 @@ func TestFilesystemProvider_GetAll(t *testing.T) {
 			t.Fatalf("Failed to create nextcloud directory: %v", err)
 		}
 
-		// Create valid app.homeserver.yaml
+		// Create valid app.yml
 		validConfig := `id: "nextcloud"
 name: "Nextcloud Suite"
 primary_service: "app"
@@ -39,7 +36,7 @@ expected_services:
   - "db"
   - "redis"
 `
-		configPath := filepath.Join(nextcloudDir, "app.homeserver.yaml")
+		configPath := filepath.Join(nextcloudDir, "app.yml")
 		if err := ioutil.WriteFile(configPath, []byte(validConfig), 0644); err != nil {
 			t.Fatalf("Failed to write config file: %v", err)
 		}
@@ -58,7 +55,7 @@ uptime_kuma_monitor: "plex-server"
 expected_services:
   - "plex"
 `
-		plexConfigPath := filepath.Join(plexDir, "app.homeserver.yaml")
+		plexConfigPath := filepath.Join(plexDir, "app.yml")
 		if err := ioutil.WriteFile(plexConfigPath, []byte(plexConfig), 0644); err != nil {
 			t.Fatalf("Failed to write plex config file: %v", err)
 		}
@@ -116,7 +113,7 @@ primary_service app
 expected_services
   - service1
 `
-		badConfigPath := filepath.Join(badDir, "app.homeserver.yaml")
+		badConfigPath := filepath.Join(badDir, "app.yml")
 		if err := ioutil.WriteFile(badConfigPath, []byte(malformedConfig), 0644); err != nil {
 			t.Fatalf("Failed to write malformed config file: %v", err)
 		}
@@ -147,7 +144,7 @@ expected_services
 name: "Incomplete App"
 # Missing primary_service and expected_services
 `
-		incompleteConfigPath := filepath.Join(incompleteDir, "app.homeserver.yaml")
+		incompleteConfigPath := filepath.Join(incompleteDir, "app.yml")
 		if err := ioutil.WriteFile(incompleteConfigPath, []byte(incompleteConfig), 0644); err != nil {
 			t.Fatalf("Failed to write incomplete config file: %v", err)
 		}
@@ -184,11 +181,6 @@ name: "Incomplete App"
 		}
 		defer os.RemoveAll(emptyDir)
 
-		emptyAppsDir := filepath.Join(emptyDir, "apps")
-		if err := os.MkdirAll(emptyAppsDir, 0755); err != nil {
-			t.Fatalf("Failed to create empty apps directory: %v", err)
-		}
-
 		provider := NewFilesystemProvider(emptyDir)
 		configs, err := provider.GetAll()
 
@@ -201,7 +193,7 @@ name: "Incomplete App"
 		}
 	})
 
-	// Test case 6: Directory without app.homeserver.yaml
+	// Test case 6: Directory without app.yml
 	t.Run("DirectoryWithoutConfig", func(t *testing.T) {
 		// Create a directory without config file
 		noConfigDir := filepath.Join(appsDir, "noconfig")
@@ -351,13 +343,13 @@ func TestScanForConfigs(t *testing.T) {
 		}
 	}
 
-	// Create app.homeserver.yaml files in various locations
+	// Create app.yml files in various locations
 	configFiles := []string{
-		filepath.Join(tempDir, "apps", "app1", "app.homeserver.yaml"),
-		filepath.Join(tempDir, "apps", "app2", "app.homeserver.yaml"),
-		filepath.Join(tempDir, "apps", "app3", "app.homeserver.yaml"),
+		filepath.Join(tempDir, "apps", "app1", "app.yml"),
+		filepath.Join(tempDir, "apps", "app2", "app.yml"),
+		filepath.Join(tempDir, "apps", "app3", "app.yml"),
 		// Not in the expected location, but should still be found
-		filepath.Join(tempDir, "other", "app.homeserver.yaml"),
+		filepath.Join(tempDir, "other", "app.yml"),
 	}
 
 	for _, file := range configFiles {
@@ -409,4 +401,3 @@ func TestScanForConfigs(t *testing.T) {
 		}
 	}
 }
-

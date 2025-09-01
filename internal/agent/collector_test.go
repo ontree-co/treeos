@@ -60,7 +60,7 @@ func (m *MockDockerClient) Close() error {
 func TestCollectorCreation(t *testing.T) {
 	// This test would require Docker to be running, so we'll skip it in CI
 	t.Skip("Skipping test that requires Docker daemon")
-	
+
 	collector, err := NewCollector("http://localhost:3001")
 	if err != nil {
 		t.Fatalf("Failed to create collector: %v", err)
@@ -100,7 +100,7 @@ func TestCollectSystemSnapshot(t *testing.T) {
 
 	// For this test, we'll use a minimal mock that doesn't require Docker
 	// In a real test environment, you would inject a mock Docker client interface
-	
+
 	configs := []AppConfig{
 		{
 			ID:                "nextcloud",
@@ -114,7 +114,7 @@ func TestCollectSystemSnapshot(t *testing.T) {
 	// Note: This test would fail without a proper Docker mock injection
 	// The actual implementation needs the Docker client to be injected as an interface
 	t.Skip("Skipping test that requires Docker client interface injection")
-	
+
 	snapshot, err := collector.CollectSystemSnapshot(configs)
 	if err == nil {
 		t.Error("Expected error without Docker client, got nil")
@@ -127,10 +127,10 @@ func TestCollectSystemSnapshot(t *testing.T) {
 // TestCollectContainerLogs tests log collection and error detection
 func TestCollectContainerLogs(t *testing.T) {
 	testCases := []struct {
-		name             string
-		logs             string
-		expectedErrors   int
-		expectedSamples  int
+		name            string
+		logs            string
+		expectedErrors  int
+		expectedSamples int
 	}{
 		{
 			name: "No errors",
@@ -170,8 +170,8 @@ PANIC: uppercase panic`,
 			expectedSamples: 5,
 		},
 		{
-			name: "Long error lines",
-			logs: "ERROR: " + strings.Repeat("x", 300),
+			name:            "Long error lines",
+			logs:            "ERROR: " + strings.Repeat("x", 300),
 			expectedErrors:  1,
 			expectedSamples: 1,
 		},
@@ -269,7 +269,7 @@ func TestCollectUptimeKumaStatus(t *testing.T) {
 func TestLogParsing(t *testing.T) {
 	// This is a conceptual test showing what should be tested
 	// The actual implementation would need refactoring to make this testable
-	
+
 	errorKeywords := []string{
 		"ERROR", "FATAL", "Exception", "failed", "Failed",
 		"error", "panic", "PANIC", "CRITICAL", "critical",
@@ -304,7 +304,7 @@ func TestLogParsing(t *testing.T) {
 		}
 
 		if matched != test.shouldMatch {
-			t.Errorf("Line '%s': expected match=%v, got match=%v", 
+			t.Errorf("Line '%s': expected match=%v, got match=%v",
 				test.line, test.shouldMatch, matched)
 		}
 	}
@@ -314,67 +314,67 @@ func TestLogParsing(t *testing.T) {
 func TestCollectorIntegration(t *testing.T) {
 	// This test demonstrates how the collector would work with proper interface injection
 	// The actual implementation would need refactoring to accept a Docker client interface
-	
+
 	t.Skip("Skipping integration test that requires Docker client interface")
-	
+
 	// Example of how it would work with proper interfaces:
 	/*
-	mockDocker := &MockDockerClient{
-		containers: []types.Container{
-			{
-				ID:    "container1",
-				Names: []string{"/ontree-nextcloud-app-1"},
-				State: "running",
+		mockDocker := &MockDockerClient{
+			containers: []types.Container{
+				{
+					ID:    "container1",
+					Names: []string{"/ontree-nextcloud-app-1"},
+					State: "running",
+				},
+				{
+					ID:    "container2",
+					Names: []string{"/ontree-nextcloud-db-1"},
+					State: "running",
+				},
+				{
+					ID:    "container3",
+					Names: []string{"/ontree-nextcloud-redis-1"},
+					State: "exited",
+				},
 			},
-			{
-				ID:    "container2",
-				Names: []string{"/ontree-nextcloud-db-1"},
-				State: "running",
+			logs: map[string]string{
+				"container1": "INFO: App running\nERROR: Connection timeout\n",
+				"container2": "INFO: Database ready\n",
 			},
-			{
-				ID:    "container3",
-				Names: []string{"/ontree-nextcloud-redis-1"},
-				State: "exited",
+			inspectMap: map[string]types.ContainerJSON{
+				"container1": {RestartCount: 2},
+				"container2": {RestartCount: 0},
+				"container3": {RestartCount: 5},
 			},
-		},
-		logs: map[string]string{
-			"container1": "INFO: App running\nERROR: Connection timeout\n",
-			"container2": "INFO: Database ready\n",
-		},
-		inspectMap: map[string]types.ContainerJSON{
-			"container1": {RestartCount: 2},
-			"container2": {RestartCount: 0},
-			"container3": {RestartCount: 5},
-		},
-	}
+		}
 
-	collector := &Collector{
-		dockerClient: mockDocker,
-		httpClient:   &http.Client{},
-	}
+		collector := &Collector{
+			dockerClient: mockDocker,
+			httpClient:   &http.Client{},
+		}
 
-	configs := []AppConfig{
-		{
-			ID:               "nextcloud",
-			Name:             "Nextcloud Suite",
-			ExpectedServices: []string{"app", "db", "redis"},
-		},
-	}
+		configs := []AppConfig{
+			{
+				ID:               "nextcloud",
+				Name:             "Nextcloud Suite",
+				ExpectedServices: []string{"app", "db", "redis"},
+			},
+		}
 
-	snapshot, err := collector.CollectSystemSnapshot(configs)
-	if err != nil {
-		t.Fatalf("Failed to collect snapshot: %v", err)
-	}
+		snapshot, err := collector.CollectSystemSnapshot(configs)
+		if err != nil {
+			t.Fatalf("Failed to collect snapshot: %v", err)
+		}
 
-	// Verify snapshot contents
-	if len(snapshot.AppStatuses) != 1 {
-		t.Errorf("Expected 1 app status, got %d", len(snapshot.AppStatuses))
-	}
+		// Verify snapshot contents
+		if len(snapshot.AppStatuses) != 1 {
+			t.Errorf("Expected 1 app status, got %d", len(snapshot.AppStatuses))
+		}
 
-	app := snapshot.AppStatuses[0]
-	if len(app.ActualState.Services) != 3 {
-		t.Errorf("Expected 3 services, got %d", len(app.ActualState.Services))
-	}
+		app := snapshot.AppStatuses[0]
+		if len(app.ActualState.Services) != 3 {
+			t.Errorf("Expected 3 services, got %d", len(app.ActualState.Services))
+		}
 	*/
 }
 

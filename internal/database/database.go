@@ -88,7 +88,6 @@ func createTables() error {
 			agent_llm_api_key TEXT,
 			agent_llm_api_url TEXT,
 			agent_llm_model TEXT,
-			agent_config_dir TEXT DEFAULT '/opt/homeserver-config',
 			uptime_kuma_base_url TEXT
 		)`,
 		`CREATE TABLE IF NOT EXISTS system_vital_logs (
@@ -153,7 +152,6 @@ func createTables() error {
 		`ALTER TABLE system_setup ADD COLUMN agent_llm_api_key TEXT`,
 		`ALTER TABLE system_setup ADD COLUMN agent_llm_api_url TEXT`,
 		`ALTER TABLE system_setup ADD COLUMN agent_llm_model TEXT`,
-		`ALTER TABLE system_setup ADD COLUMN agent_config_dir TEXT DEFAULT '/opt/homeserver-config'`,
 		`ALTER TABLE system_setup ADD COLUMN uptime_kuma_base_url TEXT`,
 		`ALTER TABLE system_vital_logs ADD COLUMN network_rx_bytes INTEGER DEFAULT 0`,
 		`ALTER TABLE system_vital_logs ADD COLUMN network_tx_bytes INTEGER DEFAULT 0`,

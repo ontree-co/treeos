@@ -10,7 +10,7 @@ import (
 )
 
 // AppConfig represents the configuration for a single application
-// loaded from app.homeserver.yaml
+// loaded from app.yml
 type AppConfig struct {
 	ID                string   `yaml:"id"`
 	Name              string   `yaml:"name"`
@@ -36,7 +36,7 @@ func NewFilesystemProvider(rootDir string) *FilesystemProvider {
 	}
 }
 
-// GetAll scans the root directory for all app.homeserver.yaml files
+// GetAll scans the root directory for all app.yml files
 // and returns parsed AppConfig structs
 func (fp *FilesystemProvider) GetAll() ([]AppConfig, error) {
 	// Check if root directory exists
@@ -46,8 +46,8 @@ func (fp *FilesystemProvider) GetAll() ([]AppConfig, error) {
 
 	var configs []AppConfig
 
-	// Walk through the apps directory
-	appsDir := filepath.Join(fp.rootDir, "apps")
+	// Use the root directory directly as it's already the apps directory
+	appsDir := fp.rootDir
 	if _, err := os.Stat(appsDir); os.IsNotExist(err) {
 		// If apps directory doesn't exist, return empty list
 		return configs, nil
@@ -64,12 +64,12 @@ func (fp *FilesystemProvider) GetAll() ([]AppConfig, error) {
 			continue
 		}
 
-		// Look for app.homeserver.yaml in each app directory
-		configPath := filepath.Join(appsDir, entry.Name(), "app.homeserver.yaml")
+		// Look for app.yml in each app directory
+		configPath := filepath.Join(appsDir, entry.Name(), "app.yml")
 
 		// Check if config file exists
 		if _, err := os.Stat(configPath); os.IsNotExist(err) {
-			// Skip directories without app.homeserver.yaml
+			// Skip directories without app.yml
 			continue
 		}
 
@@ -88,7 +88,7 @@ func (fp *FilesystemProvider) GetAll() ([]AppConfig, error) {
 	return configs, nil
 }
 
-// parseConfigFile reads and parses a single app.homeserver.yaml file
+// parseConfigFile reads and parses a single app.yml file
 func (fp *FilesystemProvider) parseConfigFile(path string) (*AppConfig, error) {
 	// Read the file
 	data, err := ioutil.ReadFile(path)
@@ -120,7 +120,7 @@ func (fp *FilesystemProvider) parseConfigFile(path string) (*AppConfig, error) {
 }
 
 // ScanForConfigs is a utility function that scans a directory tree
-// for all app.homeserver.yaml files (alternative implementation)
+// for all app.yml files (alternative implementation)
 func ScanForConfigs(rootDir string) ([]string, error) {
 	var configPaths []string
 
@@ -129,8 +129,8 @@ func ScanForConfigs(rootDir string) ([]string, error) {
 			return err
 		}
 
-		// Look for app.homeserver.yaml files
-		if !info.IsDir() && info.Name() == "app.homeserver.yaml" {
+		// Look for app.yml files
+		if !info.IsDir() && info.Name() == "app.yml" {
 			configPaths = append(configPaths, path)
 		}
 
@@ -143,4 +143,3 @@ func ScanForConfigs(rootDir string) ([]string, error) {
 
 	return configPaths, nil
 }
-

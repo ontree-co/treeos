@@ -23,21 +23,20 @@ type User struct {
 
 // SystemSetup tracks the system setup state.
 type SystemSetup struct {
-	ID                  int
-	IsSetupComplete     bool
-	SetupDate           sql.NullTime
-	NodeName            string
-	NodeDescription     sql.NullString
-	PublicBaseDomain    sql.NullString
-	TailscaleAuthKey sql.NullString
-	TailscaleTags    sql.NullString
-	AgentEnabled        sql.NullInt64
-	AgentCheckInterval  sql.NullString
-	AgentLLMAPIKey      sql.NullString
-	AgentLLMAPIURL      sql.NullString
-	AgentLLMModel       sql.NullString
-	AgentConfigDir      sql.NullString
-	UptimeKumaBaseURL   sql.NullString
+	ID                 int
+	IsSetupComplete    bool
+	SetupDate          sql.NullTime
+	NodeName           string
+	NodeDescription    sql.NullString
+	PublicBaseDomain   sql.NullString
+	TailscaleAuthKey   sql.NullString
+	TailscaleTags      sql.NullString
+	AgentEnabled       sql.NullInt64
+	AgentCheckInterval sql.NullString
+	AgentLLMAPIKey     sql.NullString
+	AgentLLMAPIURL     sql.NullString
+	AgentLLMModel      sql.NullString
+	UptimeKumaBaseURL  sql.NullString
 }
 
 // SystemVitalLog stores system performance metrics.

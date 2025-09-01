@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
-	"os"
 
 	"ontree-node/internal/config"
 	"ontree-node/internal/database"
@@ -18,30 +18,30 @@ func TestHandleSettings(t *testing.T) {
 	// Create temp directory for test
 	tmpDir := t.TempDir()
 	dbPath := tmpDir + "/test.db"
-	
+
 	// Initialize database
 	if err := database.Initialize(dbPath); err != nil {
 		t.Fatalf("Failed to initialize database: %v", err)
 	}
 	defer database.Close()
-	
+
 	// Create test config
 	cfg := &config.Config{
 		AppsDir:      tmpDir + "/apps",
 		DatabasePath: dbPath,
 		ListenAddr:   ":3000",
 	}
-	
+
 	// Create apps directory
 	os.MkdirAll(cfg.AppsDir, 0755)
-	
+
 	// Create server instance
 	s, err := New(cfg, version.Info{Version: "test"})
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
 	defer s.Shutdown()
-	
+
 	// Create a test user
 	user := &database.User{
 		ID:          1,
@@ -74,7 +74,7 @@ func TestHandleSettings(t *testing.T) {
 			req := httptest.NewRequest(tt.method, "/settings", nil)
 			ctx := context.WithValue(req.Context(), userContextKey, user)
 			req = req.WithContext(ctx)
-			
+
 			w := httptest.NewRecorder()
 			s.handleSettings(w, req)
 
@@ -96,30 +96,30 @@ func TestHandleSettingsUpdate(t *testing.T) {
 	// Create temp directory for test
 	tmpDir := t.TempDir()
 	dbPath := tmpDir + "/test.db"
-	
+
 	// Initialize database
 	if err := database.Initialize(dbPath); err != nil {
 		t.Fatalf("Failed to initialize database: %v", err)
 	}
 	defer database.Close()
-	
+
 	// Create test config
 	cfg := &config.Config{
 		AppsDir:      tmpDir + "/apps",
 		DatabasePath: dbPath,
 		ListenAddr:   ":3000",
 	}
-	
+
 	// Create apps directory
 	os.MkdirAll(cfg.AppsDir, 0755)
-	
+
 	// Create server instance
 	s, err := New(cfg, version.Info{Version: "test"})
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
 	defer s.Shutdown()
-	
+
 	// Create a test user
 	user := &database.User{
 		ID:          1,
@@ -162,7 +162,6 @@ func TestHandleSettingsUpdate(t *testing.T) {
 				"agent_llm_api_key":    {"sk-test123"},
 				"agent_llm_api_url":    {"https://api.openai.com/v1/chat/completions"},
 				"agent_llm_model":      {"gpt-4"},
-				"agent_config_dir":     {"/opt/test-config"},
 			},
 			expectedStatus: http.StatusFound,
 			checkConfig: func(t *testing.T, s *Server) {
@@ -197,7 +196,7 @@ func TestHandleSettingsUpdate(t *testing.T) {
 			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 			ctx := context.WithValue(req.Context(), userContextKey, user)
 			req = req.WithContext(ctx)
-			
+
 			w := httptest.NewRecorder()
 			s.handleSettingsUpdate(w, req)
 
@@ -215,34 +214,34 @@ func TestHandleSettingsUpdate(t *testing.T) {
 func TestSettingsWithDatabaseMigration(t *testing.T) {
 	// This test ensures that the settings page works even with an existing database
 	// that doesn't have the new columns yet (migration test)
-	
+
 	// Create temp directory for test
 	tmpDir := t.TempDir()
 	dbPath := tmpDir + "/test.db"
-	
+
 	// Initialize database first (simulating an existing database)
 	if err := database.Initialize(dbPath); err != nil {
 		t.Fatalf("Failed to initialize database: %v", err)
 	}
 	defer database.Close()
-	
+
 	// Create test config
 	cfg := &config.Config{
 		AppsDir:      tmpDir + "/apps",
 		DatabasePath: dbPath,
 		ListenAddr:   ":3000",
 	}
-	
+
 	// Create apps directory
 	os.MkdirAll(cfg.AppsDir, 0755)
-	
+
 	// Setup test server
 	s, err := New(cfg, version.Info{Version: "test"})
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
 	defer s.Shutdown()
-	
+
 	// Create a test user
 	user := &database.User{
 		ID:          1,
@@ -250,26 +249,26 @@ func TestSettingsWithDatabaseMigration(t *testing.T) {
 		IsSuperuser: true,
 		IsActive:    true,
 	}
-	
+
 	// Try to load settings page
 	req := httptest.NewRequest("GET", "/settings", nil)
 	req = req.WithContext(setUserContext(req.Context(), user))
-	
+
 	w := httptest.NewRecorder()
 	s.handleSettings(w, req)
-	
+
 	if w.Code != http.StatusOK {
 		t.Errorf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
 	}
-	
+
 	// Check that the page loads with all sections
 	body := w.Body.String()
 	expectedSections := []string{
 		"Domain Configuration",
-		"AI Agent Configuration", 
+		"AI Agent Configuration",
 		"Uptime Kuma Integration",
 	}
-	
+
 	for _, section := range expectedSections {
 		if !strings.Contains(body, section) {
 			t.Errorf("Expected settings page to contain section %q, but it didn't", section)

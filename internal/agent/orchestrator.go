@@ -115,7 +115,7 @@ func (o *Orchestrator) RunCheck(ctx context.Context) error {
 		llmResponse = o.createFallbackResponse(snapshot, configs)
 	}
 
-	log.Printf("LLM analysis complete: status=%s, %d actions recommended", 
+	log.Printf("LLM analysis complete: status=%s, %d actions recommended",
 		llmResponse.OverallStatus, len(llmResponse.RecommendedActions))
 
 	// Step 4: Execute recommended actions
@@ -230,7 +230,7 @@ func (o *Orchestrator) executeRestartContainer(ctx context.Context, action Recom
 			StatusLevel:    database.ChatStatusWarning,
 			MessageSummary: fmt.Sprintf("Container '%s' was automatically restarted", containerName),
 		}
-		
+
 		if err := database.CreateChatMessage(restartMessage); err != nil {
 			log.Printf("WARNING: Failed to persist restart notification: %v", err)
 		}
@@ -258,7 +258,7 @@ func (o *Orchestrator) createFallbackResponse(snapshot *SystemSnapshot, configs 
 				break
 			}
 		}
-		
+
 		if appConfig == nil {
 			continue
 		}
@@ -287,7 +287,7 @@ func (o *Orchestrator) createFallbackResponse(snapshot *SystemSnapshot, configs 
 		// Create a chat message for each app
 		status := database.ChatStatusOK
 		message := "All services running normally"
-		
+
 		if hasIssue {
 			if response.OverallStatus == StatusCritical {
 				status = database.ChatStatusCritical

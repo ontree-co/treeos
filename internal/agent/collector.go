@@ -122,7 +122,7 @@ func (c *Collector) collectAppStatus(config AppConfig) (*AppStatus, error) {
 	for _, service := range config.ExpectedServices {
 		// Container naming follows pattern: ontree-{appID}-{serviceName}-1
 		expectedName := fmt.Sprintf("ontree-%s-%s-1", config.ID, service)
-		
+
 		serviceStatus := &ServiceStatus{
 			Name:   service,
 			Status: ServiceStatusExited, // Default to exited if not found
@@ -196,7 +196,7 @@ func (c *Collector) collectAppStatus(config AppConfig) (*AppStatus, error) {
 // collectContainerLogs fetches and analyzes recent logs from a container
 func (c *Collector) collectContainerLogs(containerID string) (*LogSummary, error) {
 	ctx := context.Background()
-	
+
 	// Get logs from the last 5 minutes
 	since := time.Now().Add(-5 * time.Minute).Format(time.RFC3339)
 	options := container.LogsOptions{
@@ -229,7 +229,7 @@ func (c *Collector) collectContainerLogs(containerID string) (*LogSummary, error
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		
+
 		// Docker log format includes a header byte we need to strip
 		if len(line) > 8 {
 			// Strip the 8-byte header that Docker adds
@@ -240,7 +240,7 @@ func (c *Collector) collectContainerLogs(containerID string) (*LogSummary, error
 		for _, keyword := range errorKeywords {
 			if strings.Contains(line, keyword) {
 				logSummary.ErrorsFound++
-				
+
 				// Add to sample if we haven't reached the limit
 				if len(logSummary.SampleErrorLines) < maxSampleLines {
 					// Truncate long lines

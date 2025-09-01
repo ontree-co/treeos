@@ -374,7 +374,7 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 					Status: strings.ToLower(container.State),
 					State:  container.Status,
 				}
-				
+
 				// Add port information
 				if container.Publishers != nil && len(container.Publishers) > 0 {
 					// Use a map to track unique port mappings (ignoring IP version)
@@ -392,7 +392,7 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 					}
 					service.Ports = ports
 				}
-				
+
 				appStatus.Services = append(appStatus.Services, service)
 			}
 
@@ -486,7 +486,7 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		data["ExposedURLs"] = urls
-		
+
 		// Add Tailscale info if exposed
 		if deployedApp.TailscaleExposed && deployedApp.TailscaleHostname != "" {
 			data["TailscaleURL"] = fmt.Sprintf("https://%s", deployedApp.TailscaleHostname)
@@ -949,13 +949,13 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	err := s.db.QueryRow(`
 		SELECT id, public_base_domain, tailscale_auth_key, tailscale_tags,
 		       agent_enabled, agent_check_interval, agent_llm_api_key,
-		       agent_llm_api_url, agent_llm_model, agent_config_dir,
+		       agent_llm_api_url, agent_llm_model,
 		       uptime_kuma_base_url
 		FROM system_setup 
 		WHERE id = 1
 	`).Scan(&setup.ID, &setup.PublicBaseDomain, &setup.TailscaleAuthKey, &setup.TailscaleTags,
 		&setup.AgentEnabled, &setup.AgentCheckInterval, &setup.AgentLLMAPIKey,
-		&setup.AgentLLMAPIURL, &setup.AgentLLMModel, &setup.AgentConfigDir,
+		&setup.AgentLLMAPIURL, &setup.AgentLLMModel,
 		&setup.UptimeKumaBaseURL)
 
 	if err != nil && err != sql.ErrNoRows {
@@ -1002,7 +1002,6 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	data["AgentLLMAPIKey"] = ""
 	data["AgentLLMAPIURL"] = ""
 	data["AgentLLMModel"] = ""
-	data["AgentConfigDir"] = "/opt/homeserver-config"
 	data["UptimeKumaBaseURL"] = ""
 
 	if setup.PublicBaseDomain.Valid {
@@ -1028,9 +1027,6 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	if setup.AgentLLMModel.Valid {
 		data["AgentLLMModel"] = setup.AgentLLMModel.String
-	}
-	if setup.AgentConfigDir.Valid {
-		data["AgentConfigDir"] = setup.AgentConfigDir.String
 	}
 	if setup.UptimeKumaBaseURL.Valid {
 		data["UptimeKumaBaseURL"] = setup.UptimeKumaBaseURL.String
@@ -1079,7 +1075,6 @@ func (s *Server) handleSettingsUpdate(w http.ResponseWriter, r *http.Request) {
 	agentLLMAPIKey := strings.TrimSpace(r.FormValue("agent_llm_api_key"))
 	agentLLMAPIURL := strings.TrimSpace(r.FormValue("agent_llm_api_url"))
 	agentLLMModel := strings.TrimSpace(r.FormValue("agent_llm_model"))
-	agentConfigDir := strings.TrimSpace(r.FormValue("agent_config_dir"))
 	uptimeKumaBaseURL := strings.TrimSpace(r.FormValue("uptime_kuma_base_url"))
 
 	// Convert bool to int for database
@@ -1102,11 +1097,11 @@ func (s *Server) handleSettingsUpdate(w http.ResponseWriter, r *http.Request) {
 		UPDATE system_setup 
 		SET public_base_domain = ?, tailscale_auth_key = ?, tailscale_tags = ?,
 		    agent_enabled = ?, agent_check_interval = ?, agent_llm_api_key = ?,
-		    agent_llm_api_url = ?, agent_llm_model = ?, agent_config_dir = ?,
+		    agent_llm_api_url = ?, agent_llm_model = ?,
 		    uptime_kuma_base_url = ?
 		WHERE id = 1
 	`, publicDomain, tailscaleAuthKey, tailscaleTags, agentEnabledInt, agentCheckInterval,
-		agentLLMAPIKey, agentLLMAPIURL, agentLLMModel, agentConfigDir,
+		agentLLMAPIKey, agentLLMAPIURL, agentLLMModel,
 		uptimeKumaBaseURL)
 
 	if err != nil {
@@ -1148,9 +1143,6 @@ func (s *Server) handleSettingsUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	if os.Getenv("AGENT_LLM_MODEL") == "" {
 		s.config.AgentLLMModel = agentLLMModel
-	}
-	if os.Getenv("AGENT_CONFIG_DIR") == "" {
-		s.config.AgentConfigDir = agentConfigDir
 	}
 	if os.Getenv("UPTIME_KUMA_BASE_URL") == "" {
 		s.config.UptimeKumaBaseURL = uptimeKumaBaseURL
@@ -1494,7 +1486,7 @@ func (s *Server) handleAppExposeTailscale(w http.ResponseWriter, r *http.Request
 		metadata.TailscaleHostname = ""
 		metadata.TailscaleExposed = false
 		_ = yamlutil.UpdateComposeMetadata(appDetails.Path, metadata)
-		
+
 		session, err := s.sessionStore.Get(r, "ontree-session")
 		if err != nil {
 			log.Printf("Failed to get session: %v", err)

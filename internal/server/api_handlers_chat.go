@@ -13,13 +13,13 @@ import (
 
 // ChatMessagesResponse represents the response for chat messages endpoint
 type ChatMessagesResponse struct {
-	Success  bool                     `json:"success"`
-	AppID    string                   `json:"app_id"`
-	Messages []ChatMessageResponse    `json:"messages"`
-	Total    int                      `json:"total"`
-	Limit    int                      `json:"limit"`
-	Offset   int                      `json:"offset"`
-	Error    string                   `json:"error,omitempty"`
+	Success  bool                  `json:"success"`
+	AppID    string                `json:"app_id"`
+	Messages []ChatMessageResponse `json:"messages"`
+	Total    int                   `json:"total"`
+	Limit    int                   `json:"limit"`
+	Offset   int                   `json:"offset"`
+	Error    string                `json:"error,omitempty"`
 }
 
 // ChatMessageResponse represents a single chat message in the API response
@@ -60,7 +60,7 @@ func (s *Server) handleAPIAppChat(w http.ResponseWriter, r *http.Request) {
 	offsetStr := r.URL.Query().Get("offset")
 
 	limit := 50 // Default limit
-	offset := 0  // Default offset
+	offset := 0 // Default offset
 
 	if limitStr != "" {
 		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 && l <= 100 {
@@ -156,5 +156,71 @@ func (s *Server) handleTestAgentRun(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
 		"message": "Agent check triggered successfully",
+	})
+}
+
+// handleTestAgentConnection handles POST /api/test-agent
+// This endpoint tests the LLM API connection with a simple ping message
+func (s *Server) handleTestAgentConnection(w http.ResponseWriter, r *http.Request) {
+	// Only allow POST requests
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Parse JSON request body
+	var req struct {
+		APIKey string `json:"api_key"`
+		APIURL string `json:"api_url"`
+		Model  string `json:"model"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"error":   "Invalid request body",
+		})
+		return
+	}
+
+	// Validate required fields
+	if req.APIKey == "" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"error":   "API key is required",
+		})
+		return
+	}
+
+	// Set defaults if not provided
+	if req.APIURL == "" {
+		req.APIURL = "https://api.openai.com/v1/chat/completions"
+	}
+	if req.Model == "" {
+		req.Model = "gpt-4-turbo-preview"
+	}
+
+	// Test the connection with a simple ping
+	testResponse, err := s.testLLMConnection(req.APIKey, req.APIURL, req.Model)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK) // Still return 200, but with error in body
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	// Return success with the response
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":  true,
+		"response": testResponse,
 	})
 }

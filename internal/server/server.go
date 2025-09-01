@@ -1,11 +1,13 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -403,6 +405,9 @@ func (s *Server) Start() error {
 	// Test endpoint for triggering agent runs (for testing purposes)
 	// This endpoint is protected by auth middleware so only authenticated users can trigger it
 	mux.HandleFunc("/api/test/agent-run", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleTestAgentRun))))
+	
+	// Test endpoint for checking LLM API connection
+	mux.HandleFunc("/api/test-agent", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleTestAgentConnection))))
 
 	// Dashboard partial routes (for monitoring cards on dashboard)
 	mux.HandleFunc("/partials/cpu", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleMonitoringCPUPartial))))
@@ -556,7 +561,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 					State  string
 					Uptime string
 				}
-				
+
 				// Create an enriched app struct with additional status
 				enrichedApp := struct {
 					*docker.App
@@ -583,14 +588,14 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 							for _, container := range containers {
 								serviceName := extractServiceName(container.Name, app.Name)
 								status := mapContainerState(container.State)
-								
+
 								// Extract uptime from Status field
 								uptime := ""
 								if container.State == "running" && container.Status != "" {
 									// Status typically contains "Up 2 hours" or similar
 									uptime = container.Status
 								}
-								
+
 								containerInfos = append(containerInfos, ContainerInfo{
 									Name:   serviceName,
 									Status: status,
@@ -620,10 +625,10 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		hostname = "Unknown"
 	}
-	
+
 	// Get local IP
 	localIP := getLocalIP()
-	
+
 	// Get Tailscale IP
 	tailscaleIP := getTailscaleIP()
 
@@ -729,13 +734,13 @@ func (s *Server) loadConfigFromDatabase() error {
 	err := s.db.QueryRow(`
 		SELECT id, public_base_domain, tailscale_auth_key, tailscale_tags,
 		       agent_enabled, agent_check_interval, agent_llm_api_key,
-		       agent_llm_api_url, agent_llm_model, agent_config_dir,
+		       agent_llm_api_url, agent_llm_model,
 		       uptime_kuma_base_url
 		FROM system_setup 
 		WHERE id = 1
 	`).Scan(&setup.ID, &setup.PublicBaseDomain, &setup.TailscaleAuthKey, &setup.TailscaleTags,
 		&setup.AgentEnabled, &setup.AgentCheckInterval, &setup.AgentLLMAPIKey,
-		&setup.AgentLLMAPIURL, &setup.AgentLLMModel, &setup.AgentConfigDir,
+		&setup.AgentLLMAPIURL, &setup.AgentLLMModel,
 		&setup.UptimeKumaBaseURL)
 
 	if err != nil {
@@ -772,9 +777,6 @@ func (s *Server) loadConfigFromDatabase() error {
 	}
 	if os.Getenv("AGENT_LLM_MODEL") == "" && setup.AgentLLMModel.Valid {
 		s.config.AgentLLMModel = setup.AgentLLMModel.String
-	}
-	if os.Getenv("AGENT_CONFIG_DIR") == "" && setup.AgentConfigDir.Valid {
-		s.config.AgentConfigDir = setup.AgentConfigDir.String
 	}
 	if os.Getenv("UPTIME_KUMA_BASE_URL") == "" && setup.UptimeKumaBaseURL.Valid {
 		s.config.UptimeKumaBaseURL = setup.UptimeKumaBaseURL.String
@@ -825,7 +827,7 @@ func (s *Server) restartAgent() error {
 	}
 
 	orchestratorConfig := agent.OrchestratorConfig{
-		ConfigRootDir:     s.config.AgentConfigDir,
+		ConfigRootDir:     s.config.AppsDir, // Use the apps directory directly
 		UptimeKumaBaseURL: s.config.UptimeKumaBaseURL,
 		LLMConfig: agent.LLMConfig{
 			APIKey: s.config.AgentLLMAPIKey,
@@ -872,6 +874,94 @@ func (s *Server) restartAgent() error {
 
 	log.Printf("Agent orchestrator started with check interval: %v", checkInterval)
 	return nil
+}
+
+// testLLMConnection tests the LLM API connection with a simple ping message
+func (s *Server) testLLMConnection(apiKey, apiURL, model string) (string, error) {
+	// Create a simple test message
+	requestBody := map[string]interface{}{
+		"model": model,
+		"messages": []map[string]string{
+			{
+				"role":    "user",
+				"content": "Respond with exactly the word: pong",
+			},
+		},
+		"max_completion_tokens": 200, // Increased significantly for reasoning models
+	}
+
+	jsonBody, err := json.Marshal(requestBody)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	// Create HTTP request
+	req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(jsonBody))
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Set headers
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+
+	// Make the request with a timeout
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("API request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// Read response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read response: %w", err)
+	}
+
+	// Check status code
+	if resp.StatusCode != http.StatusOK {
+		// Try to parse error message
+		var errorResp struct {
+			Error struct {
+				Message string `json:"message"`
+				Type    string `json:"type"`
+			} `json:"error"`
+		}
+		if err := json.Unmarshal(body, &errorResp); err == nil && errorResp.Error.Message != "" {
+			return "", fmt.Errorf("API error (%d): %s", resp.StatusCode, errorResp.Error.Message)
+		}
+		return "", fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
+	}
+
+	// Parse the API response
+	var apiResponse struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+
+	if err := json.Unmarshal(body, &apiResponse); err != nil {
+		return "", fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	if len(apiResponse.Choices) == 0 {
+		return "", fmt.Errorf("no response from LLM")
+	}
+
+	response := apiResponse.Choices[0].Message.Content
+	
+	// Handle empty response gracefully
+	if response == "" {
+		return "Connection successful! (Empty response from model)", nil
+	}
+	
+	return response, nil
 }
 
 // syncExposedApps synchronizes exposed apps with Caddy on startup
@@ -1021,7 +1111,7 @@ func getLocalIP() string {
 	if err != nil {
 		return "Unknown"
 	}
-	
+
 	for _, addr := range addrs {
 		if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
 			if ipnet.IP.To4() != nil {
@@ -1033,7 +1123,7 @@ func getLocalIP() string {
 			}
 		}
 	}
-	
+
 	return "Unknown"
 }
 
@@ -1048,7 +1138,7 @@ func getTailscaleIP() string {
 		if err != nil {
 			return "Not connected"
 		}
-		
+
 		for _, addr := range addrs {
 			if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
 				if ipnet.IP.To4() != nil {
@@ -1061,6 +1151,6 @@ func getTailscaleIP() string {
 		}
 		return "Not connected"
 	}
-	
+
 	return strings.TrimSpace(string(output))
 }

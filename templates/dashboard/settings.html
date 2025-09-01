@@ -200,15 +200,6 @@
                         </small>
                     </div>
 
-                    <div class="mb-3">
-                        <label for="agent_config_dir" class="form-label">Configuration Directory</label>
-                        <input type="text" class="form-control" id="agent_config_dir" name="agent_config_dir" 
-                               value="{{.AgentConfigDir}}" placeholder="/opt/homeserver-config">
-                        <small class="form-text text-muted">
-                            Directory containing app.homeserver.yaml files for each application
-                        </small>
-                    </div>
-
                     <h6 class="mt-4 mb-3">LLM Configuration</h6>
                     
                     <div class="mb-3">
@@ -248,6 +239,10 @@
                     <button type="submit" class="btn btn-primary">
                         <i>💾</i> Save Agent Settings
                     </button>
+                    <button type="button" class="btn btn-secondary ms-2" id="testAgentBtn">
+                        <i>🧪</i> Test Agent Connection
+                    </button>
+                    <div id="testResult" class="mt-3" style="display: none;"></div>
                 </form>
             </div>
         </div>
@@ -273,7 +268,7 @@
 
                     <div class="alert alert-info">
                         <small>
-                            <i>ℹ️</i> <strong>Note:</strong> Monitor names in Uptime Kuma should match the names configured in your app.homeserver.yaml files.
+                            <i>ℹ️</i> <strong>Note:</strong> Monitor names in Uptime Kuma should match the names configured in your app.yml files.
                         </small>
                     </div>
 
@@ -285,4 +280,64 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const testBtn = document.getElementById('testAgentBtn');
+    const testResult = document.getElementById('testResult');
+    
+    if (testBtn) {
+        testBtn.addEventListener('click', function() {
+            // Get form values
+            const apiKey = document.getElementById('agent_llm_api_key').value;
+            const apiUrl = document.getElementById('agent_llm_api_url').value;
+            const model = document.getElementById('agent_llm_model').value;
+            
+            if (!apiKey) {
+                showResult('error', 'API Key is required for testing');
+                return;
+            }
+            
+            // Disable button and show loading
+            testBtn.disabled = true;
+            testBtn.innerHTML = '<i>⏳</i> Testing...';
+            
+            // Make test request
+            fetch('/api/test-agent', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    api_key: apiKey,
+                    api_url: apiUrl || 'https://api.openai.com/v1/chat/completions',
+                    model: model || 'gpt-4-turbo-preview'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showResult('success', `✅ Connection successful! Response: "${data.response}"`);
+                } else {
+                    showResult('error', `❌ Connection failed: ${data.error}`);
+                }
+            })
+            .catch(error => {
+                showResult('error', `❌ Request failed: ${error.message}`);
+            })
+            .finally(() => {
+                // Re-enable button
+                testBtn.disabled = false;
+                testBtn.innerHTML = '<i>🧪</i> Test Agent Connection';
+            });
+        });
+    }
+    
+    function showResult(type, message) {
+        testResult.style.display = 'block';
+        testResult.className = 'mt-3 alert alert-' + (type === 'success' ? 'success' : 'danger');
+        testResult.innerHTML = message;
+    }
+});
+</script>
 {{end}}
