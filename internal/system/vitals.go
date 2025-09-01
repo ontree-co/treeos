@@ -3,6 +3,9 @@ package system
 
 import (
 	"fmt"
+	"os/exec"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/shirou/gopsutil/v3/cpu"
@@ -18,6 +21,7 @@ type Vitals struct {
 	DiskPercent    float64
 	NetworkRxBytes uint64 // Total bytes received across all interfaces
 	NetworkTxBytes uint64 // Total bytes transmitted across all interfaces
+	GPULoad        float64 // GPU utilization percentage (0-100)
 }
 
 // GetVitals retrieves current system resource usage information
@@ -55,11 +59,68 @@ func GetVitals() (*Vitals, error) {
 		txBytes = netStats[0].BytesSent
 	}
 
+	// Get GPU load
+	gpuLoad := getGPULoad()
+
 	return &Vitals{
 		CPUPercent:     cpuUsage,
 		MemPercent:     memStat.UsedPercent,
 		DiskPercent:    diskStat.UsedPercent,
 		NetworkRxBytes: rxBytes,
 		NetworkTxBytes: txBytes,
+		GPULoad:        gpuLoad,
 	}, nil
+}
+
+// getGPULoad attempts to read GPU utilization from nvidia-smi or AMD tools
+func getGPULoad() float64 {
+	// Try NVIDIA GPU first
+	if load := getNvidiaGPULoad(); load >= 0 {
+		return load
+	}
+
+	// Try AMD GPU
+	if load := getAMDGPULoad(); load >= 0 {
+		return load
+	}
+
+	// No GPU detected or error reading GPU stats
+	return 0
+}
+
+// getNvidiaGPULoad reads GPU utilization using nvidia-smi
+func getNvidiaGPULoad() float64 {
+	cmd := exec.Command("nvidia-smi", "--query-gpu=utilization.gpu", "--format=csv,noheader,nounits")
+	output, err := cmd.Output()
+	if err != nil {
+		// nvidia-smi not available or error
+		return -1
+	}
+
+	// Parse the output (could be multiple GPUs, take first one)
+	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	if len(lines) > 0 {
+		if value, err := strconv.ParseFloat(strings.TrimSpace(lines[0]), 64); err == nil {
+			return value
+		}
+	}
+
+	return -1
+}
+
+// getAMDGPULoad attempts to read AMD GPU utilization
+func getAMDGPULoad() float64 {
+	// Try reading from sysfs for AMD GPUs
+	// This is a common location but may vary by system
+	cmd := exec.Command("sh", "-c", "cat /sys/class/drm/card*/device/gpu_busy_percent 2>/dev/null | head -1")
+	output, err := cmd.Output()
+	if err != nil {
+		return -1
+	}
+
+	if value, err := strconv.ParseFloat(strings.TrimSpace(string(output)), 64); err == nil {
+		return value
+	}
+
+	return -1
 }

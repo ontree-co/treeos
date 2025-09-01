@@ -20,7 +20,7 @@ func GetMetricsLast24Hours(metricType string) ([]SystemVitalLog, error) {
 	// Query to get all system vitals from the last 24 hours
 	query := `
 		SELECT id, timestamp, cpu_percent, memory_percent, disk_usage_percent, 
-		       COALESCE(network_rx_bytes, 0), COALESCE(network_tx_bytes, 0)
+		       COALESCE(gpu_load, 0), COALESCE(network_rx_bytes, 0), COALESCE(network_tx_bytes, 0)
 		FROM system_vital_logs
 		WHERE timestamp >= ?
 		ORDER BY timestamp ASC
@@ -36,7 +36,7 @@ func GetMetricsLast24Hours(metricType string) ([]SystemVitalLog, error) {
 	for rows.Next() {
 		var m SystemVitalLog
 		err := rows.Scan(&m.ID, &m.Timestamp, &m.CPUPercent, &m.MemoryPercent, &m.DiskUsagePercent,
-			&m.NetworkRxBytes, &m.NetworkTxBytes)
+			&m.GPULoad, &m.NetworkRxBytes, &m.NetworkTxBytes)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan metric: %w", err)
 		}
@@ -65,7 +65,7 @@ func GetLatestMetric(metricType string) (*SystemVitalLog, error) {
 
 	query := `
 		SELECT id, timestamp, cpu_percent, memory_percent, disk_usage_percent,
-		       COALESCE(network_rx_bytes, 0), COALESCE(network_tx_bytes, 0)
+		       COALESCE(gpu_load, 0), COALESCE(network_rx_bytes, 0), COALESCE(network_tx_bytes, 0)
 		FROM system_vital_logs
 		ORDER BY timestamp DESC
 		LIMIT 1
@@ -73,7 +73,7 @@ func GetLatestMetric(metricType string) (*SystemVitalLog, error) {
 
 	var m SystemVitalLog
 	err := db.QueryRow(query).Scan(&m.ID, &m.Timestamp, &m.CPUPercent, &m.MemoryPercent, &m.DiskUsagePercent,
-		&m.NetworkRxBytes, &m.NetworkTxBytes)
+		&m.GPULoad, &m.NetworkRxBytes, &m.NetworkTxBytes)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			// No data is not an error, just return nil
@@ -86,18 +86,18 @@ func GetLatestMetric(metricType string) (*SystemVitalLog, error) {
 }
 
 // StoreSystemVital saves a new system vital log entry to the database.
-func StoreSystemVital(cpuPercent, memoryPercent, diskUsagePercent float64, networkRxBytes, networkTxBytes uint64) error {
+func StoreSystemVital(cpuPercent, memoryPercent, diskUsagePercent, gpuLoad float64, networkRxBytes, networkTxBytes uint64) error {
 	db := GetDB()
 	if db == nil {
 		return fmt.Errorf("database not initialized")
 	}
 
 	query := `
-		INSERT INTO system_vital_logs (cpu_percent, memory_percent, disk_usage_percent, network_rx_bytes, network_tx_bytes)
-		VALUES (?, ?, ?, ?, ?)
+		INSERT INTO system_vital_logs (cpu_percent, memory_percent, disk_usage_percent, gpu_load, network_rx_bytes, network_tx_bytes)
+		VALUES (?, ?, ?, ?, ?, ?)
 	`
 
-	_, err := db.Exec(query, cpuPercent, memoryPercent, diskUsagePercent, networkRxBytes, networkTxBytes)
+	_, err := db.Exec(query, cpuPercent, memoryPercent, diskUsagePercent, gpuLoad, networkRxBytes, networkTxBytes)
 	if err != nil {
 		return fmt.Errorf("failed to store system vital: %w", err)
 	}
@@ -144,7 +144,7 @@ func GetMetricsForTimeRange(start, end time.Time) ([]SystemVitalLog, error) {
 
 	query := `
 		SELECT id, timestamp, cpu_percent, memory_percent, disk_usage_percent,
-		       COALESCE(network_rx_bytes, 0), COALESCE(network_tx_bytes, 0)
+		       COALESCE(gpu_load, 0), COALESCE(network_rx_bytes, 0), COALESCE(network_tx_bytes, 0)
 		FROM system_vital_logs
 		WHERE timestamp >= ? AND timestamp <= ?
 		ORDER BY timestamp ASC
@@ -160,7 +160,7 @@ func GetMetricsForTimeRange(start, end time.Time) ([]SystemVitalLog, error) {
 	for rows.Next() {
 		var m SystemVitalLog
 		err := rows.Scan(&m.ID, &m.Timestamp, &m.CPUPercent, &m.MemoryPercent, &m.DiskUsagePercent,
-			&m.NetworkRxBytes, &m.NetworkTxBytes)
+			&m.GPULoad, &m.NetworkRxBytes, &m.NetworkTxBytes)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan metric: %w", err)
 		}
@@ -204,6 +204,8 @@ func (b *MetricsBatch) ExtractMetricData(metricType string) []float64 {
 			data = append(data, m.MemoryPercent)
 		case "disk":
 			data = append(data, m.DiskUsagePercent)
+		case "gpu":
+			data = append(data, m.GPULoad)
 		}
 	}
 

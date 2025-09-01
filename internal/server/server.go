@@ -345,6 +345,7 @@ func (s *Server) Start() error {
 	// Start background jobs
 	go s.startVitalsCleanup()
 	go s.startRealtimeMetricsCollection()
+	go s.startVitalsCollection()
 
 	// Start agent cron job if configured
 	if s.agentOrchestrator != nil && s.agentCron != nil {
@@ -401,6 +402,7 @@ func (s *Server) Start() error {
 
 	// API routes
 	mux.HandleFunc("/api/apps/", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeAPIApps))))
+	mux.HandleFunc("/api/v1/status/", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeAPIStatus))))
 
 	// Test endpoint for triggering agent runs (for testing purposes)
 	// This endpoint is protected by auth middleware so only authenticated users can trigger it
@@ -508,6 +510,49 @@ func (s *Server) cleanupOldVitals() {
 	if rowsAffected > 0 {
 		log.Printf("Cleaned up %d old vital log records", rowsAffected)
 	}
+}
+
+// startVitalsCollection periodically collects and stores system vitals to the database
+func (s *Server) startVitalsCollection() {
+	log.Printf("System vitals collection started (storing to database every 30 seconds)")
+
+	// Collect and store vitals every 30 seconds
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
+	// Store initial vitals on startup
+	s.storeVitals()
+
+	for range ticker.C {
+		s.storeVitals()
+	}
+}
+
+// storeVitals collects current system vitals and stores them to the database
+func (s *Server) storeVitals() {
+	vitals, err := system.GetVitals()
+	if err != nil {
+		log.Printf("Failed to get system vitals for storage: %v", err)
+		return
+	}
+
+	err = database.StoreSystemVital(
+		vitals.CPUPercent,
+		vitals.MemPercent,
+		vitals.DiskPercent,
+		vitals.GPULoad,
+		vitals.NetworkRxBytes,
+		vitals.NetworkTxBytes,
+	)
+	if err != nil {
+		log.Printf("Failed to store system vitals: %v", err)
+		return
+	}
+
+	// Log successful storage for debugging (can be removed in production)
+	log.Printf("Stored system vitals: CPU=%.1f%%, Mem=%.1f%%, Disk=%.1f%%, GPU=%.1f%%, RX=%d, TX=%d",
+		vitals.CPUPercent, vitals.MemPercent, vitals.DiskPercent, vitals.GPULoad,
+		vitals.NetworkRxBytes, vitals.NetworkTxBytes)
 }
 
 // startRealtimeMetricsCollection collects CPU and network metrics every second for real-time display
@@ -1080,6 +1125,21 @@ func (s *Server) routeAPIApps(w http.ResponseWriter, r *http.Request) {
 			s.handleUpdateApp(w, r)
 		}
 	} else {
+		http.NotFound(w, r)
+	}
+}
+
+// routeAPIStatus routes /api/v1/status/* requests
+func (s *Server) routeAPIStatus(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Path
+
+	// Route based on the path pattern
+	switch path {
+	case "/api/v1/status/latest", "/api/v1/status/latest/":
+		s.handleAPIStatusLatest(w, r)
+	case "/api/v1/status/history", "/api/v1/status/history/":
+		s.handleAPIStatusHistory(w, r)
+	default:
 		http.NotFound(w, r)
 	}
 }

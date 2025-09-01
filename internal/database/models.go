@@ -48,6 +48,7 @@ type SystemVitalLog struct {
 	DiskUsagePercent float64
 	NetworkRxBytes   uint64
 	NetworkTxBytes   uint64
+	GPULoad          float64
 }
 
 // DockerOperation tracks Docker operation state and progress.

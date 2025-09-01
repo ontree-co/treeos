@@ -155,6 +155,7 @@ func createTables() error {
 		`ALTER TABLE system_setup ADD COLUMN uptime_kuma_base_url TEXT`,
 		`ALTER TABLE system_vital_logs ADD COLUMN network_rx_bytes INTEGER DEFAULT 0`,
 		`ALTER TABLE system_vital_logs ADD COLUMN network_tx_bytes INTEGER DEFAULT 0`,
+		`ALTER TABLE system_vital_logs ADD COLUMN gpu_load REAL DEFAULT 0`,
 	}
 
 	for _, query := range alterQueries {
