@@ -17,8 +17,8 @@ type SystemStatusResponse struct {
 	MemoryPercent    float64   `json:"memory_percent"`
 	DiskUsagePercent float64   `json:"disk_usage_percent"`
 	GPULoad          float64   `json:"gpu_load"`
-	NetworkRxBytes   uint64    `json:"network_rx_bytes"`
-	NetworkTxBytes   uint64    `json:"network_tx_bytes"`
+	UploadRate       uint64    `json:"upload_rate"`   // bytes per second
+	DownloadRate     uint64    `json:"download_rate"` // bytes per second
 }
 
 // handleAPIStatusLatest handles GET /api/v1/status/latest
@@ -50,8 +50,8 @@ func (s *Server) handleAPIStatusLatest(w http.ResponseWriter, r *http.Request) {
 		MemoryPercent:    latest.MemoryPercent,
 		DiskUsagePercent: latest.DiskUsagePercent,
 		GPULoad:          latest.GPULoad,
-		NetworkRxBytes:   latest.NetworkRxBytes,
-		NetworkTxBytes:   latest.NetworkTxBytes,
+		UploadRate:       latest.UploadRate,
+		DownloadRate:     latest.DownloadRate,
 	}
 
 	// Return JSON response
@@ -123,8 +123,8 @@ func (s *Server) handleAPIStatusHistory(w http.ResponseWriter, r *http.Request) 
 			MemoryPercent:    m.MemoryPercent,
 			DiskUsagePercent: m.DiskUsagePercent,
 			GPULoad:          m.GPULoad,
-			NetworkRxBytes:   m.NetworkRxBytes,
-			NetworkTxBytes:   m.NetworkTxBytes,
+			UploadRate:       m.UploadRate,
+			DownloadRate:     m.DownloadRate,
 		})
 	}
 

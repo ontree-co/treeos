@@ -541,8 +541,8 @@ func (s *Server) storeVitals() {
 		vitals.MemPercent,
 		vitals.DiskPercent,
 		vitals.GPULoad,
-		vitals.NetworkRxBytes,
-		vitals.NetworkTxBytes,
+		vitals.UploadRate,
+		vitals.DownloadRate,
 	)
 	if err != nil {
 		log.Printf("Failed to store system vitals: %v", err)
@@ -550,9 +550,9 @@ func (s *Server) storeVitals() {
 	}
 
 	// Log successful storage for debugging (can be removed in production)
-	log.Printf("Stored system vitals: CPU=%.1f%%, Mem=%.1f%%, Disk=%.1f%%, GPU=%.1f%%, RX=%d, TX=%d",
+	log.Printf("Stored system vitals: CPU=%.1f%%, Mem=%.1f%%, Disk=%.1f%%, GPU=%.1f%%, Upload=%d B/s, Download=%d B/s",
 		vitals.CPUPercent, vitals.MemPercent, vitals.DiskPercent, vitals.GPULoad,
-		vitals.NetworkRxBytes, vitals.NetworkTxBytes)
+		vitals.UploadRate, vitals.DownloadRate)
 }
 
 // startRealtimeMetricsCollection collects CPU and network metrics every second for real-time display
@@ -574,8 +574,9 @@ func (s *Server) startRealtimeMetricsCollection() {
 		// Store CPU metric
 		s.realtimeMetrics.AddCPU(vitals.CPUPercent)
 
-		// Store network metrics
-		s.realtimeMetrics.AddNetwork(vitals.NetworkRxBytes, vitals.NetworkTxBytes)
+		// Store network metrics using cumulative counters for realtime rate calculation
+		rxBytes, txBytes := system.GetNetworkCounters()
+		s.realtimeMetrics.AddNetwork(rxBytes, txBytes)
 	}
 }
 

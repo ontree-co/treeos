@@ -363,17 +363,9 @@ func (s *Server) handleMonitoringNetworkPartial(w http.ResponseWriter, r *http.R
 				// Calculate bytes per second, handling counter resets
 				var rxRate, txRate float64
 
-				if latest.NetworkRxBytes >= previous.NetworkRxBytes {
-					rxRate = float64(latest.NetworkRxBytes-previous.NetworkRxBytes) / timeDiff
-				} else {
-					rxRate = 0
-				}
-
-				if latest.NetworkTxBytes >= previous.NetworkTxBytes {
-					txRate = float64(latest.NetworkTxBytes-previous.NetworkTxBytes) / timeDiff
-				} else {
-					txRate = 0
-				}
+				// We now store rates directly in bytes per second
+				rxRate = float64(latest.DownloadRate)
+				txRate = float64(latest.UploadRate)
 
 				// Format rates
 				downloadRate = formatNetworkRate(rxRate)
@@ -421,12 +413,9 @@ func (s *Server) handleMonitoringNetworkPartial(w http.ResponseWriter, r *http.R
 					// Calculate combined rate in MB/s, handling counter resets
 					var rxRate, txRate float64
 
-					if curr.NetworkRxBytes >= prev.NetworkRxBytes {
-						rxRate = float64(curr.NetworkRxBytes-prev.NetworkRxBytes) / timeDiff / 1024 / 1024
-					}
-					if curr.NetworkTxBytes >= prev.NetworkTxBytes {
-						txRate = float64(curr.NetworkTxBytes-prev.NetworkTxBytes) / timeDiff / 1024 / 1024
-					}
+					// We now store rates directly in bytes per second
+					rxRate = float64(curr.DownloadRate) / 1024 / 1024 // Convert to MB/s
+					txRate = float64(curr.UploadRate) / 1024 / 1024   // Convert to MB/s
 
 					totalRate := rxRate + txRate
 
@@ -629,9 +618,9 @@ func (s *Server) handleMonitoringCharts(w http.ResponseWriter, r *http.Request) 
 
 					timeDiff := curr.Timestamp.Sub(prev.Timestamp).Seconds()
 					if timeDiff > 0 && timeDiff < 120 { // Only use points within 2 minutes
-						// Calculate combined rate in MB/s
-						rxRate := float64(curr.NetworkRxBytes-prev.NetworkRxBytes) / timeDiff / 1024 / 1024
-						txRate := float64(curr.NetworkTxBytes-prev.NetworkTxBytes) / timeDiff / 1024 / 1024
+						// We now store rates directly in bytes per second
+						rxRate := float64(curr.DownloadRate) / 1024 / 1024 // Convert to MB/s
+						txRate := float64(curr.UploadRate) / 1024 / 1024   // Convert to MB/s
 						totalRate := rxRate + txRate
 
 						chartData.Points = append(chartData.Points, charts.DataPoint{

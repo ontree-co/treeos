@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/shirou/gopsutil/v3/cpu"
@@ -14,14 +15,24 @@ import (
 	"github.com/shirou/gopsutil/v3/net"
 )
 
+// Variables for tracking network rate calculation
+var (
+	lastNetworkCheck     time.Time
+	lastRxBytes          uint64
+	lastTxBytes          uint64
+	networkMutex         sync.Mutex
+	lastUploadRate       uint64
+	lastDownloadRate     uint64
+)
+
 // Vitals represents system resource usage information
 type Vitals struct {
-	CPUPercent     float64
-	MemPercent     float64
-	DiskPercent    float64
-	NetworkRxBytes uint64 // Total bytes received across all interfaces
-	NetworkTxBytes uint64 // Total bytes transmitted across all interfaces
-	GPULoad        float64 // GPU utilization percentage (0-100)
+	CPUPercent   float64
+	MemPercent   float64
+	DiskPercent  float64
+	UploadRate   uint64  // Bytes per second uploaded
+	DownloadRate uint64  // Bytes per second downloaded
+	GPULoad      float64 // GPU utilization percentage (0-100)
 }
 
 // GetVitals retrieves current system resource usage information
@@ -46,29 +57,19 @@ func GetVitals() (*Vitals, error) {
 		return nil, fmt.Errorf("failed to get disk usage: %w", err)
 	}
 
-	// Get network statistics - sum across all interfaces
-	netStats, err := net.IOCounters(false) // false = sum all interfaces
-	if err != nil {
-		return nil, fmt.Errorf("failed to get network stats: %w", err)
-	}
-
-	var rxBytes, txBytes uint64
-	if len(netStats) > 0 {
-		// When pernic=false, gopsutil returns a single entry with summed stats
-		rxBytes = netStats[0].BytesRecv
-		txBytes = netStats[0].BytesSent
-	}
+	// Calculate network rates
+	uploadRate, downloadRate := getNetworkRates()
 
 	// Get GPU load
 	gpuLoad := getGPULoad()
 
 	return &Vitals{
-		CPUPercent:     cpuUsage,
-		MemPercent:     memStat.UsedPercent,
-		DiskPercent:    diskStat.UsedPercent,
-		NetworkRxBytes: rxBytes,
-		NetworkTxBytes: txBytes,
-		GPULoad:        gpuLoad,
+		CPUPercent:   cpuUsage,
+		MemPercent:   memStat.UsedPercent,
+		DiskPercent:  diskStat.UsedPercent,
+		UploadRate:   uploadRate,
+		DownloadRate: downloadRate,
+		GPULoad:      gpuLoad,
 	}, nil
 }
 
@@ -123,4 +124,78 @@ func getAMDGPULoad() float64 {
 	}
 
 	return -1
+}
+
+// getNetworkRates calculates the upload and download rates in bytes per second
+func getNetworkRates() (uint64, uint64) {
+	networkMutex.Lock()
+	defer networkMutex.Unlock()
+
+	// Get current network statistics
+	netStats, err := net.IOCounters(false) // false = sum all interfaces
+	if err != nil || len(netStats) == 0 {
+		// If we can't get stats, return the last known rates
+		return lastUploadRate, lastDownloadRate
+	}
+
+	currentRxBytes := netStats[0].BytesRecv
+	currentTxBytes := netStats[0].BytesSent
+	currentTime := time.Now()
+
+	// If this is the first call or it's been too long, just store values
+	if lastNetworkCheck.IsZero() || currentTime.Sub(lastNetworkCheck) > 5*time.Minute {
+		lastRxBytes = currentRxBytes
+		lastTxBytes = currentTxBytes
+		lastNetworkCheck = currentTime
+		lastUploadRate = 0
+		lastDownloadRate = 0
+		return 0, 0
+	}
+
+	// Calculate time elapsed in seconds
+	timeDelta := currentTime.Sub(lastNetworkCheck).Seconds()
+	if timeDelta <= 0 {
+		// No time has passed, return last known rates
+		return lastUploadRate, lastDownloadRate
+	}
+
+	// Calculate rates (bytes per second)
+	var uploadRate, downloadRate uint64
+
+	// Handle counter overflow (counters can reset on reboot)
+	if currentRxBytes >= lastRxBytes {
+		downloadRate = uint64(float64(currentRxBytes-lastRxBytes) / timeDelta)
+	}
+	if currentTxBytes >= lastTxBytes {
+		uploadRate = uint64(float64(currentTxBytes-lastTxBytes) / timeDelta)
+	}
+
+	// Update last values for next calculation
+	lastRxBytes = currentRxBytes
+	lastTxBytes = currentTxBytes
+	lastNetworkCheck = currentTime
+	lastUploadRate = uploadRate
+	lastDownloadRate = downloadRate
+
+	return uploadRate, downloadRate
+}
+
+// GetNetworkCounters returns the current cumulative network byte counters
+// This is used for realtime metrics that calculate rates on-the-fly
+func GetNetworkCounters() (uint64, uint64) {
+	networkMutex.Lock()
+	defer networkMutex.Unlock()
+	
+	// If we haven't initialized yet, get current values
+	if lastNetworkCheck.IsZero() {
+		netStats, err := net.IOCounters(false)
+		if err != nil || len(netStats) == 0 {
+			return 0, 0
+		}
+		lastRxBytes = netStats[0].BytesRecv
+		lastTxBytes = netStats[0].BytesSent
+		lastNetworkCheck = time.Now()
+	}
+	
+	return lastRxBytes, lastTxBytes
 }

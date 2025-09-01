@@ -153,8 +153,8 @@ func createTables() error {
 		`ALTER TABLE system_setup ADD COLUMN agent_llm_api_url TEXT`,
 		`ALTER TABLE system_setup ADD COLUMN agent_llm_model TEXT`,
 		`ALTER TABLE system_setup ADD COLUMN uptime_kuma_base_url TEXT`,
-		`ALTER TABLE system_vital_logs ADD COLUMN network_rx_bytes INTEGER DEFAULT 0`,
-		`ALTER TABLE system_vital_logs ADD COLUMN network_tx_bytes INTEGER DEFAULT 0`,
+		`ALTER TABLE system_vital_logs ADD COLUMN upload_rate INTEGER DEFAULT 0`,
+		`ALTER TABLE system_vital_logs ADD COLUMN download_rate INTEGER DEFAULT 0`,
 		`ALTER TABLE system_vital_logs ADD COLUMN gpu_load REAL DEFAULT 0`,
 	}
 
