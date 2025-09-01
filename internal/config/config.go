@@ -27,8 +27,11 @@ type Config struct {
 	PostHogHost   string `toml:"posthog_host"`
 
 	// Caddy integration configuration
-	PublicBaseDomain    string `toml:"public_base_domain"`
-	TailscaleBaseDomain string `toml:"tailscale_base_domain"`
+	PublicBaseDomain string `toml:"public_base_domain"`
+
+	// Tailscale integration configuration
+	TailscaleAuthKey string `toml:"tailscale_auth_key"`
+	TailscaleTags    string `toml:"tailscale_tags"` // e.g., "tag:ontree-apps"
 
 	// Monitoring feature flag
 	MonitoringEnabled bool `toml:"monitoring_enabled"`
@@ -106,8 +109,12 @@ func Load() (*Config, error) {
 		config.PublicBaseDomain = publicBaseDomain
 	}
 
-	if tailscaleBaseDomain := os.Getenv("TAILSCALE_BASE_DOMAIN"); tailscaleBaseDomain != "" {
-		config.TailscaleBaseDomain = tailscaleBaseDomain
+	if tailscaleAuthKey := os.Getenv("TAILSCALE_AUTH_KEY"); tailscaleAuthKey != "" {
+		config.TailscaleAuthKey = tailscaleAuthKey
+	}
+
+	if tailscaleTags := os.Getenv("TAILSCALE_TAGS"); tailscaleTags != "" {
+		config.TailscaleTags = tailscaleTags
 	}
 
 	if monitoringEnabled := os.Getenv("MONITORING_ENABLED"); monitoringEnabled != "" {

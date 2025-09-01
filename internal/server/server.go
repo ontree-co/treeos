@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"html/template"
 	"log"
+	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -547,10 +549,19 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		} else {
 			// For each app, enrich with additional status information
 			for _, app := range dockerApps {
+				// Create container info for each service
+				type ContainerInfo struct {
+					Name   string
+					Status string
+					State  string
+					Uptime string
+				}
+				
 				// Create an enriched app struct with additional status
 				enrichedApp := struct {
 					*docker.App
 					ServiceCount int
+					Containers   []ContainerInfo
 				}{
 					App: app,
 				}
@@ -568,21 +579,33 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 						containers, err := s.composeSvc.PS(ctx, opts)
 						if err == nil && len(containers) > 0 {
 							// Calculate service count and aggregate status
-							services := make([]ServiceStatusDetail, 0)
+							containerInfos := make([]ContainerInfo, 0)
 							for _, container := range containers {
 								serviceName := extractServiceName(container.Name, app.Name)
 								status := mapContainerState(container.State)
-								services = append(services, ServiceStatusDetail{
+								
+								// Extract uptime from Status field
+								uptime := ""
+								if container.State == "running" && container.Status != "" {
+									// Status typically contains "Up 2 hours" or similar
+									uptime = container.Status
+								}
+								
+								containerInfos = append(containerInfos, ContainerInfo{
 									Name:   serviceName,
 									Status: status,
+									State:  container.State,
+									Uptime: uptime,
 								})
 							}
 
-							enrichedApp.ServiceCount = len(services)
+							enrichedApp.ServiceCount = len(containerInfos)
+							enrichedApp.Containers = containerInfos
 							// Status is already in app.Status from docker.ScanApps
 						} else {
 							// No containers or error
 							enrichedApp.ServiceCount = 0
+							enrichedApp.Containers = []ContainerInfo{}
 						}
 					}
 				}
@@ -592,12 +615,27 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Get system information
+	hostname, err := os.Hostname()
+	if err != nil {
+		hostname = "Unknown"
+	}
+	
+	// Get local IP
+	localIP := getLocalIP()
+	
+	// Get Tailscale IP
+	tailscaleIP := getTailscaleIP()
+
 	// Prepare template data
 	data := s.baseTemplateData(user)
 	data["Apps"] = apps
 	data["AppsDir"] = s.config.AppsDir
 	data["Messages"] = nil
 	data["CSRFToken"] = "" // No CSRF yet
+	data["Hostname"] = hostname
+	data["LocalIP"] = localIP
+	data["TailscaleIP"] = tailscaleIP
 
 	// Render template
 	tmpl, ok := s.templates["dashboard"]
@@ -689,13 +727,13 @@ func (s *Server) loadConfigFromDatabase() error {
 	// Query database for all configuration
 	var setup database.SystemSetup
 	err := s.db.QueryRow(`
-		SELECT id, public_base_domain, tailscale_base_domain,
+		SELECT id, public_base_domain, tailscale_auth_key, tailscale_tags,
 		       agent_enabled, agent_check_interval, agent_llm_api_key,
 		       agent_llm_api_url, agent_llm_model, agent_config_dir,
 		       uptime_kuma_base_url
 		FROM system_setup 
 		WHERE id = 1
-	`).Scan(&setup.ID, &setup.PublicBaseDomain, &setup.TailscaleBaseDomain,
+	`).Scan(&setup.ID, &setup.PublicBaseDomain, &setup.TailscaleAuthKey, &setup.TailscaleTags,
 		&setup.AgentEnabled, &setup.AgentCheckInterval, &setup.AgentLLMAPIKey,
 		&setup.AgentLLMAPIURL, &setup.AgentLLMModel, &setup.AgentConfigDir,
 		&setup.UptimeKumaBaseURL)
@@ -712,8 +750,11 @@ func (s *Server) loadConfigFromDatabase() error {
 	if os.Getenv("PUBLIC_BASE_DOMAIN") == "" && setup.PublicBaseDomain.Valid {
 		s.config.PublicBaseDomain = setup.PublicBaseDomain.String
 	}
-	if os.Getenv("TAILSCALE_BASE_DOMAIN") == "" && setup.TailscaleBaseDomain.Valid {
-		s.config.TailscaleBaseDomain = setup.TailscaleBaseDomain.String
+	if os.Getenv("TAILSCALE_AUTH_KEY") == "" && setup.TailscaleAuthKey.Valid {
+		s.config.TailscaleAuthKey = setup.TailscaleAuthKey.String
+	}
+	if os.Getenv("TAILSCALE_TAGS") == "" && setup.TailscaleTags.Valid {
+		s.config.TailscaleTags = setup.TailscaleTags.String
 	}
 
 	// Update agent config if not overridden by environment
@@ -844,7 +885,6 @@ func (s *Server) syncExposedApps() {
 
 	// Get base domains from config
 	publicDomain := s.config.PublicBaseDomain
-	tailscaleDomain := s.config.TailscaleBaseDomain
 
 	for _, app := range apps {
 		// Read metadata from compose file
@@ -862,8 +902,8 @@ func (s *Server) syncExposedApps() {
 		// Generate ID for Caddy route
 		appID := fmt.Sprintf("app-%s", app.Name)
 
-		// Create route config
-		routeConfig := caddy.CreateRouteConfig(appID, metadata.Subdomain, metadata.HostPort, publicDomain, tailscaleDomain)
+		// Create route config (only for public domain now, Tailscale handled separately)
+		routeConfig := caddy.CreateRouteConfig(appID, metadata.Subdomain, metadata.HostPort, publicDomain, "")
 
 		// Add route to Caddy
 		err = s.caddyClient.AddOrUpdateRoute(routeConfig)
@@ -887,6 +927,10 @@ func (s *Server) routeApps(w http.ResponseWriter, r *http.Request) {
 	// Route based on the path pattern
 	if path == "/apps/create" {
 		s.handleAppCreate(w, r)
+	} else if strings.HasSuffix(path, "/expose-tailscale") {
+		s.handleAppExposeTailscale(w, r)
+	} else if strings.HasSuffix(path, "/unexpose-tailscale") {
+		s.handleAppUnexposeTailscale(w, r)
 	} else if strings.HasSuffix(path, "/expose") {
 		s.handleAppExpose(w, r)
 	} else if strings.HasSuffix(path, "/unexpose") {
@@ -969,4 +1013,54 @@ func (s *Server) handleVersion(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
+}
+
+// getLocalIP returns the primary local IP address
+func getLocalIP() string {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return "Unknown"
+	}
+	
+	for _, addr := range addrs {
+		if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				ip := ipnet.IP.String()
+				// Skip Docker bridge networks and Tailscale IP
+				if !strings.HasPrefix(ip, "172.") && !strings.HasPrefix(ip, "100.") {
+					return ip
+				}
+			}
+		}
+	}
+	
+	return "Unknown"
+}
+
+// getTailscaleIP returns the Tailscale IP address if available
+func getTailscaleIP() string {
+	// Try to get Tailscale IP using the tailscale command
+	cmd := exec.Command("tailscale", "ip", "-4")
+	output, err := cmd.Output()
+	if err != nil {
+		// If tailscale command fails, try to find 100.x.x.x IP from interfaces
+		addrs, err := net.InterfaceAddrs()
+		if err != nil {
+			return "Not connected"
+		}
+		
+		for _, addr := range addrs {
+			if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+				if ipnet.IP.To4() != nil {
+					ip := ipnet.IP.String()
+					if strings.HasPrefix(ip, "100.") {
+						return ip
+					}
+				}
+			}
+		}
+		return "Not connected"
+	}
+	
+	return strings.TrimSpace(string(output))
 }

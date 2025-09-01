@@ -44,11 +44,12 @@ type AppStatusResponse struct {
 
 // ServiceStatusDetail represents status detail for a single service
 type ServiceStatusDetail struct {
-	Name   string `json:"name"`
-	Image  string `json:"image"`
-	Status string `json:"status"`
-	State  string `json:"state,omitempty"`
-	Error  string `json:"error,omitempty"`
+	Name   string   `json:"name"`
+	Image  string   `json:"image"`
+	Status string   `json:"status"`
+	State  string   `json:"state,omitempty"`
+	Ports  []string `json:"ports,omitempty"`
+	Error  string   `json:"error,omitempty"`
 }
 
 // handleCreateApp handles POST /api/apps
@@ -565,6 +566,24 @@ func (s *Server) handleAPIAppStatus(w http.ResponseWriter, r *http.Request) {
 		// Add health status if available
 		if container.Health != "" && container.Health != "none" {
 			service.State = fmt.Sprintf("%s (health: %s)", container.State, container.Health)
+		}
+
+		// Add port information
+		if container.Publishers != nil && len(container.Publishers) > 0 {
+			// Use a map to track unique port mappings (ignoring IP version)
+			portMap := make(map[string]bool)
+			for _, pub := range container.Publishers {
+				if pub.PublishedPort > 0 && pub.TargetPort > 0 {
+					portStr := fmt.Sprintf("%d:%d", pub.PublishedPort, pub.TargetPort)
+					portMap[portStr] = true
+				}
+			}
+			// Convert map to sorted slice
+			ports := make([]string, 0, len(portMap))
+			for port := range portMap {
+				ports = append(ports, port)
+			}
+			service.Ports = ports
 		}
 
 		services = append(services, service)

@@ -70,11 +70,10 @@ func TestHandleDashboard_DisplaysApps(t *testing.T) {
 
 	// Check for specific app names that we know exist
 	expectedApps := []string{
-		"nginx-test-tuesday",
 		"openwebui-amd",
 		"owui-amd-tuesday",
-		"test-duplicate-1754834825708",
 		"testnginx",
+		"uptime-kuma",
 	}
 
 	missingApps := []string{}

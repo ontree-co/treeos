@@ -29,7 +29,8 @@ type SystemSetup struct {
 	NodeName            string
 	NodeDescription     sql.NullString
 	PublicBaseDomain    sql.NullString
-	TailscaleBaseDomain sql.NullString
+	TailscaleAuthKey sql.NullString
+	TailscaleTags    sql.NullString
 	AgentEnabled        sql.NullInt64
 	AgentCheckInterval  sql.NullString
 	AgentLLMAPIKey      sql.NullString

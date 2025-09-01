@@ -39,6 +39,16 @@
       "filename": "openwebui-amd.yml",
       "port": "4000",
       "documentation_url": "https://github.com/open-webui/open-webui"
+    },
+    {
+      "id": "uptime-kuma",
+      "name": "Uptime Kuma",
+      "description": "A fancy self-hosted monitoring tool for tracking the uptime and performance of your websites and applications.",
+      "category": "Monitoring",
+      "icon": "bi-heart-pulse",
+      "filename": "uptime-kuma.yml",
+      "port": "4001",
+      "documentation_url": "https://github.com/louislam/uptime-kuma"
     }
   ]
 }

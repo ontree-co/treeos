@@ -55,25 +55,49 @@
                             {{end}}
                         </div>
                         
+                        <div class="mb-3">
+                            <label for="tailscale_auth_key" class="form-label">
+                                Tailscale Auth Key
+                                <span class="badge bg-secondary">Required for Tailscale</span>
+                            </label>
+                            <input type="password" 
+                                   class="form-control" 
+                                   id="tailscale_auth_key" 
+                                   name="tailscale_auth_key"
+                                   placeholder="tskey-auth-..."
+                                   value="{{.TailscaleAuthKey}}">
+                            <small class="form-text text-muted">
+                                Generate an auth key from Tailscale Admin Console with ephemeral and reusable options.
+                            </small>
+                            {{if .ConfigTailscaleAuthKey}}
+                                <div class="alert alert-warning mt-2 mb-0">
+                                    <small>
+                                        <i>⚠️</i> Auth key is set via environment variable
+                                    </small>
+                                </div>
+                            {{end}}
+                        </div>
+
                         <div class="mb-4">
-                            <label for="tailscale_base_domain" class="form-label">
-                                Tailscale Base Domain
+                            <label for="tailscale_tags" class="form-label">
+                                Tailscale Tags
                                 <span class="badge bg-secondary">Optional</span>
                             </label>
                             <input type="text" 
                                    class="form-control" 
-                                   id="tailscale_base_domain" 
-                                   name="tailscale_base_domain"
-                                   placeholder="myserver.tailnet.ts.net"
-                                   value="{{.TailscaleBaseDomain}}"
-                                   {{if not .PlatformSupportsCaddy}}disabled{{end}}>
+                                   id="tailscale_tags" 
+                                   name="tailscale_tags"
+                                   placeholder="tag:ontree-apps"
+                                   value="{{.TailscaleTags}}"
+                                   pattern="tag:[a-z0-9-]+"
+                                   title="Must start with 'tag:' followed by lowercase letters, numbers, and hyphens">
                             <small class="form-text text-muted">
-                                Your Tailscale domain for private access. Apps will be accessible at subdomain.myserver.tailnet.ts.net.
+                                Tag to apply to all exposed apps for ACL management (e.g., tag:ontree-apps).
                             </small>
-                            {{if and .ConfigTailscaleDomain (ne .ConfigTailscaleDomain .TailscaleBaseDomain)}}
+                            {{if and .ConfigTailscaleTags (ne .ConfigTailscaleTags .TailscaleTags)}}
                                 <div class="alert alert-warning mt-2 mb-0">
                                     <small>
-                                        <i>⚠️</i> Currently using <code>{{.ConfigTailscaleDomain}}</code> from environment variable
+                                        <i>⚠️</i> Currently using <code>{{.ConfigTailscaleTags}}</code> from environment variable
                                     </small>
                                 </div>
                             {{end}}
@@ -109,7 +133,8 @@
                 </p>
                 <ul class="font-monospace small">
                     <li><code>PUBLIC_BASE_DOMAIN</code> - Sets the public base domain</li>
-                    <li><code>TAILSCALE_BASE_DOMAIN</code> - Sets the Tailscale base domain</li>
+                    <li><code>TAILSCALE_AUTH_KEY</code> - Sets the Tailscale auth key</li>
+                    <li><code>TAILSCALE_TAGS</code> - Sets the Tailscale tags for apps</li>
                 </ul>
             </div>
         </div>

@@ -81,7 +81,8 @@ func createTables() error {
 			node_name TEXT DEFAULT 'OnTree Node',
 			node_description TEXT,
 			public_base_domain TEXT,
-			tailscale_base_domain TEXT,
+			tailscale_auth_key TEXT,
+			tailscale_tags TEXT DEFAULT 'tag:ontree-apps',
 			agent_enabled INTEGER DEFAULT 0,
 			agent_check_interval TEXT DEFAULT '5m',
 			agent_llm_api_key TEXT,
@@ -145,7 +146,8 @@ func createTables() error {
 	// Add domain columns to existing system_setup table (safe to run multiple times)
 	alterQueries := []string{
 		`ALTER TABLE system_setup ADD COLUMN public_base_domain TEXT`,
-		`ALTER TABLE system_setup ADD COLUMN tailscale_base_domain TEXT`,
+		`ALTER TABLE system_setup ADD COLUMN tailscale_auth_key TEXT`,
+		`ALTER TABLE system_setup ADD COLUMN tailscale_tags TEXT DEFAULT 'tag:ontree-apps'`,
 		`ALTER TABLE system_setup ADD COLUMN agent_enabled INTEGER DEFAULT 0`,
 		`ALTER TABLE system_setup ADD COLUMN agent_check_interval TEXT DEFAULT '5m'`,
 		`ALTER TABLE system_setup ADD COLUMN agent_llm_api_key TEXT`,

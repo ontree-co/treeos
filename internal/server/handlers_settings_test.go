@@ -137,16 +137,20 @@ func TestHandleSettingsUpdate(t *testing.T) {
 		{
 			name: "Update domain settings",
 			formData: url.Values{
-				"public_base_domain":    {"example.com"},
-				"tailscale_base_domain": {"example.tailnet.ts.net"},
+				"public_base_domain": {"example.com"},
+				"tailscale_auth_key": {"tskey-auth-test123"},
+				"tailscale_tags":     {"tag:ontree-apps"},
 			},
 			expectedStatus: http.StatusFound, // Redirect after save
 			checkConfig: func(t *testing.T, s *Server) {
 				if s.config.PublicBaseDomain != "example.com" {
 					t.Errorf("Expected public domain to be example.com, got %s", s.config.PublicBaseDomain)
 				}
-				if s.config.TailscaleBaseDomain != "example.tailnet.ts.net" {
-					t.Errorf("Expected tailscale domain to be example.tailnet.ts.net, got %s", s.config.TailscaleBaseDomain)
+				if s.config.TailscaleAuthKey != "tskey-auth-test123" {
+					t.Errorf("Expected tailscale auth key to be set")
+				}
+				if s.config.TailscaleTags != "tag:ontree-apps" {
+					t.Errorf("Expected tailscale tags to be tag:ontree-apps, got %s", s.config.TailscaleTags)
 				}
 			},
 		},

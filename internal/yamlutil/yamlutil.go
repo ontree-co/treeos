@@ -81,10 +81,12 @@ func getFileLock(path string) *sync.Mutex {
 
 // OnTreeMetadata represents the OnTree-specific metadata stored in docker-compose.yml
 type OnTreeMetadata struct {
-	Subdomain string `yaml:"subdomain,omitempty"`
-	HostPort  int    `yaml:"host_port,omitempty"`
-	IsExposed bool   `yaml:"is_exposed"`
-	Emoji     string `yaml:"emoji,omitempty"`
+	Subdomain         string `yaml:"subdomain,omitempty"`          // For Caddy/public exposure
+	HostPort          int    `yaml:"host_port,omitempty"`          // For Caddy/public exposure
+	IsExposed         bool   `yaml:"is_exposed"`                   // For Caddy/public exposure
+	TailscaleHostname string `yaml:"tailscale_hostname,omitempty"` // e.g., "jellyfin"
+	TailscaleExposed  bool   `yaml:"tailscale_exposed"`            // Separate from public exposure
+	Emoji             string `yaml:"emoji,omitempty"`
 }
 
 // ComposeFile represents a docker-compose.yml file structure
@@ -209,23 +211,58 @@ func updateYAMLNode(node *yaml.Node, compose *ComposeFile) error {
 		return fmt.Errorf("expected mapping node, got %v", node.Kind)
 	}
 
-	// Update or add x-ontree field
-	updated := false
+	// Update services field
+	servicesUpdated := false
 	for i := 0; i < len(node.Content); i += 2 {
 		keyNode := node.Content[i]
-		if keyNode.Value == "x-ontree" {
+		if keyNode.Value == "services" {
+			// Update existing services
+			valueNode := node.Content[i+1]
+			if err := valueNode.Encode(compose.Services); err != nil {
+				return fmt.Errorf("failed to encode services: %w", err)
+			}
+			servicesUpdated = true
+		} else if keyNode.Value == "x-ontree" {
 			// Update existing x-ontree
 			valueNode := node.Content[i+1]
 			if err := valueNode.Encode(compose.XOnTree); err != nil {
 				return fmt.Errorf("failed to encode x-ontree: %w", err)
 			}
-			updated = true
+		}
+	}
+
+	// If services wasn't found and we have services, add it
+	if !servicesUpdated && compose.Services != nil {
+		keyNode := &yaml.Node{Kind: yaml.ScalarNode, Value: "services"}
+		valueNode := &yaml.Node{}
+		if err := valueNode.Encode(compose.Services); err != nil {
+			return fmt.Errorf("failed to encode services: %w", err)
+		}
+		
+		// Add services after version
+		insertIndex := len(node.Content)
+		for i := 0; i < len(node.Content); i += 2 {
+			if node.Content[i].Value == "version" {
+				insertIndex = i + 2
+				break
+			}
+		}
+		
+		node.Content = append(node.Content[:insertIndex],
+			append([]*yaml.Node{keyNode, valueNode}, node.Content[insertIndex:]...)...)
+	}
+
+	// Check if x-ontree needs to be added
+	xontreeFound := false
+	for i := 0; i < len(node.Content); i += 2 {
+		if node.Content[i].Value == "x-ontree" {
+			xontreeFound = true
 			break
 		}
 	}
 
 	// If x-ontree wasn't found and we have metadata, add it
-	if !updated && compose.XOnTree != nil {
+	if !xontreeFound && compose.XOnTree != nil {
 		keyNode := &yaml.Node{Kind: yaml.ScalarNode, Value: "x-ontree"}
 		valueNode := &yaml.Node{}
 		if err := valueNode.Encode(compose.XOnTree); err != nil {

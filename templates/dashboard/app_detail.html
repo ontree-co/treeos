@@ -280,395 +280,6 @@
     </div>
 </div>
 
-<!-- Container Status -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title mb-3">Application Status</h5>
-                <div class="d-flex align-items-center">
-                    <span class="me-3">Status:</span>
-                    {{if eq .App.Status "running"}}
-                        <span class="badge bg-success">Running</span>
-                    {{else if eq .App.Status "partial"}}
-                        <span class="badge bg-warning">Partial</span>
-                    {{else if eq .App.Status "exited"}}
-                        <span class="badge bg-warning">Stopped</span>
-                    {{else if eq .App.Status "stopped"}}
-                        <span class="badge bg-secondary">Stopped</span>
-                    {{else if eq .App.Status "not_created"}}
-                        <span class="badge bg-secondary">Not Created</span>
-                    {{else if eq .App.Status "error"}}
-                        <span class="badge bg-danger">Error</span>
-                    {{else}}
-                        <span class="badge bg-info">{{.App.Status}}</span>
-                    {{end}}
-                    {{if .AppStatus}}
-                        <span class="ms-3 text-muted">{{len .AppStatus.Services}} Service{{if ne (len .AppStatus.Services) 1}}s{{end}}</span>
-                    {{else if .ContainerInfo.name}}
-                        <span class="ms-3 text-muted">Container: <code>{{.ContainerInfo.name}}</code></span>
-                    {{end}}
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Services Table -->
-{{if .AppStatus}}
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Services</h5>
-            </div>
-            <div class="card-body">
-                {{if .AppStatus}}
-                    {{if .AppStatus.Services}}
-                    <div class="table-responsive">
-                        <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Service Name</th>
-                                <th>Image</th>
-                                <th>Status</th>
-                                <th>Updates</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {{range .AppStatus.Services}}
-                            <tr>
-                                <td><strong>{{.Name}}</strong></td>
-                                <td>
-                                    <code>{{.Image}}</code>
-                                </td>
-                                <td>
-                                    {{if eq .Status "running"}}
-                                        <span class="badge bg-success">Running</span>
-                                    {{else if eq .Status "stopped"}}
-                                        <span class="badge bg-secondary">Stopped</span>
-                                    {{else}}
-                                        <span class="badge bg-warning">{{.Status}}</span>
-                                    {{end}}
-                                    {{if .State}}
-                                        <small class="text-muted d-block">{{.State}}</small>
-                                    {{end}}
-                                </td>
-                                <td>
-                                    <div id="update-status-{{.Name}}">
-                                        <button type="button" 
-                                                class="btn btn-sm btn-outline-primary"
-                                                hx-get="/apps/{{$.App.Name}}/check-update?service={{.Name}}"
-                                                hx-target="#update-status-{{.Name}}"
-                                                hx-indicator="#update-spinner-{{.Name}}">
-                                            <i>🔍</i> Check
-                                        </button>
-                                        <span id="update-spinner-{{.Name}}" class="htmx-indicator spinner-border spinner-border-sm ms-2" role="status">
-                                            <span class="visually-hidden">Checking...</span>
-                                        </span>
-                                    </div>
-                                </td>
-                            </tr>
-                            {{end}}
-                        </tbody>
-                    </table>
-                </div>
-                {{else}}
-                <p class="text-muted mb-0">No services found.</p>
-                {{end}}
-            </div>
-        </div>
-    </div>
-</div>
-{{end}}
-
-<!-- Container Controls -->
-<div class="row mb-3">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title mb-3">Controls</h5>
-                <div class="btn-group" role="group">
-                    {{if or (eq .App.Status "running") (eq .App.Status "partial")}}
-                        <form method="post" action="/api/apps/{{.App.Name}}/stop" class="d-inline"
-                              onsubmit="event.preventDefault(); handleAppAction(this, 'stop');">
-                            <button type="submit" class="btn btn-warning btn-lg confirm-action" 
-                                    data-action="Stop"
-                                    data-confirm-text="Stop all services?">
-                                <i>⏹️</i> Stop
-                            </button>
-                        </form>
-                    {{else}}
-                        <form method="post" action="/api/apps/{{.App.Name}}/start" class="d-inline"
-                              onsubmit="event.preventDefault(); handleAppAction(this, 'start');">
-                            <button type="submit" class="btn btn-success btn-lg">
-                                <i>▶️</i> Start
-                            </button>
-                        </form>
-                    {{end}}
-                </div>
-                <div id="app-action-status" class="mt-3"></div>
-            </div>
-        </div>
-    </div>
-</div>
-
-
-<!-- Running Containers -->
-{{if or (eq .App.Status "running") (eq .App.Status "partial")}}
-<div class="row mb-3">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Running Containers</h5>
-            </div>
-            <div class="card-body" 
-                 hx-get="/apps/{{.App.Name}}/containers" 
-                 hx-trigger="load, every 5s"
-                 hx-swap="innerHTML">
-                <div class="text-muted">Loading container information...</div>
-            </div>
-        </div>
-    </div>
-</div>
-{{end}}
-
-<!-- Application Information -->
-<div class="row">
-    <div class="col-md-6 mb-4">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Application Information</h5>
-            </div>
-            <div class="card-body">
-                <table class="table table-sm">
-                    <tr>
-                        <th>Project Name:</th>
-                        <td><code>ontree-{{.App.Name}}</code></td>
-                    </tr>
-                    <tr>
-                        <th>Services:</th>
-                        <td>
-                            {{if .App.Services}}
-                                {{len .App.Services}} service{{if ne (len .App.Services) 1}}s{{end}}
-                                {{range $name, $service := .App.Services}}
-                                    <span class="badge bg-secondary ms-1">{{$name}}</span>
-                                {{end}}
-                            {{else}}
-                                <span class="text-muted">No services configured</span>
-                            {{end}}
-                        </td>
-                    </tr>
-                    <tr>
-                        <th>App Directory:</th>
-                        <td><code>{{.App.Path}}</code></td>
-                    </tr>
-                </table>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-6 mb-4">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Network & Ports</h5>
-            </div>
-            <div class="card-body">
-                {{$hasPorts := false}}
-                {{range $serviceName, $service := .App.Services}}
-                    {{if $service.Ports}}
-                        {{$hasPorts = true}}
-                    {{end}}
-                {{end}}
-                
-                {{if $hasPorts}}
-                    <table class="table table-sm">
-                        <thead>
-                            <tr>
-                                <th>Service</th>
-                                <th>Port Mapping</th>
-                                <th>Access</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {{range $serviceName, $service := .App.Services}}
-                                {{range $service.Ports}}
-                                <tr>
-                                    <td><span class="badge bg-secondary">{{$serviceName}}</span></td>
-                                    <td><code>{{.}}</code></td>
-                                    <td>
-                                        {{if eq $.App.Status "running"}}
-                                            <a href="#" onclick="openPort('{{.}}')" class="btn btn-sm btn-outline-primary">
-                                                Open
-                                            </a>
-                                        {{else}}
-                                            <span class="text-muted">Not running</span>
-                                        {{end}}
-                                    </td>
-                                </tr>
-                                {{end}}
-                            {{end}}
-                        </tbody>
-                    </table>
-                {{else}}
-                    <p class="text-muted mb-0">No port mappings configured.</p>
-                {{end}}
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Domain & Access -->
-{{$hasPorts := false}}
-{{range $serviceName, $service := .App.Services}}
-    {{if $service.Ports}}
-        {{$hasPorts = true}}
-    {{end}}
-{{end}}
-{{if $hasPorts}}
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Domain & Access</h5>
-            </div>
-            <div class="card-body">
-                {{if not .PlatformSupportsCaddy}}
-                    <!-- Platform doesn't support Caddy -->
-                    <div class="alert alert-info mb-3">
-                        <i>ℹ️</i> <strong>This feature is not available on macOS</strong><br>
-                        <small>Domain access and HTTPS certificates are only supported on Linux servers.</small>
-                    </div>
-                    <form class="d-inline opacity-50" style="pointer-events: none;">
-                        <div class="mb-3">
-                            <label for="subdomain-disabled" class="form-label">Subdomain</label>
-                            <input type="text" class="form-control" id="subdomain-disabled" placeholder="Enter subdomain" disabled>
-                        </div>
-                        <button type="button" class="btn btn-secondary" disabled>
-                            <i>🌐</i> Expose App
-                        </button>
-                    </form>
-                {{else if not .CaddyAvailable}}
-                    <!-- Caddy not available -->
-                    <div class="alert alert-warning mb-3">
-                        <i>⚠️</i> <strong>Caddy service not available</strong><br>
-                        <small>Check server configuration to enable domain access.</small>
-                    </div>
-                    <form class="d-inline opacity-50" style="pointer-events: none;">
-                        <div class="mb-3">
-                            <label for="subdomain-disabled" class="form-label">Subdomain</label>
-                            <input type="text" class="form-control" id="subdomain-disabled" placeholder="Enter subdomain" disabled>
-                        </div>
-                        <button type="button" class="btn btn-secondary" disabled>
-                            <i>🌐</i> Expose App
-                        </button>
-                    </form>
-                {{else if not .HasDomainsConfigured}}
-                    <!-- No domains configured -->
-                    <div class="alert alert-info mb-3">
-                        <i>ℹ️</i> <strong>No domains configured</strong><br>
-                        <small>Go to Settings to configure a domain to enable this feature.</small>
-                    </div>
-                    <form class="d-inline opacity-50" style="pointer-events: none;">
-                        <div class="mb-3">
-                            <label for="subdomain-disabled" class="form-label">Subdomain</label>
-                            <input type="text" class="form-control" id="subdomain-disabled" placeholder="Enter subdomain" disabled>
-                        </div>
-                        <button type="button" class="btn btn-secondary" disabled>
-                            <i>🌐</i> Expose App
-                        </button>
-                    </form>
-                {{else if and .HasDeployedApp .DeployedApp.IsExposed}}
-                    <!-- App is exposed -->
-                    <div class="mb-3">
-                        <p class="mb-2">
-                            <strong>Subdomain:</strong> <code>{{.DeployedApp.Subdomain}}</code>
-                        </p>
-                        {{if .ExposedURLs}}
-                            <p class="mb-3">
-                                <strong>Access URLs:</strong><br>
-                                {{range .ExposedURLs}}
-                                    <a href="{{.}}" target="_blank" class="d-block text-decoration-none">
-                                        <i>🔗</i> {{.}}
-                                    </a>
-                                {{end}}
-                            </p>
-                        {{end}}
-                        <div class="btn-group" role="group">
-                            <form method="post" action="/apps/{{.App.Name}}/unexpose" class="d-inline">
-                                <button type="submit" class="btn btn-warning confirm-action" 
-                                        data-action="Unexpose"
-                                        data-confirm-text="Confirm Unexpose?">
-                                    <i>🔒</i> Unexpose App
-                                </button>
-                            </form>
-                            <button type="button" 
-                                    class="btn btn-primary"
-                                    hx-get="/api/apps/{{.App.Name}}/status"
-                                    hx-target="#status-result"
-                                    hx-indicator="#status-spinner">
-                                <i>🔍</i> Check Status
-                            </button>
-                        </div>
-                        <span id="status-spinner" class="htmx-indicator spinner-border spinner-border-sm ms-2" role="status">
-                            <span class="visually-hidden">Checking...</span>
-                        </span>
-                        <div id="status-result" class="mt-3"></div>
-                    </div>
-                {{else}}
-                    <!-- App can be exposed -->
-                    <form method="post" action="/apps/{{.App.Name}}/expose">
-                        <div class="mb-3">
-                            <label for="subdomain" class="form-label">Subdomain</label>
-                            <div class="input-group">
-                                <input type="text" 
-                                       class="form-control" 
-                                       id="subdomain" 
-                                       name="subdomain" 
-                                       placeholder="myapp" 
-                                       pattern="[a-z0-9-]+"
-                                       title="Only lowercase letters, numbers, and hyphens allowed"
-                                       required
-                                       {{if and .HasDeployedApp .DeployedApp.Subdomain}}value="{{.DeployedApp.Subdomain}}"{{end}}>
-                                <span class="input-group-text text-muted">
-                                    {{if .PublicBaseDomain}}.{{.PublicBaseDomain}}{{else if .TailscaleBaseDomain}}.{{.TailscaleBaseDomain}}{{end}}
-                                </span>
-                            </div>
-                            <small class="form-text text-muted">
-                                Choose a subdomain for your app. Only lowercase letters, numbers, and hyphens allowed.
-                            </small>
-                        </div>
-                        <button type="submit" class="btn btn-primary">
-                            <i>🌐</i> Expose App
-                        </button>
-                    </form>
-                {{end}}
-            </div>
-        </div>
-    </div>
-</div>
-{{end}}
-
-<!-- Configuration File -->
-<div class="row">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Configuration (docker-compose.yml)</h5>
-                <a href="/apps/{{.App.Name}}/edit" class="btn btn-sm btn-outline-primary">
-                    <i>✏️</i> Edit
-                </a>
-            </div>
-            <div class="card-body">
-                <div class="position-relative">
-                    <pre class="bg-light p-3 rounded"><code>{{.ComposeContent}}</code></pre>
-                    <small class="text-muted">File: <code>{{.App.Path}}/docker-compose.yml</code></small>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- Agent Chat History -->
 <div class="row mt-4 mb-4">
     <div class="col-12">
@@ -691,6 +302,109 @@
         </div>
     </div>
 </div>
+
+<!-- Containers -->
+{{if .AppStatus}}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Running Containers</h5>
+                <div class="btn-group" role="group">
+                    {{if or (eq .App.Status "running") (eq .App.Status "partial")}}
+                        <form method="post" action="/api/apps/{{.App.Name}}/stop" class="d-inline"
+                              onsubmit="event.preventDefault(); handleAppAction(this, 'stop');">
+                            <button type="submit" class="btn btn-warning confirm-action" 
+                                    data-action="Stop"
+                                    data-confirm-text="Stop all services?">
+                                <i>⏹️</i> Stop
+                            </button>
+                        </form>
+                    {{else}}
+                        <form method="post" action="/api/apps/{{.App.Name}}/start" class="d-inline"
+                              onsubmit="event.preventDefault(); handleAppAction(this, 'start');">
+                            <button type="submit" class="btn btn-success">
+                                <i>▶️</i> Start
+                            </button>
+                        </form>
+                    {{end}}
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="app-action-status" class="mb-3"></div>
+                {{if .AppStatus}}
+                    {{if .AppStatus.Services}}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Container</th>
+                                <th>Image</th>
+                                <th>Status</th>
+                                <th>Uptime</th>
+                                <th>Ports (host:container)</th>
+                                <th>Updates</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{range .AppStatus.Services}}
+                            <tr>
+                                <td><strong>{{.Name}}</strong></td>
+                                <td>
+                                    <code>{{.Image}}</code>
+                                </td>
+                                <td>
+                                    {{if eq .Status "running"}}
+                                        <span class="badge bg-success">Running</span>
+                                    {{else if eq .Status "stopped"}}
+                                        <span class="badge bg-secondary">Stopped</span>
+                                    {{else}}
+                                        <span class="badge bg-warning">{{.Status}}</span>
+                                    {{end}}
+                                </td>
+                                <td>
+                                    {{if .State}}
+                                        <small class="text-muted">{{.State}}</small>
+                                    {{else}}
+                                        <span class="text-muted">-</span>
+                                    {{end}}
+                                </td>
+                                <td>
+                                    {{if .Ports}}
+                                        {{range .Ports}}
+                                            <span class="badge bg-light text-dark">{{.}}</span>
+                                        {{end}}
+                                    {{else}}
+                                        <span class="text-muted">-</span>
+                                    {{end}}
+                                </td>
+                                <td>
+                                    <div id="update-status-{{.Name}}">
+                                        <button type="button" 
+                                                class="btn btn-sm btn-outline-primary"
+                                                hx-get="/apps/{{$.App.Name}}/check-update?service={{.Name}}"
+                                                hx-target="#update-status-{{.Name}}"
+                                                hx-indicator="#update-spinner-{{.Name}}">
+                                            <i>🔍</i> Check
+                                        </button>
+                                        <span id="update-spinner-{{.Name}}" class="htmx-indicator spinner-border spinner-border-sm ms-2" role="status">
+                                            <span class="visually-hidden">Checking...</span>
+                                        </span>
+                                    </div>
+                                </td>
+                            </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                </div>
+                {{else}}
+                <p class="text-muted mb-0">No Running Containers Found</p>
+                {{end}}
+            </div>
+        </div>
+    </div>
+</div>
+{{end}}
 
 <!-- Service Logs -->
 {{if true}}
@@ -730,6 +444,211 @@
         </div>
     </div>
 </div>
+{{end}}
+
+<!-- Public Access (Caddy) -->
+{{$hasPorts := false}}
+{{range $serviceName, $service := .App.Services}}
+    {{if $service.Ports}}
+        {{$hasPorts = true}}
+    {{end}}
+{{end}}
+{{if $hasPorts}}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Public Access (Caddy)</h5>
+            </div>
+            <div class="card-body">
+                {{if not .PlatformSupportsCaddy}}
+                    <!-- Platform doesn't support Caddy -->
+                    <div class="alert alert-info mb-3">
+                        <i>ℹ️</i> <strong>This feature is not available on macOS</strong><br>
+                        <small>Domain access and HTTPS certificates are only supported on Linux servers.</small>
+                    </div>
+                    <form class="d-inline opacity-50" style="pointer-events: none;">
+                        <div class="mb-3">
+                            <label for="subdomain-disabled" class="form-label">Subdomain</label>
+                            <input type="text" class="form-control" id="subdomain-disabled" placeholder="Enter subdomain" disabled>
+                        </div>
+                        <button type="button" class="btn btn-secondary" disabled>
+                            <i>🌐</i> Expose Publicly
+                        </button>
+                    </form>
+                {{else if not .CaddyAvailable}}
+                    <!-- Caddy not available -->
+                    <div class="alert alert-warning mb-3">
+                        <i>⚠️</i> <strong>Caddy service not available</strong><br>
+                        <small>Check server configuration to enable domain access.</small>
+                    </div>
+                    <form class="d-inline opacity-50" style="pointer-events: none;">
+                        <div class="mb-3">
+                            <label for="subdomain-disabled" class="form-label">Subdomain</label>
+                            <input type="text" class="form-control" id="subdomain-disabled" placeholder="Enter subdomain" disabled>
+                        </div>
+                        <button type="button" class="btn btn-secondary" disabled>
+                            <i>🌐</i> Expose Publicly
+                        </button>
+                    </form>
+                {{else if not .PublicBaseDomain}}
+                    <!-- No public domain configured -->
+                    <div class="alert alert-info mb-3">
+                        <i>ℹ️</i> <strong>No public domain configured</strong><br>
+                        <small>Go to Settings to configure a public domain to enable this feature.</small>
+                    </div>
+                    <form class="d-inline opacity-50" style="pointer-events: none;">
+                        <div class="mb-3">
+                            <label for="subdomain-disabled" class="form-label">Subdomain</label>
+                            <input type="text" class="form-control" id="subdomain-disabled" placeholder="Enter subdomain" disabled>
+                        </div>
+                        <button type="button" class="btn btn-secondary" disabled>
+                            <i>🌐</i> Expose Publicly
+                        </button>
+                    </form>
+                {{else if and .HasDeployedApp .DeployedApp.IsExposed}}
+                    <!-- App is exposed publicly -->
+                    <div class="mb-3">
+                        <p class="mb-2">
+                            <strong>Subdomain:</strong> <code>{{.DeployedApp.Subdomain}}</code>
+                        </p>
+                        <p class="mb-3">
+                            <strong>Public URL:</strong><br>
+                            <a href="https://{{.DeployedApp.Subdomain}}.{{.PublicBaseDomain}}" target="_blank" class="text-decoration-none">
+                                <i>🔗</i> https://{{.DeployedApp.Subdomain}}.{{.PublicBaseDomain}}
+                            </a>
+                        </p>
+                        <div class="btn-group" role="group">
+                            <form method="post" action="/apps/{{.App.Name}}/unexpose" class="d-inline">
+                                <button type="submit" class="btn btn-warning confirm-action" 
+                                        data-action="Unexpose"
+                                        data-confirm-text="Confirm Unexpose?">
+                                    <i>🔒</i> Unexpose Publicly
+                                </button>
+                            </form>
+                            <button type="button" 
+                                    class="btn btn-primary"
+                                    hx-get="/api/apps/{{.App.Name}}/status"
+                                    hx-target="#status-result"
+                                    hx-indicator="#status-spinner">
+                                <i>🔍</i> Check Status
+                            </button>
+                        </div>
+                        <span id="status-spinner" class="htmx-indicator spinner-border spinner-border-sm ms-2" role="status">
+                            <span class="visually-hidden">Checking...</span>
+                        </span>
+                        <div id="status-result" class="mt-3"></div>
+                    </div>
+                {{else}}
+                    <!-- App can be exposed publicly -->
+                    <form method="post" action="/apps/{{.App.Name}}/expose">
+                        <div class="mb-3">
+                            <label for="subdomain" class="form-label">Subdomain</label>
+                            <div class="input-group">
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="subdomain" 
+                                       name="subdomain" 
+                                       placeholder="myapp" 
+                                       pattern="[a-z0-9-]+"
+                                       title="Only lowercase letters, numbers, and hyphens allowed"
+                                       required
+                                       {{if and .HasDeployedApp .DeployedApp.Subdomain}}value="{{.DeployedApp.Subdomain}}"{{end}}>
+                                <span class="input-group-text text-muted">
+                                    .{{.PublicBaseDomain}}
+                                </span>
+                            </div>
+                            <small class="form-text text-muted">
+                                Choose a subdomain for your app. Only lowercase letters, numbers, and hyphens allowed.
+                            </small>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i>🌐</i> Expose Publicly
+                        </button>
+                    </form>
+                {{end}}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tailscale Access -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Tailscale Access</h5>
+            </div>
+            <div class="card-body">
+                {{if not .TailscaleAuthKey}}
+                    <!-- No Tailscale auth key configured -->
+                    <div class="alert alert-info mb-3">
+                        <i>ℹ️</i> <strong>Tailscale not configured</strong><br>
+                        <small>Go to Settings to configure Tailscale auth key to enable this feature.</small>
+                    </div>
+                    <form class="d-inline opacity-50" style="pointer-events: none;">
+                        <button type="button" class="btn btn-secondary" disabled>
+                            <i>🔐</i> Expose on Tailscale
+                        </button>
+                    </form>
+                {{else if .DeployedApp.TailscaleExposed}}
+                    <!-- App is exposed on Tailscale -->
+                    <div class="mb-3">
+                        <p class="mb-2">
+                            <strong>Hostname:</strong> <code>{{.DeployedApp.TailscaleHostname}}</code>
+                        </p>
+                        <p class="mb-3">
+                            <strong>Tailscale URL:</strong><br>
+                            <a href="https://{{.DeployedApp.TailscaleHostname}}" target="_blank" class="text-decoration-none">
+                                <i>🔗</i> https://{{.DeployedApp.TailscaleHostname}}
+                            </a>
+                        </p>
+                        <form method="post" action="/apps/{{.App.Name}}/unexpose-tailscale" class="d-inline">
+                            <button type="submit" class="btn btn-warning confirm-action" 
+                                    data-action="Remove from Tailscale"
+                                    data-confirm-text="Confirm Remove from Tailscale?">
+                                <i>🔒</i> Remove from Tailscale
+                            </button>
+                        </form>
+                    </div>
+                {{else}}
+                    <!-- App can be exposed on Tailscale -->
+                    <form method="post" action="/apps/{{.App.Name}}/expose-tailscale">
+                        <div class="mb-3">
+                            <p class="text-muted">
+                                This app will be accessible as <code>{{.App.Name}}</code> on your Tailscale network.
+                            </p>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i>🔐</i> Expose on Tailscale
+                        </button>
+                    </form>
+                {{end}}
+            </div>
+        </div>
+    </div>
+</div>
+{{end}}
+
+<!-- Configuration File -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Configuration (docker-compose.yml)</h5>
+                <a href="/apps/{{.App.Name}}/edit" class="btn btn-sm btn-outline-primary">
+                    <i>✏️</i> Edit
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="position-relative">
+                    <pre class="bg-light p-3 rounded"><code>{{.ComposeContent}}</code></pre>
+                    <small class="text-muted">File: <code>{{.App.Path}}/docker-compose.yml</code></small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- Delete App -->
 <div class="row mt-4">
@@ -764,7 +683,10 @@
         </div>
     </div>
 </div>
+{{end}}
+{{end}}
 
+{{define "extra_js"}}
 <script>
 // Handle app API calls
 function handleAppAction(form, action) {
@@ -1253,6 +1175,4 @@ function openPort(portMapping) {
     }
 }
 </script>
-{{end}}
-{{end}}
 {{end}}

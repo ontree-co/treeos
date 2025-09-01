@@ -374,6 +374,25 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 					Status: strings.ToLower(container.State),
 					State:  container.Status,
 				}
+				
+				// Add port information
+				if container.Publishers != nil && len(container.Publishers) > 0 {
+					// Use a map to track unique port mappings (ignoring IP version)
+					portMap := make(map[string]bool)
+					for _, pub := range container.Publishers {
+						if pub.PublishedPort > 0 && pub.TargetPort > 0 {
+							portStr := fmt.Sprintf("%d:%d", pub.PublishedPort, pub.TargetPort)
+							portMap[portStr] = true
+						}
+					}
+					// Convert map to sorted slice
+					ports := make([]string, 0, len(portMap))
+					for port := range portMap {
+						ports = append(ports, port)
+					}
+					service.Ports = ports
+				}
+				
 				appStatus.Services = append(appStatus.Services, service)
 			}
 
@@ -425,17 +444,21 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 
 	// Create a DeployedApp-like structure for template compatibility
 	deployedApp := struct {
-		ID        string
-		Name      string
-		Subdomain string
-		HostPort  int
-		IsExposed bool
+		ID                string
+		Name              string
+		Subdomain         string
+		HostPort          int
+		IsExposed         bool
+		TailscaleHostname string
+		TailscaleExposed  bool
 	}{}
 	if hasMetadata {
 		deployedApp.Name = appName
 		deployedApp.Subdomain = metadata.Subdomain
 		deployedApp.HostPort = metadata.HostPort
 		deployedApp.IsExposed = metadata.IsExposed
+		deployedApp.TailscaleHostname = metadata.TailscaleHostname
+		deployedApp.TailscaleExposed = metadata.TailscaleExposed
 		// Generate a pseudo-ID for template compatibility
 		deployedApp.ID = fmt.Sprintf("app-%s", appName)
 	}
@@ -461,20 +484,22 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 			if s.config.PublicBaseDomain != "" {
 				urls = append(urls, fmt.Sprintf("https://%s.%s", deployedApp.Subdomain, s.config.PublicBaseDomain))
 			}
-			if s.config.TailscaleBaseDomain != "" {
-				urls = append(urls, fmt.Sprintf("https://%s.%s", deployedApp.Subdomain, s.config.TailscaleBaseDomain))
-			}
 		}
 		data["ExposedURLs"] = urls
+		
+		// Add Tailscale info if exposed
+		if deployedApp.TailscaleExposed && deployedApp.TailscaleHostname != "" {
+			data["TailscaleURL"] = fmt.Sprintf("https://%s", deployedApp.TailscaleHostname)
+		}
 	} else {
 		data["HasDeployedApp"] = false
 		data["AppEmoji"] = "" // Empty emoji if no metadata
 	}
 
 	// Add domain configuration for UI display
-	data["HasDomainsConfigured"] = s.config.PublicBaseDomain != "" || s.config.TailscaleBaseDomain != ""
+	data["HasDomainsConfigured"] = s.config.PublicBaseDomain != ""
 	data["PublicBaseDomain"] = s.config.PublicBaseDomain
-	data["TailscaleBaseDomain"] = s.config.TailscaleBaseDomain
+	data["TailscaleAuthKey"] = s.config.TailscaleAuthKey != "" // Don't expose the actual key
 
 	// Add Caddy availability check
 	data["CaddyAvailable"] = s.caddyClient != nil
@@ -757,8 +782,8 @@ func (s *Server) handleAppExpose(w http.ResponseWriter, r *http.Request) {
 	appID := fmt.Sprintf("app-%s", appName)
 	log.Printf("[Expose] Exposing app %s with subdomain %s on port %d", appName, metadata.Subdomain, metadata.HostPort)
 
-	// Create route config
-	routeConfig := caddy.CreateRouteConfig(appID, metadata.Subdomain, metadata.HostPort, s.config.PublicBaseDomain, s.config.TailscaleBaseDomain)
+	// Create route config (only for public domain, Tailscale handled separately)
+	routeConfig := caddy.CreateRouteConfig(appID, metadata.Subdomain, metadata.HostPort, s.config.PublicBaseDomain, "")
 
 	// Add route to Caddy
 	log.Printf("[Expose] Sending route config to Caddy for app %s", appName)
@@ -802,15 +827,8 @@ func (s *Server) handleAppExpose(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Failed to get session: %v", err)
 	}
 
-	domains := []string{}
-	if s.config.PublicBaseDomain != "" {
-		domains = append(domains, fmt.Sprintf("%s.%s", metadata.Subdomain, s.config.PublicBaseDomain))
-	}
-	if s.config.TailscaleBaseDomain != "" {
-		domains = append(domains, fmt.Sprintf("%s.%s", metadata.Subdomain, s.config.TailscaleBaseDomain))
-	}
-
-	session.AddFlash(fmt.Sprintf("App exposed successfully at: %s", strings.Join(domains, ", ")), "success")
+	publicURL := fmt.Sprintf("https://%s.%s", metadata.Subdomain, s.config.PublicBaseDomain)
+	session.AddFlash(fmt.Sprintf("App exposed successfully at: %s", publicURL), "success")
 	if err := session.Save(r, w); err != nil {
 		log.Printf("Failed to save session: %v", err)
 	}
@@ -929,13 +947,13 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	// Get current system setup
 	var setup database.SystemSetup
 	err := s.db.QueryRow(`
-		SELECT id, public_base_domain, tailscale_base_domain,
+		SELECT id, public_base_domain, tailscale_auth_key, tailscale_tags,
 		       agent_enabled, agent_check_interval, agent_llm_api_key,
 		       agent_llm_api_url, agent_llm_model, agent_config_dir,
 		       uptime_kuma_base_url
 		FROM system_setup 
 		WHERE id = 1
-	`).Scan(&setup.ID, &setup.PublicBaseDomain, &setup.TailscaleBaseDomain,
+	`).Scan(&setup.ID, &setup.PublicBaseDomain, &setup.TailscaleAuthKey, &setup.TailscaleTags,
 		&setup.AgentEnabled, &setup.AgentCheckInterval, &setup.AgentLLMAPIKey,
 		&setup.AgentLLMAPIURL, &setup.AgentLLMModel, &setup.AgentConfigDir,
 		&setup.UptimeKumaBaseURL)
@@ -977,7 +995,8 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	data := s.baseTemplateData(user)
 	data["Messages"] = messages
 	data["PublicBaseDomain"] = ""
-	data["TailscaleBaseDomain"] = ""
+	data["TailscaleAuthKey"] = ""
+	data["TailscaleTags"] = ""
 	data["AgentEnabled"] = false
 	data["AgentCheckInterval"] = "5m"
 	data["AgentLLMAPIKey"] = ""
@@ -989,8 +1008,11 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	if setup.PublicBaseDomain.Valid {
 		data["PublicBaseDomain"] = setup.PublicBaseDomain.String
 	}
-	if setup.TailscaleBaseDomain.Valid {
-		data["TailscaleBaseDomain"] = setup.TailscaleBaseDomain.String
+	if setup.TailscaleAuthKey.Valid {
+		data["TailscaleAuthKey"] = setup.TailscaleAuthKey.String
+	}
+	if setup.TailscaleTags.Valid {
+		data["TailscaleTags"] = setup.TailscaleTags.String
 	}
 	if setup.AgentEnabled.Valid {
 		data["AgentEnabled"] = setup.AgentEnabled.Int64 == 1
@@ -1016,7 +1038,8 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 
 	// Also show current values from config (to show if env vars are overriding)
 	data["ConfigPublicDomain"] = s.config.PublicBaseDomain
-	data["ConfigTailscaleDomain"] = s.config.TailscaleBaseDomain
+	data["ConfigTailscaleAuthKey"] = s.config.TailscaleAuthKey != ""
+	data["ConfigTailscaleTags"] = s.config.TailscaleTags
 	data["ConfigAgentEnabled"] = s.config.AgentEnabled
 	data["ConfigAgentLLMAPIKey"] = s.config.AgentLLMAPIKey != ""
 
@@ -1049,7 +1072,8 @@ func (s *Server) handleSettingsUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	publicDomain := strings.TrimSpace(r.FormValue("public_base_domain"))
-	tailscaleDomain := strings.TrimSpace(r.FormValue("tailscale_base_domain"))
+	tailscaleAuthKey := strings.TrimSpace(r.FormValue("tailscale_auth_key"))
+	tailscaleTags := strings.TrimSpace(r.FormValue("tailscale_tags"))
 	agentEnabled := r.FormValue("agent_enabled") == "on"
 	agentCheckInterval := strings.TrimSpace(r.FormValue("agent_check_interval"))
 	agentLLMAPIKey := strings.TrimSpace(r.FormValue("agent_llm_api_key"))
@@ -1076,12 +1100,12 @@ func (s *Server) handleSettingsUpdate(w http.ResponseWriter, r *http.Request) {
 	// Update database
 	_, err = s.db.Exec(`
 		UPDATE system_setup 
-		SET public_base_domain = ?, tailscale_base_domain = ?,
+		SET public_base_domain = ?, tailscale_auth_key = ?, tailscale_tags = ?,
 		    agent_enabled = ?, agent_check_interval = ?, agent_llm_api_key = ?,
 		    agent_llm_api_url = ?, agent_llm_model = ?, agent_config_dir = ?,
 		    uptime_kuma_base_url = ?
 		WHERE id = 1
-	`, publicDomain, tailscaleDomain, agentEnabledInt, agentCheckInterval,
+	`, publicDomain, tailscaleAuthKey, tailscaleTags, agentEnabledInt, agentCheckInterval,
 		agentLLMAPIKey, agentLLMAPIURL, agentLLMModel, agentConfigDir,
 		uptimeKumaBaseURL)
 
@@ -1104,8 +1128,11 @@ func (s *Server) handleSettingsUpdate(w http.ResponseWriter, r *http.Request) {
 	if os.Getenv("PUBLIC_BASE_DOMAIN") == "" {
 		s.config.PublicBaseDomain = publicDomain
 	}
-	if os.Getenv("TAILSCALE_BASE_DOMAIN") == "" {
-		s.config.TailscaleBaseDomain = tailscaleDomain
+	if os.Getenv("TAILSCALE_AUTH_KEY") == "" {
+		s.config.TailscaleAuthKey = tailscaleAuthKey
+	}
+	if os.Getenv("TAILSCALE_TAGS") == "" {
+		s.config.TailscaleTags = tailscaleTags
 	}
 	if os.Getenv("AGENT_ENABLED") == "" {
 		s.config.AgentEnabled = agentEnabled
@@ -1224,9 +1251,9 @@ func (s *Server) handleAppStatusCheck(w http.ResponseWriter, r *http.Request) {
 		results = append(results, result)
 	}
 
-	// Check Tailscale domain if configured
-	if s.config.TailscaleBaseDomain != "" {
-		url := fmt.Sprintf("https://%s.%s", metadata.Subdomain, s.config.TailscaleBaseDomain)
+	// Check Tailscale if exposed (no longer checking subdomain-based URLs)
+	if metadata.TailscaleExposed && metadata.TailscaleHostname != "" {
+		url := fmt.Sprintf("https://%s", metadata.TailscaleHostname)
 		result := StatusResult{URL: url}
 
 		// Create HTTP client with timeout
@@ -1353,4 +1380,276 @@ func (s *Server) executeCommand(cmd string) (string, error) {
 		return "", fmt.Errorf("command failed: %v, output: %s", err, string(output))
 	}
 	return string(output), nil
+}
+
+// handleAppExposeTailscale handles exposing an application via Tailscale sidecar
+func (s *Server) handleAppExposeTailscale(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Extract app name from URL path
+	path := r.URL.Path
+	parts := strings.Split(path, "/")
+	if len(parts) < 4 || parts[1] != "apps" || parts[3] != "expose-tailscale" {
+		http.NotFound(w, r)
+		return
+	}
+
+	appName := parts[2]
+
+	// Check if Tailscale auth key is configured
+	if s.config.TailscaleAuthKey == "" {
+		session, err := s.sessionStore.Get(r, "ontree-session")
+		if err != nil {
+			log.Printf("Failed to get session: %v", err)
+		}
+		session.AddFlash("Cannot expose app via Tailscale: Auth key not configured in settings", "error")
+		if err := session.Save(r, w); err != nil {
+			log.Printf("Failed to save session: %v", err)
+		}
+		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
+		return
+	}
+
+	// Get app details from docker
+	appDetails, err := s.dockerClient.GetAppDetails(s.config.AppsDir, appName)
+	if err != nil {
+		log.Printf("Failed to get app details: %v", err)
+		session, err := s.sessionStore.Get(r, "ontree-session")
+		if err != nil {
+			log.Printf("Failed to get session: %v", err)
+		}
+		session.AddFlash("Failed to expose app: app not found", "error")
+		if err := session.Save(r, w); err != nil {
+			log.Printf("Failed to save session: %v", err)
+		}
+		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
+		return
+	}
+
+	// Get metadata from compose file
+	metadata, err := yamlutil.ReadComposeMetadata(appDetails.Path)
+	if err != nil {
+		log.Printf("Failed to read compose metadata: %v", err)
+		// Initialize with defaults if metadata doesn't exist
+		metadata = &yamlutil.OnTreeMetadata{}
+	}
+
+	// Check if already exposed via Tailscale
+	if metadata.TailscaleExposed {
+		session, err := s.sessionStore.Get(r, "ontree-session")
+		if err != nil {
+			log.Printf("Failed to get session: %v", err)
+		}
+		session.AddFlash("App is already exposed via Tailscale", "info")
+		if err := session.Save(r, w); err != nil {
+			log.Printf("Failed to save session: %v", err)
+		}
+		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
+		return
+	}
+
+	// Get hostname from form or default to app name
+	hostname := r.FormValue("hostname")
+	if hostname == "" {
+		hostname = appName
+	}
+
+	log.Printf("[Tailscale Expose] Exposing app %s with hostname %s", appName, hostname)
+
+	// Modify docker-compose.yml to add Tailscale sidecar
+	err = yamlutil.ModifyComposeForTailscale(appDetails.Path, appName, hostname, s.config.TailscaleAuthKey)
+	if err != nil {
+		log.Printf("[Tailscale Expose] Failed to modify compose file: %v", err)
+		session, err := s.sessionStore.Get(r, "ontree-session")
+		if err != nil {
+			log.Printf("Failed to get session: %v", err)
+		}
+		session.AddFlash(fmt.Sprintf("Failed to expose app via Tailscale: %v", err), "error")
+		if err := session.Save(r, w); err != nil {
+			log.Printf("Failed to save session: %v", err)
+		}
+		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
+		return
+	}
+
+	// Update metadata
+	metadata.TailscaleHostname = hostname
+	metadata.TailscaleExposed = true
+	err = yamlutil.UpdateComposeMetadata(appDetails.Path, metadata)
+	if err != nil {
+		log.Printf("Failed to update compose metadata: %v", err)
+	}
+
+	// Restart containers with new configuration
+	log.Printf("[Tailscale Expose] Restarting containers for app %s", appName)
+	cmd := fmt.Sprintf("cd %s && docker-compose down && docker-compose up -d", appDetails.Path)
+	output, err := s.executeCommand(cmd)
+	if err != nil {
+		log.Printf("[Tailscale Expose] Failed to restart containers: %v, output: %s", err, output)
+		// Try to rollback
+		_ = yamlutil.RestoreComposeFromTailscale(appDetails.Path)
+		metadata.TailscaleHostname = ""
+		metadata.TailscaleExposed = false
+		_ = yamlutil.UpdateComposeMetadata(appDetails.Path, metadata)
+		
+		session, err := s.sessionStore.Get(r, "ontree-session")
+		if err != nil {
+			log.Printf("Failed to get session: %v", err)
+		}
+		session.AddFlash("Failed to restart containers after adding Tailscale", "error")
+		if err := session.Save(r, w); err != nil {
+			log.Printf("Failed to save session: %v", err)
+		}
+		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
+		return
+	}
+
+	// Success
+	session, err := s.sessionStore.Get(r, "ontree-session")
+	if err != nil {
+		log.Printf("Failed to get session: %v", err)
+	}
+
+	tailscaleURL := fmt.Sprintf("https://%s", hostname)
+	if s.config.TailscaleTags != "" {
+		tailscaleURL = fmt.Sprintf("https://%s (with tags: %s)", hostname, s.config.TailscaleTags)
+	}
+
+	session.AddFlash(fmt.Sprintf("App exposed via Tailscale at: %s", tailscaleURL), "success")
+	if err := session.Save(r, w); err != nil {
+		log.Printf("Failed to save session: %v", err)
+	}
+
+	http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
+}
+
+// handleAppUnexposeTailscale handles removing Tailscale sidecar from an application
+func (s *Server) handleAppUnexposeTailscale(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Extract app name from URL path
+	path := r.URL.Path
+	parts := strings.Split(path, "/")
+	if len(parts) < 4 || parts[1] != "apps" || parts[3] != "unexpose-tailscale" {
+		http.NotFound(w, r)
+		return
+	}
+
+	appName := parts[2]
+
+	// Get app details from docker
+	appDetails, err := s.dockerClient.GetAppDetails(s.config.AppsDir, appName)
+	if err != nil {
+		log.Printf("Failed to get app details: %v", err)
+		session, err := s.sessionStore.Get(r, "ontree-session")
+		if err != nil {
+			log.Printf("Failed to get session: %v", err)
+		}
+		session.AddFlash("Failed to unexpose app: app not found", "error")
+		if err := session.Save(r, w); err != nil {
+			log.Printf("Failed to save session: %v", err)
+		}
+		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
+		return
+	}
+
+	// Get metadata from compose file
+	metadata, err := yamlutil.ReadComposeMetadata(appDetails.Path)
+	if err != nil {
+		log.Printf("Failed to read compose metadata: %v", err)
+		session, err := s.sessionStore.Get(r, "ontree-session")
+		if err != nil {
+			log.Printf("Failed to get session: %v", err)
+		}
+		session.AddFlash("Failed to unexpose app: could not read metadata", "error")
+		if err := session.Save(r, w); err != nil {
+			log.Printf("Failed to save session: %v", err)
+		}
+		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
+		return
+	}
+
+	// Check if exposed via Tailscale
+	if !metadata.TailscaleExposed {
+		session, err := s.sessionStore.Get(r, "ontree-session")
+		if err != nil {
+			log.Printf("Failed to get session: %v", err)
+		}
+		session.AddFlash("App is not exposed via Tailscale", "info")
+		if err := session.Save(r, w); err != nil {
+			log.Printf("Failed to save session: %v", err)
+		}
+		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
+		return
+	}
+
+	log.Printf("[Tailscale Unexpose] Removing Tailscale from app %s", appName)
+
+	// Stop containers first
+	cmd := fmt.Sprintf("cd %s && docker-compose down", appDetails.Path)
+	output, err := s.executeCommand(cmd)
+	if err != nil {
+		log.Printf("[Tailscale Unexpose] Warning: Failed to stop containers: %v, output: %s", err, output)
+	}
+
+	// Remove Tailscale sidecar from docker-compose.yml
+	err = yamlutil.RestoreComposeFromTailscale(appDetails.Path)
+	if err != nil {
+		log.Printf("[Tailscale Unexpose] Failed to restore compose file: %v", err)
+		session, err := s.sessionStore.Get(r, "ontree-session")
+		if err != nil {
+			log.Printf("Failed to get session: %v", err)
+		}
+		session.AddFlash(fmt.Sprintf("Failed to remove Tailscale: %v", err), "error")
+		if err := session.Save(r, w); err != nil {
+			log.Printf("Failed to save session: %v", err)
+		}
+		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
+		return
+	}
+
+	// Update metadata
+	metadata.TailscaleHostname = ""
+	metadata.TailscaleExposed = false
+	err = yamlutil.UpdateComposeMetadata(appDetails.Path, metadata)
+	if err != nil {
+		log.Printf("Failed to update compose metadata: %v", err)
+	}
+
+	// Restart containers with original configuration
+	log.Printf("[Tailscale Unexpose] Restarting containers for app %s", appName)
+	cmd = fmt.Sprintf("cd %s && docker-compose up -d", appDetails.Path)
+	output, err = s.executeCommand(cmd)
+	if err != nil {
+		log.Printf("[Tailscale Unexpose] Failed to restart containers: %v, output: %s", err, output)
+		session, err := s.sessionStore.Get(r, "ontree-session")
+		if err != nil {
+			log.Printf("Failed to get session: %v", err)
+		}
+		session.AddFlash("Warning: Tailscale removed but failed to restart containers", "warning")
+		if err := session.Save(r, w); err != nil {
+			log.Printf("Failed to save session: %v", err)
+		}
+		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
+		return
+	}
+
+	// Success
+	session, err := s.sessionStore.Get(r, "ontree-session")
+	if err != nil {
+		log.Printf("Failed to get session: %v", err)
+	}
+
+	session.AddFlash("App removed from Tailscale successfully", "success")
+	if err := session.Save(r, w); err != nil {
+		log.Printf("Failed to save session: %v", err)
+	}
+
+	http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
 }

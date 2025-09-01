@@ -1,24 +1,19 @@
 {{define "content"}}
-<div class="row">
-    <div class="col-12">
-        <h1 class="mb-4">Server Dashboard</h1>
-    </div>
-</div>
-
 <!-- System Status Section -->
 <div class="row mb-4">
     <div class="col-12">
         <div class="card funky-gradient-card">
             <div class="card-body">
                 <h2 class="card-title mb-3">
-                    System Status
+                    {{.Hostname}} <span style="font-size: 1.1rem; opacity: 0.9;">(Local IP: {{.LocalIP}} / Tailscale IP: {{.TailscaleIP}})</span>
                 </h2>
                 
                 <!-- Monitoring Grid -->
                 <div class="monitoring-grid">
                     <div class="row g-3">
+                        <!-- First Row: CPU, GPU, Memory -->
                         <!-- CPU Card -->
-                        <div class="col-12 col-md-6 col-lg-3">
+                        <div class="col-12 col-md-6 col-lg-4">
                             <div id="cpu-card" 
                                  hx-get="/partials/cpu" 
                                  hx-trigger="load, every 1s" 
@@ -36,8 +31,24 @@
                             </div>
                         </div>
                         
+                        <!-- GPU Card (Stub) -->
+                        <div class="col-12 col-md-6 col-lg-4">
+                            <div id="gpu-card">
+                                <div class="card monitoring-card bg-white">
+                                    <div class="card-body metric-loading">
+                                        <div class="text-center">
+                                            <div class="spinner-border text-primary" role="status">
+                                                <span class="visually-hidden">Loading GPU data...</span>
+                                            </div>
+                                            <p class="mt-2 text-muted mb-0">Loading GPU data...</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <!-- Memory Card -->
-                        <div class="col-12 col-md-6 col-lg-3">
+                        <div class="col-12 col-md-6 col-lg-4">
                             <div id="memory-card" 
                                  hx-get="/partials/memory" 
                                  hx-trigger="load, every 60s" 
@@ -55,8 +66,9 @@
                             </div>
                         </div>
                         
+                        <!-- Second Row: Disk, Download, Upload -->
                         <!-- Disk Card -->
-                        <div class="col-12 col-md-6 col-lg-3">
+                        <div class="col-12 col-md-6 col-lg-4">
                             <div id="disk-card" 
                                  hx-get="/partials/disk" 
                                  hx-trigger="load, every 60s" 
@@ -74,19 +86,38 @@
                             </div>
                         </div>
                         
-                        <!-- Network Card -->
-                        <div class="col-12 col-md-6 col-lg-3">
-                            <div id="network-card" 
-                                 hx-get="/partials/network" 
+                        <!-- Download Card -->
+                        <div class="col-12 col-md-6 col-lg-4">
+                            <div id="download-card" 
+                                 hx-get="/partials/download" 
                                  hx-trigger="load, every 1s" 
                                  hx-swap="outerHTML">
                                 <div class="card monitoring-card bg-white">
                                     <div class="card-body metric-loading">
                                         <div class="text-center">
                                             <div class="spinner-border text-primary" role="status">
-                                                <span class="visually-hidden">Loading network data...</span>
+                                                <span class="visually-hidden">Loading download data...</span>
                                             </div>
-                                            <p class="mt-2 text-muted mb-0">Loading network data...</p>
+                                            <p class="mt-2 text-muted mb-0">Loading download data...</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Upload Card -->
+                        <div class="col-12 col-md-6 col-lg-4">
+                            <div id="upload-card" 
+                                 hx-get="/partials/upload" 
+                                 hx-trigger="load, every 1s" 
+                                 hx-swap="outerHTML">
+                                <div class="card monitoring-card bg-white">
+                                    <div class="card-body metric-loading">
+                                        <div class="text-center">
+                                            <div class="spinner-border text-primary" role="status">
+                                                <span class="visually-hidden">Loading upload data...</span>
+                                            </div>
+                                            <p class="mt-2 text-muted mb-0">Loading upload data...</p>
                                         </div>
                                     </div>
                                 </div>
@@ -104,7 +135,7 @@
     <div class="col-12">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Application Management</h5>
+                <h2 class="mb-0">Apps</h2>
                 <div>
                     <a href="/templates" class="btn btn-primary btn-lg">
                         <i class="bi bi-plus-circle"></i> Create New App
@@ -117,16 +148,16 @@
                         <table class="table table-hover">
                             <thead>
                                 <tr>
-                                    <th>Application</th>
-                                    <th>Status</th>
-                                    <th>Image</th>
-                                    <th>Ports</th>
-                                    <th>Actions</th>
+                                    <th style="width: 25%;">App Name</th>
+                                    <th style="width: 20%;">Containers</th>
+                                    <th style="width: 15%;">Status</th>
+                                    <th style="width: 20%;">Uptime</th>
+                                    <th style="width: 20%;">Ports (host:container)</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {{range .Apps}}
-                                <tr>
+                                <tr style="cursor: pointer;" onclick="window.location.href='/apps/{{.Name}}'">
                                     <td>
                                         <strong>{{if .Emoji}}{{.Emoji}} {{end}}{{.Name}}</strong>
                                         {{if gt .ServiceCount 0}}
@@ -136,26 +167,59 @@
                                         {{end}}
                                     </td>
                                     <td>
-                                        {{if eq .Status "running"}}
-                                            <span class="badge bg-success">Running</span>
-                                        {{else if eq .Status "partial"}}
-                                            <span class="badge bg-warning">Partial</span>
-                                        {{else if eq .Status "exited"}}
-                                            <span class="badge bg-secondary">Stopped</span>
-                                        {{else if eq .Status "stopped"}}
-                                            <span class="badge bg-secondary">Stopped</span>
-                                        {{else if eq .Status "not_created"}}
-                                            <span class="badge bg-light text-dark">Not Created</span>
-                                        {{else if eq .Status "error"}}
-                                            <span class="badge bg-danger">Error</span>
+                                        {{if .Containers}}
+                                            {{range .Containers}}
+                                                <div>{{.Name}}</div>
+                                            {{end}}
+                                        {{else if .Services}}
+                                            {{range $name, $service := .Services}}
+                                                <div>{{$name}}</div>
+                                            {{end}}
                                         {{else}}
-                                            <span class="badge bg-info">{{.Status}}</span>
+                                            <span class="text-muted">-</span>
                                         {{end}}
                                     </td>
                                     <td>
-                                        {{if .Services}}
+                                        {{if .Containers}}
+                                            {{range .Containers}}
+                                                <div>
+                                                    {{if eq .Status "running"}}
+                                                        <span class="badge bg-success">Running</span>
+                                                    {{else if eq .Status "stopped"}}
+                                                        <span class="badge bg-secondary">Stopped</span>
+                                                    {{else if eq .Status "exited"}}
+                                                        <span class="badge bg-secondary">Stopped</span>
+                                                    {{else}}
+                                                        <span class="badge bg-warning">{{.Status}}</span>
+                                                    {{end}}
+                                                </div>
+                                            {{end}}
+                                        {{else if .Services}}
                                             {{range $name, $service := .Services}}
-                                                <span class="badge bg-secondary me-1" title="{{$service.Image}}">{{$name}}</span>
+                                                <div>
+                                                    <span class="badge bg-secondary">Not Created</span>
+                                                </div>
+                                            {{end}}
+                                        {{else}}
+                                            <span class="text-muted">-</span>
+                                        {{end}}
+                                    </td>
+                                    <td>
+                                        {{if .Containers}}
+                                            {{range .Containers}}
+                                                <div>
+                                                    {{if and (eq .Status "running") .Uptime}}
+                                                        <small class="text-muted">{{.Uptime}}</small>
+                                                    {{else}}
+                                                        <span class="text-muted">-</span>
+                                                    {{end}}
+                                                </div>
+                                            {{end}}
+                                        {{else if .Services}}
+                                            {{range $name, $service := .Services}}
+                                                <div>
+                                                    <span class="text-muted">-</span>
+                                                </div>
                                             {{end}}
                                         {{else}}
                                             <span class="text-muted">-</span>
@@ -167,7 +231,7 @@
                                             {{range $name, $service := .Services}}
                                                 {{range $port := $service.Ports}}
                                                     {{$hasPorts = true}}
-                                                    <span class="badge bg-light text-dark">{{$port}}</span>
+                                                    <div><span class="badge bg-light text-dark">{{$port}}</span></div>
                                                 {{end}}
                                             {{end}}
                                             {{if not $hasPorts}}
@@ -175,15 +239,6 @@
                                             {{end}}
                                         {{else}}
                                             <span class="text-muted">-</span>
-                                        {{end}}
-                                    </td>
-                                    <td>
-                                        {{if ne .Status "error"}}
-                                            <a href="/apps/{{.Name}}" class="btn btn-sm btn-outline-primary">
-                                                Manage
-                                            </a>
-                                        {{else}}
-                                            <span class="text-muted small">{{.Error}}</span>
                                         {{end}}
                                     </td>
                                 </tr>
@@ -283,6 +338,12 @@
     .funky-gradient-card .card-title {
         color: white;
         text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+    }
+    
+    /* Clickable table rows */
+    .table-hover tbody tr:hover {
+        background-color: #f8f9fa;
+        transition: background-color 0.2s;
     }
 </style>
 
