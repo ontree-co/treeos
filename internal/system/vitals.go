@@ -131,15 +131,28 @@ func getNetworkRates() (uint64, uint64) {
 	networkMutex.Lock()
 	defer networkMutex.Unlock()
 
-	// Get current network statistics
-	netStats, err := net.IOCounters(false) // false = sum all interfaces
+	// Get network statistics per interface
+	netStats, err := net.IOCounters(true) // true = per interface
 	if err != nil || len(netStats) == 0 {
 		// If we can't get stats, return the last known rates
 		return lastUploadRate, lastDownloadRate
 	}
 
-	currentRxBytes := netStats[0].BytesRecv
-	currentTxBytes := netStats[0].BytesSent
+	// Sum only physical interfaces, excluding loopback and virtual interfaces
+	var currentRxBytes, currentTxBytes uint64
+	for _, stat := range netStats {
+		// Skip loopback, docker, and other virtual interfaces
+		if stat.Name == "lo" || 
+		   strings.HasPrefix(stat.Name, "docker") || 
+		   strings.HasPrefix(stat.Name, "veth") ||
+		   strings.HasPrefix(stat.Name, "br-") ||
+		   strings.HasPrefix(stat.Name, "virbr") {
+			continue
+		}
+		currentRxBytes += stat.BytesRecv
+		currentTxBytes += stat.BytesSent
+	}
+	
 	currentTime := time.Now()
 
 	// If this is the first call or it's been too long, just store values
