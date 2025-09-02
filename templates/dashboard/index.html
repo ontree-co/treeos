@@ -210,7 +210,7 @@
                                             {{range $name, $service := .Services}}
                                                 {{range $port := $service.Ports}}
                                                     {{$hasPorts = true}}
-                                                    <div><span class="badge bg-light text-dark">{{$port}}</span></div>
+                                                    <div>{{formatPort $port}}</div>
                                                 {{end}}
                                             {{end}}
                                             {{if not $hasPorts}}
