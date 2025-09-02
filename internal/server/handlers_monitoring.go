@@ -925,3 +925,31 @@ func formatNetworkRate(bytesPerSecond float64) string {
 	}
 	return fmt.Sprintf("%.1f GB/s", bytesPerSecond/1024/1024/1024)
 }
+
+// normalizeNetworkRates normalizes network rate values to percentages for sparkline display
+func normalizeNetworkRates(rates []float64) []float64 {
+	if len(rates) == 0 {
+		return rates
+	}
+
+	// Find the maximum value
+	maxRate := rates[0]
+	for _, rate := range rates {
+		if rate > maxRate {
+			maxRate = rate
+		}
+	}
+
+	// If all values are zero, return as-is
+	if maxRate == 0 {
+		return rates
+	}
+
+	// Normalize to 0-100 scale
+	normalized := make([]float64, len(rates))
+	for i, rate := range rates {
+		normalized[i] = (rate / maxRate) * 100
+	}
+
+	return normalized
+}

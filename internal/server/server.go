@@ -23,6 +23,7 @@ import (
 	"ontree-node/internal/agent"
 	"ontree-node/internal/cache"
 	"ontree-node/internal/caddy"
+	"ontree-node/internal/charts"
 	"ontree-node/internal/config"
 	"ontree-node/internal/database"
 	"ontree-node/internal/docker"
@@ -711,26 +712,76 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Failed to get latest metric for dashboard: %v", err)
 	}
 
+	// Get historical data for sparklines (last 24 hours)
+	now := time.Now()
+	dayAgo := now.Add(-24 * time.Hour)
+	historicalData, err := database.GetMetricsForTimeRange(dayAgo, now)
+	if err != nil {
+		log.Printf("Failed to get historical metrics for sparklines: %v", err)
+	}
+
+	// Generate sparklines for each metric
+	var cpuSparkline, memorySparkline, diskSparkline, gpuSparkline, uploadSparkline, downloadSparkline template.HTML
+	if len(historicalData) > 1 {
+		// Extract data points for each metric
+		cpuPoints := make([]float64, len(historicalData))
+		memoryPoints := make([]float64, len(historicalData))
+		diskPoints := make([]float64, len(historicalData))
+		gpuPoints := make([]float64, len(historicalData))
+		uploadPoints := make([]float64, len(historicalData))
+		downloadPoints := make([]float64, len(historicalData))
+
+		for i, m := range historicalData {
+			cpuPoints[i] = m.CPUPercent
+			memoryPoints[i] = m.MemoryPercent
+			diskPoints[i] = m.DiskUsagePercent
+			gpuPoints[i] = m.GPULoad
+			uploadPoints[i] = float64(m.UploadRate)
+			downloadPoints[i] = float64(m.DownloadRate)
+		}
+
+		// Generate SVG sparklines (150x40 pixels to fit in the cards)
+		cpuSparkline = charts.GenerateSparklineSVG(cpuPoints, 150, 40)
+		memorySparkline = charts.GenerateSparklineSVG(memoryPoints, 150, 40)
+		diskSparkline = charts.GenerateSparklineSVG(diskPoints, 150, 40)
+		gpuSparkline = charts.GenerateSparklineSVG(gpuPoints, 150, 40)
+		// For network rates, normalize the values
+		uploadSparkline = charts.GenerateSparklineSVGWithStyle(normalizeNetworkRates(uploadPoints), 150, 40, "#28a745", 2)
+		downloadSparkline = charts.GenerateSparklineSVGWithStyle(normalizeNetworkRates(downloadPoints), 150, 40, "#17a2b8", 2)
+	}
+
 	// Prepare monitoring data with formatting
 	var monitoringData map[string]interface{}
 	if latest != nil {
 		monitoringData = map[string]interface{}{
-			"CPUPercent":       fmt.Sprintf("%.1f", latest.CPUPercent),
-			"MemoryPercent":    fmt.Sprintf("%.1f", latest.MemoryPercent),
-			"DiskUsagePercent": fmt.Sprintf("%.1f", latest.DiskUsagePercent),
-			"GPULoad":          fmt.Sprintf("%.1f", latest.GPULoad),
-			"UploadRate":       formatNetworkRate(float64(latest.UploadRate)),
-			"DownloadRate":     formatNetworkRate(float64(latest.DownloadRate)),
+			"CPUPercent":        fmt.Sprintf("%.1f", latest.CPUPercent),
+			"MemoryPercent":     fmt.Sprintf("%.1f", latest.MemoryPercent),
+			"DiskUsagePercent":  fmt.Sprintf("%.1f", latest.DiskUsagePercent),
+			"GPULoad":           fmt.Sprintf("%.1f", latest.GPULoad),
+			"UploadRate":        formatNetworkRate(float64(latest.UploadRate)),
+			"DownloadRate":      formatNetworkRate(float64(latest.DownloadRate)),
+			"CPUSparkline":      cpuSparkline,
+			"MemorySparkline":   memorySparkline,
+			"DiskSparkline":     diskSparkline,
+			"GPUSparkline":      gpuSparkline,
+			"UploadSparkline":   uploadSparkline,
+			"DownloadSparkline": downloadSparkline,
 		}
 	} else {
 		// Default values if no data available
 		monitoringData = map[string]interface{}{
-			"CPUPercent":       "0.0",
-			"MemoryPercent":    "0.0",
-			"DiskUsagePercent": "0.0",
-			"GPULoad":          "0.0",
-			"UploadRate":       "0 B/s",
-			"DownloadRate":     "0 B/s",
+			"CPUPercent":        "0.0",
+			"MemoryPercent":     "0.0",
+			"DiskUsagePercent":  "0.0",
+			"GPULoad":           "0.0",
+			"UploadRate":        "0 B/s",
+			"DownloadRate":      "0 B/s",
+			"CPUSparkline":      template.HTML(""),
+			"MemorySparkline":   template.HTML(""),
+			"DiskSparkline":     template.HTML(""),
+			"GPUSparkline":      template.HTML(""),
+			"UploadSparkline":   template.HTML(""),
+			"DownloadSparkline": template.HTML(""),
 		}
 	}
 

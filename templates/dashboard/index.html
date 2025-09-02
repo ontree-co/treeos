@@ -20,7 +20,7 @@
                                         <h6 class="metric-title">CPU Usage</h6>
                                         <div class="metric-value">{{.MonitoringData.CPUPercent}}%</div>
                                         <div class="sparkline-container" data-metric="cpu">
-                                            <!-- Sparkline will be loaded via HTMX if needed -->
+                                            {{.MonitoringData.CPUSparkline}}
                                         </div>
                                     </div>
                                 </div>
@@ -35,7 +35,7 @@
                                         <h6 class="metric-title">GPU Load</h6>
                                         <div class="metric-value">{{.MonitoringData.GPULoad}}%</div>
                                         <div class="sparkline-container" data-metric="gpu">
-                                            <!-- Sparkline will be loaded via HTMX if needed -->
+                                            {{.MonitoringData.GPUSparkline}}
                                         </div>
                                     </div>
                                 </div>
@@ -50,7 +50,7 @@
                                         <h6 class="metric-title">Memory Usage</h6>
                                         <div class="metric-value">{{.MonitoringData.MemoryPercent}}%</div>
                                         <div class="sparkline-container" data-metric="memory">
-                                            <!-- Sparkline will be loaded via HTMX if needed -->
+                                            {{.MonitoringData.MemorySparkline}}
                                         </div>
                                     </div>
                                 </div>
@@ -66,7 +66,7 @@
                                         <h6 class="metric-title">Disk Usage (/)</h6>
                                         <div class="metric-value">{{.MonitoringData.DiskUsagePercent}}%</div>
                                         <div class="sparkline-container" data-metric="disk">
-                                            <!-- Sparkline will be loaded via HTMX if needed -->
+                                            {{.MonitoringData.DiskSparkline}}
                                         </div>
                                     </div>
                                 </div>
@@ -81,7 +81,7 @@
                                         <h6 class="metric-title">Download</h6>
                                         <div class="metric-value">{{.MonitoringData.DownloadRate}}</div>
                                         <div class="sparkline-container" data-metric="download">
-                                            <!-- Sparkline will be loaded via HTMX if needed -->
+                                            {{.MonitoringData.DownloadSparkline}}
                                         </div>
                                     </div>
                                 </div>
@@ -96,7 +96,7 @@
                                         <h6 class="metric-title">Upload</h6>
                                         <div class="metric-value">{{.MonitoringData.UploadRate}}</div>
                                         <div class="sparkline-container" data-metric="upload">
-                                            <!-- Sparkline will be loaded via HTMX if needed -->
+                                            {{.MonitoringData.UploadSparkline}}
                                         </div>
                                     </div>
                                 </div>
