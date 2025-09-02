@@ -911,16 +911,15 @@ func (s *Server) handleMonitoringUploadPartial(w http.ResponseWriter, r *http.Re
 // formatNetworkRate formats bytes per second into human-readable format
 func formatNetworkRate(bytesPerSecond float64) string {
 	if bytesPerSecond < 0 {
-		return "0.00 Mbit/s"
+		return "0.00 MB/s"
 	}
 
-	// Convert bytes per second to megabits per second
-	// 1 byte = 8 bits
-	// 1 megabit = 1,000,000 bits (using decimal convention for network speeds)
-	megabitsPerSecond := (bytesPerSecond * 8) / 1000000
+	// Convert bytes per second to megabytes per second
+	// 1 MB = 1,048,576 bytes (using binary convention)
+	megabytesPerSecond := bytesPerSecond / (1024 * 1024)
 
-	// Always display in Mbit/s with 2 decimal places
-	return fmt.Sprintf("%.2f Mbit/s", megabitsPerSecond)
+	// Always display in MB/s with 2 decimal places
+	return fmt.Sprintf("%.2f MB/s", megabytesPerSecond)
 }
 
 // normalizeNetworkRates normalizes network rate values to percentages for sparkline display
