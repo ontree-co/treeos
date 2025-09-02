@@ -42,14 +42,21 @@ type AppStatusResponse struct {
 	Error    string                `json:"error,omitempty"`
 }
 
+// PortMapping represents a port mapping with separated host and container ports
+type PortMapping struct {
+	Host      string `json:"host"`
+	Container string `json:"container"`
+}
+
 // ServiceStatusDetail represents status detail for a single service
 type ServiceStatusDetail struct {
-	Name   string   `json:"name"`
-	Image  string   `json:"image"`
-	Status string   `json:"status"`
-	State  string   `json:"state,omitempty"`
-	Ports  []string `json:"ports,omitempty"`
-	Error  string   `json:"error,omitempty"`
+	Name         string        `json:"name"`
+	Image        string        `json:"image"`
+	Status       string        `json:"status"`
+	State        string        `json:"state,omitempty"`
+	Ports        []string      `json:"ports,omitempty"`        // Keep for backward compatibility
+	PortMappings []PortMapping `json:"portMappings,omitempty"` // New structured format
+	Error        string        `json:"error,omitempty"`
 }
 
 // handleCreateApp handles POST /api/apps
@@ -572,18 +579,29 @@ func (s *Server) handleAPIAppStatus(w http.ResponseWriter, r *http.Request) {
 		if container.Publishers != nil && len(container.Publishers) > 0 {
 			// Use a map to track unique port mappings (ignoring IP version)
 			portMap := make(map[string]bool)
+			portMappings := []PortMapping{}
+			
 			for _, pub := range container.Publishers {
 				if pub.PublishedPort > 0 && pub.TargetPort > 0 {
 					portStr := fmt.Sprintf("%d:%d", pub.PublishedPort, pub.TargetPort)
-					portMap[portStr] = true
+					if !portMap[portStr] {
+						portMap[portStr] = true
+						// Add to both formats
+						portMappings = append(portMappings, PortMapping{
+							Host:      fmt.Sprintf("%d", pub.PublishedPort),
+							Container: fmt.Sprintf("%d", pub.TargetPort),
+						})
+					}
 				}
 			}
-			// Convert map to sorted slice
+			
+			// Convert map to sorted slice for backward compatibility
 			ports := make([]string, 0, len(portMap))
 			for port := range portMap {
 				ports = append(ports, port)
 			}
 			service.Ports = ports
+			service.PortMappings = portMappings
 		}
 
 		services = append(services, service)

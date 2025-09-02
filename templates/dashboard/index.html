@@ -208,9 +208,19 @@
                                         {{if .Services}}
                                             {{$hasPorts := false}}
                                             {{range $name, $service := .Services}}
-                                                {{range $port := $service.Ports}}
-                                                    {{$hasPorts = true}}
-                                                    <div><span class="badge bg-light text-dark">{{$port}}</span></div>
+                                                {{if $service.PortMappings}}
+                                                    {{range $pm := $service.PortMappings}}
+                                                        {{$hasPorts = true}}
+                                                        <div class="port-display">
+                                                            <span class="host-port">{{$pm.Host}}</span>:{{$pm.Container}}
+                                                        </div>
+                                                    {{end}}
+                                                {{else if $service.Ports}}
+                                                    {{/* Fallback to old format if PortMappings not available */}}
+                                                    {{range $port := $service.Ports}}
+                                                        {{$hasPorts = true}}
+                                                        <div class="port-display">{{$port}}</div>
+                                                    {{end}}
                                                 {{end}}
                                             {{end}}
                                             {{if not $hasPorts}}
@@ -323,6 +333,16 @@
     .table-hover tbody tr:hover {
         background-color: #f8f9fa;
         transition: background-color 0.2s;
+    }
+    
+    /* Port display styling */
+    .port-display {
+        display: inline-block;
+    }
+    
+    .port-display .host-port {
+        font-size: 1.1rem;
+        font-weight: 500;
     }
 </style>
 

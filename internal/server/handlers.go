@@ -379,18 +379,29 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 				if container.Publishers != nil && len(container.Publishers) > 0 {
 					// Use a map to track unique port mappings (ignoring IP version)
 					portMap := make(map[string]bool)
+					portMappings := []PortMapping{}
+					
 					for _, pub := range container.Publishers {
 						if pub.PublishedPort > 0 && pub.TargetPort > 0 {
 							portStr := fmt.Sprintf("%d:%d", pub.PublishedPort, pub.TargetPort)
-							portMap[portStr] = true
+							if !portMap[portStr] {
+								portMap[portStr] = true
+								// Add to both formats
+								portMappings = append(portMappings, PortMapping{
+									Host:      fmt.Sprintf("%d", pub.PublishedPort),
+									Container: fmt.Sprintf("%d", pub.TargetPort),
+								})
+							}
 						}
 					}
-					// Convert map to sorted slice
+					
+					// Convert map to sorted slice for backward compatibility
 					ports := make([]string, 0, len(portMap))
 					for port := range portMap {
 						ports = append(ports, port)
 					}
 					service.Ports = ports
+					service.PortMappings = portMappings
 				}
 
 				appStatus.Services = append(appStatus.Services, service)
