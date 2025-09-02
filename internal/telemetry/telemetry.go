@@ -32,15 +32,18 @@ type Config struct {
 
 // Initialize sets up OpenTelemetry with the given configuration
 func Initialize(ctx context.Context, cfg Config) (func(context.Context) error, error) {
-	// Create resource
-	res, err := resource.Merge(
-		resource.Default(),
-		resource.NewWithAttributes(
-			semconv.SchemaURL,
+	// Create resource without merging with Default() to avoid schema conflicts
+	res, err := resource.New(ctx,
+		resource.WithAttributes(
 			semconv.ServiceName(cfg.ServiceName),
 			semconv.ServiceVersion(cfg.ServiceVersion),
 			attribute.String("environment", cfg.Environment),
 		),
+		resource.WithTelemetrySDK(),
+		resource.WithHost(),
+		resource.WithProcess(),
+		resource.WithOS(),
+		resource.WithContainer(),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create resource: %w", err)
