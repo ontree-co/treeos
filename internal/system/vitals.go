@@ -17,12 +17,12 @@ import (
 
 // Variables for tracking network rate calculation
 var (
-	lastNetworkCheck     time.Time
-	lastRxBytes          uint64
-	lastTxBytes          uint64
-	networkMutex         sync.Mutex
-	lastUploadRate       uint64
-	lastDownloadRate     uint64
+	lastNetworkCheck time.Time
+	lastRxBytes      uint64
+	lastTxBytes      uint64
+	networkMutex     sync.Mutex
+	lastUploadRate   uint64
+	lastDownloadRate uint64
 )
 
 // Vitals represents system resource usage information
@@ -142,17 +142,17 @@ func getNetworkRates() (uint64, uint64) {
 	var currentRxBytes, currentTxBytes uint64
 	for _, stat := range netStats {
 		// Skip loopback, docker, and other virtual interfaces
-		if stat.Name == "lo" || 
-		   strings.HasPrefix(stat.Name, "docker") || 
-		   strings.HasPrefix(stat.Name, "veth") ||
-		   strings.HasPrefix(stat.Name, "br-") ||
-		   strings.HasPrefix(stat.Name, "virbr") {
+		if stat.Name == "lo" ||
+			strings.HasPrefix(stat.Name, "docker") ||
+			strings.HasPrefix(stat.Name, "veth") ||
+			strings.HasPrefix(stat.Name, "br-") ||
+			strings.HasPrefix(stat.Name, "virbr") {
 			continue
 		}
 		currentRxBytes += stat.BytesRecv
 		currentTxBytes += stat.BytesSent
 	}
-	
+
 	currentTime := time.Now()
 
 	// If this is the first call or it's been too long, just store values
@@ -198,7 +198,7 @@ func getNetworkRates() (uint64, uint64) {
 func GetNetworkCounters() (uint64, uint64) {
 	networkMutex.Lock()
 	defer networkMutex.Unlock()
-	
+
 	// If we haven't initialized yet, get current values
 	if lastNetworkCheck.IsZero() {
 		netStats, err := net.IOCounters(false)
@@ -209,6 +209,6 @@ func GetNetworkCounters() (uint64, uint64) {
 		lastTxBytes = netStats[0].BytesSent
 		lastNetworkCheck = time.Now()
 	}
-	
+
 	return lastRxBytes, lastTxBytes
 }

@@ -459,8 +459,8 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 		deployedApp.IsExposed = metadata.IsExposed
 		deployedApp.TailscaleHostname = metadata.TailscaleHostname
 		deployedApp.TailscaleExposed = metadata.TailscaleExposed
-		// Generate a pseudo-ID for template compatibility
-		deployedApp.ID = fmt.Sprintf("app-%s", appName)
+		// Use lowercase app name as ID
+		deployedApp.ID = strings.ToLower(appName)
 	}
 
 	// Prepare template data
@@ -778,8 +778,8 @@ func (s *Server) handleAppExpose(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Generate app ID for route
-	appID := fmt.Sprintf("app-%s", appName)
+	// Use lowercase app name as ID for route
+	appID := strings.ToLower(appName)
 	log.Printf("[Expose] Exposing app %s with subdomain %s on port %d", appName, metadata.Subdomain, metadata.HostPort)
 
 	// Create route config (only for public domain, Tailscale handled separately)
@@ -808,7 +808,7 @@ func (s *Server) handleAppExpose(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("Failed to update compose metadata: %v", err)
 		// Try to rollback Caddy change
-		_ = s.caddyClient.DeleteRoute(fmt.Sprintf("route-for-app-%s", appID))
+		_ = s.caddyClient.DeleteRoute(fmt.Sprintf("route-for-%s", appID))
 		session, err := s.sessionStore.Get(r, "ontree-session")
 		if err != nil {
 			log.Printf("Failed to get session: %v", err)
@@ -901,8 +901,8 @@ func (s *Server) handleAppUnexpose(w http.ResponseWriter, r *http.Request) {
 
 	// Delete route from Caddy if client is available
 	if s.caddyClient != nil {
-		appID := fmt.Sprintf("app-%s", appName)
-		routeID := fmt.Sprintf("route-for-app-%s", appID)
+		appID := strings.ToLower(appName)
+		routeID := fmt.Sprintf("route-for-%s", appID)
 		err = s.caddyClient.DeleteRoute(routeID)
 		if err != nil {
 			log.Printf("Failed to delete route from Caddy: %v", err)

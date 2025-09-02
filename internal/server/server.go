@@ -432,7 +432,7 @@ func (s *Server) Start() error {
 	// Test endpoint for triggering agent runs (for testing purposes)
 	// This endpoint is protected by auth middleware so only authenticated users can trigger it
 	mux.HandleFunc("/api/test/agent-run", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleTestAgentRun))))
-	
+
 	// Test endpoint for checking LLM API connection
 	mux.HandleFunc("/api/test-agent", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleTestAgentConnection))))
 
@@ -1109,12 +1109,12 @@ func (s *Server) testLLMConnection(apiKey, apiURL, model string) (string, error)
 	}
 
 	response := apiResponse.Choices[0].Message.Content
-	
+
 	// Handle empty response gracefully
 	if response == "" {
 		return "Connection successful! (Empty response from model)", nil
 	}
-	
+
 	return response, nil
 }
 
@@ -1143,8 +1143,8 @@ func (s *Server) syncExposedApps() {
 			continue
 		}
 
-		// Generate ID for Caddy route
-		appID := fmt.Sprintf("app-%s", app.Name)
+		// Use lowercase app name as ID for Caddy route
+		appID := strings.ToLower(app.Name)
 
 		// Create route config (only for public domain now, Tailscale handled separately)
 		routeConfig := caddy.CreateRouteConfig(appID, metadata.Subdomain, metadata.HostPort, publicDomain, "")

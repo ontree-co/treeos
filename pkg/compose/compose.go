@@ -262,6 +262,32 @@ func (s *Service) loadProject(ctx context.Context, opts Options) (*types.Project
 	}
 
 	// Set up config details
+	// Load environment variables from .env file if it exists
+	envVars := make(map[string]string)
+	envFile := filepath.Join(opts.WorkingDir, ".env")
+	if _, err := os.Stat(envFile); err == nil {
+		// Read .env file
+		envContent, err := os.ReadFile(envFile)
+		if err == nil {
+			// Parse .env file (simple key=value format)
+			lines := strings.Split(string(envContent), "\n")
+			for _, line := range lines {
+				line = strings.TrimSpace(line)
+				if line != "" && !strings.HasPrefix(line, "#") {
+					parts := strings.SplitN(line, "=", 2)
+					if len(parts) == 2 {
+						envVars[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
+					}
+				}
+			}
+		}
+	}
+
+	// Fall back to directory name if COMPOSE_PROJECT_NAME not in .env
+	if _, ok := envVars["COMPOSE_PROJECT_NAME"]; !ok {
+		envVars["COMPOSE_PROJECT_NAME"] = filepath.Base(opts.WorkingDir)
+	}
+
 	configDetails := types.ConfigDetails{
 		WorkingDir: opts.WorkingDir,
 		ConfigFiles: []types.ConfigFile{
@@ -269,17 +295,15 @@ func (s *Service) loadProject(ctx context.Context, opts Options) (*types.Project
 				Filename: composeFile,
 			},
 		},
-		Environment: map[string]string{
-			"COMPOSE_PROJECT_NAME": filepath.Base(opts.WorkingDir),
-		},
+		Environment: envVars,
 	}
 
-	// If env file is specified, load it
-	if opts.EnvFile != "" {
-		envFile := filepath.Join(opts.WorkingDir, opts.EnvFile)
-		if _, err := os.Stat(envFile); err == nil {
+	// If additional env file is specified, load it
+	if opts.EnvFile != "" && opts.EnvFile != ".env" {
+		additionalEnvFile := filepath.Join(opts.WorkingDir, opts.EnvFile)
+		if _, err := os.Stat(additionalEnvFile); err == nil {
 			configDetails.ConfigFiles = append(configDetails.ConfigFiles, types.ConfigFile{
-				Filename: envFile,
+				Filename: additionalEnvFile,
 			})
 		}
 	}

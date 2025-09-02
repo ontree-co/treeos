@@ -1,4 +1,30 @@
 {{define "content"}}
+<style>
+    /* Custom styles for interval button group */
+    .btn-group[role="group"] .btn {
+        font-size: 0.9rem;
+        padding: 0.5rem 0.75rem;
+        white-space: nowrap;
+    }
+    
+    @media (max-width: 768px) {
+        .btn-group[role="group"] {
+            flex-direction: column;
+        }
+        .btn-group[role="group"] .btn {
+            border-radius: 0 !important;
+            width: 100%;
+        }
+        .btn-group[role="group"] .btn:first-child {
+            border-top-left-radius: 0.25rem !important;
+            border-top-right-radius: 0.25rem !important;
+        }
+        .btn-group[role="group"] .btn:last-child {
+            border-bottom-left-radius: 0.25rem !important;
+            border-bottom-right-radius: 0.25rem !important;
+        }
+    }
+</style>
 <div class="row">
     <div class="col-12">
         <nav aria-label="breadcrumb">
@@ -15,8 +41,222 @@
 </div>
 
 <div class="row">
-    <div class="col-md-8">
+    <div class="col-12">
         <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">AI Agent Configuration</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-4">
+                    Configure the AI SysAdmin Agent that monitors your applications and infrastructure.
+                </p>
+                
+                <form method="post" action="/settings">
+                    <div class="form-check mb-4">
+                        <input class="form-check-input" type="checkbox" id="agent_enabled" name="agent_enabled" {{if .AgentEnabled}}checked{{end}}>
+                        <label class="form-check-label" for="agent_enabled">
+                            <strong>Enable AI Agent</strong>
+                        </label>
+                        <small class="form-text text-muted d-block">
+                            When enabled, the agent will periodically check your applications and post status updates to the chat log.
+                        </small>
+                        {{if and .ConfigAgentEnabled (ne .ConfigAgentEnabled .AgentEnabled)}}  
+                            <div class="alert alert-warning mt-2 mb-0">
+                                <small>
+                                    <i>⚠️</i> Currently {{if .ConfigAgentEnabled}}enabled{{else}}disabled{{end}} via environment variable
+                                </small>
+                            </div>
+                        {{end}}
+                    </div>
+
+                    <div id="agentConfigSection" style="display: none;">
+                        <div class="mb-4">
+                            <label class="form-label">Check Interval</label>
+                            <div class="btn-group w-100" role="group" aria-label="Check interval options">
+                                <input type="radio" class="btn-check" name="agent_check_interval" id="interval_1m" value="1m" 
+                                       {{if eq .AgentCheckInterval "1m"}}checked{{end}}>
+                                <label class="btn btn-outline-primary" for="interval_1m">1 minute</label>
+                                
+                                <input type="radio" class="btn-check" name="agent_check_interval" id="interval_5m" value="5m" 
+                                       {{if or (eq .AgentCheckInterval "5m") (eq .AgentCheckInterval "")}}checked{{end}}>
+                                <label class="btn btn-outline-primary" for="interval_5m">5 minutes</label>
+                                
+                                <input type="radio" class="btn-check" name="agent_check_interval" id="interval_15m" value="15m" 
+                                       {{if eq .AgentCheckInterval "15m"}}checked{{end}}>
+                                <label class="btn btn-outline-primary" for="interval_15m">15 minutes</label>
+                                
+                                <input type="radio" class="btn-check" name="agent_check_interval" id="interval_60m" value="1h" 
+                                       {{if or (eq .AgentCheckInterval "60m") (eq .AgentCheckInterval "1h")}}checked{{end}}>
+                                <label class="btn btn-outline-primary" for="interval_60m">60 minutes</label>
+                                
+                                <input type="radio" class="btn-check" name="agent_check_interval" id="interval_3h" value="3h" 
+                                       {{if eq .AgentCheckInterval "3h"}}checked{{end}}>
+                                <label class="btn btn-outline-primary" for="interval_3h">3 hours</label>
+                            </div>
+                            <small class="form-text text-muted">
+                                How often the agent checks your applications and infrastructure
+                            </small>
+                        </div>
+
+                        <h6 class="mt-4 mb-3">Agent Type</h6>
+                        
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="agent_type" id="agent_type_local" value="local" 
+                                       {{if or (eq .AgentLLMAPIURL "http://localhost:11434/v1/chat/completions") (eq .AgentLLMAPIURL "")}}checked{{end}}>
+                                <label class="form-check-label" for="agent_type_local">
+                                    <strong>Use Local Agent</strong> (Ollama on port 11434)
+                                </label>
+                            </div>
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="radio" name="agent_type" id="agent_type_cloud" value="cloud"
+                                       {{if and (ne .AgentLLMAPIURL "http://localhost:11434/v1/chat/completions") (ne .AgentLLMAPIURL "")}}checked{{end}}>
+                                <label class="form-check-label" for="agent_type_cloud">
+                                    <strong>Use Cloud Agent</strong> (OpenAI or compatible API)
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Local Agent Settings -->
+                        <div id="localAgentSettings" class="agent-settings" style="display: none;">
+                            <div class="card bg-light mb-3">
+                                <div class="card-body">
+                                    <h6 class="card-title">Local Agent Settings</h6>
+                                    <div class="mb-3">
+                                        <label for="agent_llm_model_local" class="form-label">Model Name</label>
+                                        <input type="text" class="form-control" id="agent_llm_model_local" name="agent_llm_model_local" 
+                                               value="{{if eq .AgentLLMAPIURL "http://localhost:11434/v1/chat/completions"}}{{.AgentLLMModel}}{{else}}llama2{{end}}" 
+                                               placeholder="llama2">
+                                        <small class="form-text text-muted">
+                                            The name of the Ollama model to use (e.g., "llama2", "mistral", "codellama")
+                                        </small>
+                                    </div>
+                                    <div class="alert alert-info mb-0">
+                                        <small>
+                                            <i>ℹ️</i> Connecting to Ollama at <code>localhost:11434</code>
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Cloud Agent Settings -->
+                        <div id="cloudAgentSettings" class="agent-settings" style="display: none;">
+                            <div class="card bg-light mb-3">
+                                <div class="card-body">
+                                    <h6 class="card-title">Cloud Agent Settings</h6>
+                                    <div class="mb-3">
+                                        <label for="agent_llm_api_key" class="form-label">
+                                            API Key
+                                            {{if .ConfigAgentLLMAPIKey}}<span class="badge bg-info">Set via env</span>{{end}}
+                                        </label>
+                                        <input type="password" class="form-control" id="agent_llm_api_key" name="agent_llm_api_key" 
+                                               value="{{.AgentLLMAPIKey}}" placeholder="sk-...">
+                                        <small class="form-text text-muted">
+                                            Your OpenAI API key or key for OpenAI-compatible service
+                                        </small>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="agent_llm_api_url" class="form-label">
+                                            API URL <span class="badge bg-secondary">Optional</span>
+                                        </label>
+                                        <input type="text" class="form-control" id="agent_llm_api_url" name="agent_llm_api_url" 
+                                               value="{{if and (ne .AgentLLMAPIURL "http://localhost:11434/v1/chat/completions") (ne .AgentLLMAPIURL "")}}{{.AgentLLMAPIURL}}{{else}}https://api.openai.com/v1/chat/completions{{end}}" 
+                                               placeholder="https://api.openai.com/v1/chat/completions">
+                                        <small class="form-text text-muted">
+                                            Leave default for OpenAI, or specify custom endpoint
+                                        </small>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="agent_llm_model_cloud" class="form-label">
+                                            Model
+                                        </label>
+                                        <input type="text" class="form-control" id="agent_llm_model_cloud" name="agent_llm_model_cloud" 
+                                               value="{{if ne .AgentLLMAPIURL "http://localhost:11434/v1/chat/completions"}}{{.AgentLLMModel}}{{else}}gpt-4-turbo-preview{{end}}" 
+                                               placeholder="gpt-4-turbo-preview">
+                                        <small class="form-text text-muted">
+                                            Model name (e.g., "gpt-4", "gpt-3.5-turbo")
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="testResult" class="mt-3" style="display: none;"></div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        <button type="button" class="btn btn-secondary" id="testAgentBtn">
+                            <i>🧪</i> Test Agent Connection
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i>💾</i> Save Agent Settings
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">Uptime Kuma Integration</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-4">
+                    Connect to Uptime Kuma for external monitoring of your applications.
+                </p>
+                
+                <form method="post" action="/settings">
+                    <div class="mb-3">
+                        <label for="uptime_kuma_base_url" class="form-label">Uptime Kuma Base URL</label>
+                        <input type="text" class="form-control" id="uptime_kuma_base_url" name="uptime_kuma_base_url" 
+                               value="{{.UptimeKumaBaseURL}}" placeholder="http://localhost:3001">
+                        <small class="form-text text-muted">
+                            The base URL of your Uptime Kuma instance (e.g., http://localhost:3001)
+                        </small>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <small>
+                            <i>ℹ️</i> <strong>Note:</strong> Monitor names in Uptime Kuma should match the names configured in your app.yml files.
+                        </small>
+                    </div>
+
+                    <div class="d-flex justify-content-end">
+                        <button type="submit" class="btn btn-primary">
+                            <i>💾</i> Save Uptime Kuma Settings  
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">Help</h5>
+            </div>
+            <div class="card-body">
+                <h6>Setting up domains:</h6>
+                <ol class="small">
+                    <li>Configure your DNS to point <code>*.yourdomain.com</code> to this server</li>
+                    <li>Enter your domain in the Public Base Domain field</li>
+                    <li>Caddy will automatically obtain HTTPS certificates</li>
+                    <li>Apps can then be exposed via the app detail page</li>
+                </ol>
+                
+                <h6 class="mt-3">Requirements:</h6>
+                <ul class="small">
+                    <li>Linux server (not macOS)</li>
+                    <li>Caddy installed and running</li>
+                    <li>Port 80 and 443 accessible</li>
+                    <li>Valid DNS configuration</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card mt-4">
             <div class="card-header">
                 <h5 class="mb-0">Domain Configuration</h5>
             </div>
@@ -104,10 +344,6 @@
                         </div>
                         
                         <div class="d-flex justify-content-between align-items-center">
-                            <button type="submit" class="btn btn-primary" {{if not .PlatformSupportsCaddy}}disabled{{end}}>
-                                <i>💾</i> Save Settings
-                            </button>
-                            
                             {{if .CaddyAvailable}}
                                 <span class="text-success">
                                     <i>✅</i> Caddy service is running
@@ -116,7 +352,13 @@
                                 <span class="text-warning">
                                     <i>⚠️</i> Caddy service not available
                                 </span>
+                            {{else}}
+                                <span></span>
                             {{end}}
+                            
+                            <button type="submit" class="btn btn-primary" {{if not .PlatformSupportsCaddy}}disabled{{end}}>
+                                <i>💾</i> Save Settings
+                            </button>
                         </div>
                     </form>
                 {{end}}
@@ -139,162 +381,91 @@
             </div>
         </div>
     </div>
-    
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Help</h5>
-            </div>
-            <div class="card-body">
-                <h6>Setting up domains:</h6>
-                <ol class="small">
-                    <li>Configure your DNS to point <code>*.yourdomain.com</code> to this server</li>
-                    <li>Enter your domain in the Public Base Domain field</li>
-                    <li>Caddy will automatically obtain HTTPS certificates</li>
-                    <li>Apps can then be exposed via the app detail page</li>
-                </ol>
-                
-                <h6 class="mt-3">Requirements:</h6>
-                <ul class="small">
-                    <li>Linux server (not macOS)</li>
-                    <li>Caddy installed and running</li>
-                    <li>Port 80 and 443 accessible</li>
-                    <li>Valid DNS configuration</li>
-                </ul>
-            </div>
-        </div>
-
-        <div class="card mt-4">
-            <div class="card-header">
-                <h5 class="mb-0">AI Agent Configuration</h5>
-            </div>
-            <div class="card-body">
-                <p class="text-muted mb-4">
-                    Configure the AI SysAdmin Agent that monitors your applications and infrastructure.
-                </p>
-                
-                <form method="post" action="/settings">
-                    <div class="form-check mb-4">
-                        <input class="form-check-input" type="checkbox" id="agent_enabled" name="agent_enabled" {{if .AgentEnabled}}checked{{end}}>
-                        <label class="form-check-label" for="agent_enabled">
-                            <strong>Enable AI Agent</strong>
-                        </label>
-                        <small class="form-text text-muted d-block">
-                            When enabled, the agent will periodically check your applications and post status updates to the chat log.
-                        </small>
-                        {{if and .ConfigAgentEnabled (ne .ConfigAgentEnabled .AgentEnabled)}}  
-                            <div class="alert alert-warning mt-2 mb-0">
-                                <small>
-                                    <i>⚠️</i> Currently {{if .ConfigAgentEnabled}}enabled{{else}}disabled{{end}} via environment variable
-                                </small>
-                            </div>
-                        {{end}}
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="agent_check_interval" class="form-label">Check Interval</label>
-                        <input type="text" class="form-control" id="agent_check_interval" name="agent_check_interval" 
-                               value="{{.AgentCheckInterval}}" placeholder="5m">
-                        <small class="form-text text-muted">
-                            How often to run checks (e.g., "5m" for 5 minutes, "1h" for 1 hour)
-                        </small>
-                    </div>
-
-                    <h6 class="mt-4 mb-3">LLM Configuration</h6>
-                    
-                    <div class="mb-3">
-                        <label for="agent_llm_api_key" class="form-label">
-                            API Key
-                            {{if .ConfigAgentLLMAPIKey}}<span class="badge bg-info">Set via env</span>{{end}}
-                        </label>
-                        <input type="password" class="form-control" id="agent_llm_api_key" name="agent_llm_api_key" 
-                               value="{{.AgentLLMAPIKey}}" placeholder="sk-...">
-                        <small class="form-text text-muted">
-                            Your OpenAI API key or key for OpenAI-compatible service
-                        </small>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="agent_llm_api_url" class="form-label">
-                            API URL <span class="badge bg-secondary">Optional</span>
-                        </label>
-                        <input type="text" class="form-control" id="agent_llm_api_url" name="agent_llm_api_url" 
-                               value="{{.AgentLLMAPIURL}}" placeholder="https://api.openai.com/v1/chat/completions">
-                        <small class="form-text text-muted">
-                            Leave empty for OpenAI, or specify URL for local LLM (e.g., http://localhost:11434/v1/chat/completions for Ollama)
-                        </small>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="agent_llm_model" class="form-label">
-                            Model <span class="badge bg-secondary">Optional</span>
-                        </label>
-                        <input type="text" class="form-control" id="agent_llm_model" name="agent_llm_model" 
-                               value="{{.AgentLLMModel}}" placeholder="gpt-4-turbo-preview">
-                        <small class="form-text text-muted">
-                            Model name (e.g., "gpt-4", "llama2" for local models)
-                        </small>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary">
-                        <i>💾</i> Save Agent Settings
-                    </button>
-                    <button type="button" class="btn btn-secondary ms-2" id="testAgentBtn">
-                        <i>🧪</i> Test Agent Connection
-                    </button>
-                    <div id="testResult" class="mt-3" style="display: none;"></div>
-                </form>
-            </div>
-        </div>
-
-        <div class="card mt-4">
-            <div class="card-header">
-                <h5 class="mb-0">Uptime Kuma Integration</h5>
-            </div>
-            <div class="card-body">
-                <p class="text-muted mb-4">
-                    Connect to Uptime Kuma for external monitoring of your applications.
-                </p>
-                
-                <form method="post" action="/settings">
-                    <div class="mb-3">
-                        <label for="uptime_kuma_base_url" class="form-label">Uptime Kuma Base URL</label>
-                        <input type="text" class="form-control" id="uptime_kuma_base_url" name="uptime_kuma_base_url" 
-                               value="{{.UptimeKumaBaseURL}}" placeholder="http://localhost:3001">
-                        <small class="form-text text-muted">
-                            The base URL of your Uptime Kuma instance (e.g., http://localhost:3001)
-                        </small>
-                    </div>
-
-                    <div class="alert alert-info">
-                        <small>
-                            <i>ℹ️</i> <strong>Note:</strong> Monitor names in Uptime Kuma should match the names configured in your app.yml files.
-                        </small>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary">
-                        <i>💾</i> Save Uptime Kuma Settings  
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
 </div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const testBtn = document.getElementById('testAgentBtn');
     const testResult = document.getElementById('testResult');
+    const localRadio = document.getElementById('agent_type_local');
+    const cloudRadio = document.getElementById('agent_type_cloud');
+    const localSettings = document.getElementById('localAgentSettings');
+    const cloudSettings = document.getElementById('cloudAgentSettings');
+    const agentEnabledCheckbox = document.getElementById('agent_enabled');
+    const agentConfigSection = document.getElementById('agentConfigSection');
+    
+    // Function to toggle main configuration visibility
+    function toggleConfigVisibility() {
+        if (agentEnabledCheckbox.checked) {
+            agentConfigSection.style.display = 'block';
+            // Also trigger the agent type toggle to show the correct settings
+            toggleAgentSettings();
+        } else {
+            agentConfigSection.style.display = 'none';
+        }
+    }
+    
+    // Function to toggle settings visibility
+    function toggleAgentSettings() {
+        if (!agentEnabledCheckbox.checked) {
+            return; // Don't show anything if agent is disabled
+        }
+        
+        if (localRadio.checked) {
+            localSettings.style.display = 'block';
+            cloudSettings.style.display = 'none';
+        } else if (cloudRadio.checked) {
+            localSettings.style.display = 'none';
+            cloudSettings.style.display = 'block';
+        }
+    }
+    
+    // Set up checkbox listener for enable/disable
+    if (agentEnabledCheckbox) {
+        agentEnabledCheckbox.addEventListener('change', toggleConfigVisibility);
+        
+        // Initialize visibility on page load
+        toggleConfigVisibility();
+    }
+    
+    // Set up radio button listeners
+    if (localRadio && cloudRadio) {
+        localRadio.addEventListener('change', toggleAgentSettings);
+        cloudRadio.addEventListener('change', toggleAgentSettings);
+        
+        // Initialize visibility on page load only if agent is enabled
+        if (agentEnabledCheckbox.checked) {
+            toggleAgentSettings();
+        }
+    }
     
     if (testBtn) {
         testBtn.addEventListener('click', function() {
-            // Get form values
-            const apiKey = document.getElementById('agent_llm_api_key').value;
-            const apiUrl = document.getElementById('agent_llm_api_url').value;
-            const model = document.getElementById('agent_llm_model').value;
+            let apiKey = '';
+            let apiUrl = '';
+            let model = '';
             
-            if (!apiKey) {
-                showResult('error', 'API Key is required for testing');
+            // Get values based on selected agent type
+            if (localRadio.checked) {
+                // Local agent settings
+                model = document.getElementById('agent_llm_model_local').value;
+                apiUrl = 'http://localhost:11434/v1/chat/completions';
+                // Local doesn't need API key
+                apiKey = 'local-no-key-needed';
+            } else {
+                // Cloud agent settings
+                apiKey = document.getElementById('agent_llm_api_key').value;
+                apiUrl = document.getElementById('agent_llm_api_url').value;
+                model = document.getElementById('agent_llm_model_cloud').value;
+                
+                if (!apiKey) {
+                    showResult('error', 'API Key is required for cloud agent testing');
+                    return;
+                }
+            }
+            
+            if (!model) {
+                showResult('error', 'Model name is required');
                 return;
             }
             
@@ -311,13 +482,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: JSON.stringify({
                     api_key: apiKey,
                     api_url: apiUrl || 'https://api.openai.com/v1/chat/completions',
-                    model: model || 'gpt-4-turbo-preview'
+                    model: model,
+                    is_local: localRadio.checked
                 })
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    showResult('success', `✅ Connection successful! Response: "${data.response}"`);
+                    const agentType = localRadio.checked ? 'Local' : 'Cloud';
+                    showResult('success', `✅ ${agentType} agent connection successful! Response: "${data.response}"`);
                 } else {
                     showResult('error', `❌ Connection failed: ${data.error}`);
                 }

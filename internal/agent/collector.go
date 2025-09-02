@@ -118,10 +118,10 @@ func (c *Collector) collectAppStatus(config AppConfig) (*AppStatus, error) {
 	// Map to track which services we've found
 	serviceStatuses := make(map[string]*ServiceStatus)
 
-	// Look for containers matching the compose naming pattern
+	// Look for containers matching the expected service names
 	for _, service := range config.ExpectedServices {
-		// Container naming follows pattern: ontree-{appID}-{serviceName}-1
-		expectedName := fmt.Sprintf("ontree-%s-%s-1", config.ID, service)
+		// Use the service name directly as the expected container name
+		expectedName := service
 
 		serviceStatus := &ServiceStatus{
 			Name:   service,

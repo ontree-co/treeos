@@ -288,9 +288,14 @@
                 <h5 class="mb-0">
                     <i>💬</i> Agent Status Updates
                 </h5>
-                <button type="button" class="btn btn-sm btn-outline-primary" onclick="loadChatMessages()">
-                    <i>🔄</i> Refresh
-                </button>
+                <div>
+                    <button type="button" class="btn btn-sm btn-outline-success" onclick="triggerAgentCheck()">
+                        <i>🤖</i> Run Check
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="loadChatMessages()">
+                        <i>🔄</i> Refresh
+                    </button>
+                </div>
             </div>
             <div class="card-body">
                 <div id="chat-messages-container" style="max-height: 400px; overflow-y: auto;">
@@ -914,6 +919,69 @@ function toggleMessageDetails(detailsId) {
         icon.textContent = '▶';
         toggle.innerHTML = '<span id="' + detailsId + '-icon">▶</span> Show details';
     }
+}
+
+// Function to trigger AI agent check
+function triggerAgentCheck() {
+    const btn = event.target.closest('button');
+    const originalContent = btn.innerHTML;
+    
+    // Show loading state
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Running...';
+    
+    // Call the API to trigger agent check
+    fetch('/api/test/agent-run', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show success message
+            btn.classList.remove('btn-outline-success');
+            btn.classList.add('btn-success');
+            btn.innerHTML = '<i>✓</i> Check Started';
+            
+            // Wait a bit then reload messages
+            setTimeout(() => {
+                loadChatMessages();
+                // Reset button
+                btn.disabled = false;
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-outline-success');
+                btn.innerHTML = originalContent;
+            }, 3000);
+        } else {
+            // Show error
+            btn.classList.remove('btn-outline-success');
+            btn.classList.add('btn-danger');
+            btn.innerHTML = '<i>✗</i> ' + (data.error || 'Failed');
+            
+            // Reset after delay
+            setTimeout(() => {
+                btn.disabled = false;
+                btn.classList.remove('btn-danger');
+                btn.classList.add('btn-outline-success');
+                btn.innerHTML = originalContent;
+            }, 3000);
+        }
+    })
+    .catch(error => {
+        console.error('Error triggering agent check:', error);
+        btn.classList.remove('btn-outline-success');
+        btn.classList.add('btn-danger');
+        btn.innerHTML = '<i>✗</i> Error';
+        
+        setTimeout(() => {
+            btn.disabled = false;
+            btn.classList.remove('btn-danger');
+            btn.classList.add('btn-outline-success');
+            btn.innerHTML = originalContent;
+        }, 3000);
+    });
 }
 
 document.addEventListener('DOMContentLoaded', function() {

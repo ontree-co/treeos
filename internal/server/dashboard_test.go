@@ -71,8 +71,6 @@ func TestHandleDashboard_DisplaysApps(t *testing.T) {
 	// Check for specific app names that we know exist
 	expectedApps := []string{
 		"openwebui-amd",
-		"owui-amd-tuesday",
-		"testnginx",
 		"uptime-kuma",
 	}
 

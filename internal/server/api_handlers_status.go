@@ -71,7 +71,7 @@ func (s *Server) handleAPIStatusHistory(w http.ResponseWriter, r *http.Request) 
 
 	// Parse query parameters for time range
 	query := r.URL.Query()
-	
+
 	// Default to last 24 hours if no parameters
 	endTime := time.Now()
 	startTime := endTime.Add(-24 * time.Hour)

@@ -206,7 +206,7 @@ func (c *Client) DeleteRoute(routeID string) error {
 
 // CreateRouteConfig creates a RouteConfig for an application
 func CreateRouteConfig(appID, subdomain string, hostPort int, publicDomain, tailscaleDomain string) *RouteConfig {
-	routeID := fmt.Sprintf("route-for-app-%s", appID)
+	routeID := fmt.Sprintf("route-for-%s", appID)
 
 	hosts := []string{}
 	if publicDomain != "" {

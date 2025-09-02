@@ -85,12 +85,12 @@ func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, r *http.
 	// Track last update times for memory and disk (update every 60 seconds)
 	var memoryValue, diskValue float64
 	var memorySparkline, diskSparkline template.HTML
-	
+
 	// Get current timestamp for cache keys
 	now := time.Now()
 	// Round to minute for memory/disk caching
 	minuteKey := now.Truncate(time.Minute).Unix()
-	
+
 	// Get memory data (cached for 60 seconds)
 	memoryCacheKey := fmt.Sprintf("dashboard:memory:%d", minuteKey)
 	if cached, found := s.sparklineCache.Get(memoryCacheKey); found {
@@ -114,11 +114,11 @@ func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, r *http.
 		}
 		// Cache for 60 seconds
 		s.sparklineCache.Set(memoryCacheKey, map[string]interface{}{
-			"value": memoryValue,
+			"value":     memoryValue,
 			"sparkline": memorySparkline,
 		})
 	}
-	
+
 	// Get disk data (cached for 60 seconds)
 	diskCacheKey := fmt.Sprintf("dashboard:disk:%d", minuteKey)
 	if cached, found := s.sparklineCache.Get(diskCacheKey); found {
@@ -142,11 +142,11 @@ func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, r *http.
 		}
 		// Cache for 60 seconds
 		s.sparklineCache.Set(diskCacheKey, map[string]interface{}{
-			"value": diskValue,
+			"value":     diskValue,
 			"sparkline": diskSparkline,
 		})
 	}
-	
+
 	// Get real-time data for CPU, GPU, and Network (updated every second)
 	vitals, err := system.GetVitals()
 	if err != nil {
@@ -154,11 +154,11 @@ func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, r *http.
 		http.Error(w, "Failed to get system vitals", http.StatusInternalServerError)
 		return
 	}
-	
+
 	// Generate sparklines for real-time metrics (CPU, GPU, Network)
 	// These use recent historical data combined with real-time data
 	var cpuSparkline, gpuSparkline, uploadSparkline, downloadSparkline template.HTML
-	
+
 	// CPU sparkline
 	if historicalData, err := database.GetMetricsLast24Hours("cpu"); err == nil && len(historicalData) > 0 {
 		points := make([]float64, len(historicalData))
@@ -167,8 +167,8 @@ func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, r *http.
 		}
 		cpuSparkline = template.HTML(charts.GenerateSparklineSVG(points, 150, 40))
 	}
-	
-	// GPU sparkline  
+
+	// GPU sparkline
 	if historicalData, err := database.GetMetricsLast24Hours("gpu"); err == nil && len(historicalData) > 0 {
 		points := make([]float64, len(historicalData))
 		for i, m := range historicalData {
@@ -176,7 +176,7 @@ func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, r *http.
 		}
 		gpuSparkline = template.HTML(charts.GenerateSparklineSVG(points, 150, 40))
 	}
-	
+
 	// Network sparklines
 	if historicalData, err := database.GetMetricsLast24Hours("network"); err == nil && len(historicalData) > 0 {
 		uploadPoints := make([]float64, len(historicalData))
@@ -191,7 +191,7 @@ func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, r *http.
 		uploadSparkline = template.HTML(charts.GenerateSparklineSVG(uploadPoints, 150, 40))
 		downloadSparkline = template.HTML(charts.GenerateSparklineSVG(downloadPoints, 150, 40))
 	}
-	
+
 	// Prepare the response HTML with all six cards
 	html := fmt.Sprintf(`
 	<div id="monitoring-cards-container">
@@ -296,7 +296,7 @@ func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, r *http.
 		formatNetworkRate(float64(vitals.DownloadRate)), downloadSparkline,
 		formatNetworkRate(float64(vitals.UploadRate)), uploadSparkline,
 	)
-	
+
 	// Return the HTML response
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write([]byte(html))

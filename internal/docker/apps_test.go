@@ -186,7 +186,7 @@ func TestScanApps_RealDirectory(t *testing.T) {
 
 	// Check that at least some known apps were found
 	expectedApps := []string{
-		"testnginx",
+		"openwebui-amd",
 		"uptime-kuma",
 	}
 

@@ -168,13 +168,24 @@ func (s *Server) createAppScaffold(appName, composeContent, envContent, emoji st
 		return fmt.Errorf("failed to write docker-compose.yml: %v", err)
 	}
 
-	// Create .env file if content provided
+	// Always create .env file with Docker Compose naming configuration
+	// First, add the naming configuration
+	namingConfig := fmt.Sprintf("COMPOSE_PROJECT_NAME=ontree-%s\nCOMPOSE_SEPARATOR=-\n", strings.ToLower(appName))
+
+	// If user provided env content, append it
 	if envContent != "" {
-		envPath := filepath.Join(appPath, ".env")
-		err = os.WriteFile(envPath, []byte(envContent), 0640)
-		if err != nil {
-			return fmt.Errorf("failed to create .env file: %v", err)
+		// Check if user's content already has COMPOSE_PROJECT_NAME (shouldn't override)
+		if !strings.Contains(envContent, "COMPOSE_PROJECT_NAME=") {
+			envContent = namingConfig + envContent
 		}
+	} else {
+		envContent = namingConfig
+	}
+
+	envPath := filepath.Join(appPath, ".env")
+	err = os.WriteFile(envPath, []byte(envContent), 0640)
+	if err != nil {
+		return fmt.Errorf("failed to create .env file: %v", err)
 	}
 
 	// Extract host port from compose content

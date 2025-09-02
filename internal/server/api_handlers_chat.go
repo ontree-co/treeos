@@ -39,21 +39,24 @@ func (s *Server) handleAPIAppChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Extract app ID from path
+	// Extract app name from path
 	path := r.URL.Path
 	// Remove /api/apps/ prefix and /chat suffix
-	appID := strings.TrimPrefix(path, "/api/apps/")
-	appID = strings.TrimSuffix(appID, "/chat")
+	appName := strings.TrimPrefix(path, "/api/apps/")
+	appName = strings.TrimSuffix(appName, "/chat")
 
-	if appID == "" {
+	if appName == "" {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(ChatMessagesResponse{
 			Success: false,
-			Error:   "App ID is required",
+			Error:   "App name is required",
 		})
 		return
 	}
+
+	// Convert app name to lowercase to match our ID format
+	appID := strings.ToLower(appName)
 
 	// Parse query parameters for pagination
 	limitStr := r.URL.Query().Get("limit")
