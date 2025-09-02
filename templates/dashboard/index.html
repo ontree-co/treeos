@@ -208,19 +208,9 @@
                                         {{if .Services}}
                                             {{$hasPorts := false}}
                                             {{range $name, $service := .Services}}
-                                                {{if $service.PortMappings}}
-                                                    {{range $pm := $service.PortMappings}}
-                                                        {{$hasPorts = true}}
-                                                        <div class="port-display">
-                                                            <span class="host-port">{{$pm.Host}}</span>:{{$pm.Container}}
-                                                        </div>
-                                                    {{end}}
-                                                {{else if $service.Ports}}
-                                                    {{/* Fallback to old format if PortMappings not available */}}
-                                                    {{range $port := $service.Ports}}
-                                                        {{$hasPorts = true}}
-                                                        <div class="port-display">{{$port}}</div>
-                                                    {{end}}
+                                                {{range $port := $service.Ports}}
+                                                    {{$hasPorts = true}}
+                                                    <div><span class="badge bg-light text-dark">{{$port}}</span></div>
                                                 {{end}}
                                             {{end}}
                                             {{if not $hasPorts}}
