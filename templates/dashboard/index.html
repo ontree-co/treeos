@@ -263,6 +263,7 @@
         transition: transform 0.2s, box-shadow 0.2s;
         height: 100%;
         border: 1px solid rgba(0,0,0,0.125);
+        cursor: pointer;
     }
     
     .monitoring-card:hover {
@@ -281,12 +282,7 @@
         height: 40px;
         overflow: hidden;
         margin-top: 0.5rem;
-        cursor: pointer;
         position: relative;
-    }
-    
-    .sparkline-container:hover {
-        opacity: 0.8;
     }
     
     .sparkline-container svg {
@@ -340,12 +336,13 @@
         });
     });
     
-    // Handle sparkline clicks to show detailed view
+    // Handle monitoring card clicks to show detailed view
     document.addEventListener('click', function(e) {
-        if (e.target.closest('.sparkline-container')) {
-            const card = e.target.closest('[id$="-card"]');
-            if (card) {
-                const metric = card.id.replace('-card', '');
+        const monitoringCard = e.target.closest('.monitoring-card');
+        if (monitoringCard) {
+            const cardWrapper = monitoringCard.closest('[id$="-card"]');
+            if (cardWrapper) {
+                const metric = cardWrapper.id.replace('-card', '');
                 htmx.ajax('GET', '/monitoring/charts/' + metric, {
                     target: '#modal-content',
                     swap: 'innerHTML'
