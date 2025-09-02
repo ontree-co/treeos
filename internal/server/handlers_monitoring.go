@@ -56,6 +56,8 @@ func (s *Server) routeMonitoring(w http.ResponseWriter, r *http.Request) {
 
 	// Route based on the path pattern
 	switch {
+	case path == "/monitoring/dashboard/all":
+		s.handleDashboardMonitoringUpdate(w, r)
 	case path == "/monitoring/partials/cpu":
 		s.handleMonitoringCPUPartial(w, r)
 	case path == "/monitoring/partials/memory":
@@ -75,6 +77,229 @@ func (s *Server) routeMonitoring(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.NotFound(w, r)
 	}
+}
+
+// handleDashboardMonitoringUpdate returns all six monitoring cards data for the dashboard
+// This is called every second via HTMX to update the monitoring cards
+func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, r *http.Request) {
+	// Track last update times for memory and disk (update every 60 seconds)
+	var memoryValue, diskValue float64
+	var memorySparkline, diskSparkline template.HTML
+	
+	// Get current timestamp for cache keys
+	now := time.Now()
+	// Round to minute for memory/disk caching
+	minuteKey := now.Truncate(time.Minute).Unix()
+	
+	// Get memory data (cached for 60 seconds)
+	memoryCacheKey := fmt.Sprintf("dashboard:memory:%d", minuteKey)
+	if cached, found := s.sparklineCache.Get(memoryCacheKey); found {
+		if data, ok := cached.(map[string]interface{}); ok {
+			memoryValue = data["value"].(float64)
+			memorySparkline = data["sparkline"].(template.HTML)
+		}
+	} else {
+		// Get fresh memory data
+		vitals, _ := system.GetVitals()
+		if vitals != nil {
+			memoryValue = vitals.MemPercent
+		}
+		// Generate memory sparkline from last 24h data
+		if historicalData, err := database.GetMetricsLast24Hours("memory"); err == nil && len(historicalData) > 0 {
+			points := make([]float64, len(historicalData))
+			for i, m := range historicalData {
+				points[i] = m.MemoryPercent
+			}
+			memorySparkline = template.HTML(charts.GenerateSparklineSVG(points, 150, 40))
+		}
+		// Cache for 60 seconds
+		s.sparklineCache.Set(memoryCacheKey, map[string]interface{}{
+			"value": memoryValue,
+			"sparkline": memorySparkline,
+		})
+	}
+	
+	// Get disk data (cached for 60 seconds)
+	diskCacheKey := fmt.Sprintf("dashboard:disk:%d", minuteKey)
+	if cached, found := s.sparklineCache.Get(diskCacheKey); found {
+		if data, ok := cached.(map[string]interface{}); ok {
+			diskValue = data["value"].(float64)
+			diskSparkline = data["sparkline"].(template.HTML)
+		}
+	} else {
+		// Get fresh disk data
+		vitals, _ := system.GetVitals()
+		if vitals != nil {
+			diskValue = vitals.DiskPercent
+		}
+		// Generate disk sparkline from last 24h data
+		if historicalData, err := database.GetMetricsLast24Hours("disk"); err == nil && len(historicalData) > 0 {
+			points := make([]float64, len(historicalData))
+			for i, m := range historicalData {
+				points[i] = m.DiskUsagePercent
+			}
+			diskSparkline = template.HTML(charts.GenerateSparklineSVG(points, 150, 40))
+		}
+		// Cache for 60 seconds
+		s.sparklineCache.Set(diskCacheKey, map[string]interface{}{
+			"value": diskValue,
+			"sparkline": diskSparkline,
+		})
+	}
+	
+	// Get real-time data for CPU, GPU, and Network (updated every second)
+	vitals, err := system.GetVitals()
+	if err != nil {
+		log.Printf("Failed to get system vitals: %v", err)
+		http.Error(w, "Failed to get system vitals", http.StatusInternalServerError)
+		return
+	}
+	
+	// Generate sparklines for real-time metrics (CPU, GPU, Network)
+	// These use recent historical data combined with real-time data
+	var cpuSparkline, gpuSparkline, uploadSparkline, downloadSparkline template.HTML
+	
+	// CPU sparkline
+	if historicalData, err := database.GetMetricsLast24Hours("cpu"); err == nil && len(historicalData) > 0 {
+		points := make([]float64, len(historicalData))
+		for i, m := range historicalData {
+			points[i] = m.CPUPercent
+		}
+		cpuSparkline = template.HTML(charts.GenerateSparklineSVG(points, 150, 40))
+	}
+	
+	// GPU sparkline  
+	if historicalData, err := database.GetMetricsLast24Hours("gpu"); err == nil && len(historicalData) > 0 {
+		points := make([]float64, len(historicalData))
+		for i, m := range historicalData {
+			points[i] = m.GPULoad
+		}
+		gpuSparkline = template.HTML(charts.GenerateSparklineSVG(points, 150, 40))
+	}
+	
+	// Network sparklines
+	if historicalData, err := database.GetMetricsLast24Hours("network"); err == nil && len(historicalData) > 0 {
+		uploadPoints := make([]float64, len(historicalData))
+		downloadPoints := make([]float64, len(historicalData))
+		for i, m := range historicalData {
+			uploadPoints[i] = float64(m.UploadRate)
+			downloadPoints[i] = float64(m.DownloadRate)
+		}
+		// Normalize for display
+		uploadPoints = normalizeNetworkRates(uploadPoints)
+		downloadPoints = normalizeNetworkRates(downloadPoints)
+		uploadSparkline = template.HTML(charts.GenerateSparklineSVG(uploadPoints, 150, 40))
+		downloadSparkline = template.HTML(charts.GenerateSparklineSVG(downloadPoints, 150, 40))
+	}
+	
+	// Prepare the response HTML with all six cards
+	html := fmt.Sprintf(`
+	<div id="monitoring-cards-container">
+		<div class="row g-3">
+			<!-- First Row: CPU, GPU, Memory -->
+			<!-- CPU Card -->
+			<div class="col-12 col-md-6 col-lg-4">
+				<div id="cpu-card">
+					<div class="card monitoring-card bg-white">
+						<div class="card-body">
+							<h6 class="metric-title">CPU Usage</h6>
+							<div class="metric-value">%.1f%%</div>
+							<div class="sparkline-container" data-metric="cpu">
+								%s
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			
+			<!-- GPU Card -->
+			<div class="col-12 col-md-6 col-lg-4">
+				<div id="gpu-card">
+					<div class="card monitoring-card bg-white">
+						<div class="card-body">
+							<h6 class="metric-title">GPU Load</h6>
+							<div class="metric-value">%.1f%%</div>
+							<div class="sparkline-container" data-metric="gpu">
+								%s
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			
+			<!-- Memory Card -->
+			<div class="col-12 col-md-6 col-lg-4">
+				<div id="memory-card">
+					<div class="card monitoring-card bg-white">
+						<div class="card-body">
+							<h6 class="metric-title">Memory Usage</h6>
+							<div class="metric-value">%.1f%%</div>
+							<div class="sparkline-container" data-metric="memory">
+								%s
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			
+			<!-- Second Row: Disk, Download, Upload -->
+			<!-- Disk Card -->
+			<div class="col-12 col-md-6 col-lg-4">
+				<div id="disk-card">
+					<div class="card monitoring-card bg-white">
+						<div class="card-body">
+							<h6 class="metric-title">Disk Usage (/)</h6>
+							<div class="metric-value">%.1f%%</div>
+							<div class="sparkline-container" data-metric="disk">
+								%s
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			
+			<!-- Download Card -->
+			<div class="col-12 col-md-6 col-lg-4">
+				<div id="download-card">
+					<div class="card monitoring-card bg-white">
+						<div class="card-body">
+							<h6 class="metric-title">Download</h6>
+							<div class="metric-value">%s</div>
+							<div class="sparkline-container" data-metric="download">
+								%s
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			
+			<!-- Upload Card -->
+			<div class="col-12 col-md-6 col-lg-4">
+				<div id="upload-card">
+					<div class="card monitoring-card bg-white">
+						<div class="card-body">
+							<h6 class="metric-title">Upload</h6>
+							<div class="metric-value">%s</div>
+							<div class="sparkline-container" data-metric="upload">
+								%s
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>`,
+		vitals.CPUPercent, cpuSparkline,
+		vitals.GPULoad, gpuSparkline,
+		memoryValue, memorySparkline,
+		diskValue, diskSparkline,
+		formatNetworkRate(float64(vitals.DownloadRate)), downloadSparkline,
+		formatNetworkRate(float64(vitals.UploadRate)), uploadSparkline,
+	)
+	
+	// Return the HTML response
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write([]byte(html))
 }
 
 // handleMonitoringCPUPartial returns the CPU monitoring card partial

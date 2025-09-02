@@ -9,7 +9,11 @@
                 </h2>
                 
                 <!-- Monitoring Grid -->
-                <div class="monitoring-grid">
+                <div class="monitoring-grid" 
+                     id="monitoring-cards-container"
+                     hx-get="/monitoring/dashboard/all"
+                     hx-trigger="load delay:1s, every 1s"
+                     hx-swap="innerHTML">
                     <div class="row g-3">
                         <!-- First Row: CPU, GPU, Memory -->
                         <!-- CPU Card -->
