@@ -142,28 +142,67 @@ func createTables() error {
 		}
 	}
 
-	// Add domain columns to existing system_setup table (safe to run multiple times)
-	alterQueries := []string{
-		`ALTER TABLE system_setup ADD COLUMN public_base_domain TEXT`,
-		`ALTER TABLE system_setup ADD COLUMN tailscale_auth_key TEXT`,
-		`ALTER TABLE system_setup ADD COLUMN tailscale_tags TEXT DEFAULT 'tag:ontree-apps'`,
-		`ALTER TABLE system_setup ADD COLUMN agent_enabled INTEGER DEFAULT 0`,
-		`ALTER TABLE system_setup ADD COLUMN agent_check_interval TEXT DEFAULT '5m'`,
-		`ALTER TABLE system_setup ADD COLUMN agent_llm_api_key TEXT`,
-		`ALTER TABLE system_setup ADD COLUMN agent_llm_api_url TEXT`,
-		`ALTER TABLE system_setup ADD COLUMN agent_llm_model TEXT`,
-		`ALTER TABLE system_setup ADD COLUMN uptime_kuma_base_url TEXT`,
-		`ALTER TABLE system_vital_logs ADD COLUMN upload_rate INTEGER DEFAULT 0`,
-		`ALTER TABLE system_vital_logs ADD COLUMN download_rate INTEGER DEFAULT 0`,
-		`ALTER TABLE system_vital_logs ADD COLUMN gpu_load REAL DEFAULT 0`,
+	// These ALTER statements are for migrating older databases that don't have these columns
+	// They're no longer needed since the CREATE TABLE statements already include them
+	// We'll check if migration is needed by checking for a column that was added later
+	if err := migrateColumnsIfNeeded(); err != nil {
+		return fmt.Errorf("failed to run migrations: %w", err)
 	}
 
-	for _, query := range alterQueries {
-		// Ignore errors as columns may already exist
-		_, err := db.Exec(query)
-		if err != nil {
-			// This is expected if the column already exists, which is fine
-			log.Printf("Migration query (expected to fail if column exists): %v", err)
+	return nil
+}
+
+// migrateColumnsIfNeeded checks if columns exist before trying to add them
+func migrateColumnsIfNeeded() error {
+	// Check if we need to run migrations by checking for a newer column
+	var count int
+	row := db.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('system_vital_logs') WHERE name='gpu_load'`)
+	if err := row.Scan(&count); err != nil {
+		// If we can't check, assume we need to migrate
+		count = 0
+	}
+
+	// If the gpu_load column already exists, skip all migrations
+	// (they were already done or the table was created with all columns)
+	if count > 0 {
+		return nil
+	}
+
+	// Migration queries for older databases
+	migrations := []struct {
+		table  string
+		column string
+		query  string
+	}{
+		{"system_setup", "public_base_domain", `ALTER TABLE system_setup ADD COLUMN public_base_domain TEXT`},
+		{"system_setup", "tailscale_auth_key", `ALTER TABLE system_setup ADD COLUMN tailscale_auth_key TEXT`},
+		{"system_setup", "tailscale_tags", `ALTER TABLE system_setup ADD COLUMN tailscale_tags TEXT DEFAULT 'tag:ontree-apps'`},
+		{"system_setup", "agent_enabled", `ALTER TABLE system_setup ADD COLUMN agent_enabled INTEGER DEFAULT 0`},
+		{"system_setup", "agent_check_interval", `ALTER TABLE system_setup ADD COLUMN agent_check_interval TEXT DEFAULT '5m'`},
+		{"system_setup", "agent_llm_api_key", `ALTER TABLE system_setup ADD COLUMN agent_llm_api_key TEXT`},
+		{"system_setup", "agent_llm_api_url", `ALTER TABLE system_setup ADD COLUMN agent_llm_api_url TEXT`},
+		{"system_setup", "agent_llm_model", `ALTER TABLE system_setup ADD COLUMN agent_llm_model TEXT`},
+		{"system_setup", "uptime_kuma_base_url", `ALTER TABLE system_setup ADD COLUMN uptime_kuma_base_url TEXT`},
+		{"system_vital_logs", "upload_rate", `ALTER TABLE system_vital_logs ADD COLUMN upload_rate INTEGER DEFAULT 0`},
+		{"system_vital_logs", "download_rate", `ALTER TABLE system_vital_logs ADD COLUMN download_rate INTEGER DEFAULT 0`},
+		{"system_vital_logs", "gpu_load", `ALTER TABLE system_vital_logs ADD COLUMN gpu_load REAL DEFAULT 0`},
+	}
+
+	for _, m := range migrations {
+		// Check if column exists
+		var colCount int
+		query := fmt.Sprintf(`SELECT COUNT(*) FROM pragma_table_info('%s') WHERE name='%s'`, m.table, m.column)
+		row := db.QueryRow(query)
+		if err := row.Scan(&colCount); err != nil {
+			return fmt.Errorf("failed to check column %s.%s: %w", m.table, m.column, err)
+		}
+
+		// Only add column if it doesn't exist
+		if colCount == 0 {
+			if _, err := db.Exec(m.query); err != nil {
+				return fmt.Errorf("failed to add column %s.%s: %w", m.table, m.column, err)
+			}
+			log.Printf("Added column %s.%s", m.table, m.column)
 		}
 	}
 
