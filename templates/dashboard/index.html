@@ -210,7 +210,7 @@
                                             {{range $name, $service := .Services}}
                                                 {{range $port := $service.Ports}}
                                                     {{$hasPorts = true}}
-                                                    <div><span class="badge bg-light text-dark">{{$port}}</span></div>
+                                                    <div class="port-display">{{$port}}</div>
                                                 {{end}}
                                             {{end}}
                                             {{if not $hasPorts}}
@@ -324,19 +324,22 @@
         background-color: #f8f9fa;
         transition: background-color 0.2s;
     }
-    
-    /* Port display styling */
-    .port-display {
-        display: inline-block;
-    }
-    
-    .port-display .host-port {
-        font-size: 1.1rem;
-        font-weight: 500;
-    }
 </style>
 
 <script>
+    // Format port displays to emphasize host port
+    document.addEventListener('DOMContentLoaded', function() {
+        const portDisplays = document.querySelectorAll('.port-display');
+        portDisplays.forEach(function(el) {
+            const portText = el.textContent.trim();
+            const parts = portText.split(':');
+            if (parts.length === 2) {
+                el.innerHTML = '<span style="font-size: 1.1rem; font-weight: 500;">' + 
+                              parts[0] + '</span>:' + parts[1];
+            }
+        });
+    });
+    
     // Handle sparkline clicks to show detailed view
     document.addEventListener('click', function(e) {
         if (e.target.closest('.sparkline-container')) {
