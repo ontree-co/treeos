@@ -1264,9 +1264,15 @@ function sendAgentMessage() {
             // If it was "run check", we'll see agent response soon
             if (message.toLowerCase() === 'run check') {
                 // Refresh messages after a delay to see agent response
+                // Agent checks typically take 8-10 seconds
                 setTimeout(() => {
                     loadChatMessages();
-                }, 3000);
+                }, 10000);
+                
+                // Also refresh again after 15 seconds in case the first one was too early
+                setTimeout(() => {
+                    loadChatMessages();
+                }, 15000);
             }
         }
     })

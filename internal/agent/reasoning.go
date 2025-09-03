@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 	"text/template"
@@ -84,6 +85,7 @@ Analyze the data and respond ONLY in the following JSON format. Do not add any e
 
 The ONLY allowed values for 'action_key' are:
 - "PERSIST_CHAT_MESSAGE" (parameters: {"app_id": "string", "status": "string", "message": "string"})
+  IMPORTANT: For app_id, you MUST use the exact app_id field from the AppStatus in the snapshot JSON (not the app_name!)
 - "RESTART_CONTAINER" (parameters: {"container_name": "string"}) - Use the container_name field from the service status in the snapshot
 - "NO_ACTION" (parameters: {})
 
@@ -94,6 +96,8 @@ IMPORTANT RULES for RESTART_CONTAINER:
 4. If a service shows as "exited" but there's no evidence it was recently running, this likely means the container doesn't exist yet - DO NOT try to restart it
 
 A CRITICAL issue exists if a service that SHOULD be running (based on expected_services) is missing or exited. A WARNING exists if logs show errors or restart counts are high. If everything is fine, return 'ALL_OK'. For every check, a PERSIST_CHAT_MESSAGE action must be recommended.
+
+CRITICAL: When creating PERSIST_CHAT_MESSAGE actions, ALWAYS use the app_id from the AppStatus being analyzed. NEVER use generic IDs like "system", "system_health", etc. The app_id must match the app_id field in the snapshot.
 
 Note: Some apps may be defined but not yet created/started. If all services for an app show as "exited" with no recent activity, report this as "App not yet started" rather than trying to restart non-existent containers.`
 
@@ -132,16 +136,19 @@ func (rs *ReasoningService) GeneratePrompt(snapshot *SystemSnapshot) (string, er
 // AnalyzeSnapshot sends the system snapshot to the LLM and returns recommendations
 func (rs *ReasoningService) AnalyzeSnapshot(ctx context.Context, snapshot *SystemSnapshot) (*LLMResponse, error) {
 	// Generate prompt
+	log.Printf("Generating LLM prompt for snapshot with %d apps", len(snapshot.AppStatuses))
 	prompt, err := rs.GeneratePrompt(snapshot)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate prompt: %w", err)
 	}
 
 	// Call LLM API
+	log.Printf("Calling LLM API at %s with model %s", rs.apiURL, rs.model)
 	responseText, err := rs.callLLM(ctx, prompt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to call LLM: %w", err)
 	}
+	log.Printf("LLM API response received, parsing...")
 
 	// Parse response
 	response, err := rs.parseResponse(responseText)

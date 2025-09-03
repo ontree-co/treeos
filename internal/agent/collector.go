@@ -81,6 +81,29 @@ func (c *Collector) CollectSystemSnapshot(configs []AppConfig) (*SystemSnapshot,
 	return snapshot, nil
 }
 
+// CollectSystemSnapshotForApp gathers a snapshot for a single application
+func (c *Collector) CollectSystemSnapshotForApp(config AppConfig) (*SystemSnapshot, error) {
+	snapshot := &SystemSnapshot{
+		Timestamp: time.Now(),
+	}
+
+	// Collect server health metrics (still needed for context)
+	serverHealth, err := c.collectServerHealth()
+	if err != nil {
+		return nil, fmt.Errorf("failed to collect server health: %w", err)
+	}
+	snapshot.ServerHealth = *serverHealth
+
+	// Collect status for just this application
+	appStatus, err := c.collectAppStatus(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to collect status for app %s: %w", config.ID, err)
+	}
+	snapshot.AppStatuses = []AppStatus{*appStatus}
+
+	return snapshot, nil
+}
+
 // collectServerHealth gathers server-level health metrics
 func (c *Collector) collectServerHealth() (*ServerHealth, error) {
 	// Use gopsutil to get system vitals (matching existing system package)
@@ -99,6 +122,7 @@ func (c *Collector) collectServerHealth() (*ServerHealth, error) {
 // collectAppStatus gathers status for a single application
 func (c *Collector) collectAppStatus(config AppConfig) (*AppStatus, error) {
 	appStatus := &AppStatus{
+		AppID:   config.ID,
 		AppName: config.Name,
 		DesiredState: DesiredState{
 			ExpectedServices: config.ExpectedServices,

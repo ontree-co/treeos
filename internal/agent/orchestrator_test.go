@@ -1,7 +1,6 @@
 package agent
 
 import (
-	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -86,7 +85,7 @@ func TestOrchestratorFallbackResponse(t *testing.T) {
 		}
 
 		status, ok := action.Parameters["status"].(string)
-		if !ok || status != database.ChatStatusCritical {
+		if !ok || status != "critical" {
 			t.Errorf("Expected critical status in action parameters")
 		}
 
@@ -112,7 +111,7 @@ func TestExecutePersistChatMessage(t *testing.T) {
 		ActionKey: ActionPersistChatMessage,
 		Parameters: map[string]interface{}{
 			"app_id":  "test-app",
-			"status":  database.ChatStatusWarning,
+			"status":  "warning",
 			"message": "Test warning message",
 		},
 		Justification: "Test justification",
@@ -138,21 +137,16 @@ func TestExecutePersistChatMessage(t *testing.T) {
 		if msg.AppID != "test-app" {
 			t.Errorf("Expected app_id 'test-app', got '%s'", msg.AppID)
 		}
-		if msg.StatusLevel != database.ChatStatusWarning {
-			t.Errorf("Expected status '%s', got '%s'", database.ChatStatusWarning, msg.StatusLevel)
+		if !msg.StatusLevel.Valid || msg.StatusLevel.String != database.StatusLevelWarning {
+			t.Errorf("Expected status '%s', got '%s'", database.StatusLevelWarning, msg.StatusLevel.String)
 		}
-		if msg.MessageSummary != "Test warning message" {
-			t.Errorf("Expected message 'Test warning message', got '%s'", msg.MessageSummary)
+		if msg.Message != "Test warning message" {
+			t.Errorf("Expected message 'Test warning message', got '%s'", msg.Message)
 		}
 
 		// Check if justification was stored in details
-		if msg.MessageDetails.Valid {
-			var details map[string]string
-			if err := json.Unmarshal([]byte(msg.MessageDetails.String), &details); err == nil {
-				if details["justification"] != "Test justification" {
-					t.Errorf("Expected justification in details")
-				}
-			}
+		if !msg.Details.Valid || msg.Details.String != "Test justification" {
+			t.Errorf("Expected justification 'Test justification' in details, got '%s'", msg.Details.String)
 		}
 	}
 }
@@ -164,7 +158,7 @@ func TestExecutePersistChatMessageMissingParams(t *testing.T) {
 	action := RecommendedAction{
 		ActionKey: ActionPersistChatMessage,
 		Parameters: map[string]interface{}{
-			"status":  database.ChatStatusOK,
+			"status":  "info",
 			"message": "Test message",
 		},
 	}
@@ -193,7 +187,7 @@ func TestExecutePersistChatMessageMissingParams(t *testing.T) {
 		ActionKey: ActionPersistChatMessage,
 		Parameters: map[string]interface{}{
 			"app_id": "test-app",
-			"status": database.ChatStatusOK,
+			"status": "info",
 		},
 	}
 
@@ -251,7 +245,7 @@ func TestCreateFallbackResponseHighRestartCount(t *testing.T) {
 	if len(response.RecommendedActions) > 0 {
 		action := response.RecommendedActions[0]
 		status := action.Parameters["status"].(string)
-		if status != database.ChatStatusWarning {
+		if status != "warning" {
 			t.Errorf("Expected warning status in action, got %s", status)
 		}
 

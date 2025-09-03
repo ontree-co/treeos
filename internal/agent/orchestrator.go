@@ -74,6 +74,11 @@ func NewOrchestrator(config OrchestratorConfig) (*Orchestrator, error) {
 	}, nil
 }
 
+// GetAllConfigs returns all app configurations
+func (o *Orchestrator) GetAllConfigs() ([]AppConfig, error) {
+	return o.configProvider.GetAll()
+}
+
 // Close cleans up resources
 func (o *Orchestrator) Close() error {
 	if o.collector != nil {
@@ -89,9 +94,10 @@ func (o *Orchestrator) Close() error {
 	return nil
 }
 
-// RunCheck performs a single check-analyze-act cycle
+// RunCheck performs a check cycle for all configured apps
+// This is now mainly for backward compatibility and the initial check
 func (o *Orchestrator) RunCheck(ctx context.Context) error {
-	log.Println("Starting agent check cycle...")
+	log.Println("Starting agent check cycle for all apps...")
 
 	// Step 1: Get all app configurations
 	configs, err := o.configProvider.GetAll()
@@ -105,105 +111,119 @@ func (o *Orchestrator) RunCheck(ctx context.Context) error {
 	}
 
 	log.Printf("Found %d configured applications", len(configs))
-
-	// Step 1.5: Check for apps requiring initial setup
-	var regularConfigs []AppConfig
+	
+	// Run individual checks for each app
+	var lastErr error
 	for _, config := range configs {
-		if config.InitialSetupRequired {
-			log.Printf("App %s requires initial setup, handling setup first...", config.Name)
-			
-			// Create a progress channel for logging
-			progressChan := make(chan SetupProgress, 100)
-			go func() {
-				for progress := range progressChan {
-					if progress.IsError {
-						log.Printf("Setup ERROR [%d/%d] %s: %s", 
-							progress.Step, progress.TotalSteps, progress.StepName, progress.Message)
-						// Persist error to chat
-						o.persistSetupMessage(config.Name, fmt.Sprintf("❌ Initial Setup Failed: %s", progress.Message), "ERROR")
-					} else {
-						log.Printf("Setup [%d/%d] %s: %s", 
-							progress.Step, progress.TotalSteps, progress.StepName, progress.Message)
-						
-						// Create a user-friendly message based on the step
-						var chatMessage string
-						switch progress.Step {
-						case 1:
-							chatMessage = "🔍 Starting initial setup - detecting Docker images..."
-						case 2:
-							chatMessage = "📦 Fetching latest version information..."
-						case 3:
-							chatMessage = "🔄 Updating configuration with version locks..."
-						case 4:
-							chatMessage = "⬇️ Pulling Docker images (this may take a few minutes)..."
-						case 5:
-							chatMessage = "🚀 Starting containers..."
-						case 6:
-							if strings.Contains(progress.Message, "completed successfully") {
-								chatMessage = "✅ Initial setup completed! Application is ready to use."
-							} else {
-								chatMessage = "📝 Finalizing setup..."
-							}
-						default:
-							chatMessage = fmt.Sprintf("Step %d/%d: %s", progress.Step, progress.TotalSteps, progress.StepName)
-						}
-						
-						// Persist progress to chat
-						o.persistSetupMessage(config.Name, chatMessage, "INFO")
-					}
-				}
-			}()
-			
-			// Handle initial setup
-			if err := o.setupHandler.HandleInitialSetup(ctx, config, progressChan); err != nil {
-				log.Printf("ERROR: Initial setup failed for %s: %v", config.Name, err)
-				close(progressChan)
-				// Continue with other apps
-			} else {
-				log.Printf("Initial setup completed successfully for %s", config.Name)
-				close(progressChan)
-			}
-		} else {
-			regularConfigs = append(regularConfigs, config)
+		if err := o.RunCheckForApp(ctx, config.ID); err != nil {
+			log.Printf("Error checking app %s: %v", config.ID, err)
+			lastErr = err
 		}
 	}
-
-	// If no regular configs to check, skip the rest
-	if len(regularConfigs) == 0 {
-		log.Println("No regular applications to check, only initial setups were processed")
-		return nil
+	
+	if lastErr != nil {
+		return fmt.Errorf("some app checks failed: %w", lastErr)
 	}
+	
+	log.Println("Agent check cycle completed for all apps")
+	return nil
+}
 
-	// Use regularConfigs instead of configs for the rest of the check
-	configs = regularConfigs
+// RunCheckForApp performs a single check-analyze-act cycle for a specific app
+func (o *Orchestrator) RunCheckForApp(ctx context.Context, appID string) error {
+	log.Printf("Starting agent check for app: %s", appID)
 
-	// Step 2: Collect system snapshot
-	snapshot, err := o.collector.CollectSystemSnapshot(configs)
+	// Step 1: Get the specific app configuration
+	config, err := o.configProvider.GetByID(appID)
 	if err != nil {
-		return fmt.Errorf("failed to collect system snapshot: %w", err)
+		return fmt.Errorf("failed to get app configuration for %s: %w", appID, err)
 	}
 
-	log.Printf("Collected snapshot for %d applications", len(snapshot.AppStatuses))
+	// Step 1.5: Check if app requires initial setup
+	if config.InitialSetupRequired {
+		log.Printf("App %s requires initial setup, handling setup first...", config.Name)
+		
+		// Create a progress channel for logging
+		progressChan := make(chan SetupProgress, 100)
+		go func() {
+			for progress := range progressChan {
+				if progress.IsError {
+					log.Printf("Setup ERROR [%d/%d] %s: %s", 
+						progress.Step, progress.TotalSteps, progress.StepName, progress.Message)
+					// Persist error to chat
+					o.persistSetupMessage(config.Name, fmt.Sprintf("❌ Initial Setup Failed: %s", progress.Message), "ERROR")
+				} else {
+					log.Printf("Setup [%d/%d] %s: %s", 
+						progress.Step, progress.TotalSteps, progress.StepName, progress.Message)
+					
+					// Create a user-friendly message based on the step
+					var chatMessage string
+					switch progress.Step {
+					case 1:
+						chatMessage = "🔍 Starting initial setup - detecting Docker images..."
+					case 2:
+						chatMessage = "📦 Fetching latest version information..."
+					case 3:
+						chatMessage = "🔄 Updating configuration with version locks..."
+					case 4:
+						chatMessage = "⬇️ Pulling Docker images (this may take a few minutes)..."
+					case 5:
+						chatMessage = "🚀 Starting containers..."
+					case 6:
+						if strings.Contains(progress.Message, "completed successfully") {
+							chatMessage = "✅ Initial setup completed! Application is ready to use."
+						} else {
+							chatMessage = "📝 Finalizing setup..."
+						}
+					default:
+						chatMessage = fmt.Sprintf("Step %d/%d: %s", progress.Step, progress.TotalSteps, progress.StepName)
+					}
+					
+					// Persist progress to chat
+					o.persistSetupMessage(config.Name, chatMessage, "INFO")
+				}
+			}
+		}()
+		
+		// Handle initial setup
+		if err := o.setupHandler.HandleInitialSetup(ctx, config, progressChan); err != nil {
+			log.Printf("ERROR: Initial setup failed for %s: %v", config.Name, err)
+			close(progressChan)
+			return fmt.Errorf("initial setup failed: %w", err)
+		}
+		log.Printf("Initial setup completed successfully for %s", config.Name)
+		close(progressChan)
+		return nil // Initial setup completed, no regular check needed
+	}
+
+	// Step 2: Collect system snapshot for this specific app
+	snapshot, err := o.collector.CollectSystemSnapshotForApp(config)
+	if err != nil {
+		return fmt.Errorf("failed to collect system snapshot for app %s: %w", appID, err)
+	}
+
+	log.Printf("Collected snapshot for app %s", appID)
 
 	// Step 3: Analyze with LLM
+	log.Printf("Starting LLM analysis for app %s...", appID)
 	llmResponse, err := o.reasoningService.AnalyzeSnapshot(ctx, snapshot)
 	if err != nil {
 		// Log error but don't fail the entire check
-		log.Printf("WARNING: Failed to analyze snapshot with LLM: %v", err)
+		log.Printf("WARNING: Failed to analyze snapshot with LLM for app %s: %v", appID, err)
 		// Create a fallback response
-		llmResponse = o.createFallbackResponse(snapshot, configs)
+		llmResponse = o.createFallbackResponse(snapshot, []AppConfig{config})
 	}
 
-	log.Printf("LLM analysis complete: status=%s, %d actions recommended",
-		llmResponse.OverallStatus, len(llmResponse.RecommendedActions))
+	log.Printf("LLM analysis complete for app %s: status=%s, %d actions recommended",
+		appID, llmResponse.OverallStatus, len(llmResponse.RecommendedActions))
 
 	// Step 4: Execute recommended actions
 	if err := o.executeActions(ctx, llmResponse.RecommendedActions); err != nil {
 		// Log error but continue - some actions may have succeeded
-		log.Printf("WARNING: Some actions failed to execute: %v", err)
+		log.Printf("WARNING: Some actions failed to execute for app %s: %v", appID, err)
 	}
 
-	log.Println("Agent check cycle completed")
+	log.Printf("Agent check completed for app: %s", appID)
 	return nil
 }
 

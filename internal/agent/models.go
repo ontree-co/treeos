@@ -20,6 +20,7 @@ type ServerHealth struct {
 
 // AppStatus represents the status of a single application
 type AppStatus struct {
+	AppID        string       `json:"app_id"`
 	AppName      string       `json:"app_name"`
 	DesiredState DesiredState `json:"desired_state"`
 	ActualState  ActualState  `json:"actual_state"`

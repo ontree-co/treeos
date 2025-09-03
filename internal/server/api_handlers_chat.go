@@ -351,10 +351,10 @@ func (s *Server) handleUserCommand(appID string, message string) {
 	// Handle specific commands
 	switch lowerMessage {
 	case "run check":
-		// Trigger agent check if available
+		// Trigger agent check if available for this specific app
 		if s.agentOrchestrator != nil {
 			ctx := context.Background()
-			if err := s.agentOrchestrator.RunCheck(ctx); err != nil {
+			if err := s.agentOrchestrator.RunCheckForApp(ctx, appID); err != nil {
 				log.Printf("Failed to run agent check for app %s: %v", appID, err)
 			}
 		}

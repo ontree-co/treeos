@@ -23,6 +23,7 @@ type AppConfig struct {
 // ConfigProvider defines the interface for configuration providers
 type ConfigProvider interface {
 	GetAll() ([]AppConfig, error)
+	GetByID(id string) (AppConfig, error)
 }
 
 // FilesystemProvider implements ConfigProvider by reading from the filesystem
@@ -87,6 +88,30 @@ func (fp *FilesystemProvider) GetAll() ([]AppConfig, error) {
 	}
 
 	return configs, nil
+}
+
+// GetByID gets a single app configuration by its ID
+func (fp *FilesystemProvider) GetByID(id string) (AppConfig, error) {
+	// Convert ID to directory name (should already be lowercase)
+	appDir := filepath.Join(fp.rootDir, id)
+	configPath := filepath.Join(appDir, "app.yml")
+	
+	// Check if config file exists
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		// Also try with app.yaml extension
+		configPath = filepath.Join(appDir, "app.yaml")
+		if _, err := os.Stat(configPath); os.IsNotExist(err) {
+			return AppConfig{}, fmt.Errorf("app configuration not found for ID: %s", id)
+		}
+	}
+	
+	// Read and parse the config file
+	config, err := fp.parseConfigFile(configPath)
+	if err != nil {
+		return AppConfig{}, fmt.Errorf("failed to parse config for app %s: %w", id, err)
+	}
+	
+	return *config, nil
 }
 
 // parseConfigFile reads and parses a single app.yml file
