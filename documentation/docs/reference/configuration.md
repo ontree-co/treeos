@@ -184,6 +184,112 @@ ontree-server --debug --log-level debug
 - **Description**: Directory for application data
 - **Environment**: `APPS_DIRECTORY`
 
+## Docker Integration
+
+OnTree integrates deeply with Docker Compose to manage containerized applications. Understanding how OnTree works with Docker is essential for proper configuration and operation.
+
+### Application Structure
+
+Each OnTree application requires three files in its directory:
+
+1. **`docker-compose.yml`** - Standard Docker Compose configuration
+2. **`.env`** - Docker Compose environment variables (auto-generated)
+3. **`app.yaml`** - OnTree metadata and configuration (auto-generated)
+
+### Container Naming Convention
+
+OnTree enforces a strict naming convention for all Docker resources to ensure proper isolation and management:
+
+```
+ontree-<app-identifier>-<service>-<instance>
+```
+
+Key points:
+- All app directory names are converted to **lowercase** for Docker operations
+- The prefix `ontree-` identifies OnTree-managed containers
+- The `.env` file contains `COMPOSE_PROJECT_NAME=ontree-<app-identifier>`
+- Networks follow the pattern: `ontree-<app-identifier>_default`
+- Volumes follow the pattern: `ontree-<app-identifier>_<volume-name>`
+
+Example for an app in `/opt/ontree/apps/MyWebApp/`:
+- Container: `ontree-mywebapp-web-1`
+- Network: `ontree-mywebapp_default`
+- Volume: `ontree-mywebapp_data`
+
+### Docker Compose Integration
+
+OnTree uses Docker Compose for all container operations:
+
+| OnTree Action | Docker Compose Command | Uses From |
+|--------------|------------------------|-----------|
+| Start App | `docker-compose up -d` | COMPOSE_PROJECT_NAME in .env |
+| Stop App | `docker-compose down` | COMPOSE_PROJECT_NAME in .env |
+| View Logs | `docker-compose logs` | COMPOSE_PROJECT_NAME in .env |
+| List Containers | `docker-compose ps` | COMPOSE_PROJECT_NAME in .env |
+
+### Agent Monitoring
+
+The OnTree agent monitors applications using the `app.yaml` configuration:
+
+```yaml
+id: mywebapp
+name: My Web Application
+primary_service: web
+expected_services:
+  - ontree-mywebapp-web-1
+  - ontree-mywebapp-db-1
+```
+
+The agent:
+- Checks if `expected_services` containers are running
+- Monitors container health and restart counts
+- Can restart containers that have failed
+- Reports status through the chat interface
+
+### Initial Setup for Templates
+
+When creating apps from templates, OnTree sets `initial_setup_required: true` in `app.yaml`. This triggers the agent to:
+
+1. Pull the latest Docker images
+2. Lock specific version tags in `docker-compose.yml`
+3. Remove the `initial_setup_required` flag
+4. Report progress through the chat interface
+
+### Docker API Access
+
+OnTree requires access to the Docker daemon. Configure this based on your setup:
+
+**Local Docker:**
+```toml
+docker_socket = "/var/run/docker.sock"
+```
+
+**Remote Docker:**
+```toml
+docker_host = "tcp://docker-host:2375"
+docker_cert_path = "/path/to/certs"
+docker_tls_verify = true
+```
+
+**Docker in Docker:**
+```yaml
+volumes:
+  - /var/run/docker.sock:/var/run/docker.sock
+```
+
+### Container Resource Limits
+
+You can set default resource limits for all OnTree-managed containers:
+
+```toml
+[docker.defaults]
+memory_limit = "512m"
+cpu_limit = "1.0"
+restart_policy = "unless-stopped"
+```
+
+These defaults are applied when creating new applications but can be overridden in individual `docker-compose.yml` files.
+
 ### Monitoring Settings
 
 #### `monitoring_enabled`
@@ -392,12 +498,3 @@ OnTree validates configuration on startup:
 - **Connection tests** - Verifies Docker and Caddy access
 
 Invalid configuration prevents startup with clear error messages.
-
-## Migration
-
-When upgrading OnTree:
-
-1. **Backup configuration** before upgrading
-2. **Check release notes** for changes
-3. **Update deprecated** settings
-4. **Test in staging** before production
