@@ -76,15 +76,19 @@ type DockerOperationLog struct {
 	Details     sql.NullString
 }
 
-// ChatMessage represents an agent chat message for an application.
+// ChatMessage represents a chat message for an application.
 type ChatMessage struct {
-	ID             int
-	AppID          string
-	Timestamp      time.Time
-	StatusLevel    string
-	MessageSummary string
-	MessageDetails sql.NullString
-	CreatedAt      time.Time
+	ID            int
+	AppID         string
+	Timestamp     time.Time
+	Message       string
+	SenderType    string         // "user", "agent", or "system"
+	SenderName    string         // Display name of sender
+	AgentModel    sql.NullString // AI model used (for agent messages)
+	AgentProvider sql.NullString // Provider: "openai", "anthropic", "local", etc.
+	StatusLevel   sql.NullString // "info", "warning", "error", "critical" (for agent monitoring)
+	Details       sql.NullString // Extended details
+	CreatedAt     time.Time
 }
 
 const (
@@ -117,10 +121,20 @@ const (
 	// LogLevelError indicates an error log level.
 	LogLevelError = "error"
 
-	// ChatStatusOK indicates all systems are nominal.
-	ChatStatusOK = "OK"
-	// ChatStatusWarning indicates non-critical issues.
-	ChatStatusWarning = "WARNING"
-	// ChatStatusCritical indicates critical failures.
-	ChatStatusCritical = "CRITICAL"
+	// Sender types
+	SenderTypeUser   = "user"
+	SenderTypeAgent  = "agent"
+	SenderTypeSystem = "system"
+	
+	// Status levels for agent monitoring messages
+	StatusLevelInfo     = "info"
+	StatusLevelWarning  = "warning"
+	StatusLevelError    = "error"
+	StatusLevelCritical = "critical"
+	
+	// Agent providers
+	ProviderOpenAI    = "openai"
+	ProviderAnthropic = "anthropic"
+	ProviderLocal     = "local"
+	ProviderOllama    = "ollama"
 )

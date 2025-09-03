@@ -14,27 +14,41 @@ func CreateChatMessage(message ChatMessage) error {
 	}
 
 	query := `
-		INSERT INTO chat_messages (app_id, timestamp, status_level, message_summary, message_details)
-		VALUES (?, ?, ?, ?, ?)
+		INSERT INTO chat_messages (
+			app_id, timestamp, message, sender_type, sender_name,
+			agent_model, agent_provider, status_level, details
+		)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
-
-	var messageDetails interface{}
-	if message.MessageDetails.Valid {
-		messageDetails = message.MessageDetails.String
-	} else {
-		messageDetails = nil
-	}
 
 	timestamp := message.Timestamp
 	if timestamp.IsZero() {
 		timestamp = time.Now()
 	}
 
-	_, err := db.Exec(query, message.AppID, timestamp, message.StatusLevel, message.MessageSummary, messageDetails)
+	_, err := db.Exec(query,
+		message.AppID,
+		timestamp,
+		message.Message,
+		message.SenderType,
+		message.SenderName,
+		nullableString(message.AgentModel),
+		nullableString(message.AgentProvider),
+		nullableString(message.StatusLevel),
+		nullableString(message.Details),
+	)
 	if err != nil {
 		return fmt.Errorf("failed to create chat message: %w", err)
 	}
 
+	return nil
+}
+
+// Helper function to handle nullable strings
+func nullableString(ns sql.NullString) interface{} {
+	if ns.Valid {
+		return ns.String
+	}
 	return nil
 }
 
@@ -46,7 +60,8 @@ func GetChatMessagesForApp(appID string, limit int, offset int) ([]ChatMessage, 
 	}
 
 	query := `
-		SELECT id, app_id, timestamp, status_level, message_summary, message_details, created_at
+		SELECT id, app_id, timestamp, message, sender_type, sender_name,
+		       agent_model, agent_provider, status_level, details, created_at
 		FROM chat_messages
 		WHERE app_id = ?
 		ORDER BY timestamp DESC
@@ -66,9 +81,13 @@ func GetChatMessagesForApp(appID string, limit int, offset int) ([]ChatMessage, 
 			&msg.ID,
 			&msg.AppID,
 			&msg.Timestamp,
+			&msg.Message,
+			&msg.SenderType,
+			&msg.SenderName,
+			&msg.AgentModel,
+			&msg.AgentProvider,
 			&msg.StatusLevel,
-			&msg.MessageSummary,
-			&msg.MessageDetails,
+			&msg.Details,
 			&msg.CreatedAt,
 		)
 		if err != nil {
@@ -92,7 +111,8 @@ func GetLatestChatMessageForApp(appID string) (*ChatMessage, error) {
 	}
 
 	query := `
-		SELECT id, app_id, timestamp, status_level, message_summary, message_details, created_at
+		SELECT id, app_id, timestamp, message, sender_type, sender_name,
+		       agent_model, agent_provider, status_level, details, created_at
 		FROM chat_messages
 		WHERE app_id = ?
 		ORDER BY timestamp DESC
@@ -104,9 +124,13 @@ func GetLatestChatMessageForApp(appID string) (*ChatMessage, error) {
 		&msg.ID,
 		&msg.AppID,
 		&msg.Timestamp,
+		&msg.Message,
+		&msg.SenderType,
+		&msg.SenderName,
+		&msg.AgentModel,
+		&msg.AgentProvider,
 		&msg.StatusLevel,
-		&msg.MessageSummary,
-		&msg.MessageDetails,
+		&msg.Details,
 		&msg.CreatedAt,
 	)
 

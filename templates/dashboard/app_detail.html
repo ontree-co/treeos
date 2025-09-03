@@ -8,20 +8,65 @@
         border-left: 4px solid;
         background: #f8f9fa;
         transition: all 0.2s ease;
+        max-width: 40%;
+        margin-right: auto;
+    }
+    
+    .chat-message.user-message {
+        margin-right: 0;
+        margin-left: auto;
+        border-left: none;
+        border-right: 4px solid #0d6efd;
+        background: #e7f3ff;
+        text-align: right;
+    }
+    
+    .chat-message.user-message .chat-message-header {
+        flex-direction: row-reverse;
+    }
+    
+    .chat-message.user-message .chat-message-header > div {
+        flex-direction: row-reverse;
+    }
+    
+    .chat-message.user-message .chat-message-avatar {
+        margin-right: 0;
+        margin-left: 10px;
+        background: #0d6efd;
+    }
+    
+    .chat-message.system-message {
+        margin-left: auto;
+        margin-right: auto;
+        max-width: 60%;
+        background: #e9ecef;
+        border-left: none;
+        border-right: none;
+        text-align: center;
+        font-style: italic;
+    }
+    
+    .chat-message.system-message .chat-message-header {
+        justify-content: center;
     }
     
     .chat-message:hover {
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     
-    .chat-message.status-ok {
-        border-left-color: #28a745;
-        background: #d4edda;
+    .chat-message.status-info {
+        border-left-color: #17a2b8;
+        background: #d1ecf1;
     }
     
     .chat-message.status-warning {
         border-left-color: #ffc107;
         background: #fff3cd;
+    }
+    
+    .chat-message.status-error {
+        border-left-color: #fd7e14;
+        background: #ffe5d0;
     }
     
     .chat-message.status-critical {
@@ -93,14 +138,19 @@
         letter-spacing: 0.5px;
     }
     
-    .chat-status-badge.status-ok {
-        background: #28a745;
+    .chat-status-badge.status-info {
+        background: #17a2b8;
         color: white;
     }
     
     .chat-status-badge.status-warning {
         background: #ffc107;
         color: #212529;
+    }
+    
+    .chat-status-badge.status-error {
+        background: #fd7e14;
+        color: white;
     }
     
     .chat-status-badge.status-critical {
@@ -123,6 +173,75 @@
         font-size: 48px;
         margin-bottom: 16px;
         display: block;
+    }
+    
+    /* Message input area styles */
+    .message-input-area {
+        border-top: 1px solid #dee2e6;
+        padding: 16px;
+        background: #f8f9fa;
+    }
+    
+    .message-input-wrapper {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+    
+    .message-input {
+        flex: 1;
+        border: 1px solid #ced4da;
+        border-radius: 20px;
+        padding: 8px 16px;
+        font-size: 14px;
+        outline: none;
+        transition: border-color 0.15s ease;
+    }
+    
+    .message-input:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+    }
+    
+    .message-send-btn {
+        padding: 8px 16px;
+        border-radius: 20px;
+        border: none;
+        background: #0d6efd;
+        color: white;
+        cursor: pointer;
+        transition: background 0.15s ease;
+    }
+    
+    .message-send-btn:hover {
+        background: #0b5ed7;
+    }
+    
+    .message-send-btn:disabled {
+        background: #6c757d;
+        cursor: not-allowed;
+    }
+    
+    .message-suggestions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .suggestion-chip {
+        padding: 6px 12px;
+        border-radius: 16px;
+        border: 1px solid #dee2e6;
+        background: white;
+        color: #495057;
+        font-size: 13px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+    
+    .suggestion-chip:hover {
+        background: #e9ecef;
+        border-color: #adb5bd;
     }
     
     /* HTMX indicator styles */
@@ -187,6 +306,14 @@
         .btn-group .btn {
             flex: 1 1 auto;
             min-width: 120px;
+        }
+        
+        .chat-message {
+            max-width: 70%;
+        }
+        
+        .chat-message.user-message {
+            max-width: 70%;
         }
     }
     
@@ -289,18 +416,43 @@
                     <i>💬</i> Agent Status Updates
                 </h5>
                 <div>
-                    <button type="button" class="btn btn-sm btn-outline-success" onclick="triggerAgentCheck()">
-                        <i>🤖</i> Run Check
-                    </button>
                     <button type="button" class="btn btn-sm btn-outline-primary" onclick="loadChatMessages()">
                         <i>🔄</i> Refresh
                     </button>
                 </div>
             </div>
-            <div class="card-body">
-                <div id="chat-messages-container" style="max-height: 400px; overflow-y: auto;">
+            <div class="card-body p-0">
+                <div id="chat-messages-container" style="max-height: 400px; overflow-y: auto; padding: 16px;">
                     <div class="text-center text-muted">
                         <span class="spinner-border spinner-border-sm" role="status"></span> Loading messages...
+                    </div>
+                </div>
+                <div class="message-input-area">
+                    <div class="message-input-wrapper">
+                        <input type="text" 
+                               class="message-input form-control" 
+                               id="agent-message-input" 
+                               placeholder="Message"
+                               onkeypress="if(event.key === 'Enter') sendAgentMessage()">
+                        <button type="button" 
+                                class="message-send-btn" 
+                                onclick="sendAgentMessage()">
+                            Send
+                        </button>
+                    </div>
+                    <div class="message-suggestions">
+                        <button type="button" class="suggestion-chip" onclick="sendSuggestion('Run check')">
+                            Run check
+                        </button>
+                        <button type="button" class="suggestion-chip" onclick="sendSuggestion('Show container status')">
+                            Show container status
+                        </button>
+                        <button type="button" class="suggestion-chip" onclick="sendSuggestion('Check for updates')">
+                            Check for updates
+                        </button>
+                        <button type="button" class="suggestion-chip" onclick="sendSuggestion('Restart containers')">
+                            Restart containers
+                        </button>
                     </div>
                 </div>
             </div>
@@ -860,8 +1012,11 @@ function loadChatMessages() {
                 // Clear container
                 container.innerHTML = '';
                 
+                // Reverse the messages array to show oldest first, newest at bottom
+                const reversedMessages = [...data.messages].reverse();
+                
                 // Render each message
-                data.messages.forEach((message, index) => {
+                reversedMessages.forEach((message, index) => {
                     const messageDiv = createChatMessage(message, index);
                     container.appendChild(messageDiv);
                 });
@@ -891,58 +1046,146 @@ function loadChatMessages() {
         });
 }
 
+function formatRelativeTime(timestamp) {
+    const now = new Date();
+    const then = new Date(timestamp);
+    const diffMs = now - then;
+    const diffSecs = Math.floor(diffMs / 1000);
+    const diffMins = Math.floor(diffSecs / 60);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    
+    if (diffSecs < 60) {
+        return 'just now';
+    } else if (diffMins === 1) {
+        return '1 minute ago';
+    } else if (diffMins < 60) {
+        return `${diffMins} minutes ago`;
+    } else if (diffHours === 1) {
+        return '1 hour ago';
+    } else if (diffHours < 24) {
+        return `${diffHours} hours ago`;
+    } else if (diffDays === 1) {
+        return 'yesterday';
+    } else if (diffDays < 7) {
+        return `${diffDays} days ago`;
+    } else if (diffDays < 30) {
+        const weeks = Math.floor(diffDays / 7);
+        return weeks === 1 ? '1 week ago' : `${weeks} weeks ago`;
+    } else {
+        const months = Math.floor(diffDays / 30);
+        return months === 1 ? '1 month ago' : `${months} months ago`;
+    }
+}
+
 function createChatMessage(message, index) {
     const messageDiv = document.createElement('div');
-    const statusClass = message.status_level.toLowerCase();
-    messageDiv.className = `chat-message status-${statusClass}`;
     
-    // Format timestamp
-    const timestamp = new Date(message.timestamp);
-    const timeStr = timestamp.toLocaleString();
-    
-    // Choose avatar emoji based on status
-    let avatarEmoji = '🤖';
-    if (statusClass === 'critical') {
-        avatarEmoji = '🚨';
-    } else if (statusClass === 'warning') {
-        avatarEmoji = '⚠️';
-    } else if (statusClass === 'ok') {
-        avatarEmoji = '✅';
-    }
-    
-    // Build message HTML
-    let messageHTML = `
-        <div class="chat-message-header">
-            <div class="d-flex align-items-center">
-                <span class="chat-message-avatar">${avatarEmoji}</span>
-                <div>
-                    <strong>System Agent</strong>
-                    <span class="chat-status-badge status-${statusClass} ms-2">${message.status_level}</span>
+    // Check sender type
+    if (message.sender_type === 'user') {
+        // User message
+        messageDiv.className = 'chat-message user-message';
+        
+        const timeStr = formatRelativeTime(message.timestamp);
+        const fullTimestamp = new Date(message.timestamp).toLocaleString();
+        
+        messageDiv.innerHTML = `
+            <div class="chat-message-header">
+                <div class="d-flex align-items-center">
+                    <span class="chat-message-avatar">👤</span>
+                    <div>
+                        <strong>${message.sender_name}</strong>
+                    </div>
                 </div>
+                <span class="chat-message-timestamp" title="${fullTimestamp}">${timeStr}</span>
             </div>
-            <span class="chat-message-timestamp">${timeStr}</span>
-        </div>
-        <div class="chat-message-summary">
-            ${escapeHtml(message.message_summary)}
-        </div>
-    `;
-    
-    // Add expandable details if present
-    if (message.message_details) {
-        const detailsId = `details-${index}`;
-        messageHTML += `
-            <div>
-                <a class="chat-message-toggle" onclick="toggleMessageDetails('${detailsId}')">
-                    <span id="${detailsId}-icon">▶</span> Show details
-                </a>
-                <div id="${detailsId}" class="chat-message-details collapsed">
-                    ${escapeHtml(message.message_details)}
-                </div>
+            <div class="chat-message-summary">
+                ${escapeHtml(message.message)}
             </div>
         `;
+    } else if (message.sender_type === 'system') {
+        // System message
+        messageDiv.className = 'chat-message system-message';
+        
+        const timeStr = formatRelativeTime(message.timestamp);
+        const fullTimestamp = new Date(message.timestamp).toLocaleString();
+        
+        messageDiv.innerHTML = `
+            <div class="chat-message-header">
+                <div class="d-flex align-items-center">
+                    <span class="chat-message-avatar">⚙️</span>
+                    <div>
+                        <strong>${message.sender_name}</strong>
+                    </div>
+                </div>
+                <span class="chat-message-timestamp" title="${fullTimestamp}">${timeStr}</span>
+            </div>
+            <div class="chat-message-summary">
+                ${escapeHtml(message.message)}
+            </div>
+        `;
+    } else {
+        // Agent message
+        const statusClass = message.status_level ? message.status_level.toLowerCase() : 'info';
+        messageDiv.className = `chat-message status-${statusClass}`;
+        
+        const timeStr = formatRelativeTime(message.timestamp);
+        const fullTimestamp = new Date(message.timestamp).toLocaleString();
+        
+        // Choose avatar emoji based on status
+        let avatarEmoji = '🤖';
+        if (statusClass === 'critical') {
+            avatarEmoji = '🚨';
+        } else if (statusClass === 'error') {
+            avatarEmoji = '❌';
+        } else if (statusClass === 'warning') {
+            avatarEmoji = '⚠️';
+        } else if (statusClass === 'info') {
+            avatarEmoji = '✅';
+        }
+        
+        // Add provider badge
+        let providerBadge = '';
+        if (message.agent_provider) {
+            const isCloud = ['openai', 'anthropic'].includes(message.agent_provider);
+            providerBadge = `<span class="ms-1" title="${message.agent_model || 'Unknown model'}">${isCloud ? '🌐' : '💻'}</span>`;
+        }
+        
+        // Build message HTML
+        let messageHTML = `
+            <div class="chat-message-header">
+                <div class="d-flex align-items-center">
+                    <span class="chat-message-avatar">${avatarEmoji}</span>
+                    <div>
+                        <strong>${message.sender_name}</strong>${providerBadge}
+                        ${message.status_level ? `<span class="chat-status-badge status-${statusClass} ms-2">${message.status_level}</span>` : ''}
+                    </div>
+                </div>
+                <span class="chat-message-timestamp" title="${fullTimestamp}">${timeStr}</span>
+            </div>
+            <div class="chat-message-summary">
+                ${escapeHtml(message.message)}
+            </div>
+        `;
+        
+        // Add expandable details if present
+        if (message.details) {
+            const detailsId = `details-${index}`;
+            messageHTML += `
+                <div>
+                    <a class="chat-message-toggle" onclick="toggleMessageDetails('${detailsId}')">
+                        <span id="${detailsId}-icon">▶</span> Show details
+                    </a>
+                    <div id="${detailsId}" class="chat-message-details collapsed">
+                        ${escapeHtml(message.details)}
+                    </div>
+                </div>
+            `;
+        }
+        
+        messageDiv.innerHTML = messageHTML;
     }
     
-    messageDiv.innerHTML = messageHTML;
     return messageDiv;
 }
 
@@ -962,15 +1205,85 @@ function toggleMessageDetails(detailsId) {
     }
 }
 
+// Function to add a user message to the chat
+function addUserMessageToChat(messageText) {
+    const container = document.getElementById('chat-messages-container');
+    
+    // Remove empty state if present
+    const emptyState = container.querySelector('.chat-empty-state');
+    if (emptyState) {
+        emptyState.remove();
+    }
+    
+    // Create user message object
+    const message = {
+        sender_type: 'user',
+        sender_name: 'User',
+        message: messageText,
+        timestamp: new Date().toISOString()
+    };
+    
+    // Use createChatMessage to create the element
+    const messageDiv = createChatMessage(message, Date.now());
+    
+    // Add message to container
+    container.appendChild(messageDiv);
+    
+    // Scroll to bottom
+    container.scrollTop = container.scrollHeight;
+}
+
+// Function to send a message to the agent
+function sendAgentMessage() {
+    const input = document.getElementById('agent-message-input');
+    const message = input.value.trim();
+    
+    if (!message) return;
+    
+    // Add user message to chat immediately for responsiveness
+    addUserMessageToChat(message);
+    
+    // Clear the input
+    input.value = '';
+    
+    // Send message to backend
+    const appName = '{{.App.Name}}';
+    fetch(`/api/apps/${appName}/chat`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ message: message })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (!data.success) {
+            console.error('Failed to send message:', data.error);
+        } else {
+            // Message sent successfully
+            // If it was "run check", we'll see agent response soon
+            if (message.toLowerCase() === 'run check') {
+                // Refresh messages after a delay to see agent response
+                setTimeout(() => {
+                    loadChatMessages();
+                }, 3000);
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error sending message:', error);
+    });
+}
+
+// Function to send a suggestion
+function sendSuggestion(suggestion) {
+    const input = document.getElementById('agent-message-input');
+    input.value = suggestion;
+    sendAgentMessage();
+}
+
 // Function to trigger AI agent check
 function triggerAgentCheck() {
-    const btn = event.target.closest('button');
-    const originalContent = btn.innerHTML;
-    
-    // Show loading state
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Running...';
-    
     // Call the API to trigger agent check
     fetch('/api/test/agent-run', {
         method: 'POST',
@@ -981,47 +1294,16 @@ function triggerAgentCheck() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Show success message
-            btn.classList.remove('btn-outline-success');
-            btn.classList.add('btn-success');
-            btn.innerHTML = '<i>✓</i> Check Started';
-            
             // Wait a bit then reload messages
             setTimeout(() => {
                 loadChatMessages();
-                // Reset button
-                btn.disabled = false;
-                btn.classList.remove('btn-success');
-                btn.classList.add('btn-outline-success');
-                btn.innerHTML = originalContent;
             }, 3000);
         } else {
-            // Show error
-            btn.classList.remove('btn-outline-success');
-            btn.classList.add('btn-danger');
-            btn.innerHTML = '<i>✗</i> ' + (data.error || 'Failed');
-            
-            // Reset after delay
-            setTimeout(() => {
-                btn.disabled = false;
-                btn.classList.remove('btn-danger');
-                btn.classList.add('btn-outline-success');
-                btn.innerHTML = originalContent;
-            }, 3000);
+            console.error('Agent check failed:', data.error);
         }
     })
     .catch(error => {
         console.error('Error triggering agent check:', error);
-        btn.classList.remove('btn-outline-success');
-        btn.classList.add('btn-danger');
-        btn.innerHTML = '<i>✗</i> Error';
-        
-        setTimeout(() => {
-            btn.disabled = false;
-            btn.classList.remove('btn-danger');
-            btn.classList.add('btn-outline-success');
-            btn.innerHTML = originalContent;
-        }, 3000);
     });
 }
 

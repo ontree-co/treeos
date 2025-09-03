@@ -2,7 +2,7 @@ package agent
 
 import (
 	"context"
-	"encoding/json"
+	"database/sql"
 	"fmt"
 	"log"
 	"strings"
@@ -256,38 +256,43 @@ func (o *Orchestrator) executePersistChatMessage(action RecommendedAction) error
 		return fmt.Errorf("missing or invalid message parameter")
 	}
 
-	// Map status to valid database values
-	// The database expects: OK, WARNING, CRITICAL
-	// The LLM might return: ALL_OK, WARNING, CRITICAL, or other values
-	dbStatus := status
+	// Map status to new status levels
+	var statusLevel string
 	switch strings.ToUpper(status) {
-	case "ALL_OK", "OK":
-		dbStatus = "OK"
+	case "ALL_OK", "OK", "GOOD", "HEALTHY":
+		statusLevel = database.StatusLevelInfo
 	case "WARNING", "WARN":
-		dbStatus = "WARNING"
-	case "CRITICAL", "FAIL", "ERROR":
-		dbStatus = "CRITICAL"
+		statusLevel = database.StatusLevelWarning
+	case "ERROR", "FAIL":
+		statusLevel = database.StatusLevelError
+	case "CRITICAL":
+		statusLevel = database.StatusLevelCritical
 	default:
-		// Default to WARNING for unknown statuses
-		dbStatus = "WARNING"
+		// Default to warning for unknown statuses
+		log.Printf("Unknown status '%s', defaulting to warning", status)
+		statusLevel = database.StatusLevelWarning
 	}
 
-	// Create chat message
+	// For now, we'll use default values for model/provider
+	// TODO: Add methods to ReasoningService to expose model and provider info
+	agentModel := "gpt-4"
+	agentProvider := database.ProviderOpenAI
+
+	// Create the chat message with new schema
 	chatMessage := database.ChatMessage{
-		AppID:          appID,
-		Timestamp:      time.Now(),
-		StatusLevel:    dbStatus,
-		MessageSummary: message,
+		AppID:         appID,
+		Timestamp:     time.Now(),
+		Message:       message,
+		SenderType:    database.SenderTypeAgent,
+		SenderName:    "Monitoring Agent",
+		AgentModel:    sql.NullString{String: agentModel, Valid: agentModel != ""},
+		AgentProvider: sql.NullString{String: agentProvider, Valid: agentProvider != ""},
+		StatusLevel:   sql.NullString{String: statusLevel, Valid: true},
 	}
 
 	// If there's additional detail, add it
 	if action.Justification != "" {
-		details := map[string]string{
-			"justification": action.Justification,
-		}
-		detailsJSON, _ := json.Marshal(details)
-		chatMessage.MessageDetails.String = string(detailsJSON)
-		chatMessage.MessageDetails.Valid = true
+		chatMessage.Details = sql.NullString{String: action.Justification, Valid: true}
 	}
 
 	// Save to database
@@ -295,7 +300,7 @@ func (o *Orchestrator) executePersistChatMessage(action RecommendedAction) error
 		return fmt.Errorf("failed to create chat message: %w", err)
 	}
 
-	log.Printf("Persisted chat message for app %s: status=%s", appID, status)
+	log.Printf("Persisted agent message for app %s: status=%s", appID, statusLevel)
 	return nil
 }
 
@@ -307,23 +312,70 @@ func (o *Orchestrator) executeRestartContainer(ctx context.Context, action Recom
 		return fmt.Errorf("missing or invalid container_name parameter")
 	}
 
+	appID, hasAppID := action.Parameters["app_id"].(string)
+
 	// Restart the container with a 30-second timeout
 	timeout := 30
 	if err := o.dockerClient.ContainerRestart(ctx, containerName, container.StopOptions{
 		Timeout: &timeout,
 	}); err != nil {
+		// Check if error is due to port conflict
+		errorMsg := err.Error()
+		if strings.Contains(errorMsg, "port is already allocated") {
+			log.Printf("ERROR: Cannot restart container %s due to port conflict: %v", containerName, err)
+			
+			// Persist an error message about the port conflict
+			if hasAppID {
+				errorMessage := database.ChatMessage{
+					AppID:      appID,
+					Timestamp:  time.Now(),
+					Message:    fmt.Sprintf("Cannot restart container '%s' - port conflict detected. Another container is using the same port.", containerName),
+					SenderType: database.SenderTypeSystem,
+					SenderName: "Docker Manager",
+					StatusLevel: sql.NullString{String: database.StatusLevelError, Valid: true},
+					Details: sql.NullString{String: errorMsg, Valid: true},
+				}
+				
+				if err := database.CreateChatMessage(errorMessage); err != nil {
+					log.Printf("WARNING: Failed to persist error notification: %v", err)
+				}
+			}
+			
+			// Return the error but mark it as handled
+			return fmt.Errorf("port conflict for container %s: %w", containerName, err)
+		}
+		
+		// For other errors, persist a generic error message
+		if hasAppID {
+			errorMessage := database.ChatMessage{
+				AppID:      appID,
+				Timestamp:  time.Now(),
+				Message:    fmt.Sprintf("Failed to restart container '%s'", containerName),
+				SenderType: database.SenderTypeSystem,
+				SenderName: "Docker Manager",
+				StatusLevel: sql.NullString{String: database.StatusLevelError, Valid: true},
+				Details: sql.NullString{String: errorMsg, Valid: true},
+			}
+			
+			if err := database.CreateChatMessage(errorMessage); err != nil {
+				log.Printf("WARNING: Failed to persist error notification: %v", err)
+			}
+		}
+		
 		return fmt.Errorf("failed to restart container %s: %w", containerName, err)
 	}
 
 	log.Printf("Successfully restarted container: %s", containerName)
 
-	// Optionally persist a chat message about the restart
-	if appID, ok := action.Parameters["app_id"].(string); ok {
+	// Persist a success message about the restart
+	if hasAppID {
 		restartMessage := database.ChatMessage{
-			AppID:          appID,
-			Timestamp:      time.Now(),
-			StatusLevel:    database.ChatStatusWarning,
-			MessageSummary: fmt.Sprintf("Container '%s' was automatically restarted", containerName),
+			AppID:      appID,
+			Timestamp:  time.Now(),
+			Message:    fmt.Sprintf("Container '%s' was successfully restarted", containerName),
+			SenderType: database.SenderTypeSystem,
+			SenderName: "Docker Manager",
+			StatusLevel: sql.NullString{String: database.StatusLevelInfo, Valid: true},
 		}
 
 		if err := database.CreateChatMessage(restartMessage); err != nil {
@@ -336,23 +388,29 @@ func (o *Orchestrator) executeRestartContainer(ctx context.Context, action Recom
 
 // persistSetupMessage persists a setup progress message to the chat interface
 func (o *Orchestrator) persistSetupMessage(appName, message, level string) {
-	// Map our levels to the database constraint levels
-	dbLevel := level
+	// Map our levels to new status levels
+	var statusLevel string
 	switch level {
 	case "INFO":
-		dbLevel = "OK"  // Map INFO to OK for setup progress
+		statusLevel = database.StatusLevelInfo
 	case "ERROR":
-		dbLevel = "CRITICAL"  // Map ERROR to CRITICAL for failures
+		statusLevel = database.StatusLevelError
+	default:
+		statusLevel = database.StatusLevelInfo
 	}
 	
-	// Persist the message to database for chat interface
-	db := database.GetDB()
-	if db != nil {
-		query := `INSERT INTO chat_messages (app_id, timestamp, status_level, message_summary, message_detail) 
-		          VALUES (?, datetime('now'), ?, ?, ?)`
-		if _, err := db.Exec(query, appName, dbLevel, message, ""); err != nil {
-			log.Printf("Failed to persist setup message: %v", err)
-		}
+	// Create and persist the message
+	chatMessage := database.ChatMessage{
+		AppID:      strings.ToLower(appName),
+		Timestamp:  time.Now(),
+		Message:    message,
+		SenderType: database.SenderTypeSystem,
+		SenderName: "Setup Manager",
+		StatusLevel: sql.NullString{String: statusLevel, Valid: true},
+	}
+	
+	if err := database.CreateChatMessage(chatMessage); err != nil {
+		log.Printf("Failed to persist setup message: %v", err)
 	}
 }
 
@@ -402,14 +460,14 @@ func (o *Orchestrator) createFallbackResponse(snapshot *SystemSnapshot, configs 
 		}
 
 		// Create a chat message for each app
-		status := database.ChatStatusOK
+		statusLevel := database.StatusLevelInfo
 		message := "All services running normally"
 
 		if hasIssue {
 			if response.OverallStatus == StatusCritical {
-				status = database.ChatStatusCritical
+				statusLevel = database.StatusLevelCritical
 			} else {
-				status = database.ChatStatusWarning
+				statusLevel = database.StatusLevelWarning
 			}
 			message = issueMessage
 		}
@@ -418,7 +476,7 @@ func (o *Orchestrator) createFallbackResponse(snapshot *SystemSnapshot, configs 
 			ActionKey: ActionPersistChatMessage,
 			Parameters: map[string]interface{}{
 				"app_id":  appConfig.ID,
-				"status":  status,
+				"status":  statusLevel,
 				"message": message,
 			},
 			Justification: "Regular system check",
