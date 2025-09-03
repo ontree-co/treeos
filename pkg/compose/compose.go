@@ -87,16 +87,13 @@ func (s *Service) Up(ctx context.Context, opts Options) error {
 
 // upUsingCLI uses docker-compose CLI as a workaround for SDK label issues
 func (s *Service) upUsingCLI(ctx context.Context, opts Options) error {
-	// Build docker-compose command arguments
-	projectName := filepath.Base(opts.WorkingDir)
-
 	// Try "docker compose" first (v2), then fall back to "docker-compose" (v1)
 	output, err := s.runComposeCommand(ctx, opts, "up", "-d")
 	if err != nil {
 		return fmt.Errorf("failed to start containers: %w\nOutput: %s", err, string(output))
 	}
 
-	log.Printf("INFO: Successfully started containers using docker-compose CLI for project %s", projectName)
+	log.Printf("INFO: Successfully started containers using docker-compose CLI")
 	return nil
 }
 
@@ -112,8 +109,23 @@ func (s *Service) runComposeCommand(ctx context.Context, opts Options, command .
 	composeFile := filepath.Join(absPath, "docker-compose.yml")
 	baseArgs := []string{"-f", composeFile}
 
-	// Set project name from directory
+	// Read project name from .env file if it exists, otherwise use directory name
 	projectName := filepath.Base(absPath)
+	envFile := filepath.Join(absPath, ".env")
+	if _, err := os.Stat(envFile); err == nil {
+		envContent, err := os.ReadFile(envFile)
+		if err == nil {
+			lines := strings.Split(string(envContent), "\n")
+			for _, line := range lines {
+				line = strings.TrimSpace(line)
+				if strings.HasPrefix(line, "COMPOSE_PROJECT_NAME=") {
+					projectName = strings.TrimPrefix(line, "COMPOSE_PROJECT_NAME=")
+					projectName = strings.TrimSpace(projectName)
+					break
+				}
+			}
+		}
+	}
 	baseArgs = append(baseArgs, "-p", projectName)
 
 	// Add env file if specified
@@ -151,9 +163,6 @@ func (s *Service) runComposeCommand(ctx context.Context, opts Options, command .
 
 // Down stops and removes a compose project (equivalent to docker-compose down)
 func (s *Service) Down(ctx context.Context, opts Options, removeVolumes bool) error {
-	// Use docker-compose CLI for consistency with Up
-	projectName := filepath.Base(opts.WorkingDir)
-
 	// Build command arguments
 	cmdArgs := []string{"down"}
 	if removeVolumes {
@@ -166,7 +175,7 @@ func (s *Service) Down(ctx context.Context, opts Options, removeVolumes bool) er
 		return fmt.Errorf("failed to stop containers: %w\nOutput: %s", err, string(output))
 	}
 
-	log.Printf("INFO: Successfully stopped containers using docker-compose CLI for project %s", projectName)
+	log.Printf("INFO: Successfully stopped containers using docker-compose CLI")
 	return nil
 }
 
@@ -310,8 +319,12 @@ func (s *Service) loadProject(ctx context.Context, opts Options) (*types.Project
 
 	// Load the project
 	project, err := loader.LoadWithContext(ctx, configDetails, func(options *loader.Options) {
-		// Set the project name from the directory name
-		options.SetProjectName(filepath.Base(opts.WorkingDir), true)
+		// Use COMPOSE_PROJECT_NAME from environment if available, otherwise use directory name
+		projectName := envVars["COMPOSE_PROJECT_NAME"]
+		if projectName == "" {
+			projectName = filepath.Base(opts.WorkingDir)
+		}
+		options.SetProjectName(projectName, true)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to load compose file: %w", err)

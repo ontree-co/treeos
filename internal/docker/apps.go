@@ -128,7 +128,10 @@ func (c *Client) getContainerStatus(appName string) string {
 	}
 
 	// Look for containers with compose naming pattern: ontree-{appName}-{serviceName}-1
-	prefix := fmt.Sprintf("ontree-%s-", appName)
+	// The appName here matches the directory name exactly (can be mixed case)
+	// Convert to lowercase for the container prefix as per our naming convention
+	appIdentifier := strings.ToLower(appName)
+	prefix := fmt.Sprintf("ontree-%s-", appIdentifier)
 	var runningCount, stoppedCount int
 
 	for _, cont := range containers {
