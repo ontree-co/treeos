@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
@@ -19,6 +20,8 @@ type Orchestrator struct {
 	reasoningService *ReasoningService
 	dockerClient     *client.Client
 	checkInterval    time.Duration
+	setupHandler     *InitialSetupHandler
+	appsDir          string
 }
 
 // OrchestratorConfig contains configuration for the Orchestrator
@@ -57,12 +60,17 @@ func NewOrchestrator(config OrchestratorConfig) (*Orchestrator, error) {
 		config.CheckInterval = 5 * time.Minute
 	}
 
+	// Create initial setup handler
+	setupHandler := NewInitialSetupHandler(config.ConfigRootDir)
+
 	return &Orchestrator{
 		configProvider:   configProvider,
 		collector:        collector,
 		reasoningService: reasoningService,
 		dockerClient:     dockerClient,
 		checkInterval:    config.CheckInterval,
+		setupHandler:     setupHandler,
+		appsDir:          config.ConfigRootDir,
 	}, nil
 }
 
@@ -97,6 +105,77 @@ func (o *Orchestrator) RunCheck(ctx context.Context) error {
 	}
 
 	log.Printf("Found %d configured applications", len(configs))
+
+	// Step 1.5: Check for apps requiring initial setup
+	var regularConfigs []AppConfig
+	for _, config := range configs {
+		if config.InitialSetupRequired {
+			log.Printf("App %s requires initial setup, handling setup first...", config.Name)
+			
+			// Create a progress channel for logging
+			progressChan := make(chan SetupProgress, 100)
+			go func() {
+				for progress := range progressChan {
+					if progress.IsError {
+						log.Printf("Setup ERROR [%d/%d] %s: %s", 
+							progress.Step, progress.TotalSteps, progress.StepName, progress.Message)
+						// Persist error to chat
+						o.persistSetupMessage(config.Name, fmt.Sprintf("❌ Initial Setup Failed: %s", progress.Message), "ERROR")
+					} else {
+						log.Printf("Setup [%d/%d] %s: %s", 
+							progress.Step, progress.TotalSteps, progress.StepName, progress.Message)
+						
+						// Create a user-friendly message based on the step
+						var chatMessage string
+						switch progress.Step {
+						case 1:
+							chatMessage = "🔍 Starting initial setup - detecting Docker images..."
+						case 2:
+							chatMessage = "📦 Fetching latest version information..."
+						case 3:
+							chatMessage = "🔄 Updating configuration with version locks..."
+						case 4:
+							chatMessage = "⬇️ Pulling Docker images (this may take a few minutes)..."
+						case 5:
+							chatMessage = "🚀 Starting containers..."
+						case 6:
+							if strings.Contains(progress.Message, "completed successfully") {
+								chatMessage = "✅ Initial setup completed! Application is ready to use."
+							} else {
+								chatMessage = "📝 Finalizing setup..."
+							}
+						default:
+							chatMessage = fmt.Sprintf("Step %d/%d: %s", progress.Step, progress.TotalSteps, progress.StepName)
+						}
+						
+						// Persist progress to chat
+						o.persistSetupMessage(config.Name, chatMessage, "INFO")
+					}
+				}
+			}()
+			
+			// Handle initial setup
+			if err := o.setupHandler.HandleInitialSetup(ctx, config, progressChan); err != nil {
+				log.Printf("ERROR: Initial setup failed for %s: %v", config.Name, err)
+				close(progressChan)
+				// Continue with other apps
+			} else {
+				log.Printf("Initial setup completed successfully for %s", config.Name)
+				close(progressChan)
+			}
+		} else {
+			regularConfigs = append(regularConfigs, config)
+		}
+	}
+
+	// If no regular configs to check, skip the rest
+	if len(regularConfigs) == 0 {
+		log.Println("No regular applications to check, only initial setups were processed")
+		return nil
+	}
+
+	// Use regularConfigs instead of configs for the rest of the check
+	configs = regularConfigs
 
 	// Step 2: Collect system snapshot
 	snapshot, err := o.collector.CollectSystemSnapshot(configs)
@@ -177,11 +256,27 @@ func (o *Orchestrator) executePersistChatMessage(action RecommendedAction) error
 		return fmt.Errorf("missing or invalid message parameter")
 	}
 
+	// Map status to valid database values
+	// The database expects: OK, WARNING, CRITICAL
+	// The LLM might return: ALL_OK, WARNING, CRITICAL, or other values
+	dbStatus := status
+	switch strings.ToUpper(status) {
+	case "ALL_OK", "OK":
+		dbStatus = "OK"
+	case "WARNING", "WARN":
+		dbStatus = "WARNING"
+	case "CRITICAL", "FAIL", "ERROR":
+		dbStatus = "CRITICAL"
+	default:
+		// Default to WARNING for unknown statuses
+		dbStatus = "WARNING"
+	}
+
 	// Create chat message
 	chatMessage := database.ChatMessage{
 		AppID:          appID,
 		Timestamp:      time.Now(),
-		StatusLevel:    status,
+		StatusLevel:    dbStatus,
 		MessageSummary: message,
 	}
 
@@ -237,6 +332,28 @@ func (o *Orchestrator) executeRestartContainer(ctx context.Context, action Recom
 	}
 
 	return nil
+}
+
+// persistSetupMessage persists a setup progress message to the chat interface
+func (o *Orchestrator) persistSetupMessage(appName, message, level string) {
+	// Map our levels to the database constraint levels
+	dbLevel := level
+	switch level {
+	case "INFO":
+		dbLevel = "OK"  // Map INFO to OK for setup progress
+	case "ERROR":
+		dbLevel = "CRITICAL"  // Map ERROR to CRITICAL for failures
+	}
+	
+	// Persist the message to database for chat interface
+	db := database.GetDB()
+	if db != nil {
+		query := `INSERT INTO chat_messages (app_id, timestamp, status_level, message_summary, message_detail) 
+		          VALUES (?, datetime('now'), ?, ?, ?)`
+		if _, err := db.Exec(query, appName, dbLevel, message, ""); err != nil {
+			log.Printf("Failed to persist setup message: %v", err)
+		}
+	}
 }
 
 // createFallbackResponse creates a fallback response when LLM is unavailable

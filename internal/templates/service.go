@@ -95,6 +95,9 @@ func (s *Service) GetTemplateContent(template *Template) (string, error) {
 
 // ProcessTemplateContent replaces template variables with actual values
 func (s *Service) ProcessTemplateContent(content string, appName string) string {
+	// Note: Version locking is now handled by the agent during initial setup
+	// This keeps the UI responsive and non-blocking
+	
 	// For multi-service apps, we don't modify service names
 	// Service names in templates should be descriptive (e.g., "web", "db", "redis")
 	// rather than matching the app name
@@ -104,3 +107,9 @@ func (s *Service) ProcessTemplateContent(content string, appName string) string 
 
 	return content
 }
+
+// Note: The following functions are kept for potential future use by the agent
+// They are not used during template processing to keep the UI responsive
+
+// lockDockerImageVersions would update images to specific version tags (moved to agent)
+// getLatestImageDigest would fetch image digests (moved to agent)

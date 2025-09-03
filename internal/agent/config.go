@@ -12,11 +12,12 @@ import (
 // AppConfig represents the configuration for a single application
 // loaded from app.yml
 type AppConfig struct {
-	ID                string   `yaml:"id"`
-	Name              string   `yaml:"name"`
-	PrimaryService    string   `yaml:"primary_service"`
-	UptimeKumaMonitor string   `yaml:"uptime_kuma_monitor"`
-	ExpectedServices  []string `yaml:"expected_services"`
+	ID                   string   `yaml:"id"`
+	Name                 string   `yaml:"name"`
+	PrimaryService       string   `yaml:"primary_service"`
+	UptimeKumaMonitor    string   `yaml:"uptime_kuma_monitor"`
+	ExpectedServices     []string `yaml:"expected_services"`
+	InitialSetupRequired bool     `yaml:"initial_setup_required,omitempty"`
 }
 
 // ConfigProvider defines the interface for configuration providers
