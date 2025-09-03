@@ -120,8 +120,10 @@ func (c *Collector) collectAppStatus(config AppConfig) (*AppStatus, error) {
 
 	// Look for containers matching the expected service names
 	for _, service := range config.ExpectedServices {
-		// Use the service name directly as the expected container name
-		expectedName := service
+		// Build expected container name using our naming convention: ontree-<app>-<service>-1
+		// The app ID needs to be lowercase
+		appIdentifier := strings.ToLower(config.ID)
+		expectedName := fmt.Sprintf("ontree-%s-%s-1", appIdentifier, service)
 
 		serviceStatus := &ServiceStatus{
 			Name:   service,
@@ -130,6 +132,7 @@ func (c *Collector) collectAppStatus(config AppConfig) (*AppStatus, error) {
 				ErrorsFound:      0,
 				SampleErrorLines: []string{},
 			},
+			ContainerName: expectedName, // Store the actual container name for restart actions
 		}
 
 		for _, cont := range containers {

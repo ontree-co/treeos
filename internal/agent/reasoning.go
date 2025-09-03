@@ -84,10 +84,18 @@ Analyze the data and respond ONLY in the following JSON format. Do not add any e
 
 The ONLY allowed values for 'action_key' are:
 - "PERSIST_CHAT_MESSAGE" (parameters: {"app_id": "string", "status": "string", "message": "string"})
-- "RESTART_CONTAINER" (parameters: {"container_name": "string"})
+- "RESTART_CONTAINER" (parameters: {"container_name": "string"}) - Use the container_name field from the service status in the snapshot
 - "NO_ACTION" (parameters: {})
 
-A CRITICAL issue exists if a service is missing, exited, or Uptime Kuma reports 'DOWN'. A WARNING exists if logs show errors or restart counts are high. If everything is fine, return 'ALL_OK'. For every check, a PERSIST_CHAT_MESSAGE action must be recommended.`
+IMPORTANT RULES for RESTART_CONTAINER:
+1. You MUST use the exact container_name value from the service's container_name field in the snapshot
+2. Do NOT construct container names yourself
+3. ONLY recommend RESTART_CONTAINER if the service status is "restarting" or if it recently exited (not if it's been exited for a long time)
+4. If a service shows as "exited" but there's no evidence it was recently running, this likely means the container doesn't exist yet - DO NOT try to restart it
+
+A CRITICAL issue exists if a service that SHOULD be running (based on expected_services) is missing or exited. A WARNING exists if logs show errors or restart counts are high. If everything is fine, return 'ALL_OK'. For every check, a PERSIST_CHAT_MESSAGE action must be recommended.
+
+Note: Some apps may be defined but not yet created/started. If all services for an app show as "exited" with no recent activity, report this as "App not yet started" rather than trying to restart non-existent containers.`
 
 // GeneratePrompt creates the full prompt from a SystemSnapshot
 func (rs *ReasoningService) GeneratePrompt(snapshot *SystemSnapshot) (string, error) {

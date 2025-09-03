@@ -38,10 +38,11 @@ type ActualState struct {
 
 // ServiceStatus represents the status of a single service within an app
 type ServiceStatus struct {
-	Name         string     `json:"name"`
-	Status       string     `json:"status"` // "running", "exited", "restarting"
-	RestartCount int        `json:"restart_count"`
-	LogSummary   LogSummary `json:"log_summary"`
+	Name          string     `json:"name"`
+	ContainerName string     `json:"container_name"` // Full container name for Docker operations
+	Status        string     `json:"status"`         // "running", "exited", "restarting"
+	RestartCount  int        `json:"restart_count"`
+	LogSummary    LogSummary `json:"log_summary"`
 }
 
 // LogSummary represents a summary of log analysis
