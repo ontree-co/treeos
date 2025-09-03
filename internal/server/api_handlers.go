@@ -164,7 +164,7 @@ func (s *Server) handleCreateApp(w http.ResponseWriter, r *http.Request) {
 			// Check if .env file exists
 			envFile := filepath.Join(appDir, ".env")
 			if _, err := os.Stat(envFile); err == nil {
-				opts.EnvFile = envFile
+				opts.EnvFile = ".env"  // Just the filename, not the full path
 			}
 
 			log.Printf("Calling compose.Up with WorkingDir: %s", opts.WorkingDir)
@@ -342,7 +342,7 @@ func (s *Server) handleAPIAppStart(w http.ResponseWriter, r *http.Request) {
 	// Check if .env file exists
 	envFile := filepath.Join(appDir, ".env")
 	if _, err := os.Stat(envFile); err == nil {
-		opts.EnvFile = envFile
+		opts.EnvFile = ".env"  // Just the filename, not the full path
 	}
 
 	// Start the compose project

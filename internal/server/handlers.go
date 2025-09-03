@@ -17,6 +17,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"gopkg.in/yaml.v3"
 )
 
 // handleSetup handles the initial setup page
@@ -333,6 +335,22 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 		composeContent = []byte("Failed to read docker-compose.yml")
 	}
 
+	// Read .env content
+	envPath := filepath.Join(app.Path, ".env")
+	envContent, err := os.ReadFile(envPath)
+	if err != nil {
+		log.Printf("Failed to read .env: %v", err)
+		envContent = []byte("# No .env file found")
+	}
+
+	// Read app.yml content
+	appYmlPath := filepath.Join(app.Path, "app.yml")
+	appYmlContent, err := os.ReadFile(appYmlPath)
+	if err != nil {
+		log.Printf("Failed to read app.yml: %v", err)
+		appYmlContent = []byte("# No app.yml file found")
+	}
+
 	// Get container details if it exists
 	var containerInfo map[string]interface{}
 	if app.Status != "not_created" && app.Status != "error" {
@@ -467,6 +485,8 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 	data := s.baseTemplateData(user)
 	data["App"] = app
 	data["ComposeContent"] = string(composeContent)
+	data["EnvContent"] = string(envContent)
+	data["AppYmlContent"] = string(appYmlContent)
 	data["ContainerInfo"] = containerInfo
 	data["Messages"] = messages
 	data["CSRFToken"] = ""
@@ -563,16 +583,35 @@ func (s *Server) handleAppComposeEdit(w http.ResponseWriter, r *http.Request) {
 
 	// Read docker-compose.yml content
 	composePath := filepath.Join(appDetails.Path, "docker-compose.yml")
-	content, err := os.ReadFile(composePath)
+	composeContent, err := os.ReadFile(composePath)
 	if err != nil {
 		http.Error(w, "Failed to read compose file", http.StatusInternalServerError)
 		return
 	}
 
+	// Read .env content
+	envPath := filepath.Join(appDetails.Path, ".env")
+	envContent, err := os.ReadFile(envPath)
+	if err != nil {
+		// .env file might not exist, that's ok
+		envContent = []byte("")
+	}
+
+	// Read app.yml content
+	appYmlPath := filepath.Join(appDetails.Path, "app.yml")
+	appYmlContent, err := os.ReadFile(appYmlPath)
+	if err != nil {
+		// app.yml file might not exist, that's ok
+		appYmlContent = []byte("")
+	}
+
 	// Prepare template data
 	data := s.baseTemplateData(user)
 	data["App"] = appDetails
-	data["Content"] = string(content)
+	data["Content"] = string(composeContent) // Keep for backward compatibility
+	data["ComposeContent"] = string(composeContent)
+	data["EnvContent"] = string(envContent)
+	data["AppYmlContent"] = string(appYmlContent)
 
 	// Render the template
 	tmpl := s.templates["app_compose_edit"]
@@ -607,20 +646,31 @@ func (s *Server) handleAppComposeUpdate(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	newContent := r.FormValue("content")
-	if newContent == "" {
-		http.Error(w, "Content cannot be empty", http.StatusBadRequest)
+	// Get all three file contents from form
+	composeContent := r.FormValue("compose_content")
+	envContent := r.FormValue("env_content")
+	appYmlContent := r.FormValue("app_yml_content")
+
+	// For backward compatibility, also check "content" field
+	if composeContent == "" {
+		composeContent = r.FormValue("content")
+	}
+
+	if composeContent == "" {
+		http.Error(w, "Docker compose content cannot be empty", http.StatusBadRequest)
 		return
 	}
 
-	// Validate YAML syntax
-	if err := yamlutil.ValidateComposeFile(newContent); err != nil {
+	// Validate docker-compose YAML syntax
+	if err := yamlutil.ValidateComposeFile(composeContent); err != nil {
 		// Show error in edit form
 		appDetails, _ := s.dockerClient.GetAppDetails(s.config.AppsDir, appName)
 		data := s.baseTemplateData(user)
 		data["App"] = appDetails
-		data["Content"] = newContent
-		data["Error"] = fmt.Sprintf("Invalid YAML: %v", err)
+		data["ComposeContent"] = composeContent
+		data["EnvContent"] = envContent
+		data["AppYmlContent"] = appYmlContent
+		data["Error"] = fmt.Sprintf("Invalid docker-compose.yml: %v", err)
 
 		tmpl := s.templates["app_compose_edit"]
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -631,6 +681,29 @@ func (s *Server) handleAppComposeUpdate(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Validate app.yml YAML syntax if provided
+	if appYmlContent != "" {
+		var appYml map[string]interface{}
+		if err := yaml.Unmarshal([]byte(appYmlContent), &appYml); err != nil {
+			// Show error in edit form
+			appDetails, _ := s.dockerClient.GetAppDetails(s.config.AppsDir, appName)
+			data := s.baseTemplateData(user)
+			data["App"] = appDetails
+			data["ComposeContent"] = composeContent
+			data["EnvContent"] = envContent
+			data["AppYmlContent"] = appYmlContent
+			data["Error"] = fmt.Sprintf("Invalid app.yml: %v", err)
+
+			tmpl := s.templates["app_compose_edit"]
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
+				log.Printf("Failed to render template: %v", err)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+			}
+			return
+		}
+	}
+
 	// Get app details
 	appDetails, err := s.dockerClient.GetAppDetails(s.config.AppsDir, appName)
 	if err != nil {
@@ -638,13 +711,29 @@ func (s *Server) handleAppComposeUpdate(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Write the new content
+	// Write docker-compose.yml
 	composePath := filepath.Join(appDetails.Path, "docker-compose.yml")
 	// Use 0644 for docker-compose.yml files as they need to be readable by docker daemon
-	if err := os.WriteFile(composePath, []byte(newContent), 0644); err != nil { // #nosec G306 - compose files need to be world-readable
+	if err := os.WriteFile(composePath, []byte(composeContent), 0644); err != nil { // #nosec G306 - compose files need to be world-readable
 		log.Printf("Failed to write compose file: %v", err)
-		http.Error(w, "Failed to save file", http.StatusInternalServerError)
+		http.Error(w, "Failed to save docker-compose.yml", http.StatusInternalServerError)
 		return
+	}
+
+	// Write .env file (can be empty)
+	envPath := filepath.Join(appDetails.Path, ".env")
+	if err := os.WriteFile(envPath, []byte(envContent), 0640); err != nil {
+		log.Printf("Failed to write .env file: %v", err)
+		// Don't fail the whole operation if .env fails
+	}
+
+	// Write app.yml file (can be empty)
+	if appYmlContent != "" {
+		appYmlPath := filepath.Join(appDetails.Path, "app.yml")
+		if err := os.WriteFile(appYmlPath, []byte(appYmlContent), 0644); err != nil {
+			log.Printf("Failed to write app.yml file: %v", err)
+			// Don't fail the whole operation if app.yml fails
+		}
 	}
 
 	// Check if container is running

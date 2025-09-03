@@ -141,12 +141,15 @@ func (s *Server) handleCreateFromTemplate(w http.ResponseWriter, r *http.Request
 		// Process template content (for any other replacements)
 		processedContent := s.templateSvc.ProcessTemplateContent(content, appName)
 
-		// Create the app using existing scaffold logic
-		if err := s.createAppScaffold(appName, processedContent, "", emoji); err != nil {
+		// Create the app using scaffold logic with template flag
+		if err := s.createAppScaffoldFromTemplate(appName, processedContent, "", emoji); err != nil {
 			log.Printf("Error creating app from template: %v", err)
 			http.Error(w, fmt.Sprintf("Failed to create application: %v", err), http.StatusInternalServerError)
 			return
 		}
+		
+		// Trigger agent immediately for initial setup
+		go s.triggerAgentForApp(appName)
 
 		// Auto-start is no longer supported - users must manually start apps
 

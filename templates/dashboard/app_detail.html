@@ -635,8 +635,29 @@
 </div>
 {{end}}
 
-<!-- Configuration File -->
-<div class="row">
+<!-- Configuration Files -->
+<!-- .env Configuration -->
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Configuration (.env)</h5>
+                <a href="/apps/{{.App.Name}}/edit" class="btn btn-sm btn-outline-primary">
+                    <i>✏️</i> Edit
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="position-relative">
+                    <pre class="bg-light p-3 rounded"><code>{{.EnvContent}}</code></pre>
+                    <small class="text-muted">File: <code>{{.App.Path}}/.env</code></small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- docker-compose.yml Configuration -->
+<div class="row mb-3">
     <div class="col-12">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
@@ -649,6 +670,26 @@
                 <div class="position-relative">
                     <pre class="bg-light p-3 rounded"><code>{{.ComposeContent}}</code></pre>
                     <small class="text-muted">File: <code>{{.App.Path}}/docker-compose.yml</code></small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- app.yml Configuration -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Configuration (app.yml)</h5>
+                <a href="/apps/{{.App.Name}}/edit" class="btn btn-sm btn-outline-primary">
+                    <i>✏️</i> Edit
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="position-relative">
+                    <pre class="bg-light p-3 rounded"><code>{{.AppYmlContent}}</code></pre>
+                    <small class="text-muted">File: <code>{{.App.Path}}/app.yml</code></small>
                 </div>
             </div>
         </div>

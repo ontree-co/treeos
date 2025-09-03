@@ -139,6 +139,34 @@ func isValidAppName(appName string) bool {
 // createAppScaffold creates the directory structure and docker-compose.yml for a new app
 func (s *Server) createAppScaffold(appName, composeContent, envContent, emoji string) error {
 	appPath := filepath.Join(s.config.AppsDir, appName)
+	
+	// Create the app structure
+	if err := s.createAppScaffoldInternal(appPath, appName, composeContent, envContent, emoji); err != nil {
+		return err
+	}
+	
+	// Generate app.yml without template flag  
+	if err := s.generateAppYaml(appPath, appName, composeContent); err != nil {
+		log.Printf("Warning: Failed to generate app.yml for %s: %v", appName, err)
+		// Continue anyway - agent can generate it later
+	}
+	
+	// Automatically create and start containers if compose service is available
+	if s.composeSvc != nil {
+		// Start containers after creation
+		err := s.startContainersForNewApp(appName, appPath, composeContent)
+		if err != nil {
+			log.Printf("Warning: Failed to start containers for app %s: %v", appName, err)
+			// Don't fail app creation if containers can't be started
+			// User can manually start them later
+		}
+	}
+	
+	return nil
+}
+
+// createAppScaffoldInternal creates the basic app structure without starting containers
+func (s *Server) createAppScaffoldInternal(appPath, appName, composeContent, envContent, emoji string) error {
 
 	// Create app directory
 	err := os.MkdirAll(appPath, 0750)
@@ -218,17 +246,6 @@ func (s *Server) createAppScaffold(appName, composeContent, envContent, emoji st
 		}
 	}
 
-	// Automatically create and start containers if compose service is available
-	if s.composeSvc != nil {
-		// Start containers after creation
-		err := s.startContainersForNewApp(appName, appPath, composeContent)
-		if err != nil {
-			log.Printf("Warning: Failed to start containers for app %s: %v", appName, err)
-			// Don't fail app creation if containers can't be started
-			// User can manually start them later
-		}
-	}
-
 	return nil
 }
 
@@ -253,7 +270,7 @@ func (s *Server) startContainersForNewApp(appName, appPath, composeContent strin
 	// Check if .env file exists
 	envFile := filepath.Join(appPath, ".env")
 	if _, err := os.Stat(envFile); err == nil {
-		opts.EnvFile = envFile
+		opts.EnvFile = ".env"  // Just the filename, not the full path
 	}
 
 	log.Printf("Calling compose.Up with WorkingDir: %s", opts.WorkingDir)
@@ -266,6 +283,97 @@ func (s *Server) startContainersForNewApp(appName, appPath, composeContent strin
 
 	log.Printf("Successfully started containers for app: %s", appName)
 	return nil
+}
+
+// createAppScaffoldFromTemplate creates an app from a template with initial_setup_required flag
+func (s *Server) createAppScaffoldFromTemplate(appName, composeContent, envContent, emoji string) error {
+	appPath := filepath.Join(s.config.AppsDir, appName)
+	
+	// Create the app structure normally
+	if err := s.createAppScaffoldInternal(appPath, appName, composeContent, envContent, emoji); err != nil {
+		return err
+	}
+	
+	// Generate app.yml with initial_setup_required flag
+	if err := s.generateAppYamlWithFlags(appPath, appName, composeContent, true); err != nil {
+		log.Printf("Warning: Failed to generate app.yml for %s: %v", appName, err)
+		// Continue anyway - agent can generate it later
+	}
+	
+	return nil
+}
+
+// generateAppYaml generates an app.yml file for the agent to use
+func (s *Server) generateAppYaml(appPath, appName, composeContent string) error {
+	return s.generateAppYamlWithFlags(appPath, appName, composeContent, false)
+}
+
+// generateAppYamlWithFlags generates an app.yml file with optional flags
+func (s *Server) generateAppYamlWithFlags(appPath, appName, composeContent string, fromTemplate bool) error {
+	// Parse docker-compose to extract services
+	var compose map[string]interface{}
+	if err := yaml.Unmarshal([]byte(composeContent), &compose); err != nil {
+		return fmt.Errorf("failed to parse docker-compose.yml: %w", err)
+	}
+
+	// Extract services - store only service names, not full container names
+	services := []string{}
+	primaryService := ""
+
+	if servicesMap, ok := compose["services"].(map[string]interface{}); ok {
+		for serviceName := range servicesMap {
+			// Store just the service name
+			services = append(services, serviceName)
+			if primaryService == "" {
+				// Use first service as primary by default
+				primaryService = serviceName
+			}
+		}
+	}
+
+	// Create app.yml structure
+	appConfig := map[string]interface{}{
+		"id":                strings.ToLower(appName),
+		"name":              strings.ToLower(appName),
+		"primary_service":   primaryService,
+		"expected_services": services,
+	}
+	
+	// Add initial_setup_required flag if from template
+	if fromTemplate {
+		appConfig["initial_setup_required"] = true
+	}
+
+	// Add uptime_kuma_monitor field if it's an uptime-kuma app
+	if strings.Contains(strings.ToLower(appName), "uptime") {
+		appConfig["uptime_kuma_monitor"] = ""
+	}
+
+	// Marshal to YAML
+	appYmlData, err := yaml.Marshal(appConfig)
+	if err != nil {
+		return fmt.Errorf("failed to marshal app config: %w", err)
+	}
+
+	// Write app.yml file
+	appYmlPath := filepath.Join(appPath, "app.yml")
+	if err := os.WriteFile(appYmlPath, appYmlData, 0644); err != nil {
+		return fmt.Errorf("failed to write app.yml: %w", err)
+	}
+
+	log.Printf("Successfully generated app.yml for %s", appName)
+	return nil
+}
+
+// triggerAgentForApp sends a signal to the agent to process a specific app immediately
+func (s *Server) triggerAgentForApp(appName string) {
+	// TODO: Implement agent triggering mechanism
+	// This could be done via:
+	// 1. Database flag that agent checks
+	// 2. Direct channel communication if agent is in same process
+	// 3. HTTP API call to agent endpoint
+	// For now, just log it
+	log.Printf("Agent triggered for app %s - will process on next cycle", appName)
 }
 
 // extractHostPort extracts the host port from a docker-compose.yml content
