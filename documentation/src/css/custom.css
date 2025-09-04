@@ -1,30 +1,225 @@
 /**
- * Any CSS included here will be global. The classic template
- * bundles Infima by default. Infima is a CSS framework designed to
- * work well for content-centric websites.
+ * OnTree Documentation Theme
+ * Matches the OnTree landing pages design system
  */
 
-/* You can override the default Infima variables here. */
+/* Import IBM Plex fonts */
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap");
+
+/* Override Infima variables to match OnTree branding */
 :root {
-  --ifm-color-primary: #2e8555;
-  --ifm-color-primary-dark: #29784c;
-  --ifm-color-primary-darker: #277148;
-  --ifm-color-primary-darkest: #205d3b;
-  --ifm-color-primary-light: #33925d;
-  --ifm-color-primary-lighter: #359962;
-  --ifm-color-primary-lightest: #3cad6e;
+  /* Primary colors - using neutral grays like landing pages */
+  --ifm-color-primary: #374151;
+  --ifm-color-primary-dark: #1f2937;
+  --ifm-color-primary-darker: #111827;
+  --ifm-color-primary-darkest: #030712;
+  --ifm-color-primary-light: #4b5563;
+  --ifm-color-primary-lighter: #6b7280;
+  --ifm-color-primary-lightest: #9ca3af;
+  
+  /* Typography */
+  --ifm-font-family-base: "IBM Plex Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --ifm-font-family-monospace: "IBM Plex Mono", monospace;
+  --ifm-heading-font-family: "IBM Plex Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  
+  /* Font weights */
+  --ifm-font-weight-light: 300;
+  --ifm-font-weight-normal: 400;
+  --ifm-font-weight-semibold: 600;
+  --ifm-font-weight-bold: 700;
+  
+  /* Font sizes */
   --ifm-code-font-size: 95%;
-  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+  
+  /* Spacing and borders */
+  --ifm-global-radius: 0.25rem;
+  --ifm-button-border-radius: 3em;
+  
+  /* Colors */
+  --ifm-background-color: #ffffff;
+  --ifm-background-surface-color: #fafafa;
+  --ifm-color-emphasis-0: #ffffff;
+  --ifm-color-emphasis-100: #f5f5f5;
+  --ifm-color-emphasis-200: #e5e7eb;
+  --ifm-color-emphasis-300: #d1d5db;
+  --ifm-color-emphasis-400: #9ca3af;
+  --ifm-color-emphasis-500: #6b7280;
+  --ifm-color-emphasis-600: #4b5563;
+  --ifm-color-emphasis-700: #374151;
+  --ifm-color-emphasis-800: #1f2937;
+  --ifm-color-emphasis-900: #111827;
+  --ifm-color-emphasis-1000: #030712;
+  
+  /* Navbar */
+  --ifm-navbar-background-color: #ffffff;
+  --ifm-navbar-shadow: 0 1px 0 0 #e5e7eb;
+  --ifm-navbar-height: 4rem;
+  
+  /* Code blocks */
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.05);
+  
+  /* Links */
+  --ifm-link-color: #374151;
+  --ifm-link-hover-color: #111827;
+  
+  /* Buttons */
+  --ifm-button-background-color: transparent;
+  --ifm-button-border-color: rgba(0, 0, 0, 0.15);
 }
 
-/* For readability concerns, you should choose a lighter palette in dark mode. */
+/* Dark mode adjustments */
 [data-theme='dark'] {
-  --ifm-color-primary: #25c2a0;
-  --ifm-color-primary-dark: #21af90;
-  --ifm-color-primary-darker: #1fa588;
-  --ifm-color-primary-darkest: #1a8870;
-  --ifm-color-primary-light: #29d5b0;
-  --ifm-color-primary-lighter: #32d8b4;
-  --ifm-color-primary-lightest: #4fddbf;
-  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+  --ifm-color-primary: #e5e7eb;
+  --ifm-color-primary-dark: #d1d5db;
+  --ifm-color-primary-darker: #9ca3af;
+  --ifm-color-primary-darkest: #6b7280;
+  --ifm-color-primary-light: #f3f4f6;
+  --ifm-color-primary-lighter: #f9fafb;
+  --ifm-color-primary-lightest: #ffffff;
+  
+  --ifm-background-color: #111827;
+  --ifm-background-surface-color: #1f2937;
+  --ifm-navbar-background-color: #111827;
+  --ifm-navbar-shadow: 0 1px 0 0 #374151;
+  
+  --docusaurus-highlighted-code-line-bg: rgba(255, 255, 255, 0.1);
+  
+  --ifm-link-color: #e5e7eb;
+  --ifm-link-hover-color: #ffffff;
+}
+
+/* Global styles */
+html,
+body {
+  font-family: "IBM Plex Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Headings with IBM Plex Sans */
+h1, h2, h3, h4, h5, h6 {
+  font-family: "IBM Plex Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-weight: 600;
+}
+
+/* Logo and brand text */
+.navbar__brand {
+  font-family: "IBM Plex Mono", monospace;
+  font-weight: 600;
+  font-style: italic;
+}
+
+/* Navbar styling to match landing pages */
+.navbar {
+  border-bottom: 1px solid var(--ifm-color-emphasis-200);
+  box-shadow: none;
+  padding: 0;
+}
+
+.navbar__inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.navbar__item {
+  font-weight: 400;
+  color: var(--ifm-color-emphasis-700);
+}
+
+.navbar__link:hover {
+  color: var(--ifm-color-emphasis-900);
+}
+
+/* Button styling to match landing pages */
+.button {
+  font-family: "IBM Plex Mono", monospace;
+  font-weight: 700;
+  border-radius: 3em;
+  text-transform: none;
+  box-shadow: rgba(0, 0, 0, 0.15) 0px 0px 0px 1px inset;
+  background-color: transparent;
+  color: #333;
+  transition: all 0.2s ease;
+}
+
+.button:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: #000;
+  text-decoration: none;
+}
+
+.button--primary {
+  background-color: #374151;
+  color: white;
+  box-shadow: none;
+}
+
+.button--primary:hover {
+  background-color: #1f2937;
+  color: white;
+}
+
+/* Sidebar styling */
+.menu {
+  font-weight: 400;
+}
+
+.menu__link {
+  color: var(--ifm-color-emphasis-700);
+  border-radius: 0.25rem;
+}
+
+.menu__link--active {
+  font-weight: 600;
+  color: var(--ifm-color-emphasis-900);
+}
+
+/* Code blocks with IBM Plex Mono */
+code, kbd, pre, samp {
+  font-family: "IBM Plex Mono", monospace;
+}
+
+/* Table of contents */
+.table-of-contents {
+  font-size: 0.875rem;
+}
+
+.table-of-contents__link {
+  color: var(--ifm-color-emphasis-600);
+}
+
+.table-of-contents__link--active,
+.table-of-contents__link:hover {
+  color: var(--ifm-color-emphasis-900);
+  font-weight: 500;
+}
+
+/* Footer */
+.footer {
+  background-color: var(--ifm-background-surface-color);
+  border-top: 1px solid var(--ifm-color-emphasis-200);
+}
+
+.footer__title {
+  font-family: "IBM Plex Sans", sans-serif;
+  font-weight: 600;
+}
+
+/* Admonitions (notes, warnings, etc) */
+.admonition {
+  border-left-width: 4px;
+  border-radius: 0.25rem;
+}
+
+/* Search */
+.DocSearch-Button {
+  border-radius: 3em;
+  font-family: "IBM Plex Sans", sans-serif;
+  box-shadow: rgba(0, 0, 0, 0.15) 0px 0px 0px 1px inset;
+  background-color: transparent;
+}
+
+.DocSearch-Button:hover {
+  box-shadow: rgba(0, 0, 0, 0.25) 0px 0px 0px 1px inset;
 }
