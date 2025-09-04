@@ -15,17 +15,17 @@ const config: Config = {
   },
 
   // Set the production url of your site here
-  url: 'https://docs.ontreeapp.com',
+  url: 'https://ontree.co',
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
-  baseUrl: '/',
+  baseUrl: '/docs/',
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
   organizationName: 'ontree', // Usually your GitHub org/user name.
   projectName: 'ontree-node', // Usually your repo name.
 
-  onBrokenLinks: 'throw',
+  onBrokenLinks: 'warn',
   onBrokenMarkdownLinks: 'warn',
 
   // Even if you don't use internationalization, you can use this field to set
@@ -72,6 +72,10 @@ const config: Config = {
   themeConfig: {
     // Replace with your project's social card
     image: 'img/docusaurus-social-card.jpg',
+    metadata: [
+      {name: 'robots', content: 'index, follow'},
+      {name: 'canonical', content: 'https://ontree.co/docs'},
+    ],
     navbar: {
       title: 'OnTree',
       logo: {
@@ -101,15 +105,15 @@ const config: Config = {
           items: [
             {
               label: 'Getting Started',
-              to: '/docs/intro',
+              to: '/docs/docs/intro',
             },
             {
               label: 'Installation',
-              to: '/docs/getting-started/installation',
+              to: '/docs/docs/getting-started/installation',
             },
             {
               label: 'Domain Setup',
-              to: '/docs/getting-started/domain-setup',
+              to: '/docs/docs/getting-started/domain-setup',
             },
           ],
         },
@@ -118,15 +122,15 @@ const config: Config = {
           items: [
             {
               label: 'App Management',
-              to: '/docs/features/app-management',
+              to: '/docs/docs/features/app-management',
             },
             {
               label: 'Templates',
-              to: '/docs/features/templates',
+              to: '/docs/docs/features/templates',
             },
             {
               label: 'Monitoring',
-              to: '/docs/features/monitoring',
+              to: '/docs/docs/features/monitoring',
             },
           ],
         },

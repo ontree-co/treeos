@@ -1,0 +1,9 @@
+# Robots.txt for private Docusaurus deployment
+# This file should only be used when deployed to the private URL (e.g., ontree-docs.netlify.app)
+# It prevents search engines from indexing the duplicate content
+
+User-agent: *
+Disallow: /
+
+# Only the proxied version at ontree.co/docs should be indexed
+# Canonical URL: https://ontree.co/docs/
