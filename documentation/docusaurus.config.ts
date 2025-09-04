@@ -41,6 +41,7 @@ const config: Config = {
       'classic',
       {
         docs: {
+          routeBasePath: '/', // Serve docs at the root of baseUrl
           sidebarPath: './sidebars.ts',
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
@@ -105,15 +106,15 @@ const config: Config = {
           items: [
             {
               label: 'Getting Started',
-              to: '/docs/docs/intro',
+              to: '/docs/intro',
             },
             {
               label: 'Installation',
-              to: '/docs/docs/getting-started/installation',
+              to: '/docs/getting-started/installation',
             },
             {
               label: 'Domain Setup',
-              to: '/docs/docs/getting-started/domain-setup',
+              to: '/docs/getting-started/domain-setup',
             },
           ],
         },
@@ -122,15 +123,15 @@ const config: Config = {
           items: [
             {
               label: 'App Management',
-              to: '/docs/docs/features/app-management',
+              to: '/docs/features/app-management',
             },
             {
               label: 'Templates',
-              to: '/docs/docs/features/templates',
+              to: '/docs/features/templates',
             },
             {
               label: 'Monitoring',
-              to: '/docs/docs/features/monitoring',
+              to: '/docs/features/monitoring',
             },
           ],
         },
