@@ -3,6 +3,7 @@ package yamlutil
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 )
 
@@ -145,14 +146,38 @@ func GetMainServiceName(compose *ComposeFile) string {
 		return ""
 	}
 
-	// Return first service that's not tailscale
+	// Collect all service names except tailscale
+	var services []string
 	for name := range compose.Services {
 		if name != "tailscale" {
-			return name
+			services = append(services, name)
 		}
 	}
 
-	return ""
+	if len(services) == 0 {
+		return ""
+	}
+
+	// If only one service, return it
+	if len(services) == 1 {
+		return services[0]
+	}
+
+	// Priority list for common main service names
+	mainServiceNames := []string{"app", "web", "webapp", "frontend", "main", "server", "api"}
+	
+	// Check if any service matches our priority list
+	for _, preferred := range mainServiceNames {
+		for _, service := range services {
+			if service == preferred {
+				return service
+			}
+		}
+	}
+
+	// If no preferred name found, sort and return first alphabetically for deterministic behavior
+	sort.Strings(services)
+	return services[0]
 }
 
 // HasTailscaleSidecar checks if the compose file already has a Tailscale sidecar
