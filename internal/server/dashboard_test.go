@@ -2,12 +2,15 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"ontree-node/internal/config"
 	"ontree-node/internal/database"
 	"ontree-node/internal/docker"
 	"ontree-node/internal/version"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -20,9 +23,35 @@ func TestHandleDashboard_DisplaysApps(t *testing.T) {
 	}
 	defer dockerClient.Close()
 
-	// Create test config with the real apps directory
+	// Create a temporary apps directory for testing
+	tempDir := t.TempDir()
+	appsDir := filepath.Join(tempDir, "apps")
+
+	// Create test app directories with docker-compose.yml files
+	testApps := []string{"openwebui-amd", "uptime-kuma"}
+	for _, appName := range testApps {
+		appDir := filepath.Join(appsDir, appName)
+		if err := os.MkdirAll(appDir, 0755); err != nil {
+			t.Fatalf("Failed to create app directory %s: %v", appDir, err)
+		}
+		
+		// Create a minimal docker-compose.yml
+		composeContent := fmt.Sprintf(`version: '3.8'
+services:
+  %s:
+    image: nginx:latest
+    ports:
+      - "8080:80"
+`, appName)
+		composeFile := filepath.Join(appDir, "docker-compose.yml")
+		if err := os.WriteFile(composeFile, []byte(composeContent), 0644); err != nil {
+			t.Fatalf("Failed to create docker-compose.yml for %s: %v", appName, err)
+		}
+	}
+
+	// Create test config with the temporary apps directory
 	cfg := &config.Config{
-		AppsDir:           "/opt/ontree/apps",
+		AppsDir:           appsDir,
 		DatabasePath:      ":memory:",
 		ListenAddr:        ":3000",
 		MonitoringEnabled: true,
@@ -65,14 +94,11 @@ func TestHandleDashboard_DisplaysApps(t *testing.T) {
 
 	// Log the apps section for debugging
 	if strings.Contains(body, "No applications found") {
-		t.Error("Dashboard shows 'No applications found' but apps exist in /opt/ontree/apps")
+		t.Error("Dashboard shows 'No applications found' but test apps were created")
 	}
 
-	// Check for specific app names that we know exist
-	expectedApps := []string{
-		"openwebui-amd",
-		"uptime-kuma",
-	}
+	// Check for specific app names that we created in the test
+	expectedApps := testApps
 
 	missingApps := []string{}
 	for _, appName := range expectedApps {
