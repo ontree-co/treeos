@@ -58,11 +58,13 @@ func TestCreateChatMessage(t *testing.T) {
 
 	// Test creating a chat message with all fields
 	msg := ChatMessage{
-		AppID:          "test-app",
-		Timestamp:      time.Now(),
-		StatusLevel:    ChatStatusOK,
-		MessageSummary: "All systems nominal",
-		MessageDetails: sql.NullString{String: "All services running", Valid: true},
+		AppID:       "test-app",
+		Timestamp:   time.Now(),
+		Message:     "All systems nominal",
+		SenderType:  "agent",
+		SenderName:  "System Monitor",
+		StatusLevel: sql.NullString{String: "info", Valid: true},
+		Details:     sql.NullString{String: "All services running", Valid: true},
 	}
 
 	err := CreateChatMessage(msg)
@@ -72,11 +74,13 @@ func TestCreateChatMessage(t *testing.T) {
 
 	// Test creating a chat message without details
 	msg2 := ChatMessage{
-		AppID:          "test-app",
-		Timestamp:      time.Now(),
-		StatusLevel:    ChatStatusWarning,
-		MessageSummary: "High memory usage detected",
-		MessageDetails: sql.NullString{Valid: false},
+		AppID:       "test-app",
+		Timestamp:   time.Now(),
+		Message:     "High memory usage detected",
+		SenderType:  "agent",
+		SenderName:  "System Monitor",
+		StatusLevel: sql.NullString{String: "warning", Valid: true},
+		Details:     sql.NullString{Valid: false},
 	}
 
 	err = CreateChatMessage(msg2)
@@ -86,11 +90,13 @@ func TestCreateChatMessage(t *testing.T) {
 
 	// Test creating a chat message with critical status
 	msg3 := ChatMessage{
-		AppID:          "another-app",
-		Timestamp:      time.Now(),
-		StatusLevel:    ChatStatusCritical,
-		MessageSummary: "Service down",
-		MessageDetails: sql.NullString{String: "Database connection failed", Valid: true},
+		AppID:       "another-app",
+		Timestamp:   time.Now(),
+		Message:     "Service down",
+		SenderType:  "agent",
+		SenderName:  "System Monitor",
+		StatusLevel: sql.NullString{String: "critical", Valid: true},
+		Details:     sql.NullString{String: "Database connection failed", Valid: true},
 	}
 
 	err = CreateChatMessage(msg3)
@@ -109,10 +115,12 @@ func TestGetChatMessagesForApp(t *testing.T) {
 
 	for i := 0; i < 5; i++ {
 		msg := ChatMessage{
-			AppID:          appID,
-			Timestamp:      now.Add(time.Duration(i) * time.Minute),
-			StatusLevel:    ChatStatusOK,
-			MessageSummary: "Test message " + string(rune('A'+i)),
+			AppID:       appID,
+			Timestamp:   now.Add(time.Duration(i) * time.Minute),
+			Message:     "Test message " + string(rune('A'+i)),
+			SenderType:  "agent",
+			SenderName:  "Test Sender",
+			StatusLevel: sql.NullString{String: "info", Valid: true},
 		}
 		err := CreateChatMessage(msg)
 		if err != nil {
@@ -131,8 +139,8 @@ func TestGetChatMessagesForApp(t *testing.T) {
 	}
 
 	// Messages should be ordered by timestamp DESC
-	if messages[0].MessageSummary != "Test message E" {
-		t.Errorf("Expected most recent message first, got %s", messages[0].MessageSummary)
+	if messages[0].Message != "Test message E" {
+		t.Errorf("Expected most recent message first, got %s", messages[0].Message)
 	}
 
 	// Test pagination
@@ -175,10 +183,12 @@ func TestGetLatestChatMessageForApp(t *testing.T) {
 	now := time.Now()
 	for i := 0; i < 3; i++ {
 		msg := ChatMessage{
-			AppID:          appID,
-			Timestamp:      now.Add(time.Duration(i) * time.Hour),
-			StatusLevel:    ChatStatusOK,
-			MessageSummary: "Message " + string(rune('A'+i)),
+			AppID:       appID,
+			Timestamp:   now.Add(time.Duration(i) * time.Hour),
+			Message:     "Message " + string(rune('A'+i)),
+			SenderType:  "agent",
+			SenderName:  "Test Sender",
+			StatusLevel: sql.NullString{String: "info", Valid: true},
 		}
 		err := CreateChatMessage(msg)
 		if err != nil {
@@ -194,8 +204,8 @@ func TestGetLatestChatMessageForApp(t *testing.T) {
 
 	if latest == nil {
 		t.Errorf("Expected a message, got nil")
-	} else if latest.MessageSummary != "Message C" {
-		t.Errorf("Expected latest message 'Message C', got %s", latest.MessageSummary)
+	} else if latest.Message != "Message C" {
+		t.Errorf("Expected latest message 'Message C', got %s", latest.Message)
 	}
 }
 
@@ -217,10 +227,12 @@ func TestCountChatMessagesForApp(t *testing.T) {
 	// Create messages
 	for i := 0; i < 7; i++ {
 		msg := ChatMessage{
-			AppID:          appID,
-			Timestamp:      time.Now(),
-			StatusLevel:    ChatStatusOK,
-			MessageSummary: "Test message",
+			AppID:       appID,
+			Timestamp:   time.Now(),
+			Message:     "Test message",
+			SenderType:  "user",
+			SenderName:  "Test User",
+			StatusLevel: sql.NullString{String: "info", Valid: true},
 		}
 		err := CreateChatMessage(msg)
 		if err != nil {
@@ -240,10 +252,12 @@ func TestCountChatMessagesForApp(t *testing.T) {
 	// Create messages for another app
 	for i := 0; i < 3; i++ {
 		msg := ChatMessage{
-			AppID:          "another-app",
-			Timestamp:      time.Now(),
-			StatusLevel:    ChatStatusOK,
-			MessageSummary: "Another message",
+			AppID:       "another-app",
+			Timestamp:   time.Now(),
+			Message:     "Another message",
+			SenderType:  "user",
+			SenderName:  "Test User",
+			StatusLevel: sql.NullString{String: "info", Valid: true},
 		}
 		err := CreateChatMessage(msg)
 		if err != nil {
@@ -272,9 +286,9 @@ func TestDeleteOldChatMessages(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		oldTime := now.Add(-8 * 24 * time.Hour)
 		_, err := GetDB().Exec(`
-			INSERT INTO chat_messages (app_id, timestamp, status_level, message_summary)
-			VALUES (?, ?, ?, ?)
-		`, appID, oldTime, ChatStatusOK, "Old message")
+			INSERT INTO chat_messages (app_id, timestamp, message, sender_type, sender_name, status_level, details)
+			VALUES (?, ?, ?, ?, ?, ?, ?)
+		`, appID, oldTime, "Old message", "agent", "Test Agent", "info", "")
 		if err != nil {
 			t.Fatalf("Failed to create old message: %v", err)
 		}
@@ -284,9 +298,9 @@ func TestDeleteOldChatMessages(t *testing.T) {
 	for i := 0; i < 2; i++ {
 		recentTime := now.Add(-24 * time.Hour)
 		_, err := GetDB().Exec(`
-			INSERT INTO chat_messages (app_id, timestamp, status_level, message_summary)
-			VALUES (?, ?, ?, ?)
-		`, appID, recentTime, ChatStatusOK, "Recent message")
+			INSERT INTO chat_messages (app_id, timestamp, message, sender_type, sender_name, status_level, details)
+			VALUES (?, ?, ?, ?, ?, ?, ?)
+		`, appID, recentTime, "Recent message", "agent", "Test Agent", "info", "")
 		if err != nil {
 			t.Fatalf("Failed to create recent message: %v", err)
 		}

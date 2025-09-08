@@ -125,13 +125,13 @@ const (
 	SenderTypeUser   = "user"
 	SenderTypeAgent  = "agent"
 	SenderTypeSystem = "system"
-	
+
 	// Status levels for agent monitoring messages
 	StatusLevelInfo     = "info"
 	StatusLevelWarning  = "warning"
 	StatusLevelError    = "error"
 	StatusLevelCritical = "critical"
-	
+
 	// Agent providers
 	ProviderOpenAI    = "openai"
 	ProviderAnthropic = "anthropic"

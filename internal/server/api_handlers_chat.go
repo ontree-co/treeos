@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -38,6 +39,12 @@ type ChatMessageResponse struct {
 
 // handleAPIAppChat handles GET and POST /api/apps/{appID}/chat
 func (s *Server) handleAPIAppChat(w http.ResponseWriter, r *http.Request) {
+	// Check if this is an SSE request
+	if strings.HasSuffix(r.URL.Path, "/stream") {
+		s.handleAPIAppChatSSE(w, r)
+		return
+	}
+
 	// Route based on method
 	switch r.Method {
 	case http.MethodGet:
@@ -120,7 +127,7 @@ func (s *Server) handleAPIAppChatGet(w http.ResponseWriter, r *http.Request) {
 			SenderType: msg.SenderType,
 			SenderName: msg.SenderName,
 		}
-		
+
 		// Add optional fields if they have values
 		if msg.AgentModel.Valid {
 			resp.AgentModel = msg.AgentModel.String
@@ -134,7 +141,7 @@ func (s *Server) handleAPIAppChatGet(w http.ResponseWriter, r *http.Request) {
 		if msg.Details.Valid {
 			resp.Details = msg.Details.String
 		}
-		
+
 		responseMessages[i] = resp
 	}
 
@@ -364,5 +371,88 @@ func (s *Server) handleUserCommand(appID string, message string) {
 	default:
 		// No special handling for other messages
 		log.Printf("User message for app %s: %s", appID, message)
+	}
+}
+
+// handleAPIAppChatSSE handles SSE connections for /api/apps/{appID}/chat/stream
+func (s *Server) handleAPIAppChatSSE(w http.ResponseWriter, r *http.Request) {
+	// Extract app name from path
+	path := r.URL.Path
+	// Remove /api/apps/ prefix and /chat/stream suffix
+	appName := strings.TrimPrefix(path, "/api/apps/")
+	appName = strings.TrimSuffix(appName, "/chat/stream")
+
+	// Add defer to catch any panics
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("SSE: Panic in handler for app %s: %v", appName, r)
+		}
+	}()
+
+	// Set SSE headers BEFORE writing anything
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("X-Accel-Buffering", "no") // Disable nginx buffering
+
+	// Create flusher first to ensure we can stream
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		log.Printf("SSE: Streaming unsupported for app %s", appName)
+		http.Error(w, "Streaming unsupported", http.StatusInternalServerError)
+		return
+	}
+
+	// Write status 200 to commit headers
+	w.WriteHeader(http.StatusOK)
+
+	// Create SSE client
+	client := &SSEClient{
+		AppID:    appName,
+		Messages: make(chan string, 100),
+		Close:    make(chan bool),
+	}
+
+	// Register client
+	s.sseManager.RegisterClient(appName, client)
+	defer s.sseManager.UnregisterClient(appName, client)
+
+	// Send initial connection message
+	_, err := fmt.Fprintf(w, "event: connected\ndata: {\"status\":\"connected\"}\n\n")
+	if err != nil {
+		log.Printf("SSE: Failed to send initial message for app %s: %v", appName, err)
+		return
+	}
+	flusher.Flush()
+
+	// Start heartbeat ticker
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
+	// Listen for messages or close signal
+	for {
+		select {
+		case <-r.Context().Done():
+			// Client disconnected (normal when navigating away)
+			return
+		case message := <-client.Messages:
+			// Send message to client
+			_, err := fmt.Fprint(w, message)
+			if err != nil {
+				return
+			}
+			flusher.Flush()
+		case <-ticker.C:
+			// Send heartbeat
+			_, err := fmt.Fprintf(w, "event: heartbeat\ndata: ping\n\n")
+			if err != nil {
+				return
+			}
+			flusher.Flush()
+		case <-client.Close:
+			// Server closing connection
+			return
+		}
 	}
 }

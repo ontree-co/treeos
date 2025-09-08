@@ -54,6 +54,7 @@ type Server struct {
 	composeSvc            *compose.Service
 	agentOrchestrator     *agent.Orchestrator
 	agentCron             *cron.Cron
+	sseManager            *SSEManager
 }
 
 // New creates a new server instance
@@ -134,6 +135,9 @@ func New(cfg *config.Config, versionInfo version.Info) (*Server, error) {
 		log.Printf("Caddy integration is not supported on %s platform", runtime.GOOS)
 		s.caddyAvailable = false
 	}
+
+	// Initialize SSE manager
+	s.sseManager = NewSSEManager()
 
 	// Initialize template service
 	templatesPath := "compose" // Path within the embedded templates directory
@@ -367,6 +371,35 @@ func (s *Server) loadTemplates() error {
 
 // Start starts the HTTP server
 func (s *Server) Start() error {
+	// Set up SSE callback for chat messages
+	database.ChatMessageCallback = func(message database.ChatMessage) {
+		// Convert to API response format
+		apiMessage := ChatMessageResponse{
+			ID:         message.ID,
+			Timestamp:  message.Timestamp.Format(time.RFC3339),
+			Message:    message.Message,
+			SenderType: message.SenderType,
+			SenderName: message.SenderName,
+		}
+
+		// Handle nullable fields
+		if message.AgentModel.Valid {
+			apiMessage.AgentModel = message.AgentModel.String
+		}
+		if message.AgentProvider.Valid {
+			apiMessage.AgentProvider = message.AgentProvider.String
+		}
+		if message.StatusLevel.Valid {
+			apiMessage.StatusLevel = message.StatusLevel.String
+		}
+		if message.Details.Valid {
+			apiMessage.Details = message.Details.String
+		}
+
+		// Broadcast to SSE clients
+		s.sseManager.BroadcastMessage(message.AppID, apiMessage)
+	}
+
 	// Start background jobs
 	go s.startVitalsCleanup()
 	go s.startRealtimeMetricsCollection()
@@ -976,20 +1009,12 @@ func (s *Server) restartAgent() error {
 	// Get all app configurations to schedule individual checks
 	configs, err := orchestrator.GetAllConfigs()
 	if err != nil {
-		log.Printf("Warning: Failed to get app configs for scheduling: %v", err)
-		// Fall back to global check if we can't get individual configs
-		_, err = s.agentCron.AddFunc(fmt.Sprintf("@every %s", checkInterval), func() {
-			ctx := context.Background()
-			if err := s.agentOrchestrator.RunCheck(ctx); err != nil {
-				log.Printf("ERROR: Agent check failed: %v", err)
-			}
-		})
-		if err != nil {
-			s.agentOrchestrator.Close()
-			s.agentOrchestrator = nil
-			s.agentCron = nil
-			return fmt.Errorf("failed to schedule agent cron job: %w", err)
-		}
+		log.Printf("ERROR: Failed to get app configs for scheduling: %v", err)
+		// If we can't get configs, we can't schedule checks
+		s.agentOrchestrator.Close()
+		s.agentOrchestrator = nil
+		s.agentCron = nil
+		return fmt.Errorf("failed to get app configurations: %w", err)
 	} else {
 		// Schedule individual checks for each app
 		for _, config := range configs {
@@ -1013,11 +1038,25 @@ func (s *Server) restartAgent() error {
 	// Start the cron scheduler
 	s.agentCron.Start()
 
-	// Run initial check for all apps
+	// Run initial check for each app individually with staggered start
 	go func() {
 		ctx := context.Background()
-		if err := s.agentOrchestrator.RunCheck(ctx); err != nil {
-			log.Printf("ERROR: Initial agent check failed: %v", err)
+		configs, err := orchestrator.GetAllConfigs()
+		if err != nil {
+			log.Printf("ERROR: Failed to get configs for initial checks: %v", err)
+			return
+		}
+
+		for i, config := range configs {
+			// Stagger initial checks by 5 seconds each
+			time.Sleep(time.Duration(i*5) * time.Second)
+
+			appID := config.ID
+			go func(id string) {
+				if err := s.agentOrchestrator.RunCheckForApp(ctx, id); err != nil {
+					log.Printf("ERROR: Initial agent check failed for app %s: %v", id, err)
+				}
+			}(appID)
 		}
 	}()
 
@@ -1215,7 +1254,11 @@ func (s *Server) routeAPIApps(w http.ResponseWriter, r *http.Request) {
 		s.handleAPIAppStop(w, r)
 	} else if strings.HasSuffix(path, "/logs") {
 		s.handleAPIAppLogs(w, r)
+	} else if strings.HasSuffix(path, "/chat/stream") {
+		// SSE endpoint - must check this before /chat
+		s.handleAPIAppChat(w, r)
 	} else if strings.HasSuffix(path, "/chat") {
+		// Regular chat endpoint
 		s.handleAPIAppChat(w, r)
 	} else if strings.HasPrefix(path, "/api/apps/") {
 		// Check if it's a DELETE request for app deletion

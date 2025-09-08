@@ -147,7 +147,7 @@ func (s *Server) handleCreateFromTemplate(w http.ResponseWriter, r *http.Request
 			http.Error(w, fmt.Sprintf("Failed to create application: %v", err), http.StatusInternalServerError)
 			return
 		}
-		
+
 		// Trigger agent immediately for initial setup
 		go s.triggerAgentForApp(appName)
 

@@ -95,9 +95,14 @@ IMPORTANT RULES for RESTART_CONTAINER:
 3. ONLY recommend RESTART_CONTAINER if the service status is "restarting" or if it recently exited (not if it's been exited for a long time)
 4. If a service shows as "exited" but there's no evidence it was recently running, this likely means the container doesn't exist yet - DO NOT try to restart it
 
-A CRITICAL issue exists if a service that SHOULD be running (based on expected_services) is missing or exited. A WARNING exists if logs show errors or restart counts are high. If everything is fine, return 'ALL_OK'. For every check, a PERSIST_CHAT_MESSAGE action must be recommended.
+A CRITICAL issue exists if a service that SHOULD be running (based on expected_services) is missing or exited. A WARNING exists if logs show errors or restart counts are high. If everything is fine, return 'ALL_OK'. 
 
-CRITICAL: When creating PERSIST_CHAT_MESSAGE actions, ALWAYS use the app_id from the AppStatus being analyzed. NEVER use generic IDs like "system", "system_health", etc. The app_id must match the app_id field in the snapshot.
+CRITICAL RULES FOR PERSIST_CHAT_MESSAGE:
+1. Create PERSIST_CHAT_MESSAGE actions ONLY for applications listed in app_statuses
+2. ALWAYS use the exact app_id from the AppStatus being analyzed
+3. NEVER create messages for "system_health", "server_health", "system", or any other ID not in app_statuses
+4. Each AppStatus should result in exactly ONE PERSIST_CHAT_MESSAGE action
+5. The server_health data is provided for context only - DO NOT create messages about it
 
 Note: Some apps may be defined but not yet created/started. If all services for an app show as "exited" with no recent activity, report this as "App not yet started" rather than trying to restart non-existent containers.`
 

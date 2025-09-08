@@ -6,6 +6,9 @@ import (
 	"time"
 )
 
+// ChatMessageCallback is a function that gets called when a new chat message is created
+var ChatMessageCallback func(message ChatMessage)
+
 // CreateChatMessage creates a new chat message in the database.
 func CreateChatMessage(message ChatMessage) error {
 	db := GetDB()
@@ -26,7 +29,7 @@ func CreateChatMessage(message ChatMessage) error {
 		timestamp = time.Now()
 	}
 
-	_, err := db.Exec(query,
+	result, err := db.Exec(query,
 		message.AppID,
 		timestamp,
 		message.Message,
@@ -39,6 +42,18 @@ func CreateChatMessage(message ChatMessage) error {
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create chat message: %w", err)
+	}
+
+	// Get the inserted ID
+	id, err := result.LastInsertId()
+	if err == nil {
+		message.ID = int(id)
+		message.Timestamp = timestamp
+	}
+
+	// Call the callback if set (for SSE broadcasting)
+	if ChatMessageCallback != nil {
+		ChatMessageCallback(message)
 	}
 
 	return nil

@@ -12,12 +12,12 @@ func TestCreateUserMessage(t *testing.T) {
 
 	// Test creating a user message
 	userMsg := ChatMessage{
-		AppID:          "test-app",
-		Timestamp:      time.Now(),
-		StatusLevel:    ChatStatusUser,
-		MessageSummary: "Run check",
-		MessageType:    ChatMessageTypeUser,
-		SenderName:     "User",
+		AppID:       "test-app",
+		Timestamp:   time.Now(),
+		Message:     "Run check",
+		SenderType:  "user",
+		SenderName:  "User",
+		StatusLevel: sql.NullString{String: "info", Valid: true},
 	}
 
 	err := CreateChatMessage(userMsg)
@@ -36,17 +36,17 @@ func TestCreateUserMessage(t *testing.T) {
 	}
 
 	msg := messages[0]
-	if msg.MessageType != ChatMessageTypeUser {
-		t.Errorf("Expected message_type 'user', got '%s'", msg.MessageType)
+	if msg.SenderType != "user" {
+		t.Errorf("Expected sender_type 'user', got '%s'", msg.SenderType)
 	}
 	if msg.SenderName != "User" {
 		t.Errorf("Expected sender_name 'User', got '%s'", msg.SenderName)
 	}
-	if msg.StatusLevel != ChatStatusUser {
-		t.Errorf("Expected status_level 'USER', got '%s'", msg.StatusLevel)
+	if msg.StatusLevel.String != "info" {
+		t.Errorf("Expected status_level 'info', got '%s'", msg.StatusLevel.String)
 	}
-	if msg.MessageSummary != "Run check" {
-		t.Errorf("Expected message_summary 'Run check', got '%s'", msg.MessageSummary)
+	if msg.Message != "Run check" {
+		t.Errorf("Expected message 'Run check', got '%s'", msg.Message)
 	}
 }
 
@@ -56,13 +56,13 @@ func TestMixedMessageTypes(t *testing.T) {
 
 	// Create an agent message
 	agentMsg := ChatMessage{
-		AppID:          "mixed-app",
-		Timestamp:      time.Now().Add(-5 * time.Minute),
-		StatusLevel:    ChatStatusOK,
-		MessageSummary: "All systems operational",
-		MessageDetails: sql.NullString{String: "CPU: 20%, Memory: 45%", Valid: true},
-		MessageType:    ChatMessageTypeAgent,
-		SenderName:     "System Agent",
+		AppID:       "mixed-app",
+		Timestamp:   time.Now().Add(-5 * time.Minute),
+		Message:     "All systems operational",
+		SenderType:  "agent",
+		SenderName:  "System Agent",
+		StatusLevel: sql.NullString{String: "info", Valid: true},
+		Details:     sql.NullString{String: "CPU: 20%, Memory: 45%", Valid: true},
 	}
 
 	err := CreateChatMessage(agentMsg)
@@ -72,12 +72,12 @@ func TestMixedMessageTypes(t *testing.T) {
 
 	// Create a user message
 	userMsg := ChatMessage{
-		AppID:          "mixed-app",
-		Timestamp:      time.Now().Add(-3 * time.Minute),
-		StatusLevel:    ChatStatusUser,
-		MessageSummary: "Check for updates",
-		MessageType:    ChatMessageTypeUser,
-		SenderName:     "User",
+		AppID:       "mixed-app",
+		Timestamp:   time.Now().Add(-3 * time.Minute),
+		Message:     "Check for updates",
+		SenderType:  "user",
+		SenderName:  "User",
+		StatusLevel: sql.NullString{String: "info", Valid: true},
 	}
 
 	err = CreateChatMessage(userMsg)
@@ -87,12 +87,12 @@ func TestMixedMessageTypes(t *testing.T) {
 
 	// Create another agent message
 	agentMsg2 := ChatMessage{
-		AppID:          "mixed-app",
-		Timestamp:      time.Now().Add(-1 * time.Minute),
-		StatusLevel:    ChatStatusWarning,
-		MessageSummary: "Update available for container nginx",
-		MessageType:    ChatMessageTypeAgent,
-		SenderName:     "System Agent",
+		AppID:       "mixed-app",
+		Timestamp:   time.Now().Add(-1 * time.Minute),
+		Message:     "Update available for container nginx",
+		SenderType:  "agent",
+		SenderName:  "System Agent",
+		StatusLevel: sql.NullString{String: "warning", Valid: true},
 	}
 
 	err = CreateChatMessage(agentMsg2)
@@ -112,22 +112,22 @@ func TestMixedMessageTypes(t *testing.T) {
 
 	// Messages should be in reverse chronological order
 	// Most recent first
-	if messages[0].MessageType != ChatMessageTypeAgent {
-		t.Errorf("Expected first message to be agent type, got %s", messages[0].MessageType)
+	if messages[0].SenderType != "agent" {
+		t.Errorf("Expected first message to be agent type, got %s", messages[0].SenderType)
 	}
-	if messages[0].StatusLevel != ChatStatusWarning {
-		t.Errorf("Expected first message status WARNING, got %s", messages[0].StatusLevel)
-	}
-
-	if messages[1].MessageType != ChatMessageTypeUser {
-		t.Errorf("Expected second message to be user type, got %s", messages[1].MessageType)
+	if messages[0].StatusLevel.String != "warning" {
+		t.Errorf("Expected first message status warning, got %s", messages[0].StatusLevel.String)
 	}
 
-	if messages[2].MessageType != ChatMessageTypeAgent {
-		t.Errorf("Expected third message to be agent type, got %s", messages[2].MessageType)
+	if messages[1].SenderType != "user" {
+		t.Errorf("Expected second message to be user type, got %s", messages[1].SenderType)
 	}
-	if messages[2].StatusLevel != ChatStatusOK {
-		t.Errorf("Expected third message status OK, got %s", messages[2].StatusLevel)
+
+	if messages[2].SenderType != "agent" {
+		t.Errorf("Expected third message to be agent type, got %s", messages[2].SenderType)
+	}
+	if messages[2].StatusLevel.String != "info" {
+		t.Errorf("Expected third message status info, got %s", messages[2].StatusLevel.String)
 	}
 }
 
@@ -137,11 +137,11 @@ func TestUserMessageDefaults(t *testing.T) {
 
 	// Create a user message with minimal fields
 	userMsg := ChatMessage{
-		AppID:          "default-test",
-		StatusLevel:    ChatStatusUser,
-		MessageSummary: "Test message",
-		MessageType:    ChatMessageTypeUser,
-		// SenderName should default to "User"
+		AppID:       "default-test",
+		Message:     "Test message",
+		SenderType:  "user",
+		SenderName:  "User",
+		StatusLevel: sql.NullString{String: "info", Valid: true},
 	}
 
 	err := CreateChatMessage(userMsg)
@@ -171,11 +171,12 @@ func TestBackwardsCompatibility(t *testing.T) {
 
 	// Create a message without specifying new fields (simulating old code)
 	oldStyleMsg := ChatMessage{
-		AppID:          "legacy-app",
-		Timestamp:      time.Now(),
-		StatusLevel:    ChatStatusOK,
-		MessageSummary: "Legacy message",
-		// MessageType and SenderName not specified
+		AppID:       "legacy-app",
+		Timestamp:   time.Now(),
+		Message:     "Legacy message",
+		SenderType:  "agent",
+		SenderName:  "System Agent",
+		StatusLevel: sql.NullString{String: "info", Valid: true},
 	}
 
 	err := CreateChatMessage(oldStyleMsg)
@@ -194,10 +195,10 @@ func TestBackwardsCompatibility(t *testing.T) {
 	}
 
 	msg := messages[0]
-	if msg.MessageType != ChatMessageTypeAgent {
-		t.Errorf("Expected default message_type 'agent', got '%s'", msg.MessageType)
+	if msg.SenderType != "agent" {
+		t.Errorf("Expected sender_type 'agent', got '%s'", msg.SenderType)
 	}
 	if msg.SenderName != "System Agent" {
-		t.Errorf("Expected default sender_name 'System Agent', got '%s'", msg.SenderName)
+		t.Errorf("Expected sender_name 'System Agent', got '%s'", msg.SenderName)
 	}
 }

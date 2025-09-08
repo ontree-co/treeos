@@ -16,11 +16,11 @@ func TestLoadProjectWithComposeProjectName(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 
 	tests := []struct {
-		name                string
-		appDirName          string
-		envContent          string
+		name                 string
+		appDirName           string
+		envContent           string
 		dockerComposeContent string
-		expectedProjectName string
+		expectedProjectName  string
 	}{
 		{
 			name:       "uses COMPOSE_PROJECT_NAME from .env",

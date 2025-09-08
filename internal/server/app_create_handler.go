@@ -139,18 +139,18 @@ func isValidAppName(appName string) bool {
 // createAppScaffold creates the directory structure and docker-compose.yml for a new app
 func (s *Server) createAppScaffold(appName, composeContent, envContent, emoji string) error {
 	appPath := filepath.Join(s.config.AppsDir, appName)
-	
+
 	// Create the app structure
 	if err := s.createAppScaffoldInternal(appPath, appName, composeContent, envContent, emoji); err != nil {
 		return err
 	}
-	
-	// Generate app.yml without template flag  
+
+	// Generate app.yml without template flag
 	if err := s.generateAppYaml(appPath, appName, composeContent); err != nil {
 		log.Printf("Warning: Failed to generate app.yml for %s: %v", appName, err)
 		// Continue anyway - agent can generate it later
 	}
-	
+
 	// Automatically create and start containers if compose service is available
 	if s.composeSvc != nil {
 		// Start containers after creation
@@ -161,7 +161,7 @@ func (s *Server) createAppScaffold(appName, composeContent, envContent, emoji st
 			// User can manually start them later
 		}
 	}
-	
+
 	return nil
 }
 
@@ -270,7 +270,7 @@ func (s *Server) startContainersForNewApp(appName, appPath, composeContent strin
 	// Check if .env file exists
 	envFile := filepath.Join(appPath, ".env")
 	if _, err := os.Stat(envFile); err == nil {
-		opts.EnvFile = ".env"  // Just the filename, not the full path
+		opts.EnvFile = ".env" // Just the filename, not the full path
 	}
 
 	log.Printf("Calling compose.Up with WorkingDir: %s", opts.WorkingDir)
@@ -288,18 +288,18 @@ func (s *Server) startContainersForNewApp(appName, appPath, composeContent strin
 // createAppScaffoldFromTemplate creates an app from a template with initial_setup_required flag
 func (s *Server) createAppScaffoldFromTemplate(appName, composeContent, envContent, emoji string) error {
 	appPath := filepath.Join(s.config.AppsDir, appName)
-	
+
 	// Create the app structure normally
 	if err := s.createAppScaffoldInternal(appPath, appName, composeContent, envContent, emoji); err != nil {
 		return err
 	}
-	
+
 	// Generate app.yml with initial_setup_required flag
 	if err := s.generateAppYamlWithFlags(appPath, appName, composeContent, true); err != nil {
 		log.Printf("Warning: Failed to generate app.yml for %s: %v", appName, err)
 		// Continue anyway - agent can generate it later
 	}
-	
+
 	return nil
 }
 
@@ -338,7 +338,7 @@ func (s *Server) generateAppYamlWithFlags(appPath, appName, composeContent strin
 		"primary_service":   primaryService,
 		"expected_services": services,
 	}
-	
+
 	// Add initial_setup_required flag if from template
 	if fromTemplate {
 		appConfig["initial_setup_required"] = true

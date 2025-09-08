@@ -151,11 +151,11 @@ func TestGetContainerStatus(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// For this test, we'll simulate the logic of getContainerStatus
 			// since we can't easily inject a mock into the private dockerClient field
-			
+
 			// This mimics the logic in getContainerStatus
 			appIdentifier := strings.ToLower(tt.appName)
 			prefix := "ontree-" + appIdentifier + "-"
-			
+
 			var runningCount, stoppedCount int
 			for _, cont := range tt.containers {
 				for _, name := range cont.Names {
@@ -169,7 +169,7 @@ func TestGetContainerStatus(t *testing.T) {
 					}
 				}
 			}
-			
+
 			status := "not_created"
 			if runningCount > 0 && stoppedCount > 0 {
 				status = "partial"
@@ -190,9 +190,9 @@ func TestGetContainerStatus(t *testing.T) {
 // TestContainerNamingConsistency tests that our naming scheme is consistent
 func TestContainerNamingConsistency(t *testing.T) {
 	testCases := []struct {
-		appDirName      string
-		expectedPrefix  string
-		description     string
+		appDirName     string
+		expectedPrefix string
+		description    string
 	}{
 		{
 			appDirName:     "uptime-kuma",

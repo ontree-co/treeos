@@ -111,7 +111,7 @@ func (o *Orchestrator) RunCheck(ctx context.Context) error {
 	}
 
 	log.Printf("Found %d configured applications", len(configs))
-	
+
 	// Run individual checks for each app
 	var lastErr error
 	for _, config := range configs {
@@ -120,11 +120,11 @@ func (o *Orchestrator) RunCheck(ctx context.Context) error {
 			lastErr = err
 		}
 	}
-	
+
 	if lastErr != nil {
 		return fmt.Errorf("some app checks failed: %w", lastErr)
 	}
-	
+
 	log.Println("Agent check cycle completed for all apps")
 	return nil
 }
@@ -142,20 +142,20 @@ func (o *Orchestrator) RunCheckForApp(ctx context.Context, appID string) error {
 	// Step 1.5: Check if app requires initial setup
 	if config.InitialSetupRequired {
 		log.Printf("App %s requires initial setup, handling setup first...", config.Name)
-		
+
 		// Create a progress channel for logging
 		progressChan := make(chan SetupProgress, 100)
 		go func() {
 			for progress := range progressChan {
 				if progress.IsError {
-					log.Printf("Setup ERROR [%d/%d] %s: %s", 
+					log.Printf("Setup ERROR [%d/%d] %s: %s",
 						progress.Step, progress.TotalSteps, progress.StepName, progress.Message)
 					// Persist error to chat
 					o.persistSetupMessage(config.Name, fmt.Sprintf("❌ Initial Setup Failed: %s", progress.Message), "ERROR")
 				} else {
-					log.Printf("Setup [%d/%d] %s: %s", 
+					log.Printf("Setup [%d/%d] %s: %s",
 						progress.Step, progress.TotalSteps, progress.StepName, progress.Message)
-					
+
 					// Create a user-friendly message based on the step
 					var chatMessage string
 					switch progress.Step {
@@ -178,13 +178,13 @@ func (o *Orchestrator) RunCheckForApp(ctx context.Context, appID string) error {
 					default:
 						chatMessage = fmt.Sprintf("Step %d/%d: %s", progress.Step, progress.TotalSteps, progress.StepName)
 					}
-					
+
 					// Persist progress to chat
 					o.persistSetupMessage(config.Name, chatMessage, "INFO")
 				}
 			}
 		}()
-		
+
 		// Handle initial setup
 		if err := o.setupHandler.HandleInitialSetup(ctx, config, progressChan); err != nil {
 			log.Printf("ERROR: Initial setup failed for %s: %v", config.Name, err)
@@ -343,45 +343,45 @@ func (o *Orchestrator) executeRestartContainer(ctx context.Context, action Recom
 		errorMsg := err.Error()
 		if strings.Contains(errorMsg, "port is already allocated") {
 			log.Printf("ERROR: Cannot restart container %s due to port conflict: %v", containerName, err)
-			
+
 			// Persist an error message about the port conflict
 			if hasAppID {
 				errorMessage := database.ChatMessage{
-					AppID:      appID,
-					Timestamp:  time.Now(),
-					Message:    fmt.Sprintf("Cannot restart container '%s' - port conflict detected. Another container is using the same port.", containerName),
-					SenderType: database.SenderTypeSystem,
-					SenderName: "Docker Manager",
+					AppID:       appID,
+					Timestamp:   time.Now(),
+					Message:     fmt.Sprintf("Cannot restart container '%s' - port conflict detected. Another container is using the same port.", containerName),
+					SenderType:  database.SenderTypeSystem,
+					SenderName:  "Docker Manager",
 					StatusLevel: sql.NullString{String: database.StatusLevelError, Valid: true},
-					Details: sql.NullString{String: errorMsg, Valid: true},
+					Details:     sql.NullString{String: errorMsg, Valid: true},
 				}
-				
+
 				if err := database.CreateChatMessage(errorMessage); err != nil {
 					log.Printf("WARNING: Failed to persist error notification: %v", err)
 				}
 			}
-			
+
 			// Return the error but mark it as handled
 			return fmt.Errorf("port conflict for container %s: %w", containerName, err)
 		}
-		
+
 		// For other errors, persist a generic error message
 		if hasAppID {
 			errorMessage := database.ChatMessage{
-				AppID:      appID,
-				Timestamp:  time.Now(),
-				Message:    fmt.Sprintf("Failed to restart container '%s'", containerName),
-				SenderType: database.SenderTypeSystem,
-				SenderName: "Docker Manager",
+				AppID:       appID,
+				Timestamp:   time.Now(),
+				Message:     fmt.Sprintf("Failed to restart container '%s'", containerName),
+				SenderType:  database.SenderTypeSystem,
+				SenderName:  "Docker Manager",
 				StatusLevel: sql.NullString{String: database.StatusLevelError, Valid: true},
-				Details: sql.NullString{String: errorMsg, Valid: true},
+				Details:     sql.NullString{String: errorMsg, Valid: true},
 			}
-			
+
 			if err := database.CreateChatMessage(errorMessage); err != nil {
 				log.Printf("WARNING: Failed to persist error notification: %v", err)
 			}
 		}
-		
+
 		return fmt.Errorf("failed to restart container %s: %w", containerName, err)
 	}
 
@@ -390,11 +390,11 @@ func (o *Orchestrator) executeRestartContainer(ctx context.Context, action Recom
 	// Persist a success message about the restart
 	if hasAppID {
 		restartMessage := database.ChatMessage{
-			AppID:      appID,
-			Timestamp:  time.Now(),
-			Message:    fmt.Sprintf("Container '%s' was successfully restarted", containerName),
-			SenderType: database.SenderTypeSystem,
-			SenderName: "Docker Manager",
+			AppID:       appID,
+			Timestamp:   time.Now(),
+			Message:     fmt.Sprintf("Container '%s' was successfully restarted", containerName),
+			SenderType:  database.SenderTypeSystem,
+			SenderName:  "Docker Manager",
 			StatusLevel: sql.NullString{String: database.StatusLevelInfo, Valid: true},
 		}
 
@@ -418,17 +418,17 @@ func (o *Orchestrator) persistSetupMessage(appName, message, level string) {
 	default:
 		statusLevel = database.StatusLevelInfo
 	}
-	
+
 	// Create and persist the message
 	chatMessage := database.ChatMessage{
-		AppID:      strings.ToLower(appName),
-		Timestamp:  time.Now(),
-		Message:    message,
-		SenderType: database.SenderTypeSystem,
-		SenderName: "Setup Manager",
+		AppID:       strings.ToLower(appName),
+		Timestamp:   time.Now(),
+		Message:     message,
+		SenderType:  database.SenderTypeSystem,
+		SenderName:  "Setup Manager",
 		StatusLevel: sql.NullString{String: statusLevel, Valid: true},
 	}
-	
+
 	if err := database.CreateChatMessage(chatMessage); err != nil {
 		log.Printf("Failed to persist setup message: %v", err)
 	}
@@ -506,26 +506,55 @@ func (o *Orchestrator) createFallbackResponse(snapshot *SystemSnapshot, configs 
 	return response
 }
 
-// StartPeriodicChecks starts the periodic check loop
+// StartPeriodicChecks starts the periodic check loop for individual apps
 func (o *Orchestrator) StartPeriodicChecks(ctx context.Context) {
-	ticker := time.NewTicker(o.checkInterval)
-	defer ticker.Stop()
-
-	// Run initial check
-	if err := o.RunCheck(ctx); err != nil {
-		log.Printf("ERROR: Initial check failed: %v", err)
+	// Get all app configurations
+	configs, err := o.configProvider.GetAll()
+	if err != nil {
+		log.Printf("ERROR: Failed to get app configurations: %v", err)
+		return
 	}
 
-	// Run periodic checks
-	for {
-		select {
-		case <-ctx.Done():
-			log.Println("Stopping periodic checks...")
-			return
-		case <-ticker.C:
-			if err := o.RunCheck(ctx); err != nil {
-				log.Printf("ERROR: Periodic check failed: %v", err)
+	// Create a ticker for each app with staggered start times
+	for i, config := range configs {
+		appID := config.ID
+		// Stagger the initial checks to avoid all apps being checked at once
+		initialDelay := time.Duration(i*10) * time.Second
+
+		// Create a goroutine for each app's periodic checks
+		go func(appID string, delay time.Duration) {
+			// Wait for the initial delay
+			select {
+			case <-time.After(delay):
+			case <-ctx.Done():
+				return
 			}
-		}
+
+			// Run initial check for this app
+			if err := o.RunCheckForApp(ctx, appID); err != nil {
+				log.Printf("ERROR: Initial check failed for app %s: %v", appID, err)
+			}
+
+			// Create ticker for this app
+			ticker := time.NewTicker(o.checkInterval)
+			defer ticker.Stop()
+
+			// Run periodic checks for this app
+			for {
+				select {
+				case <-ctx.Done():
+					log.Printf("Stopping periodic checks for app %s", appID)
+					return
+				case <-ticker.C:
+					if err := o.RunCheckForApp(ctx, appID); err != nil {
+						log.Printf("ERROR: Periodic check failed for app %s: %v", appID, err)
+					}
+				}
+			}
+		}(appID, initialDelay)
 	}
+
+	// Keep the main goroutine alive
+	<-ctx.Done()
+	log.Println("All periodic checks stopped")
 }
