@@ -95,7 +95,7 @@ func (s *Service) PullImagesWithProgress(appName string, progressCallback Progre
 		return fmt.Errorf("failed to get app details: %w", err)
 	}
 
-	if app.Services == nil || len(app.Services) == 0 {
+	if len(app.Services) == 0 {
 		return fmt.Errorf("no services configured for app: %s", appName)
 	}
 

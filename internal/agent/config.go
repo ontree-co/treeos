@@ -2,7 +2,6 @@ package agent
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -56,7 +55,7 @@ func (fp *FilesystemProvider) GetAll() ([]AppConfig, error) {
 	}
 
 	// Read all subdirectories in the apps directory
-	entries, err := ioutil.ReadDir(appsDir)
+	entries, err := os.ReadDir(appsDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read apps directory: %w", err)
 	}
@@ -117,7 +116,7 @@ func (fp *FilesystemProvider) GetByID(id string) (AppConfig, error) {
 // parseConfigFile reads and parses a single app.yml file
 func (fp *FilesystemProvider) parseConfigFile(path string) (*AppConfig, error) {
 	// Read the file
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}

@@ -211,7 +211,7 @@ func (s *Server) createAppScaffoldInternal(appPath, appName, composeContent, env
 	}
 
 	envPath := filepath.Join(appPath, ".env")
-	err = os.WriteFile(envPath, []byte(envContent), 0640)
+	err = os.WriteFile(envPath, []byte(envContent), 0600)
 	if err != nil {
 		return fmt.Errorf("failed to create .env file: %v", err)
 	}
@@ -357,7 +357,7 @@ func (s *Server) generateAppYamlWithFlags(appPath, appName, composeContent strin
 
 	// Write app.yml file
 	appYmlPath := filepath.Join(appPath, "app.yml")
-	if err := os.WriteFile(appYmlPath, appYmlData, 0644); err != nil {
+	if err := os.WriteFile(appYmlPath, appYmlData, 0600); err != nil {
 		return fmt.Errorf("failed to write app.yml: %w", err)
 	}
 

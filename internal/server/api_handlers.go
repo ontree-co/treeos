@@ -569,7 +569,7 @@ func (s *Server) handleAPIAppStatus(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Add port information
-		if container.Publishers != nil && len(container.Publishers) > 0 {
+		if len(container.Publishers) > 0 {
 			// Use a map to track unique port mappings (ignoring IP version)
 			portMap := make(map[string]bool)
 			for _, pub := range container.Publishers {

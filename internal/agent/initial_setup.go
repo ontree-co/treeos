@@ -79,7 +79,7 @@ func (h *InitialSetupHandler) HandleInitialSetup(ctx context.Context, config App
 		"Configuration updated with version locks", details)
 
 	// Write updated docker-compose.yml
-	if err := os.WriteFile(composePath, []byte(updatedContent), 0644); err != nil {
+	if err := os.WriteFile(composePath, []byte(updatedContent), 0600); err != nil {
 		h.sendError(progressChan, 3, 6, "Failed to save configuration", err.Error())
 		return fmt.Errorf("failed to write updated compose file: %w", err)
 	}
@@ -274,7 +274,7 @@ func (h *InitialSetupHandler) removeSetupFlag(appPath string) error {
 		return fmt.Errorf("failed to marshal app.yml: %w", err)
 	}
 
-	if err := os.WriteFile(appYmlPath, updatedData, 0644); err != nil {
+	if err := os.WriteFile(appYmlPath, updatedData, 0600); err != nil {
 		return fmt.Errorf("failed to write app.yml: %w", err)
 	}
 

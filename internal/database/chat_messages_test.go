@@ -2,7 +2,6 @@ package database
 
 import (
 	"database/sql"
-	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -46,11 +45,6 @@ func setupTestDB(t *testing.T) *sql.DB {
 	return db
 }
 
-// cleanupTestDB closes and removes the test database
-func cleanupTestDB(dbPath string) {
-	Close()
-	os.Remove(dbPath)
-}
 
 func TestCreateChatMessage(t *testing.T) {
 	_ = setupTestDB(t)

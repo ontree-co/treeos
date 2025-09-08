@@ -2,7 +2,6 @@ package agent
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,7 +14,7 @@ func GenerateAppConfigFromCompose(appDir string) error {
 	composePath := filepath.Join(appDir, "docker-compose.yml")
 
 	// Read docker-compose.yml
-	composeData, err := ioutil.ReadFile(composePath)
+	composeData, err := os.ReadFile(composePath)
 	if err != nil {
 		return fmt.Errorf("failed to read docker-compose.yml: %w", err)
 	}
@@ -73,7 +72,7 @@ func GenerateAppConfigFromCompose(appDir string) error {
 		return fmt.Errorf("failed to marshal app config: %w", err)
 	}
 
-	if err := ioutil.WriteFile(appYmlPath, appYmlData, 0644); err != nil {
+	if err := os.WriteFile(appYmlPath, appYmlData, 0600); err != nil {
 		return fmt.Errorf("failed to write app.yml: %w", err)
 	}
 
@@ -82,7 +81,7 @@ func GenerateAppConfigFromCompose(appDir string) error {
 
 // GenerateAllAppConfigs generates app.yml files for all apps in the directory
 func GenerateAllAppConfigs(appsDir string) error {
-	entries, err := ioutil.ReadDir(appsDir)
+	entries, err := os.ReadDir(appsDir)
 	if err != nil {
 		return fmt.Errorf("failed to read apps directory: %w", err)
 	}

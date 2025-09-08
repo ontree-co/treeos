@@ -3,7 +3,6 @@ package agent
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -19,7 +18,7 @@ func UpdateAppConfigWithActualContainers(appDir string) error {
 	appYmlPath := filepath.Join(appDir, "app.yml")
 
 	// Read existing app.yml
-	data, err := ioutil.ReadFile(appYmlPath)
+	data, err := os.ReadFile(appYmlPath)
 	if err != nil {
 		return fmt.Errorf("failed to read app.yml: %w", err)
 	}
@@ -99,7 +98,7 @@ func UpdateAppConfigWithActualContainers(appDir string) error {
 		return fmt.Errorf("failed to marshal updated config: %w", err)
 	}
 
-	if err := ioutil.WriteFile(appYmlPath, updatedData, 0644); err != nil {
+	if err := os.WriteFile(appYmlPath, updatedData, 0600); err != nil {
 		return fmt.Errorf("failed to write updated app.yml: %w", err)
 	}
 
@@ -109,7 +108,7 @@ func UpdateAppConfigWithActualContainers(appDir string) error {
 
 // UpdateAllAppConfigsWithActualContainers updates all app.yml files with actual container names
 func UpdateAllAppConfigsWithActualContainers(appsDir string) error {
-	entries, err := ioutil.ReadDir(appsDir)
+	entries, err := os.ReadDir(appsDir)
 	if err != nil {
 		return fmt.Errorf("failed to read apps directory: %w", err)
 	}

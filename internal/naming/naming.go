@@ -61,7 +61,7 @@ func GenerateEnvFile(appPath string) error {
 
 	// Write to .env file
 	envPath := filepath.Join(appPath, ".env")
-	return os.WriteFile(envPath, []byte(envContent), 0644)
+	return os.WriteFile(envPath, []byte(envContent), 0600)
 }
 
 // EnsureEnvFile checks if .env exists and creates it if not

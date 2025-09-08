@@ -1015,25 +1015,25 @@ func (s *Server) restartAgent() error {
 		s.agentOrchestrator = nil
 		s.agentCron = nil
 		return fmt.Errorf("failed to get app configurations: %w", err)
-	} else {
-		// Schedule individual checks for each app
-		for _, config := range configs {
-			// Capture appID in closure properly
-			appID := config.ID
-			_, err = s.agentCron.AddFunc(fmt.Sprintf("@every %s", checkInterval), func(id string) func() {
-				return func() {
-					ctx := context.Background()
-					if err := s.agentOrchestrator.RunCheckForApp(ctx, id); err != nil {
-						log.Printf("ERROR: Agent check failed for app %s: %v", id, err)
-					}
-				}
-			}(appID))
-			if err != nil {
-				log.Printf("Warning: Failed to schedule cron for app %s: %v", appID, err)
-			}
-		}
-		log.Printf("Scheduled individual agent checks for %d apps", len(configs))
 	}
+	
+	// Schedule individual checks for each app
+	for _, config := range configs {
+		// Capture appID in closure properly
+		appID := config.ID
+		_, err = s.agentCron.AddFunc(fmt.Sprintf("@every %s", checkInterval), func(id string) func() {
+			return func() {
+				ctx := context.Background()
+				if err := s.agentOrchestrator.RunCheckForApp(ctx, id); err != nil {
+					log.Printf("ERROR: Agent check failed for app %s: %v", id, err)
+				}
+			}
+		}(appID))
+		if err != nil {
+			log.Printf("Warning: Failed to schedule cron for app %s: %v", appID, err)
+		}
+	}
+	log.Printf("Scheduled individual agent checks for %d apps", len(configs))
 
 	// Start the cron scheduler
 	s.agentCron.Start()

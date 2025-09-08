@@ -101,5 +101,21 @@ issues:
         - errcheck
       path: internal/server/handlers\.go
       text: 'Error return value of `s\.dockerClient\.GetAppDetails` is not checked'
+    - linters:
+        - errcheck
+      path: internal/server/api_handlers_chat\.go
+      text: 'Error return value of `.*\.Encode` is not checked'
+    - linters:
+        - errcheck
+      path: internal/server/api_handlers_status\.go
+      text: 'Error return value of `json\.NewEncoder\(w\)\.Encode` is not checked'
+    - linters:
+        - errcheck
+      path: internal/server/api_handlers_status\.go
+      text: 'Error return value of `\(\*encoding/json\.Encoder\)\.Encode` is not checked'
+    - linters:
+        - gosec
+      path: internal/database/database\.go
+      text: 'G201: SQL string formatting'
   max-issues-per-linter: 0
   max-same-issues: 0

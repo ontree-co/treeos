@@ -1,7 +1,6 @@
 package agent
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -9,7 +8,7 @@ import (
 
 func TestFilesystemProvider_GetAll(t *testing.T) {
 	// Create a temporary directory for testing
-	tempDir, err := ioutil.TempDir("", "agent-config-test")
+	tempDir, err := os.MkdirTemp("", "agent-config-test")
 	if err != nil {
 		t.Fatalf("Failed to create temp directory: %v", err)
 	}
@@ -37,7 +36,7 @@ expected_services:
   - "redis"
 `
 		configPath := filepath.Join(nextcloudDir, "app.yml")
-		if err := ioutil.WriteFile(configPath, []byte(validConfig), 0644); err != nil {
+		if err := os.WriteFile(configPath, []byte(validConfig), 0644); err != nil {
 			t.Fatalf("Failed to write config file: %v", err)
 		}
 
@@ -56,7 +55,7 @@ expected_services:
   - "plex"
 `
 		plexConfigPath := filepath.Join(plexDir, "app.yml")
-		if err := ioutil.WriteFile(plexConfigPath, []byte(plexConfig), 0644); err != nil {
+		if err := os.WriteFile(plexConfigPath, []byte(plexConfig), 0644); err != nil {
 			t.Fatalf("Failed to write plex config file: %v", err)
 		}
 
@@ -114,7 +113,7 @@ expected_services
   - service1
 `
 		badConfigPath := filepath.Join(badDir, "app.yml")
-		if err := ioutil.WriteFile(badConfigPath, []byte(malformedConfig), 0644); err != nil {
+		if err := os.WriteFile(badConfigPath, []byte(malformedConfig), 0644); err != nil {
 			t.Fatalf("Failed to write malformed config file: %v", err)
 		}
 
@@ -145,7 +144,7 @@ name: "Incomplete App"
 # Missing primary_service and expected_services
 `
 		incompleteConfigPath := filepath.Join(incompleteDir, "app.yml")
-		if err := ioutil.WriteFile(incompleteConfigPath, []byte(incompleteConfig), 0644); err != nil {
+		if err := os.WriteFile(incompleteConfigPath, []byte(incompleteConfig), 0644); err != nil {
 			t.Fatalf("Failed to write incomplete config file: %v", err)
 		}
 
@@ -175,7 +174,7 @@ name: "Incomplete App"
 
 	// Test case 5: Empty apps directory
 	t.Run("EmptyAppsDirectory", func(t *testing.T) {
-		emptyDir, err := ioutil.TempDir("", "empty-test")
+		emptyDir, err := os.MkdirTemp("", "empty-test")
 		if err != nil {
 			t.Fatalf("Failed to create empty temp directory: %v", err)
 		}
@@ -203,7 +202,7 @@ name: "Incomplete App"
 
 		// Create some other file instead
 		otherFile := filepath.Join(noConfigDir, "docker-compose.yml")
-		if err := ioutil.WriteFile(otherFile, []byte("version: '3'"), 0644); err != nil {
+		if err := os.WriteFile(otherFile, []byte("version: '3'"), 0644); err != nil {
 			t.Fatalf("Failed to write other file: %v", err)
 		}
 
@@ -223,7 +222,7 @@ name: "Incomplete App"
 
 func TestParseConfigFile(t *testing.T) {
 	// Create a temporary directory for testing
-	tempDir, err := ioutil.TempDir("", "parse-config-test")
+	tempDir, err := os.MkdirTemp("", "parse-config-test")
 	if err != nil {
 		t.Fatalf("Failed to create temp directory: %v", err)
 	}
@@ -241,7 +240,7 @@ expected_services:
   - "worker"
 `
 		configPath := filepath.Join(tempDir, "valid.yaml")
-		if err := ioutil.WriteFile(configPath, []byte(validConfig), 0644); err != nil {
+		if err := os.WriteFile(configPath, []byte(validConfig), 0644); err != nil {
 			t.Fatalf("Failed to write config file: %v", err)
 		}
 
@@ -276,7 +275,7 @@ expected_services:
 name: Invalid YAML
 `
 		configPath := filepath.Join(tempDir, "invalid.yaml")
-		if err := ioutil.WriteFile(configPath, []byte(invalidConfig), 0644); err != nil {
+		if err := os.WriteFile(configPath, []byte(invalidConfig), 0644); err != nil {
 			t.Fatalf("Failed to write config file: %v", err)
 		}
 
@@ -293,7 +292,7 @@ expected_services:
   - "main"
 `
 		configPath := filepath.Join(tempDir, "missing_id.yaml")
-		if err := ioutil.WriteFile(configPath, []byte(missingID), 0644); err != nil {
+		if err := os.WriteFile(configPath, []byte(missingID), 0644); err != nil {
 			t.Fatalf("Failed to write config file: %v", err)
 		}
 
@@ -310,7 +309,7 @@ primary_service: "main"
 expected_services: []
 `
 		configPath := filepath.Join(tempDir, "empty_services.yaml")
-		if err := ioutil.WriteFile(configPath, []byte(emptyServices), 0644); err != nil {
+		if err := os.WriteFile(configPath, []byte(emptyServices), 0644); err != nil {
 			t.Fatalf("Failed to write config file: %v", err)
 		}
 
@@ -323,7 +322,7 @@ expected_services: []
 
 func TestScanForConfigs(t *testing.T) {
 	// Create a temporary directory structure for testing
-	tempDir, err := ioutil.TempDir("", "scan-configs-test")
+	tempDir, err := os.MkdirTemp("", "scan-configs-test")
 	if err != nil {
 		t.Fatalf("Failed to create temp directory: %v", err)
 	}
@@ -353,7 +352,7 @@ func TestScanForConfigs(t *testing.T) {
 	}
 
 	for _, file := range configFiles {
-		if err := ioutil.WriteFile(file, []byte("test"), 0644); err != nil {
+		if err := os.WriteFile(file, []byte("test"), 0644); err != nil {
 			t.Fatalf("Failed to create file %s: %v", file, err)
 		}
 	}
@@ -366,7 +365,7 @@ func TestScanForConfigs(t *testing.T) {
 	}
 
 	for _, file := range otherFiles {
-		if err := ioutil.WriteFile(file, []byte("test"), 0644); err != nil {
+		if err := os.WriteFile(file, []byte("test"), 0644); err != nil {
 			t.Fatalf("Failed to create file %s: %v", file, err)
 		}
 	}

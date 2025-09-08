@@ -33,7 +33,7 @@ func AddTailscaleSidecar(compose *ComposeFile, appName, hostname, authKey string
 			"net_raw",
 		},
 		"environment": []interface{}{
-			fmt.Sprintf("TS_AUTHKEY=${TS_AUTHKEY}"),
+			"TS_AUTHKEY=${TS_AUTHKEY}",
 			"TS_STATE_DIR=/var/lib/tailscale",
 			"TS_USERSPACE=false",
 			fmt.Sprintf("TS_HOSTNAME=%s", hostname),

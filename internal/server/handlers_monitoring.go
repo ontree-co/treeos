@@ -95,12 +95,19 @@ func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, r *http.
 	memoryCacheKey := fmt.Sprintf("dashboard:memory:%d", minuteKey)
 	if cached, found := s.sparklineCache.Get(memoryCacheKey); found {
 		if data, ok := cached.(map[string]interface{}); ok {
-			memoryValue = data["value"].(float64)
-			memorySparkline = data["sparkline"].(template.HTML)
+			if val, ok := data["value"].(float64); ok {
+				memoryValue = val
+			}
+			if spark, ok := data["sparkline"].(template.HTML); ok {
+				memorySparkline = spark
+			}
 		}
 	} else {
 		// Get fresh memory data
-		vitals, _ := system.GetVitals()
+		vitals, err := system.GetVitals()
+		if err != nil {
+			log.Printf("Failed to get vitals: %v", err)
+		}
 		if vitals != nil {
 			memoryValue = vitals.MemPercent
 		}
@@ -123,12 +130,19 @@ func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, r *http.
 	diskCacheKey := fmt.Sprintf("dashboard:disk:%d", minuteKey)
 	if cached, found := s.sparklineCache.Get(diskCacheKey); found {
 		if data, ok := cached.(map[string]interface{}); ok {
-			diskValue = data["value"].(float64)
-			diskSparkline = data["sparkline"].(template.HTML)
+			if val, ok := data["value"].(float64); ok {
+				diskValue = val
+			}
+			if spark, ok := data["sparkline"].(template.HTML); ok {
+				diskSparkline = spark
+			}
 		}
 	} else {
 		// Get fresh disk data
-		vitals, _ := system.GetVitals()
+		vitals, err := system.GetVitals()
+		if err != nil {
+			log.Printf("Failed to get vitals: %v", err)
+		}
 		if vitals != nil {
 			diskValue = vitals.DiskPercent
 		}

@@ -17,12 +17,12 @@ import (
 
 // MockDockerClient is a mock implementation of the Docker client interface
 type MockDockerClient struct {
-	containers []types.Container
+	containers []container.Summary
 	logs       map[string]string
-	inspectMap map[string]types.ContainerJSON
+	inspectMap map[string]container.InspectResponse
 }
 
-func (m *MockDockerClient) ContainerList(ctx context.Context, options container.ListOptions) ([]types.Container, error) {
+func (m *MockDockerClient) ContainerList(ctx context.Context, options container.ListOptions) ([]container.Summary, error) {
 	return m.containers, nil
 }
 
@@ -41,11 +41,11 @@ func (m *MockDockerClient) ContainerLogs(ctx context.Context, container string, 
 	return nil, fmt.Errorf("container not found")
 }
 
-func (m *MockDockerClient) ContainerInspect(ctx context.Context, containerID string) (types.ContainerJSON, error) {
+func (m *MockDockerClient) ContainerInspect(ctx context.Context, containerID string) (container.InspectResponse, error) {
 	if inspect, ok := m.inspectMap[containerID]; ok {
 		return inspect, nil
 	}
-	return types.ContainerJSON{}, fmt.Errorf("container not found")
+	return container.InspectResponse{}, fmt.Errorf("container not found")
 }
 
 func (m *MockDockerClient) Ping(ctx context.Context) (types.Ping, error) {
@@ -101,6 +101,10 @@ func TestCollectSystemSnapshot(t *testing.T) {
 	// For this test, we'll use a minimal mock that doesn't require Docker
 	// In a real test environment, you would inject a mock Docker client interface
 
+	// Note: This test would fail without a proper Docker mock injection
+	// The actual implementation needs the Docker client to be injected as an interface
+	t.Skip("Skipping test that requires Docker client interface injection")
+
 	configs := []AppConfig{
 		{
 			ID:                "nextcloud",
@@ -110,10 +114,6 @@ func TestCollectSystemSnapshot(t *testing.T) {
 			ExpectedServices:  []string{"app", "db", "redis"},
 		},
 	}
-
-	// Note: This test would fail without a proper Docker mock injection
-	// The actual implementation needs the Docker client to be injected as an interface
-	t.Skip("Skipping test that requires Docker client interface injection")
 
 	snapshot, err := collector.CollectSystemSnapshot(configs)
 	if err == nil {
@@ -320,7 +320,7 @@ func TestCollectorIntegration(t *testing.T) {
 	// Example of how it would work with proper interfaces:
 	/*
 		mockDocker := &MockDockerClient{
-			containers: []types.Container{
+			containers: []container.Summary{
 				{
 					ID:    "container1",
 					Names: []string{"/ontree-nextcloud-app-1"},
@@ -341,7 +341,7 @@ func TestCollectorIntegration(t *testing.T) {
 				"container1": "INFO: App running\nERROR: Connection timeout\n",
 				"container2": "INFO: Database ready\n",
 			},
-			inspectMap: map[string]types.ContainerJSON{
+			inspectMap: map[string]container.InspectResponse{
 				"container1": {RestartCount: 2},
 				"container2": {RestartCount: 0},
 				"container3": {RestartCount: 5},

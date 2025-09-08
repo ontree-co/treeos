@@ -394,7 +394,7 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 				}
 
 				// Add port information
-				if container.Publishers != nil && len(container.Publishers) > 0 {
+				if len(container.Publishers) > 0 {
 					// Use a map to track unique port mappings (ignoring IP version)
 					portMap := make(map[string]bool)
 					for _, pub := range container.Publishers {
@@ -1571,10 +1571,14 @@ func (s *Server) handleAppExposeTailscale(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		log.Printf("[Tailscale Expose] Failed to restart containers: %v, output: %s", err, output)
 		// Try to rollback
-		_ = yamlutil.RestoreComposeFromTailscale(appDetails.Path)
+		if err := yamlutil.RestoreComposeFromTailscale(appDetails.Path); err != nil {
+			log.Printf("Failed to restore compose from Tailscale: %v", err)
+		}
 		metadata.TailscaleHostname = ""
 		metadata.TailscaleExposed = false
-		_ = yamlutil.UpdateComposeMetadata(appDetails.Path, metadata)
+		if err := yamlutil.UpdateComposeMetadata(appDetails.Path, metadata); err != nil {
+			log.Printf("Failed to update compose metadata: %v", err)
+		}
 
 		session, err := s.sessionStore.Get(r, "ontree-session")
 		if err != nil {
