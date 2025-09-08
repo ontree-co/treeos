@@ -179,7 +179,7 @@ jobs:
     - name: Install documentation dependencies
       working-directory: ./documentation
       run: |
-        npm ci --prefer-offline --no-audit
+        npm install --no-audit
 
     - name: Type check documentation
       working-directory: ./documentation
