@@ -117,5 +117,9 @@ issues:
         - gosec
       path: internal/database/database\.go
       text: 'G201: SQL string formatting'
+    - linters:
+        - staticcheck
+      path: internal/docker/container_naming_test\.go
+      text: 'SA1019: types.Container is deprecated'
   max-issues-per-linter: 0
   max-same-issues: 0
