@@ -1,5 +1,6 @@
-# Binary
-treeos
+# Binary (only the file, not the directory)
+/treeos
+/build/treeos
 project-manager
 
 # Node.js
