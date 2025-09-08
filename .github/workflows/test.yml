@@ -152,3 +152,60 @@ jobs:
           server.log
           ontree.db
         retention-days: 7
+
+  # Documentation build and checks
+  docs:
+    name: Documentation Build
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Read Node version
+      id: node-version
+      run: |
+        if [ -f documentation/.node-version ]; then
+          echo "version=$(cat documentation/.node-version)" >> $GITHUB_OUTPUT
+        else
+          echo "version=20.18.1" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ steps.node-version.outputs.version }}
+        cache: 'npm'
+        cache-dependency-path: documentation/package-lock.json
+
+    - name: Install documentation dependencies
+      working-directory: ./documentation
+      run: |
+        npm ci --prefer-offline --no-audit
+
+    - name: Type check documentation
+      working-directory: ./documentation
+      run: npm run typecheck
+
+    - name: Build documentation
+      working-directory: ./documentation
+      run: npm run build
+      env:
+        CI: true
+        NODE_ENV: production
+
+    - name: Upload documentation build
+      uses: actions/upload-artifact@v4
+      with:
+        name: documentation-build
+        path: documentation/build/
+        retention-days: 30
+
+    - name: Check for broken links
+      working-directory: ./documentation
+      run: |
+        # Simple check for broken internal links in the built documentation
+        if [ -d "build" ]; then
+          echo "Checking for broken internal links..."
+          find build -name "*.html" -exec grep -l "href=\"/404\"" {} \; | head -20 || true
+        fi
