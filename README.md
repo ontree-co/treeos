@@ -21,16 +21,16 @@ OnTree is a Docker container management application with a web interface for man
 
 ### Running OnTree
 
-1. Download the latest release for your platform from [GitHub Releases](https://github.com/stefanmunz/ontree-node/releases)
+1. Download the latest release for your platform from [GitHub Releases](https://github.com/stefanmunz/treeos/releases)
 
 2. Make the binary executable:
    ```bash
-   chmod +x ontree-server
+   chmod +x treeos
    ```
 
 3. Run OnTree:
    ```bash
-   ./ontree-server
+   ./treeos
    ```
 
 4. Open your browser to `http://localhost:3000`
@@ -53,7 +53,7 @@ Example:
 export AUTH_USERNAME="admin"
 export AUTH_PASSWORD="secure-password"
 export PORT="3000"
-./ontree-server
+./treeos
 ```
 
 ## System Monitoring
@@ -101,7 +101,7 @@ The monitoring system includes several optimizations:
 To disable monitoring (if needed for performance reasons):
 ```bash
 export MONITORING_ENABLED=false
-./ontree-server
+./treeos
 ```
 
 Or in `config.toml`:
@@ -121,8 +121,8 @@ monitoring_enabled = false
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/stefanmunz/ontree-node.git
-   cd ontree-node
+   git clone https://github.com/stefanmunz/treeos.git
+   cd treeos
    ```
 
 2. Install dependencies:
@@ -187,7 +187,7 @@ The E2E test suite uses Playwright to test the application through real browser 
 
 For development with hot-reloading:
 ```bash
-go run cmd/ontree-server/main.go
+go run cmd/treeos/main.go
 ```
 
 ### Template Syntax Checking
@@ -248,8 +248,8 @@ To build a release locally (useful for testing):
 ### Release Artifacts
 
 Each release includes:
-- `ontree-server_VERSION_linux_x86_64.tar.gz` - Linux AMD64 binary
-- `ontree-server_VERSION_darwin_arm64.tar.gz` - macOS Apple Silicon binary
+- `treeos_VERSION_linux_x86_64.tar.gz` - Linux AMD64 binary
+- `treeos_VERSION_darwin_arm64.tar.gz` - macOS Apple Silicon binary
 - `checksums.txt` - SHA256 checksums for verification
 
 ### Binary Features
@@ -299,4 +299,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Support
 
-For issues, questions, or contributions, please visit our [GitHub repository](https://github.com/stefanmunz/ontree-node).
+For issues, questions, or contributions, please visit our [GitHub repository](https://github.com/stefanmunz/treeos).

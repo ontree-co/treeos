@@ -96,7 +96,7 @@ LOG_FORMAT=text
 Available flags when starting OnTree:
 
 ```bash
-ontree-server [flags]
+treeos [flags]
 
 Flags:
   --port int                 Port to listen on (default 8080)
@@ -113,13 +113,13 @@ Flags:
 Example usage:
 ```bash
 # Start on different port
-ontree-server --port 3000
+treeos --port 3000
 
 # Use different database
-ontree-server --database /var/lib/ontree/data.db
+treeos --database /var/lib/ontree/data.db
 
 # Enable debug logging
-ontree-server --debug --log-level debug
+treeos --debug --log-level debug
 ```
 
 ## Configuration Options

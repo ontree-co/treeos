@@ -9,7 +9,7 @@ import (
 
 	"github.com/docker/docker/api/types/image"
 	"go.opentelemetry.io/otel/attribute"
-	"ontree-node/internal/telemetry"
+	"treeos/internal/telemetry"
 )
 
 // Service wraps the Docker client with app directory configuration

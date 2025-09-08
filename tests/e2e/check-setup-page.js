@@ -39,7 +39,7 @@ const { chromium } = require('playwright');
     await page.waitForTimeout(2000);
 
     // Take screenshot
-    const screenshotPath = '/opt/ontree/ontree-node/setup-page-screenshot.png';
+    const screenshotPath = '/opt/ontree/treeos/setup-page-screenshot.png';
     await page.screenshot({ 
       path: screenshotPath,
       fullPage: true 
@@ -76,7 +76,7 @@ const { chromium } = require('playwright');
     }
 
     // Save page source
-    const sourceFilePath = '/opt/ontree/ontree-node/setup-page-source.html';
+    const sourceFilePath = '/opt/ontree/treeos/setup-page-source.html';
     require('fs').writeFileSync(sourceFilePath, pageContent);
     console.log('\nPage source saved to:', sourceFilePath);
 

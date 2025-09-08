@@ -2,7 +2,7 @@
 # This file configures the release process for multi-architecture builds
 version: 2
 
-project_name: ontree-node
+project_name: treeos
 
 
 before:
@@ -11,9 +11,9 @@ before:
     - go mod download
 
 builds:
-  - id: ontree-node-amd64
-    main: ./cmd/ontree-server
-    binary: ontree-node
+  - id: treeos-amd64
+    main: ./cmd/treeos
+    binary: treeos
     env:
       - CGO_ENABLED=1
     goos:
@@ -26,9 +26,9 @@ builds:
       - -X {{.ModulePath}}/internal/version.Commit={{.Commit}}
       - -X {{.ModulePath}}/internal/version.BuildDate={{.Date}}
   
-  - id: ontree-node-arm64
-    main: ./cmd/ontree-server
-    binary: ontree-node
+  - id: treeos-arm64
+    main: ./cmd/treeos
+    binary: treeos
     env:
       - CGO_ENABLED=1
       - CC=aarch64-linux-gnu-gcc
@@ -99,14 +99,14 @@ release:
     
     ### Linux (AMD64)
     ```bash
-    wget https://github.com/stefanmunz/ontree-node/releases/download/{{ .Tag }}/ontree-node_{{ .Version }}_linux_x86_64.tar.gz
-    tar -xzf ontree-node_{{ .Version }}_linux_x86_64.tar.gz
-    sudo mv ontree-node /usr/local/bin/
+    wget https://github.com/stefanmunz/treeos/releases/download/{{ .Tag }}/treeos_{{ .Version }}_linux_x86_64.tar.gz
+    tar -xzf treeos_{{ .Version }}_linux_x86_64.tar.gz
+    sudo mv treeos /usr/local/bin/
     ```
     
     ### macOS (ARM64 - Apple Silicon)
     ```bash
-    wget https://github.com/stefanmunz/ontree-node/releases/download/{{ .Tag }}/ontree-node_{{ .Version }}_darwin_arm64.tar.gz
-    tar -xzf ontree-node_{{ .Version }}_darwin_arm64.tar.gz
-    sudo mv ontree-node /usr/local/bin/
+    wget https://github.com/stefanmunz/treeos/releases/download/{{ .Tag }}/treeos_{{ .Version }}_darwin_arm64.tar.gz
+    tar -xzf treeos_{{ .Version }}_darwin_arm64.tar.gz
+    sudo mv treeos /usr/local/bin/
     ```

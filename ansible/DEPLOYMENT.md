@@ -18,8 +18,8 @@ OnTree includes Ansible playbooks for automated deployment to Ubuntu/Debian serv
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/ontree-node.git
-   cd ontree-node/ansible
+   git clone https://github.com/yourusername/treeos.git
+   cd treeos/ansible
    ```
 
 2. Update inventory:
@@ -60,9 +60,9 @@ sudo chown -R ontree:ontree /opt/ontree
 ```bash
 # Download latest release
 cd /opt/ontree/ontreenode
-sudo -u ontree wget https://github.com/yourusername/ontree-node/releases/download/v0.1.0/ontree-server-linux-amd64
-sudo -u ontree mv ontree-server-linux-amd64 ontree-server
-sudo -u ontree chmod +x ontree-server
+sudo -u ontree wget https://github.com/yourusername/treeos/releases/download/v0.1.0/treeos-linux-amd64
+sudo -u ontree mv treeos-linux-amd64 treeos
+sudo -u ontree chmod +x treeos
 ```
 
 #### 3. Create Systemd Service
@@ -83,7 +83,7 @@ Environment="DATABASE_PATH=/opt/ontree/ontreenode/ontree.db"
 Environment="AUTH_USERNAME=admin"
 Environment="AUTH_PASSWORD=CHANGE_THIS_PASSWORD"
 Environment="SESSION_KEY=GENERATE_RANDOM_KEY_HERE"
-ExecStart=/opt/ontree/ontreenode/ontree-server
+ExecStart=/opt/ontree/treeos/treeos
 Restart=always
 RestartSec=10
 
@@ -291,7 +291,7 @@ ansible-playbook -i inventory.ini ontreenode-allow-local-development-playbook.ya
 # SSH to server and run manually
 ssh your-server
 cd /opt/ontree/ontreenode
-sudo -u ontree ./ontree-server
+sudo -u ontree ./treeos
 
 # Restore production mode
 ansible-playbook -i inventory.ini ontreenode-enable-production-playbook.yaml
@@ -312,13 +312,13 @@ sudo -u ontree sqlite3 /opt/ontree/ontreenode/ontree.db ".backup /opt/ontree/bac
 
 # Download new version
 cd /opt/ontree/ontreenode
-sudo -u ontree wget https://github.com/yourusername/ontree-node/releases/download/v0.2.0/ontree-server-linux-amd64 -O ontree-server.new
-sudo -u ontree chmod +x ontree-server.new
+sudo -u ontree wget https://github.com/yourusername/treeos/releases/download/v0.2.0/treeos-linux-amd64 -O treeos.new
+sudo -u ontree chmod +x treeos.new
 
 # Replace binary
 sudo systemctl stop ontreenode
-sudo -u ontree mv ontree-server ontree-server.old
-sudo -u ontree mv ontree-server.new ontree-server
+sudo -u ontree mv treeos treeos.old
+sudo -u ontree mv treeos.new treeos
 
 # Start service (migrations run automatically)
 sudo systemctl start ontreenode
@@ -332,4 +332,4 @@ sudo journalctl -u ontreenode -n 100
 For deployment issues:
 1. Check the [troubleshooting section](#troubleshooting)
 2. Review logs with `journalctl -u ontreenode`
-3. Open an issue at [GitHub Issues](https://github.com/yourusername/ontree-node/issues)
+3. Open an issue at [GitHub Issues](https://github.com/yourusername/treeos/issues)

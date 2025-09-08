@@ -6,7 +6,7 @@
             "type": "go",
             "request": "launch",
             "mode": "debug",
-            "program": "${workspaceFolder}/cmd/ontree-server/main.go",
+            "program": "${workspaceFolder}/cmd/treeos/main.go",
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "embed-assets",
             // Note: LISTEN_ADDR is not set here, so it uses the default port from config.DefaultPort (currently :3000)

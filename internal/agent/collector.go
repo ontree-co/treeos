@@ -12,7 +12,7 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
-	"ontree-node/internal/system"
+	"treeos/internal/system"
 )
 
 // Collector is responsible for gathering system and application data

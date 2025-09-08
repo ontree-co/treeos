@@ -49,7 +49,7 @@ module.exports = async () => {
   
   // Kill and restart the server to pick up the clean database
   try {
-    execSync('pkill ontree-server', { stdio: 'ignore' });
+    execSync('pkill treeos', { stdio: 'ignore' });
     console.log('⏹️  Stopped existing server');
   } catch (err) {
     // Server might not be running
@@ -59,7 +59,7 @@ module.exports = async () => {
   execSync('sleep 1');
   
   // Start the server
-  const serverPath = path.join(__dirname, '..', '..', 'build', 'ontree-server');
+  const serverPath = path.join(__dirname, '..', '..', 'build', 'treeos');
   if (!fs.existsSync(serverPath)) {
     throw new Error(`Server binary not found at ${serverPath}. Please run 'make build' first.`);
   }

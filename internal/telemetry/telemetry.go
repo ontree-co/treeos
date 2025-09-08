@@ -93,7 +93,7 @@ func Initialize(ctx context.Context, cfg Config) (func(context.Context) error, e
 
 // InitializeFromEnv initializes OpenTelemetry using environment variables
 func InitializeFromEnv(ctx context.Context) (func(context.Context) error, error) {
-	serviceName := getEnvOrDefault("OTEL_SERVICE_NAME", "ontree-node")
+	serviceName := getEnvOrDefault("OTEL_SERVICE_NAME", "treeos")
 	serviceVersion := getEnvOrDefault("OTEL_SERVICE_VERSION", "unknown")
 	environment := getEnvOrDefault("OTEL_ENVIRONMENT", "development")
 
@@ -132,7 +132,7 @@ func InitializeFromEnv(ctx context.Context) (func(context.Context) error, error)
 func GetTracer() trace.Tracer {
 	if tracer == nil {
 		// Return a noop tracer if not initialized
-		return otel.Tracer("ontree-node")
+		return otel.Tracer("treeos")
 	}
 	return tracer
 }

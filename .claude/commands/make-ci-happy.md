@@ -84,13 +84,13 @@ If GitHub CLI is available, I'll monitor the workflow:
 
 !if command -v gh &> /dev/null; then \
   echo "Getting latest workflow run..."; \
-  gh run list --repo stefanmunz/ontree-node --limit 1 --json databaseId,status,conclusion,name,headBranch 2>/dev/null || echo "Note: gh auth login may be required"; \
+  gh run list --repo stefanmunz/treeos --limit 1 --json databaseId,status,conclusion,name,headBranch 2>/dev/null || echo "Note: gh auth login may be required"; \
   echo "Watching workflow (this will update every 10 seconds)..."; \
-  timeout 300 gh run watch --repo stefanmunz/ontree-node --interval 10 2>/dev/null || true; \
+  timeout 300 gh run watch --repo stefanmunz/treeos --interval 10 2>/dev/null || true; \
   echo "Getting final status..."; \
-  gh run list --repo stefanmunz/ontree-node --limit 1 --json status,conclusion 2>/dev/null | jq -r '.[0] | "Status: \(.status), Conclusion: \(.conclusion)"' || echo "Check https://github.com/stefanmunz/ontree-node/actions"; \
+  gh run list --repo stefanmunz/treeos --limit 1 --json status,conclusion 2>/dev/null | jq -r '.[0] | "Status: \(.status), Conclusion: \(.conclusion)"' || echo "Check https://github.com/stefanmunz/treeos/actions"; \
 else \
-  echo "📊 Check CI status manually at: https://github.com/stefanmunz/ontree-node/actions"; \
+  echo "📊 Check CI status manually at: https://github.com/stefanmunz/treeos/actions"; \
 fi
 
 ## Step 7: Final Report
@@ -100,9 +100,9 @@ Based on the CI results:
 - ❌ **FAILURE**: CI still failing. Checking logs for details:
 
 !if command -v gh &> /dev/null; then \
-  gh run view --repo stefanmunz/ontree-node --log-failed 2>/dev/null || echo "View logs at: https://github.com/stefanmunz/ontree-node/actions"; \
+  gh run view --repo stefanmunz/treeos --log-failed 2>/dev/null || echo "View logs at: https://github.com/stefanmunz/treeos/actions"; \
 else \
-  echo "View failure details at: https://github.com/stefanmunz/ontree-node/actions"; \
+  echo "View failure details at: https://github.com/stefanmunz/treeos/actions"; \
 fi
 
 If CI fails after our fixes, it might be due to:

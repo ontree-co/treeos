@@ -2,8 +2,8 @@
 # This file provides standard targets for building, testing, and releasing OnTree
 
 # Variables
-BINARY_NAME=ontree-server
-MAIN_PATH=cmd/ontree-server/main.go
+BINARY_NAME=treeos
+MAIN_PATH=cmd/treeos/main.go
 BUILD_DIR=build
 GO=go
 GOTEST=$(GO) test

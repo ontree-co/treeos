@@ -11,7 +11,7 @@ Click "Add new site" → "Import an existing project"
 ### 3. Connect to Git
 1. Choose "Deploy with GitHub"
 2. Authenticate if needed
-3. Select the `ontree-node` repository
+3. Select the `treeos` repository
 
 ### 4. Configure Build Settings
 Netlify should auto-detect these from `netlify.toml`, but verify:

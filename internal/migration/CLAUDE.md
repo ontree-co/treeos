@@ -8,7 +8,7 @@ This package contains migration tools for OnTree application data and configurat
 
 Migrates app metadata from the old `deployed_apps` database table to the x-ontree section in docker-compose.yml files.
 
-**Usage**: `./ontree-server migrate-to-compose`
+**Usage**: `./treeos migrate-to-compose`
 
 **What it does**:
 1. Creates a timestamped backup directory in the apps folder

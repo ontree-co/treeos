@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	"ontree-node/internal/config"
-	"ontree-node/internal/database"
-	"ontree-node/internal/version"
+	"treeos/internal/config"
+	"treeos/internal/database"
+	"treeos/internal/version"
 )
 
 func TestHandleSettings(t *testing.T) {

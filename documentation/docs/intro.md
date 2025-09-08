@@ -63,7 +63,7 @@ For a hands-on introduction, follow our [First App Tutorial](/docs/getting-start
 
 ## Community & Support
 
-- **GitHub**: [github.com/ontree/ontree-node](https://github.com/ontree/ontree-node)
+- **GitHub**: [github.com/ontree/treeos](https://github.com/ontree/treeos)
 - **Issues**: Report bugs or request features on GitHub
 - **Discussions**: Join the conversation in GitHub Discussions
 

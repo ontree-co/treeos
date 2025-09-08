@@ -3,7 +3,7 @@ package server
 import (
 	"database/sql"
 	"fmt"
-	"ontree-node/internal/database"
+	"treeos/internal/database"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"

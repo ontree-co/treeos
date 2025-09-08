@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"ontree-node/internal/database"
+	"treeos/internal/database"
 )
 
 // SystemStatusResponse represents the response for system status endpoints

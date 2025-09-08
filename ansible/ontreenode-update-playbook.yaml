@@ -12,14 +12,14 @@
   become: yes
 
   vars:
-    github_repo: "stefanmunz/ontree-node" # GitHub owner/repo
+    github_repo: "stefanmunz/treeos" # GitHub owner/repo
     github_token: "{{ lookup('env', 'GITHUB_ONTREE_DEPLOY_KEY') }}" # GitHub token from environment
-    app_name: "ontree-node"
+    app_name: "treeos"
     app_user: "ontree"
     app_root_dir: "/opt/ontree"
-    app_path: "{{ app_root_dir }}/{{ app_name }}"
+    app_path: "{{ app_root_dir }}/treeos"
     app_port: 3000
-    binary_name: "ontree-node"
+    binary_name: "treeos"
     # Detect architecture
     arch_map:
       x86_64: "x86_64"
@@ -71,7 +71,7 @@
 
     - name: Set expected filename
       set_fact:
-        expected_filename: "ontree-node_{{ release_version | regex_replace('^v', '') }}_linux_{{ target_arch }}.tar.gz"
+        expected_filename: "treeos_{{ release_version | regex_replace('^v', '') }}_linux_{{ target_arch }}.tar.gz"
     
     - name: Find the correct asset URL
       set_fact:

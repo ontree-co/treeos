@@ -12,8 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	"ontree-node/internal/config"
-	"ontree-node/pkg/compose"
+	"treeos/internal/config"
+	"treeos/pkg/compose"
 )
 
 func TestCreateApp(t *testing.T) {

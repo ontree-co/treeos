@@ -10,7 +10,7 @@ The telemetry system supports two modes:
 
 ### Environment Variables
 
-- `OTEL_SERVICE_NAME`: Service name (default: "ontree-node")
+- `OTEL_SERVICE_NAME`: Service name (default: "treeos")
 - `OTEL_SERVICE_VERSION`: Service version (default: "unknown")
 - `OTEL_ENVIRONMENT`: Environment name (default: "development")
 - `HONEYCOMB_API_KEY`: Honeycomb API key for production
@@ -39,4 +39,4 @@ Docker operations are traced with custom spans:
 1. Start Jaeger: `docker-compose -f jaeger-compose.yml up -d`
 2. Run the server with default settings
 3. Access Jaeger UI at http://localhost:16686
-4. Look for "ontree-node" service in the service dropdown
+4. Look for "treeos" service in the service dropdown

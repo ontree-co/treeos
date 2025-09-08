@@ -40,7 +40,7 @@ module.exports = defineConfig({
 
   /* Run your local dev server before starting the tests */
   // webServer: {
-  //   command: 'cd ../.. && go run ./cmd/ontree-server',
+  //   command: 'cd ../.. && go run ./cmd/treeos',
   //   port: 8083,
   //   timeout: 120 * 1000,
   //   reuseExistingServer: !process.env.CI,

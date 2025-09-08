@@ -125,13 +125,13 @@ module.exports = async () => {
     console.log(`⏹️  Stopping test server on port ${TEST_PORT}...`);
     try {
       // Try to stop the server gracefully
-      execSync('pkill -TERM ontree-server 2>/dev/null || true', { stdio: 'ignore' });
+      execSync('pkill -TERM treeos 2>/dev/null || true', { stdio: 'ignore' });
       
       // Give it a moment to shut down gracefully
       execSync('sleep 2');
       
       // Force kill if still running
-      execSync('pkill -KILL ontree-server 2>/dev/null || true', { stdio: 'ignore' });
+      execSync('pkill -KILL treeos 2>/dev/null || true', { stdio: 'ignore' });
       console.log('  ✓ Test server stopped');
     } catch (err) {
       console.warn('  ⚠️  Server may not have been running');

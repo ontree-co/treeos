@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"ontree-node/internal/naming"
+	"treeos/internal/naming"
 )
 
 func main() {

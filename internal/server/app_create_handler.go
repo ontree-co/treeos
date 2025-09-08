@@ -12,9 +12,9 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v3"
-	"ontree-node/internal/security"
-	"ontree-node/internal/yamlutil"
-	"ontree-node/pkg/compose"
+	"treeos/internal/security"
+	"treeos/internal/yamlutil"
+	"treeos/pkg/compose"
 )
 
 // handleAppCreate handles the application creation page

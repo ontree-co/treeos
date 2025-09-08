@@ -7,7 +7,7 @@ import (
 	"io/fs"
 	"path/filepath"
 
-	"ontree-node/internal/embeds"
+	"treeos/internal/embeds"
 )
 
 // Template represents a Docker application template

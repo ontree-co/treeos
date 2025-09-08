@@ -23,7 +23,7 @@ const config: Config = {
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
   organizationName: 'ontree', // Usually your GitHub org/user name.
-  projectName: 'ontree-node', // Usually your repo name.
+  projectName: 'treeos', // Usually your repo name.
 
   onBrokenLinks: 'warn',
   onBrokenMarkdownLinks: 'warn',
@@ -46,7 +46,7 @@ const config: Config = {
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
           editUrl:
-            'https://github.com/ontree/ontree-node/tree/main/documentation/',
+            'https://github.com/ontree/treeos/tree/main/documentation/',
         },
         blog: {
           showReadingTime: true,
@@ -57,7 +57,7 @@ const config: Config = {
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
           editUrl:
-            'https://github.com/ontree/ontree-node/tree/main/documentation/',
+            'https://github.com/ontree/treeos/tree/main/documentation/',
           // Useful options to enforce blogging best practices
           onInlineTags: 'warn',
           onInlineAuthors: 'warn',
@@ -99,7 +99,7 @@ const config: Config = {
         },
         {to: '/blog', label: 'Changelog', position: 'left'},
         {
-          href: 'https://github.com/ontree/ontree-node',
+          href: 'https://github.com/ontree/treeos',
           label: 'GitHub',
           position: 'right',
         },
@@ -151,7 +151,7 @@ const config: Config = {
             },
             {
               label: 'GitHub',
-              href: 'https://github.com/ontree/ontree-node',
+              href: 'https://github.com/ontree/treeos',
             },
           ],
         },

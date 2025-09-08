@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"ontree-node/internal/database"
+	"treeos/internal/database"
 )
 
 // ChatMessagesResponse represents the response for chat messages endpoint

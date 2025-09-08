@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"ontree-node/internal/charts"
-	"ontree-node/internal/database"
-	"ontree-node/internal/system"
+	"treeos/internal/charts"
+	"treeos/internal/database"
+	"treeos/internal/system"
 )
 
 // handleMonitoring handles the main monitoring dashboard page

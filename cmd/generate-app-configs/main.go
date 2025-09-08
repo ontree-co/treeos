@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	"ontree-node/internal/agent"
+	"treeos/internal/agent"
 )
 
 func main() {

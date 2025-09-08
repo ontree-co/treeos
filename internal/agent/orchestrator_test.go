@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"ontree-node/internal/database"
+	"treeos/internal/database"
 )
 
 // TestOrchestratorRunCheck is skipped for now since it requires full integration

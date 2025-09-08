@@ -33,22 +33,22 @@ OnTree is distributed as a single binary file. Download the appropriate version 
 ### Linux
 ```bash
 # Download the latest release
-wget https://github.com/ontree/ontree-node/releases/latest/download/ontree-server-linux-amd64
-chmod +x ontree-server-linux-amd64
-sudo mv ontree-server-linux-amd64 /usr/local/bin/ontree-server
+wget https://github.com/ontree/treeos/releases/latest/download/treeos-linux-amd64
+chmod +x treeos-linux-amd64
+sudo mv treeos-linux-amd64 /usr/local/bin/treeos
 ```
 
 ### macOS
 ```bash
 # Intel Mac
-wget https://github.com/ontree/ontree-node/releases/latest/download/ontree-server-darwin-amd64
-chmod +x ontree-server-darwin-amd64
-sudo mv ontree-server-darwin-amd64 /usr/local/bin/ontree-server
+wget https://github.com/ontree/treeos/releases/latest/download/treeos-darwin-amd64
+chmod +x treeos-darwin-amd64
+sudo mv treeos-darwin-amd64 /usr/local/bin/treeos
 
 # Apple Silicon (M1/M2)
-wget https://github.com/ontree/ontree-node/releases/latest/download/ontree-server-darwin-arm64
-chmod +x ontree-server-darwin-arm64
-sudo mv ontree-server-darwin-arm64 /usr/local/bin/ontree-server
+wget https://github.com/ontree/treeos/releases/latest/download/treeos-darwin-arm64
+chmod +x treeos-darwin-arm64
+sudo mv treeos-darwin-arm64 /usr/local/bin/treeos
 ```
 
 ### Windows (WSL2)
@@ -60,10 +60,10 @@ Once downloaded, starting OnTree is simple:
 
 ```bash
 # Start OnTree
-ontree-server
+treeos
 
 # Or start with a custom port
-ontree-server --port 3000
+treeos --port 3000
 ```
 
 OnTree will:
@@ -89,13 +89,13 @@ OnTree can be configured using environment variables or a configuration file.
 
 ```bash
 # Change the port
-PORT=3000 ontree-server
+PORT=3000 treeos
 
 # Set database path
-DATABASE_PATH=/var/lib/ontree/ontree.db ontree-server
+DATABASE_PATH=/var/lib/ontree/ontree.db treeos
 
 # Enable debug logging
-DEBUG=true ontree-server
+DEBUG=true treeos
 ```
 
 ### Configuration File
@@ -132,7 +132,7 @@ Requires=docker.service
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/ontree-server
+ExecStart=/usr/local/bin/treeos
 Restart=always
 User=ontree
 Group=docker
@@ -195,7 +195,7 @@ If port 8080 is already in use:
 
 ```bash
 # Use a different port
-ontree-server --port 3000
+treeos --port 3000
 
 # Or find what's using port 8080
 sudo lsof -i :8080
@@ -229,6 +229,6 @@ sudo systemctl start docker
 
 If you encounter issues:
 
-- Check the [GitHub Issues](https://github.com/ontree/ontree-node/issues)
+- Check the [GitHub Issues](https://github.com/ontree/treeos/issues)
 - Review the logs: OnTree outputs detailed logs to help diagnose problems
 - Join the community discussions on GitHub

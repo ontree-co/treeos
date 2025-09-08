@@ -128,15 +128,15 @@ Add your domain configuration to OnTree:
 ### Using Environment Variables
 ```bash
 # For public domain
-PUBLIC_BASE_DOMAIN=example.com ontree-server
+PUBLIC_BASE_DOMAIN=example.com treeos
 
 # For Tailscale domain
-TAILSCALE_BASE_DOMAIN=machine.tail-scale.ts.net ontree-server
+TAILSCALE_BASE_DOMAIN=machine.tail-scale.ts.net treeos
 
 # Or both
 PUBLIC_BASE_DOMAIN=example.com \
 TAILSCALE_BASE_DOMAIN=machine.tail-scale.ts.net \
-ontree-server
+treeos
 ```
 
 ### Using config.toml

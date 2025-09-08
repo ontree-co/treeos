@@ -24,8 +24,8 @@
             "args": [
                 "build",
                 "-o",
-                "ontree-server",
-                "./cmd/ontree-server"
+                "treeos",
+                "./cmd/treeos"
             ],
             "group": {
                 "kind": "build",

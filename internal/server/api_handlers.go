@@ -12,9 +12,9 @@ import (
 	"regexp"
 	"strings"
 
-	"ontree-node/internal/security"
-	"ontree-node/internal/yamlutil"
-	"ontree-node/pkg/compose"
+	"treeos/internal/security"
+	"treeos/internal/yamlutil"
+	"treeos/pkg/compose"
 )
 
 // appNameRegex validates app names - only lowercase letters, numbers, and hyphens

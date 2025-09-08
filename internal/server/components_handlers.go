@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"ontree-node/internal/yamlutil"
+	"treeos/internal/yamlutil"
 )
 
 // routeComponents routes all /components/* requests to the appropriate handler

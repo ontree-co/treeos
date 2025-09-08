@@ -54,7 +54,7 @@ OnTree is a web-based Docker container manager designed to make self-hosting app
 OnTree is designed to get you up and running quickly:
 
 1. Download the OnTree binary for your platform
-2. Run `./ontree-server` to start the application
+2. Run `./treeos` to start the application
 3. Open http://localhost:8080 in your browser
 4. Create your first app from our template library
 
@@ -76,7 +76,7 @@ We're actively developing OnTree and have exciting features planned:
 
 OnTree is open source and we welcome contributions!
 
-- **GitHub**: [github.com/ontree/ontree-node](https://github.com/ontree/ontree-node)
+- **GitHub**: [github.com/ontree/treeos](https://github.com/ontree/treeos)
 - **Documentation**: Check out our [Getting Started guide](/docs/intro)
 - **Issues**: Report bugs or request features on GitHub
 

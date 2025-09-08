@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"ontree-node/internal/config"
-	"ontree-node/internal/database"
-	"ontree-node/internal/yamlutil"
+	"treeos/internal/config"
+	"treeos/internal/database"
+	"treeos/internal/yamlutil"
 )
 
 // DeployedApp represents the old deployed_apps table structure

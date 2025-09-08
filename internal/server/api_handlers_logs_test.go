@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"ontree-node/internal/config"
+	"treeos/internal/config"
 )
 
 func TestHandleAPIAppLogs(t *testing.T) {

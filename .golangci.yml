@@ -75,11 +75,11 @@ issues:
       text: G306
     - linters:
         - gosec
-      path: cmd/ontree-server/main\.go
+      path: cmd/treeos/main\.go
       text: G302
     - linters:
         - gosec
-      path: cmd/ontree-server/main\.go
+      path: cmd/treeos/main\.go
       text: G204
     - linters:
         - typecheck

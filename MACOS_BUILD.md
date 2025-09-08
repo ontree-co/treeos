@@ -18,8 +18,8 @@ macOS users can build the binary locally:
 
 ```bash
 # Clone the repository
-git clone https://github.com/stefanmunz/ontree-node.git
-cd ontree-node
+git clone https://github.com/stefanmunz/treeos.git
+cd treeos
 
 # Build for your platform
 make build
@@ -28,7 +28,7 @@ make build
 GOOS=darwin GOARCH=arm64 make build
 
 # Install to /usr/local/bin
-sudo cp build/ontree-server /usr/local/bin/ontree-node
+sudo cp build/treeos /usr/local/bin/treeos
 ```
 
 ## Future Solutions

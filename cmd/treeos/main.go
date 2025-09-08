@@ -13,15 +13,26 @@ import (
 	"strconv"
 	"syscall"
 
-	"ontree-node/internal/config"
-	"ontree-node/internal/database"
-	"ontree-node/internal/migration"
-	"ontree-node/internal/server"
-	"ontree-node/internal/telemetry"
-	"ontree-node/internal/version"
+	"treeos/internal/config"
+	"treeos/internal/database"
+	"treeos/internal/migration"
+	"treeos/internal/server"
+	"treeos/internal/telemetry"
+	"treeos/internal/version"
 )
 
 func main() {
+	// Handle version flag first, before loading configuration
+	if len(os.Args) > 1 && (os.Args[1] == "--version" || os.Args[1] == "-version" || os.Args[1] == "version") {
+		versionInfo := version.Get()
+		fmt.Printf("treeos version %s\n", versionInfo.Version)
+		fmt.Printf("  commit: %s\n", versionInfo.Commit)
+		fmt.Printf("  built: %s\n", versionInfo.BuildDate)
+		fmt.Printf("  go: %s\n", versionInfo.GoVersion)
+		fmt.Printf("  platform: %s\n", versionInfo.Platform)
+		os.Exit(0)
+	}
+
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {

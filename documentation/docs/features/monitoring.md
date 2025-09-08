@@ -250,7 +250,7 @@ monitoring_retention = 7  # days
 
 Via environment:
 ```bash
-MONITORING_ENABLED=false ontree-server
+MONITORING_ENABLED=false treeos
 ```
 
 ### Performance Tuning

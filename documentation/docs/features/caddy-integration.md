@@ -31,7 +31,7 @@ Before using domain features:
 1. **Install Caddy** (see [Domain Setup](/docs/getting-started/domain-setup))
 2. **Configure domains** in OnTree:
    ```bash
-   PUBLIC_BASE_DOMAIN=example.com ontree-server
+   PUBLIC_BASE_DOMAIN=example.com treeos
    ```
 3. **Verify integration** - Check app detail pages for Domain & Access section
 
