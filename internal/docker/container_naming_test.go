@@ -5,13 +5,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 )
 
 // dockerClientInterface defines the methods we need from Docker client
 type dockerClientInterface interface {
-	ContainerList(ctx context.Context, options container.ListOptions) ([]container.Summary, error)
+	ContainerList(ctx context.Context, options container.ListOptions) ([]types.Container, error)
 	Close() error
 }
 
@@ -22,13 +23,13 @@ func TestGetContainerStatus(t *testing.T) {
 	tests := []struct {
 		name           string
 		appName        string
-		containers     []container.Summary
+		containers     []types.Container
 		expectedStatus string
 	}{
 		{
 			name:    "lowercase app name with running container",
 			appName: "uptime-kuma",
-			containers: []container.Summary{
+			containers: []types.Container{
 				{
 					Names: []string{"/ontree-uptime-kuma-uptime-kuma-1"},
 					State: "running",
@@ -39,7 +40,7 @@ func TestGetContainerStatus(t *testing.T) {
 		{
 			name:    "mixed case app name should convert to lowercase",
 			appName: "OpenWebUI-0902",
-			containers: []container.Summary{
+			containers: []types.Container{
 				{
 					Names: []string{"/ontree-openwebui-0902-openwebui-1"},
 					State: "running",
@@ -50,7 +51,7 @@ func TestGetContainerStatus(t *testing.T) {
 		{
 			name:    "app with hyphen and numbers",
 			appName: "openwebui-0902",
-			containers: []container.Summary{
+			containers: []types.Container{
 				{
 					Names: []string{"/ontree-openwebui-0902-openwebui-1"},
 					State: "running",
@@ -61,7 +62,7 @@ func TestGetContainerStatus(t *testing.T) {
 		{
 			name:    "app with multiple services - all running",
 			appName: "openwebui-amd",
-			containers: []container.Summary{
+			containers: []types.Container{
 				{
 					Names: []string{"/ontree-openwebui-amd-ollama-1"},
 					State: "running",
@@ -76,7 +77,7 @@ func TestGetContainerStatus(t *testing.T) {
 		{
 			name:    "app with multiple services - mixed states",
 			appName: "openwebui-amd",
-			containers: []container.Summary{
+			containers: []types.Container{
 				{
 					Names: []string{"/ontree-openwebui-amd-ollama-1"},
 					State: "running",
@@ -91,7 +92,7 @@ func TestGetContainerStatus(t *testing.T) {
 		{
 			name:    "app with all containers stopped",
 			appName: "openwebui-cpu",
-			containers: []container.Summary{
+			containers: []types.Container{
 				{
 					Names: []string{"/ontree-openwebui-cpu-openwebui-1"},
 					State: "exited",
@@ -102,13 +103,13 @@ func TestGetContainerStatus(t *testing.T) {
 		{
 			name:           "app with no containers",
 			appName:        "new-app",
-			containers:     []container.Summary{},
+			containers:     []types.Container{},
 			expectedStatus: "not_created",
 		},
 		{
 			name:    "should not match containers without ontree prefix",
 			appName: "openwebui-0902",
-			containers: []container.Summary{
+			containers: []types.Container{
 				{
 					Names: []string{"/openwebui-0902-openwebui-1"}, // Missing ontree- prefix
 					State: "running",
@@ -119,7 +120,7 @@ func TestGetContainerStatus(t *testing.T) {
 		{
 			name:    "should not match containers from different apps",
 			appName: "uptime-kuma",
-			containers: []container.Summary{
+			containers: []types.Container{
 				{
 					Names: []string{"/ontree-openwebui-0902-openwebui-1"},
 					State: "running",
