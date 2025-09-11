@@ -62,3 +62,87 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-to-public:
+    name: Publish to Public Repository
+    needs: release
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get release info
+        id: get_release
+        run: |
+          echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Download release assets from private repo
+        run: |
+          mkdir -p release-assets
+          gh release download ${{ steps.get_release.outputs.TAG }} \
+            --repo ${{ github.repository }} \
+            --dir release-assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate public release notes
+        id: release_notes
+        run: |
+          cat > release-notes.md << 'EOF'
+          # TreeOS ${{ steps.get_release.outputs.TAG }}
+          
+          TreeOS is a self-hosted application platform that makes it easy to deploy and manage containerized applications.
+          
+          ## Installation
+          
+          ### Linux (AMD64/x86_64)
+          ```bash
+          wget https://github.com/ontree-co/treeos/releases/download/${{ steps.get_release.outputs.TAG }}/treeos_${{ steps.get_release.outputs.VERSION }}_linux_x86_64.tar.gz
+          tar -xzf treeos_${{ steps.get_release.outputs.VERSION }}_linux_x86_64.tar.gz
+          sudo mv treeos /usr/local/bin/
+          sudo chmod +x /usr/local/bin/treeos
+          ```
+          
+          ### Linux (ARM64)
+          ```bash
+          wget https://github.com/ontree-co/treeos/releases/download/${{ steps.get_release.outputs.TAG }}/treeos_${{ steps.get_release.outputs.VERSION }}_linux_arm64.tar.gz
+          tar -xzf treeos_${{ steps.get_release.outputs.VERSION }}_linux_arm64.tar.gz
+          sudo mv treeos /usr/local/bin/
+          sudo chmod +x /usr/local/bin/treeos
+          ```
+          
+          ## Checksums
+          
+          Verify your download with the checksums.txt file included in this release.
+          
+          ## Documentation
+          
+          For detailed documentation and getting started guides, please visit our [documentation site](https://docs.treeos.com).
+          
+          ## Support
+          
+          For support and questions, please visit our [community forum](https://github.com/ontree-co/treeos/discussions).
+          EOF
+
+      - name: Create release on public repository
+        run: |
+          # Check if release already exists
+          if gh release view ${{ steps.get_release.outputs.TAG }} --repo ontree-co/treeos &>/dev/null; then
+            echo "Release ${{ steps.get_release.outputs.TAG }} already exists in public repo, updating assets..."
+            # Delete existing assets if any
+            gh release delete ${{ steps.get_release.outputs.TAG }} --repo ontree-co/treeos --yes || true
+          fi
+          
+          # Create new release with assets
+          gh release create ${{ steps.get_release.outputs.TAG }} \
+            --repo ontree-co/treeos \
+            --title "TreeOS ${{ steps.get_release.outputs.TAG }}" \
+            --notes-file release-notes.md \
+            --verify-tag=false \
+            release-assets/*
+        env:
+          GH_TOKEN: ${{ secrets.PUBLIC_RELEASES_TOKEN }}
