@@ -102,7 +102,7 @@ jobs:
   # E2E tests - using the enhanced make test-e2e command
   e2e:
     runs-on: ubuntu-latest
-    needs: [test, lint, build]
+    needs: [build]  # Only depend on build, allow tests and lint to run in parallel
     
     steps:
     - name: Checkout code

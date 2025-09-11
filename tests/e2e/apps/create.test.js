@@ -112,8 +112,8 @@ services:
   });
 
   test('should prevent duplicate app names', async ({ page }) => {
-    // Use a unique app name for this test to avoid conflicts
-    const uniqueAppName = `test-duplicate-${Date.now()}`;
+    // Use a unique app name with test worker ID for better isolation
+    const uniqueAppName = `test-dup-${process.pid}-${Date.now()}`;
     
     // First create an app
     await createTestApp(page, uniqueAppName, 'nginx:latest');
