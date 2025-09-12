@@ -92,6 +92,16 @@
       "filename": "openwebui-consumer.yml",
       "port": "3000",
       "documentation_url": "https://github.com/open-webui/open-webui"
+    },
+    {
+      "id": "woodpecker",
+      "name": "Woodpecker CI",
+      "description": "Simple yet powerful CI/CD engine with great extensibility. Self-hosted alternative to GitHub Actions with Forgejo/Codeberg support.",
+      "category": "Development",
+      "icon": "bi-gear-wide-connected",
+      "filename": "woodpecker.yml",
+      "port": "8000",
+      "documentation_url": "https://woodpecker-ci.org/docs/intro"
     }
   ]
 }

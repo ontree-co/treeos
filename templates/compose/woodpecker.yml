@@ -1,0 +1,84 @@
+version: '3.8'
+
+services:
+  woodpecker-server:
+    image: woodpeckerci/woodpecker-server:v3
+    ports:
+      - "8000:8000"
+    networks:
+      - woodpecker
+    volumes:
+      - woodpecker_server_data:/var/lib/woodpecker/
+    environment:
+      # General Configuration
+      - WOODPECKER_HOST=${WOODPECKER_HOST:-http://localhost:8000}
+      - WOODPECKER_ADMIN=${WOODPECKER_ADMIN:-admin}
+      - WOODPECKER_OPEN=${WOODPECKER_OPEN:-false}
+      
+      # Forgejo/Codeberg Configuration
+      - WOODPECKER_FORGEJO=${WOODPECKER_FORGEJO:-true}
+      - WOODPECKER_FORGEJO_URL=${WOODPECKER_FORGEJO_URL:-https://codeberg.org}
+      # IMPORTANT: Create OAuth app at https://codeberg.org/user/settings/applications
+      # Set redirect URL to: ${WOODPECKER_HOST}/authorize
+      - WOODPECKER_FORGEJO_CLIENT=${WOODPECKER_FORGEJO_CLIENT:-CHANGE_ME}
+      - WOODPECKER_FORGEJO_SECRET=${WOODPECKER_FORGEJO_SECRET:-CHANGE_ME}
+      
+      # Security - Generate with: openssl rand -hex 32
+      - WOODPECKER_AGENT_SECRET=${WOODPECKER_AGENT_SECRET:-CHANGE_ME_TO_RANDOM_32_HEX}
+      
+      # Database (uses SQLite by default)
+      - WOODPECKER_DATABASE_DRIVER=${WOODPECKER_DATABASE_DRIVER:-sqlite3}
+      - WOODPECKER_DATABASE_DATASOURCE=${WOODPECKER_DATABASE_DATASOURCE:-/var/lib/woodpecker/woodpecker.db}
+      
+      # Optional: PostgreSQL configuration (uncomment if using PostgreSQL)
+      # - WOODPECKER_DATABASE_DRIVER=postgres
+      # - WOODPECKER_DATABASE_DATASOURCE=postgres://woodpecker:${WOODPECKER_DB_PASSWORD}@woodpecker-db:5432/woodpecker?sslmode=disable
+      
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8000/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  woodpecker-agent:
+    image: woodpeckerci/woodpecker-agent:v3
+    depends_on:
+      woodpecker-server:
+        condition: service_healthy
+    networks:
+      - woodpecker
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - woodpecker_agent_config:/etc/woodpecker
+    environment:
+      - WOODPECKER_SERVER=woodpecker-server:9000
+      - WOODPECKER_AGENT_SECRET=${WOODPECKER_AGENT_SECRET}
+      - WOODPECKER_MAX_WORKFLOWS=${WOODPECKER_MAX_WORKFLOWS:-2}
+      - WOODPECKER_BACKEND=${WOODPECKER_BACKEND:-docker}
+      - WOODPECKER_BACKEND_DOCKER_NETWORK=${WOODPECKER_BACKEND_DOCKER_NETWORK:-woodpecker}
+      - WOODPECKER_LOG_LEVEL=${WOODPECKER_LOG_LEVEL:-info}
+    restart: unless-stopped
+
+  # Optional: PostgreSQL database (uncomment if needed)
+  # woodpecker-db:
+  #   image: postgres:16-alpine
+  #   networks:
+  #     - woodpecker
+  #   volumes:
+  #     - woodpecker_db_data:/var/lib/postgresql/data
+  #   environment:
+  #     - POSTGRES_DB=woodpecker
+  #     - POSTGRES_USER=woodpecker
+  #     - POSTGRES_PASSWORD=${WOODPECKER_DB_PASSWORD}
+  #   restart: unless-stopped
+
+networks:
+  woodpecker:
+    driver: bridge
+
+volumes:
+  woodpecker_server_data:
+  woodpecker_agent_config:
+  # woodpecker_db_data:  # Uncomment if using PostgreSQL
