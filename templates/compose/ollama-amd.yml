@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  ollama:
+    image: ollama/ollama:rocm
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - /opt/ontree/sharedmodels:/root/.ollama
+    devices:
+      - /dev/kfd
+      - /dev/dri
+    environment:
+      - HSA_OVERRIDE_GFX_VERSION=10.3.0

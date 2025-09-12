@@ -20,6 +20,7 @@ type Template struct {
 	Filename         string `json:"filename"`
 	Port             string `json:"port"`
 	DocumentationURL string `json:"documentation_url"`
+	IsSystemService  bool   `json:"is_system_service,omitempty"`
 }
 
 // File represents the structure of the templates.json file

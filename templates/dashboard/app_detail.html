@@ -537,18 +537,17 @@
                                     {{end}}
                                 </td>
                                 <td>
-                                    <div id="update-status-{{.Name}}">
-                                        <button type="button" 
-                                                class="btn btn-sm btn-outline-primary"
-                                                hx-get="/apps/{{$.App.Name}}/check-update?service={{.Name}}"
-                                                hx-target="#update-status-{{.Name}}"
-                                                hx-indicator="#update-spinner-{{.Name}}">
-                                            <i>🔍</i> Check
-                                        </button>
-                                        <span id="update-spinner-{{.Name}}" class="htmx-indicator spinner-border spinner-border-sm ms-2" role="status">
-                                            <span class="visually-hidden">Checking...</span>
-                                        </span>
-                                    </div>
+                                    {{if and .Ports $.TailscaleDNS}}
+                                        {{$firstPort := index .Ports 0}}
+                                        {{$hostPort := extractHostPort $firstPort}}
+                                        <a href="http://{{$.TailscaleDNS}}:{{$hostPort}}" 
+                                           target="_blank" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-box-arrow-up-right"></i> Visit in Browser
+                                        </a>
+                                    {{else}}
+                                        <span class="text-muted">-</span>
+                                    {{end}}
                                 </td>
                             </tr>
                             {{end}}

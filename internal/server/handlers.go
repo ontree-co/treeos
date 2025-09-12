@@ -525,6 +525,14 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 	data["CaddyAvailable"] = s.caddyClient != nil
 	data["PlatformSupportsCaddy"] = runtime.GOOS == "linux"
 
+	// Add Tailscale DNS name for Visit in Browser functionality
+	tailscaleDNS := getTailscaleDNS()
+	if tailscaleDNS != "" {
+		// Remove trailing dot if present
+		tailscaleDNS = strings.TrimSuffix(tailscaleDNS, ".")
+		data["TailscaleDNS"] = tailscaleDNS
+	}
+
 	// Render template
 	tmpl, ok := s.templates["app_detail"]
 	if !ok {

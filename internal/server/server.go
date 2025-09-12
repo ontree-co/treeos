@@ -1221,8 +1221,9 @@ func (s *Server) routeApps(w http.ResponseWriter, r *http.Request) {
 		}
 	} else if strings.HasSuffix(path, "/containers") {
 		s.handleAppContainers(w, r)
-	} else if strings.HasSuffix(path, "/check-update") {
-		s.handleAppCheckUpdate(w, r)
+	// Check-update functionality removed - using Visit in Browser instead
+	// } else if strings.HasSuffix(path, "/check-update") {
+	//	s.handleAppCheckUpdate(w, r)
 	} else if strings.HasSuffix(path, "/update") {
 		s.handleAppUpdate(w, r)
 	} else {
@@ -1360,4 +1361,21 @@ func getTailscaleIP() string {
 	}
 
 	return strings.TrimSpace(string(output))
+}
+
+// getTailscaleDNS returns the Tailscale DNS name for this machine
+func getTailscaleDNS() string {
+	// Try to get Tailscale DNS name using the tailscale status command
+	cmd := exec.Command("sh", "-c", "tailscale status --json 2>/dev/null | jq -r '.Self.DNSName' 2>/dev/null")
+	output, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	
+	dnsName := strings.TrimSpace(string(output))
+	if dnsName == "" || dnsName == "null" {
+		return ""
+	}
+	
+	return dnsName
 }

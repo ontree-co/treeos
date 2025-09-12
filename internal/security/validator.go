@@ -134,6 +134,7 @@ func (v *Validator) validateCapabilities(serviceName string, service ServiceConf
 func (v *Validator) validateBindMounts(serviceName string, service ServiceConfig) error {
 	allowedPrefix := fmt.Sprintf("/opt/ontree/apps/mount/%s/", v.appName)
 	requiredPrefix := fmt.Sprintf("/opt/ontree/apps/mount/%s/%s/", v.appName, serviceName)
+	sharedModelsPath := "/opt/ontree/sharedmodels"
 
 	for _, volume := range service.Volumes {
 		// Volumes can be strings (bind mounts) or maps (named volumes)
@@ -152,6 +153,11 @@ func (v *Validator) validateBindMounts(serviceName string, service ServiceConfig
 
 					// Normalize path
 					hostPath = strings.TrimSuffix(hostPath, "/")
+
+					// Allow shared models directory (special exception for AI model storage)
+					if hostPath == sharedModelsPath {
+						continue
+					}
 
 					// Check if path is within allowed directory
 					if !strings.HasPrefix(hostPath, allowedPrefix) {
@@ -183,6 +189,11 @@ func (v *Validator) validateBindMounts(serviceName string, service ServiceConfig
 
 					// Normalize path
 					source = strings.TrimSuffix(source, "/")
+
+					// Allow shared models directory (special exception for AI model storage)
+					if source == sharedModelsPath {
+						continue
+					}
 
 					// Check if path is within allowed directory
 					if !strings.HasPrefix(source, allowedPrefix) {

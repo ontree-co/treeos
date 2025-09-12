@@ -11,6 +11,15 @@ import (
 	"strings"
 )
 
+// extractHostPort extracts the host port from a "hostPort:containerPort" string
+func extractHostPort(portMapping string) string {
+	parts := strings.Split(portMapping, ":")
+	if len(parts) > 0 {
+		return parts[0]
+	}
+	return ""
+}
+
 func main() {
 	templatesDir := "templates"
 	if len(os.Args) > 1 {
@@ -56,7 +65,10 @@ func main() {
 		checked++
 
 		// Try to parse the template with base
-		tmpl := template.New("test")
+		funcMap := template.FuncMap{
+			"extractHostPort": extractHostPort,
+		}
+		tmpl := template.New("test").Funcs(funcMap)
 		_, err = tmpl.ParseFiles(baseTemplatePath, path)
 		if err != nil {
 			errors = append(errors, fmt.Sprintf("%s: %v", path, err))
@@ -65,7 +77,7 @@ func main() {
 
 		// For component templates, also check if they parse standalone
 		if strings.Contains(path, "components/") {
-			tmpl = template.New("test")
+			tmpl = template.New("test").Funcs(funcMap)
 			_, err = tmpl.ParseFiles(path)
 			if err != nil {
 				errors = append(errors, fmt.Sprintf("%s (standalone): %v", path, err))

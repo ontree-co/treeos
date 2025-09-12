@@ -174,6 +174,14 @@ func (s *Server) createAppScaffoldInternal(appPath, appName, composeContent, env
 		return fmt.Errorf("failed to create app directory: %v", err)
 	}
 
+	// Check if this app uses shared models directory
+	if usesSharedModels(composeContent) {
+		if err := ensureSharedModelsDirectory(); err != nil {
+			log.Printf("Warning: Failed to setup shared models directory: %v", err)
+			// Continue anyway - user can create it manually
+		}
+	}
+
 	// Create mnt directory
 	mntPath := filepath.Join(appPath, "mnt")
 	err = os.MkdirAll(mntPath, 0750)
@@ -429,4 +437,31 @@ func extractHostPort(composeContent string) (int, error) {
 	}
 
 	return 0, fmt.Errorf("no host port found in docker-compose")
+}
+
+// usesSharedModels checks if the compose content references the shared models directory
+func usesSharedModels(composeContent string) bool {
+	return strings.Contains(composeContent, "/opt/ontree/sharedmodels")
+}
+
+// ensureSharedModelsDirectory creates the shared models directory with proper permissions
+func ensureSharedModelsDirectory() error {
+	path := "/opt/ontree/sharedmodels"
+	
+	// Check if directory exists
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		// Create directory
+		if err := os.MkdirAll(path, 0755); err != nil {
+			return fmt.Errorf("failed to create directory: %v", err)
+		}
+		
+		// Set ownership to root:root (Ollama runs as root)
+		if err := os.Chown(path, 0, 0); err != nil {
+			return fmt.Errorf("failed to set ownership: %v", err)
+		}
+		
+		log.Printf("Created shared models directory at %s with root:root ownership", path)
+	}
+	
+	return nil
 }

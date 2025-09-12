@@ -2,6 +2,8 @@ module treeos
 
 go 1.23.10
 
+toolchain go1.24.7
+
 require (
 	github.com/BurntSushi/toml v1.5.0
 	github.com/compose-spec/compose-go/v2 v2.7.1
