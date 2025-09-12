@@ -246,6 +246,36 @@
     </div>
 </div>
 
+<!-- Models Management Section -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h2 class="mb-0">Models</h2>
+                <div>
+                    <span class="badge bg-secondary me-2" id="model-count">0</span>
+                    <button class="btn btn-primary btn-lg" id="add-model-btn" onclick="showModelLibrary()">
+                        <i class="bi bi-download"></i> Download Models
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="models-container" 
+                     hx-get="/api/models" 
+                     hx-trigger="load"
+                     hx-target="this"
+                     hx-swap="innerHTML">
+                    <div class="text-center py-3">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Loading models...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Modal for detailed charts -->
 <div class="modal fade" id="chartModal" tabindex="-1" aria-labelledby="chartModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -357,6 +387,253 @@
             }
         }
     });
+
+    // Initialize Models SSE
+    initModelSSE();
+</script>
+
+<script>
+// Model Management Functions
+let modelEventSource;
+
+function initModelSSE() {
+    if (modelEventSource) {
+        modelEventSource.close();
+    }
+    
+    modelEventSource = new EventSource('/api/models/events');
+    
+    modelEventSource.addEventListener('connected', function(e) {
+        console.log('Connected to model updates stream');
+    });
+    
+    modelEventSource.addEventListener('new-message', function(e) {
+        const data = JSON.parse(e.data);
+        console.log('Model update received:', data);
+        updateModelUI(data);
+    });
+    
+    modelEventSource.addEventListener('model-update', function(e) {
+        const data = JSON.parse(e.data);
+        console.log('Model update received:', data);
+        updateModelUI(data);
+    });
+    
+    modelEventSource.addEventListener('heartbeat', function(e) {
+        console.log('Model SSE heartbeat received');
+    });
+    
+    modelEventSource.onerror = function(e) {
+        console.error('Model SSE error:', e);
+        // Reconnect after 5 seconds
+        setTimeout(initModelSSE, 5000);
+    };
+}
+
+function updateModelUI(data) {
+    // Update specific model's progress bar and status
+    const modelRow = document.querySelector(`[data-model="${data.model}"]`);
+    if (modelRow) {
+        const progressBar = modelRow.querySelector('.progress-bar');
+        const statusBadge = modelRow.querySelector('.status-badge');
+        const actionBtn = modelRow.querySelector('.model-action-btn');
+        
+        if (progressBar) {
+            progressBar.style.width = data.progress + '%';
+            progressBar.setAttribute('aria-valuenow', data.progress);
+            progressBar.textContent = data.progress + '%';
+        }
+        
+        if (statusBadge) {
+            statusBadge.textContent = formatStatus(data.status);
+            statusBadge.className = 'badge status-badge bg-' + getStatusColor(data.status);
+        }
+        
+        // Update action button based on status
+        if (actionBtn) {
+            updateActionButton(actionBtn, data.status, data.model);
+        }
+        
+        // If there's an error, show it
+        if (data.error && data.status === 'failed') {
+            let errorDiv = modelRow.querySelector('.error-message');
+            if (!errorDiv) {
+                errorDiv = document.createElement('div');
+                errorDiv.className = 'alert alert-danger mt-2 error-message';
+                modelRow.appendChild(errorDiv);
+            }
+            errorDiv.textContent = data.error;
+        } else {
+            // Remove error message if status is not failed
+            const errorDiv = modelRow.querySelector('.error-message');
+            if (errorDiv) {
+                errorDiv.remove();
+            }
+        }
+    }
+    
+    // If download completed, refresh the whole models list
+    if (data.status === 'completed' || data.status === 'failed') {
+        setTimeout(() => {
+            htmx.trigger('#models-container', 'load');
+        }, 1000);
+    }
+}
+
+function formatStatus(status) {
+    const statusMap = {
+        'not_downloaded': 'Not Downloaded',
+        'queued': 'Queued',
+        'downloading': 'Downloading',
+        'completed': 'Completed',
+        'failed': 'Failed'
+    };
+    return statusMap[status] || status;
+}
+
+function getStatusColor(status) {
+    const colorMap = {
+        'not_downloaded': 'secondary',
+        'queued': 'info',
+        'downloading': 'primary',
+        'completed': 'success',
+        'failed': 'danger'
+    };
+    return colorMap[status] || 'secondary';
+}
+
+function updateActionButton(btn, status, modelName) {
+    switch(status) {
+        case 'not_downloaded':
+            btn.innerHTML = '<i class="bi bi-download"></i> Download';
+            btn.className = 'btn btn-sm btn-primary model-action-btn';
+            btn.onclick = () => downloadModel(modelName);
+            btn.disabled = false;
+            break;
+        case 'queued':
+            btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Queued';
+            btn.className = 'btn btn-sm btn-info model-action-btn';
+            btn.disabled = true;
+            break;
+        case 'downloading':
+            btn.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> Downloading';
+            btn.className = 'btn btn-sm btn-primary model-action-btn';
+            btn.disabled = true;
+            break;
+        case 'completed':
+            btn.innerHTML = '<i class="bi bi-check-circle-fill"></i> Installed';
+            btn.className = 'btn btn-sm btn-success model-action-btn';
+            btn.disabled = true;
+            break;
+        case 'failed':
+            btn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Retry';
+            btn.className = 'btn btn-sm btn-warning model-action-btn';
+            btn.onclick = () => retryModel(modelName);
+            btn.disabled = false;
+            break;
+    }
+}
+
+function downloadModel(modelName) {
+    fetch(`/api/models/${modelName}/pull`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => {
+        if (response.status === 202) {
+            // Update UI to show queued status
+            const modelRow = document.querySelector(`[data-model="${modelName}"]`);
+            if (modelRow) {
+                const statusBadge = modelRow.querySelector('.status-badge');
+                const actionBtn = modelRow.querySelector('.model-action-btn');
+                if (statusBadge) {
+                    statusBadge.textContent = 'Queued';
+                    statusBadge.className = 'badge status-badge bg-info';
+                }
+                if (actionBtn) {
+                    updateActionButton(actionBtn, 'queued', modelName);
+                }
+            }
+        } else {
+            response.text().then(text => {
+                alert('Failed to queue download: ' + text);
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Error downloading model:', error);
+        alert('Failed to download model: ' + error.message);
+    });
+}
+
+function retryModel(modelName) {
+    fetch(`/api/models/${modelName}/retry`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => {
+        if (response.status === 202) {
+            // Update UI to show queued status
+            const modelRow = document.querySelector(`[data-model="${modelName}"]`);
+            if (modelRow) {
+                const statusBadge = modelRow.querySelector('.status-badge');
+                const actionBtn = modelRow.querySelector('.model-action-btn');
+                const errorDiv = modelRow.querySelector('.error-message');
+                
+                if (statusBadge) {
+                    statusBadge.textContent = 'Queued';
+                    statusBadge.className = 'badge status-badge bg-info';
+                }
+                if (actionBtn) {
+                    updateActionButton(actionBtn, 'queued', modelName);
+                }
+                if (errorDiv) {
+                    errorDiv.remove();
+                }
+            }
+        } else {
+            response.text().then(text => {
+                alert('Failed to retry download: ' + text);
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Error retrying model:', error);
+        alert('Failed to retry model: ' + error.message);
+    });
+}
+
+function showModelLibrary() {
+    // Scroll to models section and highlight it
+    const modelsContainer = document.getElementById('models-container');
+    if (modelsContainer) {
+        modelsContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Add a highlight effect
+        modelsContainer.style.transition = 'background-color 0.5s';
+        modelsContainer.style.backgroundColor = '#fffbf0';
+        setTimeout(() => {
+            modelsContainer.style.backgroundColor = '';
+        }, 2000);
+    }
+}
+
+// Add spinning animation CSS
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+    .spin {
+        display: inline-block;
+        animation: spin 1s linear infinite;
+    }
+`;
+document.head.appendChild(style);
 </script>
 {{end}}
 

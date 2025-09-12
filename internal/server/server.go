@@ -28,6 +28,7 @@ import (
 	"treeos/internal/database"
 	"treeos/internal/docker"
 	"treeos/internal/embeds"
+	"treeos/internal/ollama"
 	"treeos/internal/realtime"
 	"treeos/internal/system"
 	"treeos/internal/templates"
@@ -55,6 +56,7 @@ type Server struct {
 	agentOrchestrator     *agent.Orchestrator
 	agentCron             *cron.Cron
 	sseManager            *SSEManager
+	ollamaWorker          *ollama.Worker
 }
 
 // New creates a new server instance
@@ -366,6 +368,14 @@ func (s *Server) loadTemplates() error {
 	}
 	s.templates["patterns_style_guide"] = tmpl
 
+	// Load models list partial template
+	modelsListTemplate := filepath.Join("templates", "partials", "models_list.html")
+	modelsTmpl, err := embeds.ParseTemplate(modelsListTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse models list template: %w", err)
+	}
+	s.templates["models_list"] = modelsTmpl
+
 	return nil
 }
 
@@ -405,6 +415,11 @@ func (s *Server) Start() error {
 	go s.startRealtimeMetricsCollection()
 	go s.startVitalsCollection()
 
+	// Start Ollama worker if database is available
+	if s.db != nil {
+		s.startOllamaWorker()
+	}
+
 	// Agent cron jobs are now scheduled in initAgent() with per-app checks
 	// No need to schedule them again here
 
@@ -433,6 +448,8 @@ func (s *Server) Start() error {
 	// API routes
 	mux.HandleFunc("/api/apps/", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeAPIApps))))
 	mux.HandleFunc("/api/v1/status/", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeAPIStatus))))
+	mux.HandleFunc("/api/models", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeAPIModels))))
+	mux.HandleFunc("/api/models/", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeAPIModels))))
 
 	// Test endpoint for triggering agent runs (for testing purposes)
 	// This endpoint is protected by auth middleware so only authenticated users can trigger it

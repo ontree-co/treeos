@@ -1,0 +1,192 @@
+{{ define "models-list-partial" }}
+{{if .HasOllama}}
+    {{if .Models}}
+        {{$chatModels := .ChatModels}}
+        {{$codeModels := .CodeModels}}
+        {{$visionModels := .VisionModels}}
+        
+        {{if $chatModels}}
+        <h5 class="mb-3"><i class="bi bi-chat-dots"></i> Chat Models</h5>
+        <div class="models-group mb-4">
+            {{range $chatModels}}
+            <div class="model-row border rounded p-3 mb-2" data-model="{{.Name}}">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div class="flex-grow-1">
+                        <h6 class="mb-1">{{.DisplayName}}</h6>
+                        <small class="text-muted">{{.Description}} • {{.SizeEstimate}}</small>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge status-badge bg-{{.StatusColor}}">{{.StatusText}}</span>
+                        {{if eq .Status "not_downloaded"}}
+                            <button class="btn btn-sm btn-primary model-action-btn" onclick="downloadModel('{{.Name}}')">
+                                <i class="bi bi-download"></i> Download
+                            </button>
+                        {{else if eq .Status "queued"}}
+                            <button class="btn btn-sm btn-info model-action-btn" disabled>
+                                <i class="bi bi-hourglass-split"></i> Queued
+                            </button>
+                        {{else if eq .Status "downloading"}}
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="progress" style="width: 150px; height: 20px;">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                         role="progressbar" 
+                                         style="width: {{.Progress}}%"
+                                         aria-valuenow="{{.Progress}}" 
+                                         aria-valuemin="0" 
+                                         aria-valuemax="100">{{.Progress}}%</div>
+                                </div>
+                                <button class="btn btn-sm btn-primary model-action-btn" disabled>
+                                    <i class="bi bi-arrow-repeat spin"></i> Downloading
+                                </button>
+                            </div>
+                        {{else if eq .Status "completed"}}
+                            <button class="btn btn-sm btn-success model-action-btn" disabled>
+                                <i class="bi bi-check-circle-fill"></i> Installed
+                            </button>
+                        {{else if eq .Status "failed"}}
+                            <button class="btn btn-sm btn-warning model-action-btn" onclick="retryModel('{{.Name}}')">
+                                <i class="bi bi-arrow-clockwise"></i> Retry
+                            </button>
+                        {{end}}
+                    </div>
+                </div>
+                {{if and .LastError.Valid (eq .Status "failed")}}
+                <div class="alert alert-danger mt-2 error-message">{{.LastError.String}}</div>
+                {{end}}
+            </div>
+            {{end}}
+        </div>
+        {{end}}
+        
+        {{if $codeModels}}
+        <h5 class="mb-3"><i class="bi bi-code-slash"></i> Code Models</h5>
+        <div class="models-group mb-4">
+            {{range $codeModels}}
+            <div class="model-row border rounded p-3 mb-2" data-model="{{.Name}}">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div class="flex-grow-1">
+                        <h6 class="mb-1">{{.DisplayName}}</h6>
+                        <small class="text-muted">{{.Description}} • {{.SizeEstimate}}</small>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge status-badge bg-{{.StatusColor}}">{{.StatusText}}</span>
+                        {{if eq .Status "not_downloaded"}}
+                            <button class="btn btn-sm btn-primary model-action-btn" onclick="downloadModel('{{.Name}}')">
+                                <i class="bi bi-download"></i> Download
+                            </button>
+                        {{else if eq .Status "queued"}}
+                            <button class="btn btn-sm btn-info model-action-btn" disabled>
+                                <i class="bi bi-hourglass-split"></i> Queued
+                            </button>
+                        {{else if eq .Status "downloading"}}
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="progress" style="width: 150px; height: 20px;">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                         role="progressbar" 
+                                         style="width: {{.Progress}}%"
+                                         aria-valuenow="{{.Progress}}" 
+                                         aria-valuemin="0" 
+                                         aria-valuemax="100">{{.Progress}}%</div>
+                                </div>
+                                <button class="btn btn-sm btn-primary model-action-btn" disabled>
+                                    <i class="bi bi-arrow-repeat spin"></i> Downloading
+                                </button>
+                            </div>
+                        {{else if eq .Status "completed"}}
+                            <button class="btn btn-sm btn-success model-action-btn" disabled>
+                                <i class="bi bi-check-circle-fill"></i> Installed
+                            </button>
+                        {{else if eq .Status "failed"}}
+                            <button class="btn btn-sm btn-warning model-action-btn" onclick="retryModel('{{.Name}}')">
+                                <i class="bi bi-arrow-clockwise"></i> Retry
+                            </button>
+                        {{end}}
+                    </div>
+                </div>
+                {{if and .LastError.Valid (eq .Status "failed")}}
+                <div class="alert alert-danger mt-2 error-message">{{.LastError.String}}</div>
+                {{end}}
+            </div>
+            {{end}}
+        </div>
+        {{end}}
+        
+        {{if $visionModels}}
+        <h5 class="mb-3"><i class="bi bi-eye"></i> Vision Models</h5>
+        <div class="models-group mb-4">
+            {{range $visionModels}}
+            <div class="model-row border rounded p-3 mb-2" data-model="{{.Name}}">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div class="flex-grow-1">
+                        <h6 class="mb-1">{{.DisplayName}}</h6>
+                        <small class="text-muted">{{.Description}} • {{.SizeEstimate}}</small>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge status-badge bg-{{.StatusColor}}">{{.StatusText}}</span>
+                        {{if eq .Status "not_downloaded"}}
+                            <button class="btn btn-sm btn-primary model-action-btn" onclick="downloadModel('{{.Name}}')">
+                                <i class="bi bi-download"></i> Download
+                            </button>
+                        {{else if eq .Status "queued"}}
+                            <button class="btn btn-sm btn-info model-action-btn" disabled>
+                                <i class="bi bi-hourglass-split"></i> Queued
+                            </button>
+                        {{else if eq .Status "downloading"}}
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="progress" style="width: 150px; height: 20px;">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                         role="progressbar" 
+                                         style="width: {{.Progress}}%"
+                                         aria-valuenow="{{.Progress}}" 
+                                         aria-valuemin="0" 
+                                         aria-valuemax="100">{{.Progress}}%</div>
+                                </div>
+                                <button class="btn btn-sm btn-primary model-action-btn" disabled>
+                                    <i class="bi bi-arrow-repeat spin"></i> Downloading
+                                </button>
+                            </div>
+                        {{else if eq .Status "completed"}}
+                            <button class="btn btn-sm btn-success model-action-btn" disabled>
+                                <i class="bi bi-check-circle-fill"></i> Installed
+                            </button>
+                        {{else if eq .Status "failed"}}
+                            <button class="btn btn-sm btn-warning model-action-btn" onclick="retryModel('{{.Name}}')">
+                                <i class="bi bi-arrow-clockwise"></i> Retry
+                            </button>
+                        {{end}}
+                    </div>
+                </div>
+                {{if and .LastError.Valid (eq .Status "failed")}}
+                <div class="alert alert-danger mt-2 error-message">{{.LastError.String}}</div>
+                {{end}}
+            </div>
+            {{end}}
+        </div>
+        {{end}}
+        
+        <script>
+        // Update model count badge
+        document.getElementById('model-count').textContent = '{{.TotalCount}}';
+        </script>
+    {{else}}
+        <div class="alert alert-info">
+            <h6><i class="bi bi-info-circle"></i> No Models Available</h6>
+            <p class="mb-0">
+                No Ollama models are configured. Models will appear here once they are available.
+            </p>
+        </div>
+    {{end}}
+{{else}}
+    <div class="alert alert-warning">
+        <h6><i class="bi bi-exclamation-triangle"></i> Ollama Not Available</h6>
+        <p class="mb-2">
+            The Ollama container is not running. Please ensure the <code>ontree-ollama-cpu</code> app is installed and running.
+        </p>
+        <p class="mb-0">
+            <a href="/templates" class="btn btn-sm btn-primary">
+                <i class="bi bi-plus-circle"></i> Install Ollama
+            </a>
+        </p>
+    </div>
+{{end}}
+{{ end }}
