@@ -1,16 +1,16 @@
 package server
 
 import (
-	"context"
+	// "context"  // Commented out - used by handleAppCheckUpdate
 	"fmt"
-	"io"
+	// "io"       // Commented out - used by handleAppCheckUpdate  
 	"log"
 	"net/http"
 	"strings"
-	"time"
+	// "time"     // Commented out - used by handleAppCheckUpdate
 
-	"github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/client"
+	// "github.com/docker/docker/api/types/image"  // Commented out - used by checkImageUpdate
+	// "github.com/docker/docker/client"           // Commented out - used by checkImageUpdate
 )
 
 // ImageUpdateInfo contains information about available image updates
@@ -29,6 +29,8 @@ type PullStatus struct {
 }
 
 // handleAppCheckUpdate checks for available updates for a specific service's Docker image
+// Commented out - replaced with "Visit in Browser" functionality
+/*
 func (s *Server) handleAppCheckUpdate(w http.ResponseWriter, r *http.Request) {
 	// Extract app name from path
 	appName := strings.TrimPrefix(r.URL.Path, "/apps/")
@@ -120,8 +122,11 @@ func (s *Server) handleAppCheckUpdate(w http.ResponseWriter, r *http.Request) {
 			</div>`, currentTag)
 	}
 }
+*/
 
 // checkImageUpdate checks if there's an update available for the given image
+// Commented out - replaced with "Visit in Browser" functionality
+/*
 func (s *Server) checkImageUpdate(imageName string) (*ImageUpdateInfo, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
@@ -202,6 +207,7 @@ func (s *Server) checkImageUpdate(imageName string) (*ImageUpdateInfo, error) {
 
 	return updateInfo, nil
 }
+*/
 
 // handleAppUpdate handles the actual update of an app's Docker image
 func (s *Server) handleAppUpdate(w http.ResponseWriter, r *http.Request) {
