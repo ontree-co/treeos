@@ -376,6 +376,14 @@ func (s *Server) loadTemplates() error {
 	}
 	s.templates["models_list"] = modelsTmpl
 
+	// Load model detail template
+	modelDetailTemplate := filepath.Join("templates", "dashboard", "model_detail.html")
+	tmpl, err = embeds.ParseTemplate(baseTemplate, modelDetailTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse model detail template: %w", err)
+	}
+	s.templates["model_detail"] = tmpl
+
 	return nil
 }
 
@@ -450,6 +458,7 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/api/v1/status/", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeAPIStatus))))
 	mux.HandleFunc("/api/models", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeAPIModels))))
 	mux.HandleFunc("/api/models/", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeAPIModels))))
+	mux.HandleFunc("/models/", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleModelDetail))))
 
 	// Test endpoint for triggering agent runs (for testing purposes)
 	// This endpoint is protected by auth middleware so only authenticated users can trigger it

@@ -429,6 +429,13 @@ function updateModelUI(data) {
     // Update specific model's progress bar and status
     const modelRow = document.querySelector(`[data-model="${data.model}"]`);
     if (modelRow) {
+        // Ensure the row is clickable
+        if (!modelRow.style.cursor) {
+            modelRow.style.cursor = 'pointer';
+            modelRow.onclick = function(event) {
+                navigateToModel(event, data.model);
+            };
+        }
         const statusBadge = modelRow.querySelector('.status-badge');
         const actionContainer = modelRow.querySelector('.d-flex.align-items-center.gap-2');
 
@@ -492,11 +499,14 @@ function updateModelUI(data) {
             // For non-downloading states, ensure we have a button (not a progress bar)
             const progressContainer = modelRow.querySelector('.progress');
             if (progressContainer && progressContainer.parentElement) {
-                // Remove the progress container and replace with button
+                // Remove the entire progress container parent (which includes progress bar and button)
+                const parentContainer = progressContainer.parentElement;
                 const actionBtn = document.createElement('button');
                 actionBtn.className = 'btn btn-sm model-action-btn';
                 updateActionButton(actionBtn, data.status, data.model);
-                progressContainer.parentElement.replaceChild(actionBtn, progressContainer.parentElement);
+
+                // Replace the entire container with just the button
+                parentContainer.parentElement.replaceChild(actionBtn, parentContainer);
             } else {
                 // Just update the existing button
                 const actionBtn = modelRow.querySelector('.model-action-btn');
@@ -671,6 +681,15 @@ function showModelLibrary() {
             modelsContainer.style.backgroundColor = '';
         }, 2000);
     }
+}
+
+// Function to navigate to model detail page
+function navigateToModel(event, modelName) {
+    // Don't navigate if clicking on a button
+    if (event.target.closest('button')) {
+        return;
+    }
+    window.location.href = '/models/' + encodeURIComponent(modelName);
 }
 
 // Add spinning animation CSS

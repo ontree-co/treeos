@@ -32,6 +32,11 @@ func (s *Server) routeAPIModels(w http.ResponseWriter, r *http.Request) {
 		modelName := strings.TrimPrefix(path, "/api/models/")
 		modelName = strings.TrimSuffix(modelName, "/retry")
 		s.handleAPIModelRetry(w, r, modelName)
+	case strings.HasSuffix(path, "/delete") && r.Method == http.MethodPost:
+		// Extract model name from path
+		modelName := strings.TrimPrefix(path, "/api/models/")
+		modelName = strings.TrimSuffix(modelName, "/delete")
+		s.handleAPIModelDelete(w, r, modelName)
 	default:
 		http.NotFound(w, r)
 	}
@@ -518,4 +523,112 @@ func (s *Server) startOllamaWorker() {
 	}()
 
 	log.Println("Ollama worker started")
+}
+
+// handleAPIModelDelete handles model deletion requests
+func (s *Server) handleAPIModelDelete(w http.ResponseWriter, r *http.Request, modelName string) {
+	// Check if model exists
+	model, err := ollama.GetModel(s.db, modelName)
+	if err != nil {
+		log.Printf("Failed to get model: %v", err)
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	if model == nil {
+		http.Error(w, "Model not found", http.StatusNotFound)
+		return
+	}
+
+	// Check if model is actually installed
+	container := s.discoverOllamaContainer()
+	if container == nil {
+		http.Error(w, "Ollama container not running", http.StatusServiceUnavailable)
+		return
+	}
+
+	// Delete the model from Ollama
+	cmd := exec.Command("docker", "exec", container.Name, "ollama", "rm", modelName)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		// Check if model doesn't exist in Ollama (already deleted)
+		if !strings.Contains(string(output), "not found") {
+			log.Printf("Failed to delete model from Ollama: %v, output: %s", err, output)
+			http.Error(w, "Failed to delete model", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Reset model status in database
+	err = ollama.UpdateModelStatus(s.db, modelName, ollama.StatusNotDownloaded, 0)
+	if err != nil {
+		log.Printf("Failed to update model status: %v", err)
+		http.Error(w, "Failed to update database", http.StatusInternalServerError)
+		return
+	}
+
+	// Return success
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"message": "Model deleted successfully",
+		"model":   modelName,
+	})
+}
+
+// handleModelDetail handles the model detail page
+func (s *Server) handleModelDetail(w http.ResponseWriter, r *http.Request) {
+	user := getUserFromContext(r.Context())
+	if user == nil {
+		http.Redirect(w, r, "/login", http.StatusFound)
+		return
+	}
+
+	// Extract model name from URL
+	modelName := strings.TrimPrefix(r.URL.Path, "/models/")
+	if modelName == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Get model from database
+	model, err := ollama.GetModel(s.db, modelName)
+	if err != nil {
+		log.Printf("Failed to get model: %v", err)
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	if model == nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Check if Ollama container is running
+	hasOllama := s.checkOllamaContainer()
+
+	// Check if model is actually installed in Ollama
+	isModelInstalled := false
+	if hasOllama && model.Status == ollama.StatusCompleted {
+		installedModels := s.getInstalledModels()
+		isModelInstalled = isInstalled(modelName, installedModels)
+	}
+
+	// Prepare template data
+	data := s.baseTemplateData(user)
+	data["Model"] = model
+	data["HasOllama"] = hasOllama
+	data["IsInstalled"] = isModelInstalled
+
+	// Render the template
+	tmpl, ok := s.templates["model_detail"]
+	if !ok {
+		log.Printf("Model detail template not found")
+		http.Error(w, "Template not found", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
+		log.Printf("Failed to execute model detail template: %v", err)
+	}
 }
