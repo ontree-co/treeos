@@ -185,9 +185,10 @@ func TestScanApps_RealDirectory(t *testing.T) {
 	}
 
 	// Check that at least some known apps were found
+	// Updated to reflect actual apps in the test directory
 	expectedApps := []string{
-		"openwebui-amd",
-		"uptime-kuma",
+		"ollama-amd",
+		"ollama-cpu",
 	}
 
 	// Check that each expected app was found

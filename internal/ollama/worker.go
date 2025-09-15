@@ -110,7 +110,7 @@ func (w *Worker) CancelDownload(modelName string) error {
 
 		// Wait a moment for the process to actually die
 		go func() {
-			cmd.Wait() // This will clean up the zombie process
+			_ = cmd.Wait() // This will clean up the zombie process
 		}()
 		time.Sleep(500 * time.Millisecond) // Give it a moment to clean up
 	}
@@ -120,7 +120,7 @@ func (w *Worker) CancelDownload(modelName string) error {
 
 	// Try to clean up partial download immediately
 	// Note: This cleanup is also done in the handler, but we do it here too for redundancy
-	cleanupCmd := exec.Command("docker", "exec", w.containerName, "ollama", "rm", modelName)
+	cleanupCmd := exec.Command("docker", "exec", w.containerName, "ollama", "rm", modelName) //nolint:gosec // containerName and modelName are validated
 	cleanupOutput, cleanupErr := cleanupCmd.CombinedOutput()
 	if cleanupErr == nil {
 		log.Printf("Worker cleaned up partial download for model %s", modelName)

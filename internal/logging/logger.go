@@ -146,7 +146,10 @@ func RotateLogs(logDir string) error {
 	newPath := filepath.Join(logDir, fmt.Sprintf("treeos-%s.log", time.Now().Format("20060102-150405")))
 	if err := os.Rename(oldPath, newPath); err != nil {
 		// If rename fails, try to reopen the original file
-		defaultLogger.file, _ = os.OpenFile(oldPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		file, err := os.OpenFile(oldPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		if err == nil {
+			defaultLogger.file = file
+		}
 		return fmt.Errorf("failed to rotate log file: %w", err)
 	}
 

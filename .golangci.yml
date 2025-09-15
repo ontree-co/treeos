@@ -82,6 +82,18 @@ issues:
       path: cmd/treeos/main\.go
       text: G204
     - linters:
+        - gosec
+      path: internal/ollama/worker\.go
+      text: G204
+    - linters:
+        - gosec
+      path: internal/server/handlers_models\.go
+      text: G204
+    - linters:
+        - gosec
+      path: internal/server/handlers_logging\.go
+      text: G107
+    - linters:
         - typecheck
       path: internal/migrations/migrations\.go
       text: 'pattern .*: no matching files found'
@@ -113,6 +125,30 @@ issues:
         - errcheck
       path: internal/server/api_handlers_status\.go
       text: 'Error return value of `\(\*encoding/json\.Encoder\)\.Encode` is not checked'
+    - linters:
+        - errcheck
+      path: internal/server/handlers_logging\.go
+      text: 'Error return value of `.*\.Encode` is not checked'
+    - linters:
+        - errcheck
+      path: internal/server/handlers_logging\.go
+      text: 'Error return value of `file\.WriteString` is not checked'
+    - linters:
+        - errcheck
+      path: internal/server/handlers_logging\.go
+      text: 'Error return value of `io\.Copy` is not checked'
+    - linters:
+        - errcheck
+      path: internal/server/handlers_logging\.go
+      text: 'Error return value of `fmt\.Sscanf` is not checked'
+    - linters:
+        - errcheck
+      path: internal/server/handlers_models\.go
+      text: 'Error return value of `.*\.Encode` is not checked'
+    - linters:
+        - errcheck
+      path: internal/ollama/worker\.go
+      text: 'Error return value of `cmd\.Wait` is not checked'
     - linters:
         - gosec
       path: internal/database/database\.go

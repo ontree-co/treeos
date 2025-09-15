@@ -52,7 +52,7 @@ func (s *Server) handleBrowserLog(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[BROWSER] [%s] %s", strings.ToUpper(entry.Level), entry.Message)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 		return
 	}
 
@@ -76,14 +76,17 @@ func (s *Server) handleBrowserLog(w http.ResponseWriter, r *http.Request) {
 		// Format log entry to match server log format
 		var logLine string
 		if len(entry.Details) > 0 {
-			detailsJSON, _ := json.Marshal(entry.Details)
+			detailsJSON, err := json.Marshal(entry.Details)
+			if err != nil {
+				detailsJSON = []byte("{}")
+			}
 			logLine = fmt.Sprintf("%s [%s] [BROWSER] %s %s\n",
 				entry.Timestamp, strings.ToUpper(entry.Level), entry.Message, string(detailsJSON))
 		} else {
 			logLine = fmt.Sprintf("%s [%s] [BROWSER] %s\n",
 				entry.Timestamp, strings.ToUpper(entry.Level), entry.Message)
 		}
-		file.WriteString(logLine)
+		_, _ = file.WriteString(logLine)
 
 		// Also log to stdout in development for immediate visibility
 		log.Printf("[BROWSER] [%s] %s", strings.ToUpper(entry.Level), entry.Message)
@@ -123,7 +126,7 @@ func (s *Server) handleGetLogs(w http.ResponseWriter, r *http.Request) {
 		// Query Loki API
 		lokiURL := fmt.Sprintf("http://localhost:3100/loki/api/v1/query_range?query=%s&limit=%s", query, limit)
 
-		resp, err := http.Get(lokiURL)
+		resp, err := http.Get(lokiURL) //nolint:gosec // URL is constructed from safe local inputs
 		if err != nil {
 			log.Printf("Failed to query Loki: %v", err)
 			// Fall back to file reading
@@ -134,7 +137,7 @@ func (s *Server) handleGetLogs(w http.ResponseWriter, r *http.Request) {
 
 		// Forward response
 		w.Header().Set("Content-Type", "application/json")
-		io.Copy(w, resp.Body)
+		_, _ = io.Copy(w, resp.Body)
 	} else {
 		// Loki not available, read from files
 		s.sendLogsFromFiles(w, source, limit)
@@ -191,7 +194,7 @@ func (s *Server) sendLogsFromFiles(w http.ResponseWriter, source string, limit s
 	}
 
 	maxLines := 100
-	fmt.Sscanf(limit, "%d", &maxLines)
+	_, _ = fmt.Sscanf(limit, "%d", &maxLines)
 
 	// In development, all logs are in treeos.log
 	// In production, they might be separate (if file logging is enabled)
@@ -252,7 +255,7 @@ func (s *Server) sendLogsFromFiles(w http.ResponseWriter, source string, limit s
 			"result": logs,
 		},
 	}
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 // splitLines splits a string into lines

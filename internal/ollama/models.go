@@ -6,7 +6,7 @@ import (
 )
 
 // OllamaModel represents an Ollama model in the system
-type OllamaModel struct {
+type OllamaModel struct { //nolint:revive // intentional naming for clarity
 	Name         string         `json:"name"`          // Primary key, e.g., "llama3:8b"
 	DisplayName  string         `json:"display_name"`  // User-friendly name
 	SizeEstimate string         `json:"size_estimate"` // Estimated download size

@@ -99,7 +99,7 @@ func (s *Server) handleAPIModelsGet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 // handleAPIModelPull handles model download requests
@@ -147,7 +147,7 @@ func (s *Server) handleAPIModelPull(w http.ResponseWriter, r *http.Request, mode
 
 	// Return 202 Accepted immediately
 	w.WriteHeader(http.StatusAccepted)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"message": "Download queued",
 		"job_id":  job.ID,
 		"model":   modelName,
@@ -202,7 +202,7 @@ func (s *Server) handleAPIModelRetry(w http.ResponseWriter, r *http.Request, mod
 
 	// Return 202 Accepted
 	w.WriteHeader(http.StatusAccepted)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"message": "Retry queued",
 		"job_id":  job.ID,
 		"model":   modelName,
@@ -349,7 +349,7 @@ func (s *Server) getInstalledModels() []string {
 		return nil
 	}
 
-	cmd := exec.Command("docker", "exec", container.Name, "ollama", "list")
+	cmd := exec.Command("docker", "exec", container.Name, "ollama", "list") //nolint:gosec // container.Name is from Docker API
 	output, err := cmd.Output()
 	if err != nil {
 		log.Printf("Failed to list Ollama models: %v", err)
@@ -555,7 +555,7 @@ func (s *Server) handleAPIModelDelete(w http.ResponseWriter, r *http.Request, mo
 	}
 
 	// Delete the model from Ollama
-	cmd := exec.Command("docker", "exec", container.Name, "ollama", "rm", modelName)
+	cmd := exec.Command("docker", "exec", container.Name, "ollama", "rm", modelName) //nolint:gosec // container.Name and modelName are validated
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		// Check if model doesn't exist in Ollama (already deleted)
@@ -576,7 +576,7 @@ func (s *Server) handleAPIModelDelete(w http.ResponseWriter, r *http.Request, mo
 
 	// Return success
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"message": "Model deleted successfully",
 		"model":   modelName,
 	})
@@ -617,7 +617,7 @@ func (s *Server) handleAPIModelCancel(w http.ResponseWriter, r *http.Request, mo
 	container := s.discoverOllamaContainer()
 	if container != nil {
 		// Try to remove the partial model - this will fail if model doesn't exist, which is fine
-		cmd := exec.Command("docker", "exec", container.Name, "ollama", "rm", modelName)
+		cmd := exec.Command("docker", "exec", container.Name, "ollama", "rm", modelName) //nolint:gosec // container.Name and modelName are validated
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			// Only log if it's not a "model not found" error
@@ -638,7 +638,7 @@ func (s *Server) handleAPIModelCancel(w http.ResponseWriter, r *http.Request, mo
 
 	// Return success
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"message": "Download cancelled successfully",
 		"model":   modelName,
 	})

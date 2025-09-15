@@ -201,7 +201,10 @@ func CleanupOldJobs(db *sql.DB, olderThan time.Duration) error {
 		return fmt.Errorf("failed to cleanup old jobs: %w", err)
 	}
 
-	count, _ := result.RowsAffected()
+	count, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
 	if count > 0 {
 		log.Printf("Cleaned up %d old download jobs", count)
 	}
