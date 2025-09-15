@@ -34,8 +34,8 @@
                         <label for="name" class="form-label">
                             <strong>Application Name</strong>
                         </label>
-                        <input type="text" class="form-control" id="name" name="name" required 
-                               placeholder="my-{{.Template.ID}}" pattern="^[a-zA-Z0-9-]+$">
+                        <input type="text" class="form-control" id="name" name="name" required
+                               value="{{.Template.ID}}" placeholder="{{.Template.ID}}" pattern="^[a-zA-Z0-9-]+$">
                         <div class="form-text">
                             Enter a unique name for your application. Use lowercase letters, numbers, and hyphens only.
                         </div>
@@ -46,10 +46,10 @@
                         <label for="port" class="form-label">
                             <strong>Port</strong>
                         </label>
-                        <input type="number" class="form-control" id="port" name="port" 
-                               placeholder="{{.Template.Port}}" min="1" max="65535">
+                        <input type="number" class="form-control" id="port" name="port"
+                               value="{{.Template.Port}}" placeholder="{{.Template.Port}}" min="1" max="65535">
                         <div class="form-text">
-                            Leave empty to use the default port ({{.Template.Port}}), or specify a custom port number between 1 and 65535.
+                            Using default port {{.Template.Port}}. You can change it to any available port between 1 and 65535.
                         </div>
                     </div>
                     {{end}}
