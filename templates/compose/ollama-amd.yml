@@ -7,7 +7,10 @@ services:
     ports:
       - "11434:11434"
     volumes:
-      - /opt/ontree/sharedmodels:/root/.ollama
+      - {{SHARED_MODELS_PATH}}:/root/.ollama
+    labels:
+      - "ontree.inference=true"
+      - "ontree.type=ollama"
     devices:
       - /dev/kfd
       - /dev/dri

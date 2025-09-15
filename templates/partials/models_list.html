@@ -9,7 +9,7 @@
         <h5 class="mb-3"><i class="bi bi-chat-dots"></i> Chat Models</h5>
         <div class="models-group mb-4">
             {{range $chatModels}}
-            <div class="model-row border rounded p-3 mb-2" data-model="{{.Name}}">
+            <div class="model-row border rounded p-3 mb-2" data-model="{{.Name}}" style="cursor: pointer;" onclick="navigateToModel(event, '{{.Name}}')">
                 <div class="d-flex align-items-center justify-content-between">
                     <div class="flex-grow-1">
                         <h6 class="mb-1">{{.DisplayName}}</h6>
@@ -62,7 +62,7 @@
         <h5 class="mb-3"><i class="bi bi-code-slash"></i> Code Models</h5>
         <div class="models-group mb-4">
             {{range $codeModels}}
-            <div class="model-row border rounded p-3 mb-2" data-model="{{.Name}}">
+            <div class="model-row border rounded p-3 mb-2" data-model="{{.Name}}" style="cursor: pointer;" onclick="navigateToModel(event, '{{.Name}}')">
                 <div class="d-flex align-items-center justify-content-between">
                     <div class="flex-grow-1">
                         <h6 class="mb-1">{{.DisplayName}}</h6>
@@ -115,7 +115,7 @@
         <h5 class="mb-3"><i class="bi bi-eye"></i> Vision Models</h5>
         <div class="models-group mb-4">
             {{range $visionModels}}
-            <div class="model-row border rounded p-3 mb-2" data-model="{{.Name}}">
+            <div class="model-row border rounded p-3 mb-2" data-model="{{.Name}}" style="cursor: pointer;" onclick="navigateToModel(event, '{{.Name}}')">
                 <div class="d-flex align-items-center justify-content-between">
                     <div class="flex-grow-1">
                         <h6 class="mb-1">{{.DisplayName}}</h6>
@@ -184,4 +184,21 @@
         </p>
     </div>
 {{end}}
+
+<script>
+function navigateToModel(event, modelName) {
+    // Don't navigate if clicking on a button
+    if (event.target.closest('button')) {
+        return;
+    }
+    window.location.href = '/models/' + encodeURIComponent(modelName);
+}
+</script>
+
+<style>
+.model-row:hover {
+    background-color: #f8f9fa;
+    transition: background-color 0.2s;
+}
+</style>
 {{ end }}

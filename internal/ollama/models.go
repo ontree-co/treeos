@@ -49,10 +49,10 @@ const (
 var CuratedModels = []OllamaModel{
 	// Chat Models
 	{
-		Name:         "gemma3:270m",
-		DisplayName:  "Gemma 3 270M",
-		SizeEstimate: "291 MB",
-		Description:  "Google's ultra-lightweight model for basic tasks",
+		Name:         "gemma:2b",
+		DisplayName:  "Gemma 2B",
+		SizeEstimate: "1.7 GB",
+		Description:  "Google's lightweight model for basic tasks",
 		Category:     "chat",
 		Status:       StatusNotDownloaded,
 	},

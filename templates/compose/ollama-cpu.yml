@@ -6,3 +6,6 @@ services:
       - "11434:11434"
     volumes:
       - {{SHARED_MODELS_PATH}}:/root/.ollama
+    labels:
+      - "ontree.inference=true"
+      - "ontree.type=ollama"

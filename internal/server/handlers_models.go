@@ -32,6 +32,11 @@ func (s *Server) routeAPIModels(w http.ResponseWriter, r *http.Request) {
 		modelName := strings.TrimPrefix(path, "/api/models/")
 		modelName = strings.TrimSuffix(modelName, "/retry")
 		s.handleAPIModelRetry(w, r, modelName)
+	case strings.HasSuffix(path, "/delete") && r.Method == http.MethodPost:
+		// Extract model name from path
+		modelName := strings.TrimPrefix(path, "/api/models/")
+		modelName = strings.TrimSuffix(modelName, "/delete")
+		s.handleAPIModelDelete(w, r, modelName)
 	default:
 		http.NotFound(w, r)
 	}
@@ -201,6 +206,8 @@ func (s *Server) handleAPIModelRetry(w http.ResponseWriter, r *http.Request, mod
 
 // handleAPIModelsSSE handles SSE connections for real-time model updates
 func (s *Server) handleAPIModelsSSE(w http.ResponseWriter, r *http.Request) {
+	log.Printf("SSE client connecting from %s", r.RemoteAddr)
+
 	// Set SSE headers
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
@@ -217,7 +224,11 @@ func (s *Server) handleAPIModelsSSE(w http.ResponseWriter, r *http.Request) {
 
 	// Register client with SSE manager
 	s.sseManager.RegisterClient("models", client)
-	defer s.sseManager.UnregisterClient("models", client)
+	log.Printf("SSE client registered for models updates")
+	defer func() {
+		s.sseManager.UnregisterClient("models", client)
+		log.Printf("SSE client disconnected")
+	}()
 
 	// Create a flusher for immediate sending
 	flusher, ok := w.(http.Flusher)
@@ -262,72 +273,81 @@ func (s *Server) handleAPIModelsSSE(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// checkOllamaContainer checks if the Ollama container is running
-func (s *Server) checkOllamaContainer() bool {
-	// Check for containers with the Ollama service label
-	cmd := exec.Command("docker", "ps", "--filter", "label=com.docker.compose.service=ollama", "--format", "{{.Names}}")
-	output, err := cmd.Output()
-	if err != nil {
-		return false
-	}
-
-	// Check if we found any containers
-	containers := strings.TrimSpace(string(output))
-	if containers == "" {
-		return false
-	}
-
-	// Check if there are multiple Ollama containers running
-	containerList := strings.Split(containers, "\n")
-	if len(containerList) > 1 {
-		log.Printf("WARNING: Multiple Ollama containers found: %v", containerList)
-	}
-
-	return true
+// OllamaContainer represents discovered Ollama container info
+type OllamaContainer struct {
+	Name      string
+	Port      string
+	IsRunning bool
 }
 
-// findOllamaContainer finds which Ollama container is running and returns its name
-func (s *Server) findOllamaContainer() string {
-	// Check for containers with the Ollama service label
-	cmd := exec.Command("docker", "ps", "--filter", "label=com.docker.compose.service=ollama", "--format", "{{.Names}}")
+// discoverOllamaContainer finds Ollama containers using label-based detection
+func (s *Server) discoverOllamaContainer() *OllamaContainer {
+	// Look for containers with the ontree.inference=true label
+	cmd := exec.Command("docker", "ps", "--filter", "label=ontree.inference=true", "--format", "{{.Names}}\t{{.Ports}}")
 	output, err := cmd.Output()
 	if err != nil {
-		return ""
+		log.Printf("Failed to discover Ollama container: %v", err)
+		return nil
 	}
 
-	// Get the list of containers
-	containers := strings.TrimSpace(string(output))
-	if containers == "" {
-		return ""
+	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	if len(lines) == 0 || lines[0] == "" {
+		return nil
 	}
 
-	// Split into individual container names
-	containerList := strings.Split(containers, "\n")
-
-	// If multiple containers, log a warning and use the first one
-	if len(containerList) > 1 {
-		log.Printf("WARNING: Multiple Ollama containers found (%d), using the first one: %s",
-			len(containerList), containerList[0])
-		log.Printf("All Ollama containers: %v", containerList)
-		// In the future, this should probably return an error
+	// If multiple containers found, log warning and use first
+	if len(lines) > 1 {
+		log.Printf("Warning: Found %d containers with ontree.inference=true label, using first one", len(lines))
 	}
 
-	return containerList[0]
+	// Parse first container
+	parts := strings.Split(lines[0], "\t")
+	if len(parts) < 2 {
+		return nil
+	}
+
+	containerName := parts[0]
+	portsInfo := parts[1]
+
+	// Extract port from ports info (e.g., "0.0.0.0:11434->11434/tcp")
+	port := "11434" // Default port
+	if strings.Contains(portsInfo, ":") && strings.Contains(portsInfo, "->") {
+		// Extract host port from mapping
+		portParts := strings.Split(portsInfo, ":")
+		if len(portParts) >= 2 {
+			hostPort := strings.Split(portParts[1], "->")[0]
+			if hostPort != "" {
+				port = hostPort
+			}
+		}
+	}
+
+	return &OllamaContainer{
+		Name:      containerName,
+		Port:      port,
+		IsRunning: true,
+	}
+}
+
+// checkOllamaContainer checks if the Ollama container is running
+func (s *Server) checkOllamaContainer() bool {
+	container := s.discoverOllamaContainer()
+	return container != nil && container.IsRunning
 }
 
 // getInstalledModels retrieves the list of actually installed models from Ollama
 func (s *Server) getInstalledModels() []string {
-	// First, find which Ollama container is running
-	containerName := s.findOllamaContainer()
-	if containerName == "" {
+	// First discover the container
+	container := s.discoverOllamaContainer()
+	if container == nil {
 		log.Printf("No Ollama container found")
 		return nil
 	}
 
-	cmd := exec.Command("docker", "exec", containerName, "ollama", "list")
+	cmd := exec.Command("docker", "exec", container.Name, "ollama", "list")
 	output, err := cmd.Output()
 	if err != nil {
-		log.Printf("Failed to list Ollama models from %s: %v", containerName, err)
+		log.Printf("Failed to list Ollama models: %v", err)
 		return nil
 	}
 
@@ -465,14 +485,28 @@ func (s *Server) startOllamaWorker() {
 		return
 	}
 
-	// Create and start worker
-	s.ollamaWorker = ollama.NewWorker(s.db)
+	// Discover the Ollama container
+	container := s.discoverOllamaContainer()
+	containerName := ""
+	if container != nil {
+		containerName = container.Name
+		log.Printf("Discovered Ollama container: %s on port %s", container.Name, container.Port)
+	} else {
+		log.Printf("Warning: No Ollama container found with ontree.inference=true label")
+	}
+
+	// Create and start worker with discovered container name
+	s.ollamaWorker = ollama.NewWorker(s.db, containerName)
 	s.ollamaWorker.Start(3) // Start with 3 workers
 
 	// Listen for updates and broadcast via SSE
 	go func() {
 		updates := s.ollamaWorker.GetUpdatesChannel()
+		log.Println("Starting to listen for Ollama worker updates...")
 		for update := range updates {
+			log.Printf("Received update from worker: model=%s, status=%s, progress=%d%%",
+				update.ModelName, update.Status, update.Progress)
+
 			// Broadcast to all connected SSE clients
 			s.sseManager.BroadcastMessage("models", map[string]interface{}{
 				"event":     "model-update",
@@ -482,8 +516,119 @@ func (s *Server) startOllamaWorker() {
 				"error":     update.Error,
 				"timestamp": time.Now().Unix(),
 			})
+
+			// Note: The broadcast only happens if clients are connected
+			log.Printf("Attempted to broadcast update for model %s (clients may not be connected)", update.ModelName)
 		}
 	}()
 
 	log.Println("Ollama worker started")
+}
+
+// handleAPIModelDelete handles model deletion requests
+func (s *Server) handleAPIModelDelete(w http.ResponseWriter, r *http.Request, modelName string) {
+	// Check if model exists
+	model, err := ollama.GetModel(s.db, modelName)
+	if err != nil {
+		log.Printf("Failed to get model: %v", err)
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	if model == nil {
+		http.Error(w, "Model not found", http.StatusNotFound)
+		return
+	}
+
+	// Check if model is actually installed
+	container := s.discoverOllamaContainer()
+	if container == nil {
+		http.Error(w, "Ollama container not running", http.StatusServiceUnavailable)
+		return
+	}
+
+	// Delete the model from Ollama
+	cmd := exec.Command("docker", "exec", container.Name, "ollama", "rm", modelName)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		// Check if model doesn't exist in Ollama (already deleted)
+		if !strings.Contains(string(output), "not found") {
+			log.Printf("Failed to delete model from Ollama: %v, output: %s", err, output)
+			http.Error(w, "Failed to delete model", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Reset model status in database
+	err = ollama.UpdateModelStatus(s.db, modelName, ollama.StatusNotDownloaded, 0)
+	if err != nil {
+		log.Printf("Failed to update model status: %v", err)
+		http.Error(w, "Failed to update database", http.StatusInternalServerError)
+		return
+	}
+
+	// Return success
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"message": "Model deleted successfully",
+		"model":   modelName,
+	})
+}
+
+// handleModelDetail handles the model detail page
+func (s *Server) handleModelDetail(w http.ResponseWriter, r *http.Request) {
+	user := getUserFromContext(r.Context())
+	if user == nil {
+		http.Redirect(w, r, "/login", http.StatusFound)
+		return
+	}
+
+	// Extract model name from URL
+	modelName := strings.TrimPrefix(r.URL.Path, "/models/")
+	if modelName == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Get model from database
+	model, err := ollama.GetModel(s.db, modelName)
+	if err != nil {
+		log.Printf("Failed to get model: %v", err)
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	if model == nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Check if Ollama container is running
+	hasOllama := s.checkOllamaContainer()
+
+	// Check if model is actually installed in Ollama
+	isModelInstalled := false
+	if hasOllama && model.Status == ollama.StatusCompleted {
+		installedModels := s.getInstalledModels()
+		isModelInstalled = isInstalled(modelName, installedModels)
+	}
+
+	// Prepare template data
+	data := s.baseTemplateData(user)
+	data["Model"] = model
+	data["HasOllama"] = hasOllama
+	data["IsInstalled"] = isModelInstalled
+
+	// Render the template
+	tmpl, ok := s.templates["model_detail"]
+	if !ok {
+		log.Printf("Model detail template not found")
+		http.Error(w, "Template not found", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
+		log.Printf("Failed to execute model detail template: %v", err)
+	}
 }
