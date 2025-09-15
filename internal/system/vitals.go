@@ -4,6 +4,7 @@ package system
 import (
 	"fmt"
 	"os/exec"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -73,7 +74,7 @@ func GetVitals() (*Vitals, error) {
 	}, nil
 }
 
-// getGPULoad attempts to read GPU utilization from nvidia-smi or AMD tools
+// getGPULoad attempts to read GPU utilization from nvidia-smi, AMD tools, or macOS ioreg
 func getGPULoad() float64 {
 	// Try NVIDIA GPU first
 	if load := getNvidiaGPULoad(); load >= 0 {
@@ -82,6 +83,11 @@ func getGPULoad() float64 {
 
 	// Try AMD GPU
 	if load := getAMDGPULoad(); load >= 0 {
+		return load
+	}
+
+	// Try macOS GPU (Apple Silicon)
+	if load := getMacGPULoad(); load >= 0 {
 		return load
 	}
 
@@ -120,6 +126,35 @@ func getAMDGPULoad() float64 {
 	}
 
 	if value, err := strconv.ParseFloat(strings.TrimSpace(string(output)), 64); err == nil {
+		return value
+	}
+
+	return -1
+}
+
+// getMacGPULoad reads GPU utilization on macOS using ioreg
+func getMacGPULoad() float64 {
+	// Only run on macOS
+	if runtime.GOOS != "darwin" {
+		return -1
+	}
+
+	// Use ioreg to read GPU utilization from IOAccelerator
+	// This works for Apple Silicon Macs (M1, M2, M3, M4, etc.)
+	cmd := exec.Command("sh", "-c", `ioreg -r -c IOAccelerator | grep "PerformanceStatistics" | head -1 | grep -o '"Device Utilization %"=[0-9]*' | grep -o '[0-9]*$'`)
+	output, err := cmd.Output()
+	if err != nil {
+		return -1
+	}
+
+	// Parse the output
+	outputStr := strings.TrimSpace(string(output))
+	if outputStr == "" {
+		// GPU might be idle, return 0 instead of -1
+		return 0
+	}
+
+	if value, err := strconv.ParseFloat(outputStr, 64); err == nil {
 		return value
 	}
 

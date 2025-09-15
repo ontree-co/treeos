@@ -156,7 +156,7 @@ func (v *Validator) validateBindMounts(serviceName string, service ServiceConfig
 					hostPath = strings.TrimSuffix(hostPath, "/")
 
 					// Allow shared models directory (special exception for AI model storage)
-					if hostPath == sharedModelsPath || hostPath == "./sharedmodels" || hostPath == "sharedmodels" {
+					if hostPath == sharedModelsPath || hostPath == "./sharedmodels" {
 						continue
 					}
 
@@ -203,7 +203,7 @@ func (v *Validator) validateBindMounts(serviceName string, service ServiceConfig
 					source = strings.TrimSuffix(source, "/")
 
 					// Allow shared models directory (special exception for AI model storage)
-					if source == sharedModelsPath || source == "./sharedmodels" || source == "sharedmodels" {
+					if source == sharedModelsPath || source == "./sharedmodels" {
 						continue
 					}
 
