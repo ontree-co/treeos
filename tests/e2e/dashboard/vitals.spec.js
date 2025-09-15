@@ -23,10 +23,11 @@ test.describe('Dashboard and System Vitals', () => {
     }
     
     // Verify main dashboard elements
-    await expect(page.locator('h1')).toContainText('Server Dashboard');
+    // The dashboard uses h2 for the hostname, not h1 for 'Server Dashboard'
+    await expect(page.locator('h2.card-title')).toBeVisible();
     
-    // Verify system status card exists
-    await expect(page.locator('.card:has-text("System Status")')).toBeVisible();
+    // Verify the main status card exists (it has the hostname)
+    await expect(page.locator('.card.funky-gradient-card')).toBeVisible();
     
     // Verify applications section exists (might be h2, h3, or in a different format)
     const appSection = page.locator('h2:has-text("Applications"), h3:has-text("Applications"), .card:has-text("Applications")').first();
@@ -47,9 +48,9 @@ test.describe('Dashboard and System Vitals', () => {
     const cpuCard = page.locator('#cpu-card');
     await expect(cpuCard).toBeVisible();
     
-    // Check CPU title and icon
-    await expect(cpuCard.locator('.metric-title')).toContainText('CPU Load');
-    await expect(cpuCard.locator('.bi-cpu')).toBeVisible();
+    // Check CPU title - UI shows 'CPU Usage' not 'CPU Load'
+    await expect(cpuCard.locator('.metric-title')).toContainText('CPU Usage');
+    // Note: The template doesn't show .bi-cpu icon, it's just text
     
     // Verify CPU value format (should be a percentage)
     const cpuValue = await cpuCard.locator('.metric-value').textContent();
@@ -117,16 +118,24 @@ test.describe('Dashboard and System Vitals', () => {
   });
 
   test('should display network stats with correct formatting', async ({ page }) => {
-    // Wait for Network card to load
-    await page.waitForSelector('#network-card', { timeout: 10000 });
-    
-    // Verify Network card is displayed
-    const networkCard = page.locator('#network-card');
-    await expect(networkCard).toBeVisible();
-    
-    // Check that the card has loaded (should have metric-title or metric-value)
-    const hasContent = await networkCard.locator('.metric-title, .metric-value').count() > 0;
-    expect(hasContent).toBeTruthy();
+    // Network stats are split into download and upload cards
+    await page.waitForSelector('#download-card', { timeout: 10000 });
+    await page.waitForSelector('#upload-card', { timeout: 10000 });
+
+    // Verify Download card is displayed
+    const downloadCard = page.locator('#download-card');
+    await expect(downloadCard).toBeVisible();
+
+    // Verify Upload card is displayed
+    const uploadCard = page.locator('#upload-card');
+    await expect(uploadCard).toBeVisible();
+
+    // Check that both cards have content
+    const downloadHasContent = await downloadCard.locator('.metric-title, .metric-value').count() > 0;
+    expect(downloadHasContent).toBeTruthy();
+
+    const uploadHasContent = await uploadCard.locator('.metric-title, .metric-value').count() > 0;
+    expect(uploadHasContent).toBeTruthy();
   });
 
   test('should display Docker container statistics', async ({ page }) => {
@@ -240,7 +249,9 @@ test.describe('Dashboard and System Vitals', () => {
         await expect(page.locator('#cpu-card')).toBeVisible();
         await expect(page.locator('#memory-card')).toBeVisible();
         await expect(page.locator('#disk-card')).toBeVisible();
-        await expect(page.locator('#network-card')).toBeVisible();
+        // Network is split into download and upload cards
+        await expect(page.locator('#download-card')).toBeVisible();
+        await expect(page.locator('#upload-card')).toBeVisible();
         
         // On mobile, cards might stack vertically
         if (name === 'Mobile') {
