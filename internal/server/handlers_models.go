@@ -32,6 +32,11 @@ func (s *Server) routeAPIModels(w http.ResponseWriter, r *http.Request) {
 		modelName := strings.TrimPrefix(path, "/api/models/")
 		modelName = strings.TrimSuffix(modelName, "/retry")
 		s.handleAPIModelRetry(w, r, modelName)
+	case strings.HasSuffix(path, "/cancel") && r.Method == http.MethodPost:
+		// Extract model name from path
+		modelName := strings.TrimPrefix(path, "/api/models/")
+		modelName = strings.TrimSuffix(modelName, "/cancel")
+		s.handleAPIModelCancel(w, r, modelName)
 	case strings.HasSuffix(path, "/delete") && r.Method == http.MethodPost:
 		// Extract model name from path
 		modelName := strings.TrimPrefix(path, "/api/models/")
@@ -493,8 +498,12 @@ func (s *Server) startOllamaWorker() {
 		log.Printf("No Ollama container found at startup - will discover dynamically when needed")
 	}
 
-	// Create and start worker (no container name needed - will discover dynamically)
-	s.ollamaWorker = ollama.NewWorker(s.db)
+	// Create and start worker with discovered container name
+	containerName := ""
+	if container != nil {
+		containerName = container.Name
+	}
+	s.ollamaWorker = ollama.NewWorker(s.db, containerName)
 	s.ollamaWorker.Start(3) // Start with 3 workers
 
 	// Listen for updates and broadcast via SSE
@@ -569,6 +578,68 @@ func (s *Server) handleAPIModelDelete(w http.ResponseWriter, r *http.Request, mo
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"message": "Model deleted successfully",
+		"model":   modelName,
+	})
+}
+
+// handleAPIModelCancel handles model download cancellation requests
+func (s *Server) handleAPIModelCancel(w http.ResponseWriter, r *http.Request, modelName string) {
+	// Check if model exists
+	model, err := ollama.GetModel(s.db, modelName)
+	if err != nil {
+		log.Printf("Failed to get model: %v", err)
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	if model == nil {
+		http.Error(w, "Model not found", http.StatusNotFound)
+		return
+	}
+
+	// Only allow cancel for downloading models
+	if model.Status != ollama.StatusDownloading {
+		http.Error(w, "Model is not currently downloading", http.StatusBadRequest)
+		return
+	}
+
+	// Cancel the download through the worker
+	if s.ollamaWorker != nil {
+		err = s.ollamaWorker.CancelDownload(modelName)
+		if err != nil {
+			log.Printf("Failed to cancel download: %v", err)
+			http.Error(w, "Failed to cancel download", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Clean up any partial downloads from Ollama
+	container := s.discoverOllamaContainer()
+	if container != nil {
+		// Try to remove the partial model - this will fail if model doesn't exist, which is fine
+		cmd := exec.Command("docker", "exec", container.Name, "ollama", "rm", modelName)
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			// Only log if it's not a "model not found" error
+			if !strings.Contains(string(output), "not found") {
+				log.Printf("Note: Could not clean up partial model %s: %v", modelName, err)
+			}
+		} else {
+			log.Printf("Cleaned up partial download for model %s", modelName)
+		}
+	}
+
+	// Update model status in database
+	err = ollama.UpdateModelStatus(s.db, modelName, ollama.StatusNotDownloaded, 0)
+	if err != nil {
+		log.Printf("Failed to update model status: %v", err)
+		// Continue anyway, the cancel was successful
+	}
+
+	// Return success
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"message": "Download cancelled successfully",
 		"model":   modelName,
 	})
 }
