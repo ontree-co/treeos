@@ -205,6 +205,7 @@ func (s *Server) createAppScaffoldInternal(appPath, appName, composeContent, env
 		return fmt.Errorf("failed to write docker-compose.yml: %v", err)
 	}
 
+
 	// Always create .env file with Docker Compose naming configuration
 	// First, add the naming configuration
 	namingConfig := fmt.Sprintf("COMPOSE_PROJECT_NAME=ontree-%s\nCOMPOSE_SEPARATOR=-\n", strings.ToLower(appName))
@@ -302,6 +303,7 @@ func (s *Server) createAppScaffoldFromTemplate(appName, composeContent, envConte
 	if err := s.createAppScaffoldInternal(appPath, appName, composeContent, envContent, emoji); err != nil {
 		return err
 	}
+
 
 	// Generate app.yml with initial_setup_required flag
 	if err := s.generateAppYamlWithFlags(appPath, appName, composeContent, true); err != nil {
@@ -450,21 +452,21 @@ func usesSharedModels(composeContent string) bool {
 // ensureSharedModelsDirectory creates the shared models directory with proper permissions
 func ensureSharedModelsDirectory() error {
 	path := config.GetSharedModelsPath()
-	
 	// Check if directory exists
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		// Create directory
 		if err := os.MkdirAll(path, 0755); err != nil {
 			return fmt.Errorf("failed to create directory: %v", err)
 		}
-		
+
 		// Set ownership to root:root (Ollama runs as root)
 		if err := os.Chown(path, 0, 0); err != nil {
 			return fmt.Errorf("failed to set ownership: %v", err)
 		}
-		
+
 		log.Printf("Created shared models directory at %s with root:root ownership", path)
 	}
-	
+
 	return nil
 }
+

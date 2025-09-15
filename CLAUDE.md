@@ -34,3 +34,45 @@ Internal app IDs (database, API) use just the lowercase app name without prefix:
 - Directory: `/opt/ontree/apps/Uptime-Kuma/`
 - App ID: `uptime-kuma`
 - Container: `ontree-uptime-kuma-<service>-1`
+
+## Logging System
+
+### Overview
+TreeOS uses a simple dual-mode logging system optimized for development and production environments.
+
+### Development Mode
+When `TREEOS_ENV=development` or `DEBUG=true`:
+- All logs (server and browser) are written to `./logs/treeos.log`
+- Browser JavaScript errors are automatically captured and logged
+- `console.log/error/warn` calls are forwarded to the server
+- Logs are in chronological order for easy debugging
+
+To enable development logging:
+```bash
+# Set in .env file
+TREEOS_ENV=development
+
+# Or via environment variable
+export TREEOS_ENV=development
+```
+
+### Production Mode
+In production (default):
+- Server logs to stdout/stderr only (no file logging)
+- Browser log forwarding is disabled
+- Logs are captured by systemd/Docker
+- External monitoring (e.g., PostHog) handles error tracking
+
+### Log Format
+```
+2025/09/15 09:28:16 [INFO] [SERVER] Starting application...
+2025-09-15T09:28:18.652Z [INFO] [BROWSER] Page loaded: /apps/myapp
+```
+
+### API Endpoints
+- `POST /api/log` - Receives browser logs (development only)
+- `GET /api/logs?limit=100&source=browser` - Query recent logs (development only)
+
+### Implementation Files
+- `internal/server/handlers_logging.go` - Browser log handling
+- `cmd/treeos/main.go` - Development mode detection and log initialization
