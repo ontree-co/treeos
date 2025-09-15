@@ -19,6 +19,9 @@ type Worker struct {
 	stopCh        chan struct{}
 	wg            sync.WaitGroup
 	containerName string
+	// Track active downloads for cancellation
+	activeMu      sync.Mutex
+	activeDownloads map[string]*exec.Cmd
 }
 
 // NewWorker creates a new worker instance
@@ -34,6 +37,7 @@ func NewWorker(db *sql.DB, containerName string) *Worker {
 		updates:       make(chan ProgressUpdate, 1000),
 		stopCh:        make(chan struct{}),
 		containerName: containerName,
+		activeDownloads: make(map[string]*exec.Cmd),
 	}
 }
 
@@ -86,6 +90,55 @@ func (w *Worker) GetUpdatesChannel() <-chan ProgressUpdate {
 	return w.updates
 }
 
+// CancelDownload cancels an active download for a specific model
+func (w *Worker) CancelDownload(modelName string) error {
+	w.activeMu.Lock()
+	defer w.activeMu.Unlock()
+
+	cmd, exists := w.activeDownloads[modelName]
+	if !exists {
+		return fmt.Errorf("no active download found for model %s", modelName)
+	}
+
+	// Kill the process
+	if cmd.Process != nil {
+		log.Printf("Cancelling download for model %s (PID: %d)", modelName, cmd.Process.Pid)
+		err := cmd.Process.Kill()
+		if err != nil {
+			return fmt.Errorf("failed to kill download process: %v", err)
+		}
+
+		// Wait a moment for the process to actually die
+		go func() {
+			cmd.Wait() // This will clean up the zombie process
+		}()
+		time.Sleep(500 * time.Millisecond) // Give it a moment to clean up
+	}
+
+	// Remove from active downloads
+	delete(w.activeDownloads, modelName)
+
+	// Try to clean up partial download immediately
+	// Note: This cleanup is also done in the handler, but we do it here too for redundancy
+	cleanupCmd := exec.Command("docker", "exec", w.containerName, "ollama", "rm", modelName)
+	cleanupOutput, cleanupErr := cleanupCmd.CombinedOutput()
+	if cleanupErr == nil {
+		log.Printf("Worker cleaned up partial download for model %s", modelName)
+	} else if !strings.Contains(string(cleanupOutput), "not found") {
+		log.Printf("Worker could not clean up partial model %s: %v", modelName, cleanupErr)
+	}
+
+	// Send cancellation update
+	w.sendUpdate(ProgressUpdate{
+		ModelName: modelName,
+		Status:    StatusNotDownloaded,
+		Progress:  0,
+		Error:     "Download cancelled by user",
+	})
+
+	return nil
+}
+
 // processJobs is the main worker loop
 func (w *Worker) processJobs(workerID int) {
 	defer w.wg.Done()
@@ -131,6 +184,18 @@ func (w *Worker) processDownload(job DownloadJob) {
 
 	// Execute the ollama pull command
 	cmd := exec.Command("docker", "exec", w.containerName, "ollama", "pull", job.ModelName)
+
+	// Track this command for potential cancellation
+	w.activeMu.Lock()
+	w.activeDownloads[job.ModelName] = cmd
+	w.activeMu.Unlock()
+
+	// Ensure we clean up when done
+	defer func() {
+		w.activeMu.Lock()
+		delete(w.activeDownloads, job.ModelName)
+		w.activeMu.Unlock()
+	}()
 
 	// Create pipe for stderr (ollama outputs to stderr)
 	stderr, err := cmd.StderrPipe()
@@ -201,6 +266,17 @@ func (w *Worker) processDownload(job DownloadJob) {
 	// Wait for command to complete
 	err = cmd.Wait()
 	if err != nil {
+		// Check if this was a cancellation (process killed)
+		w.activeMu.Lock()
+		_, stillActive := w.activeDownloads[job.ModelName]
+		w.activeMu.Unlock()
+
+		if !stillActive {
+			// This was cancelled, don't treat as error
+			log.Printf("Download cancelled for model %s", job.ModelName)
+			return
+		}
+
 		w.handleError(job, fmt.Sprintf("Ollama pull failed: %v", err))
 		return
 	}

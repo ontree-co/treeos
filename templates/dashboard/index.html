@@ -439,10 +439,15 @@ function updateModelUI(data) {
         const statusBadge = modelRow.querySelector('.status-badge');
         const actionContainer = modelRow.querySelector('.d-flex.align-items-center.gap-2');
 
-        // Update status badge
+        // Update status badge (hide during downloading)
         if (statusBadge) {
-            statusBadge.textContent = formatStatus(data.status);
-            statusBadge.className = 'badge status-badge bg-' + getStatusColor(data.status);
+            if (data.status === 'downloading') {
+                statusBadge.style.display = 'none';
+            } else {
+                statusBadge.style.display = '';
+                statusBadge.textContent = formatStatus(data.status);
+                statusBadge.className = 'badge status-badge bg-' + getStatusColor(data.status);
+            }
         }
 
         // Handle progress bar creation/update for downloading status
@@ -456,6 +461,14 @@ function updateModelUI(data) {
                 if (actionBtn && actionBtn.parentElement) {
                     const newContainer = document.createElement('div');
                     newContainer.className = 'd-flex align-items-center gap-2';
+
+                    // Create cancel button
+                    const cancelBtn = document.createElement('button');
+                    cancelBtn.className = 'btn btn-sm btn-danger';
+                    cancelBtn.title = 'Cancel Download';
+                    cancelBtn.innerHTML = '<i class="bi bi-x-lg"></i>';
+                    cancelBtn.onclick = () => cancelDownload(data.model);
+                    newContainer.appendChild(cancelBtn);
 
                     // Create progress bar
                     const progressDiv = document.createElement('div');
@@ -645,7 +658,7 @@ function retryModel(modelName) {
                 const statusBadge = modelRow.querySelector('.status-badge');
                 const actionBtn = modelRow.querySelector('.model-action-btn');
                 const errorDiv = modelRow.querySelector('.error-message');
-                
+
                 if (statusBadge) {
                     statusBadge.textContent = 'Queued';
                     statusBadge.className = 'badge status-badge bg-info';
@@ -666,6 +679,33 @@ function retryModel(modelName) {
     .catch(error => {
         console.error('Error retrying model:', error);
         alert('Failed to retry model: ' + error.message);
+    });
+}
+
+function cancelDownload(modelName) {
+    if (!confirm(`Cancel download of ${modelName}?`)) {
+        return;
+    }
+
+    fetch(`/api/models/${modelName}/cancel`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => {
+        if (response.ok) {
+            // The SSE will update the UI automatically
+            console.log(`Cancelled download of ${modelName}`);
+        } else {
+            response.text().then(text => {
+                alert('Failed to cancel download: ' + text);
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Error cancelling download:', error);
+        alert('Failed to cancel download: ' + error.message);
     });
 }
 

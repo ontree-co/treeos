@@ -124,13 +124,18 @@
                                 <i class="bi bi-hourglass-split"></i> Queued for Download
                             </button>
                         {{else if eq .Model.Status "downloading"}}
-                            <div class="progress mb-2" style="height: 30px;">
-                                <div class="progress-bar progress-bar-striped progress-bar-animated"
-                                     role="progressbar"
-                                     style="width: {{.Model.Progress}}%"
-                                     aria-valuenow="{{.Model.Progress}}"
-                                     aria-valuemin="0"
-                                     aria-valuemax="100">{{.Model.Progress}}%</div>
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <button class="btn btn-danger" onclick="cancelDownload('{{.Model.Name}}');" title="Cancel Download">
+                                    <i class="bi bi-x-lg"></i> Cancel
+                                </button>
+                                <div class="progress flex-grow-1" style="height: 30px;">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                         role="progressbar"
+                                         style="width: {{.Model.Progress}}%"
+                                         aria-valuenow="{{.Model.Progress}}"
+                                         aria-valuemin="0"
+                                         aria-valuemax="100">{{.Model.Progress}}%</div>
+                                </div>
                             </div>
                             <button class="btn btn-primary w-100 mb-2" disabled>
                                 <i class="bi bi-arrow-repeat spin"></i> Downloading...
@@ -249,6 +254,33 @@ function retryModel(modelName) {
     .catch(error => {
         console.error('Error retrying model:', error);
         alert('Failed to retry download: ' + error.message);
+    });
+}
+
+function cancelDownload(modelName) {
+    if (!confirm(`Cancel download of ${modelName}?`)) {
+        return;
+    }
+
+    fetch(`/api/models/${modelName}/cancel`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => {
+        if (response.ok) {
+            // Redirect to dashboard after cancelling
+            window.location.href = '/#models-container';
+        } else {
+            response.text().then(text => {
+                alert('Failed to cancel download: ' + text);
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Error cancelling download:', error);
+        alert('Failed to cancel download: ' + error.message);
     });
 }
 

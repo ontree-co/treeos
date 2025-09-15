@@ -16,7 +16,9 @@
                         <small class="text-muted">{{.Description}} • {{.SizeEstimate}}</small>
                     </div>
                     <div class="d-flex align-items-center gap-2">
-                        <span class="badge status-badge bg-{{.StatusColor}}">{{.StatusText}}</span>
+                        {{if ne .Status "downloading"}}
+                            <span class="badge status-badge bg-{{.StatusColor}}">{{.StatusText}}</span>
+                        {{end}}
                         {{if eq .Status "not_downloaded"}}
                             <button class="btn btn-sm btn-primary model-action-btn" onclick="downloadModel('{{.Name}}')">
                                 <i class="bi bi-download"></i> Download
@@ -27,12 +29,15 @@
                             </button>
                         {{else if eq .Status "downloading"}}
                             <div class="d-flex align-items-center gap-2">
+                                <button class="btn btn-sm btn-danger" onclick="cancelDownload('{{.Name}}');" title="Cancel Download">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
                                 <div class="progress" style="width: 150px; height: 20px;">
-                                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
-                                         role="progressbar" 
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                         role="progressbar"
                                          style="width: {{.Progress}}%"
-                                         aria-valuenow="{{.Progress}}" 
-                                         aria-valuemin="0" 
+                                         aria-valuenow="{{.Progress}}"
+                                         aria-valuemin="0"
                                          aria-valuemax="100">{{.Progress}}%</div>
                                 </div>
                                 <button class="btn btn-sm btn-primary model-action-btn" disabled>
@@ -69,7 +74,9 @@
                         <small class="text-muted">{{.Description}} • {{.SizeEstimate}}</small>
                     </div>
                     <div class="d-flex align-items-center gap-2">
-                        <span class="badge status-badge bg-{{.StatusColor}}">{{.StatusText}}</span>
+                        {{if ne .Status "downloading"}}
+                            <span class="badge status-badge bg-{{.StatusColor}}">{{.StatusText}}</span>
+                        {{end}}
                         {{if eq .Status "not_downloaded"}}
                             <button class="btn btn-sm btn-primary model-action-btn" onclick="downloadModel('{{.Name}}')">
                                 <i class="bi bi-download"></i> Download
@@ -80,12 +87,15 @@
                             </button>
                         {{else if eq .Status "downloading"}}
                             <div class="d-flex align-items-center gap-2">
+                                <button class="btn btn-sm btn-danger" onclick="cancelDownload('{{.Name}}');" title="Cancel Download">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
                                 <div class="progress" style="width: 150px; height: 20px;">
-                                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
-                                         role="progressbar" 
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                         role="progressbar"
                                          style="width: {{.Progress}}%"
-                                         aria-valuenow="{{.Progress}}" 
-                                         aria-valuemin="0" 
+                                         aria-valuenow="{{.Progress}}"
+                                         aria-valuemin="0"
                                          aria-valuemax="100">{{.Progress}}%</div>
                                 </div>
                                 <button class="btn btn-sm btn-primary model-action-btn" disabled>
@@ -122,7 +132,9 @@
                         <small class="text-muted">{{.Description}} • {{.SizeEstimate}}</small>
                     </div>
                     <div class="d-flex align-items-center gap-2">
-                        <span class="badge status-badge bg-{{.StatusColor}}">{{.StatusText}}</span>
+                        {{if ne .Status "downloading"}}
+                            <span class="badge status-badge bg-{{.StatusColor}}">{{.StatusText}}</span>
+                        {{end}}
                         {{if eq .Status "not_downloaded"}}
                             <button class="btn btn-sm btn-primary model-action-btn" onclick="downloadModel('{{.Name}}')">
                                 <i class="bi bi-download"></i> Download
@@ -133,12 +145,15 @@
                             </button>
                         {{else if eq .Status "downloading"}}
                             <div class="d-flex align-items-center gap-2">
+                                <button class="btn btn-sm btn-danger" onclick="cancelDownload('{{.Name}}');" title="Cancel Download">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
                                 <div class="progress" style="width: 150px; height: 20px;">
-                                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
-                                         role="progressbar" 
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                         role="progressbar"
                                          style="width: {{.Progress}}%"
-                                         aria-valuenow="{{.Progress}}" 
-                                         aria-valuemin="0" 
+                                         aria-valuenow="{{.Progress}}"
+                                         aria-valuemin="0"
                                          aria-valuemax="100">{{.Progress}}%</div>
                                 </div>
                                 <button class="btn btn-sm btn-primary model-action-btn" disabled>
@@ -192,6 +207,34 @@ function navigateToModel(event, modelName) {
         return;
     }
     window.location.href = '/models/' + encodeURIComponent(modelName);
+}
+
+function cancelDownload(modelName) {
+    if (!confirm(`Cancel download of ${modelName}?`)) {
+        return;
+    }
+
+    fetch(`/api/models/${modelName}/cancel`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => {
+        if (response.ok) {
+            console.log(`Cancelled download of ${modelName}`);
+            // Reload the models list
+            location.reload();
+        } else {
+            response.text().then(text => {
+                alert('Failed to cancel download: ' + text);
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Error cancelling download:', error);
+        alert('Failed to cancel download: ' + error.message);
+    });
 }
 </script>
 
