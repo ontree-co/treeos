@@ -82,7 +82,7 @@ func UpdateModelStatus(db *sql.DB, name string, status string, progress int) err
 	query := `UPDATE ollama_models 
 		SET status = ?, progress = ?, updated_at = CURRENT_TIMESTAMP 
 		WHERE name = ?`
-	
+
 	// If completed, also set completed_at
 	if status == StatusCompleted {
 		query = `UPDATE ollama_models 
@@ -90,7 +90,7 @@ func UpdateModelStatus(db *sql.DB, name string, status string, progress int) err
 			    completed_at = CURRENT_TIMESTAMP 
 			WHERE name = ?`
 	}
-	
+
 	_, err := db.Exec(query, status, progress, name)
 	if err != nil {
 		return fmt.Errorf("failed to update model status: %w", err)
@@ -158,7 +158,7 @@ func UpdateJobStatus(db *sql.DB, jobID string, status string) error {
 			SET status = ?, started_at = CURRENT_TIMESTAMP 
 			WHERE id = ?`
 	}
-	
+
 	_, err := db.Exec(query, status, jobID)
 	if err != nil {
 		return fmt.Errorf("failed to update job status: %w", err)
@@ -200,10 +200,36 @@ func CleanupOldJobs(db *sql.DB, olderThan time.Duration) error {
 	if err != nil {
 		return fmt.Errorf("failed to cleanup old jobs: %w", err)
 	}
-	
+
 	count, _ := result.RowsAffected()
 	if count > 0 {
 		log.Printf("Cleaned up %d old download jobs", count)
 	}
 	return nil
+}
+
+// GetCompletedModels retrieves all models that have been successfully downloaded
+func GetCompletedModels(db *sql.DB) ([]OllamaModel, error) {
+	rows, err := db.Query(`
+		SELECT name, display_name, size_estimate, description, category, 
+		       status, progress, last_error, updated_at, completed_at
+		FROM ollama_models
+		WHERE status = ?
+		ORDER BY display_name`, StatusCompleted)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query completed models: %w", err)
+	}
+	defer rows.Close()
+
+	var models []OllamaModel
+	for rows.Next() {
+		var m OllamaModel
+		err := rows.Scan(&m.Name, &m.DisplayName, &m.SizeEstimate, &m.Description,
+			&m.Category, &m.Status, &m.Progress, &m.LastError, &m.UpdatedAt, &m.CompletedAt)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan model: %w", err)
+		}
+		models = append(models, m)
+	}
+	return models, nil
 }

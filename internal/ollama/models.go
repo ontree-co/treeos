@@ -11,9 +11,9 @@ type OllamaModel struct {
 	DisplayName  string         `json:"display_name"`  // User-friendly name
 	SizeEstimate string         `json:"size_estimate"` // Estimated download size
 	Description  string         `json:"description"`
-	Category     string         `json:"category"`      // chat, code, vision, etc.
-	Status       string         `json:"status"`        // not_downloaded, queued, downloading, completed, failed
-	Progress     int            `json:"progress"`      // 0-100
+	Category     string         `json:"category"` // chat, code, vision, etc.
+	Status       string         `json:"status"`   // not_downloaded, queued, downloading, completed, failed
+	Progress     int            `json:"progress"` // 0-100
 	LastError    sql.NullString `json:"last_error,omitempty"`
 	UpdatedAt    time.Time      `json:"updated_at"`
 	CompletedAt  sql.NullTime   `json:"completed_at,omitempty"`

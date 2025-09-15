@@ -15,7 +15,7 @@ import (
 // routeAPIModels handles all /api/models/* routes
 func (s *Server) routeAPIModels(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
-	
+
 	// Handle different model routes
 	switch {
 	case path == "/api/models" && r.Method == http.MethodGet:
@@ -101,7 +101,7 @@ func (s *Server) handleAPIModelPull(w http.ResponseWriter, r *http.Request, mode
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
 	}
-	
+
 	if model == nil {
 		http.Error(w, "Model not found", http.StatusNotFound)
 		return
@@ -112,7 +112,7 @@ func (s *Server) handleAPIModelPull(w http.ResponseWriter, r *http.Request, mode
 		http.Error(w, "Model is already being downloaded", http.StatusConflict)
 		return
 	}
-	
+
 	if model.Status == ollama.StatusCompleted {
 		http.Error(w, "Model is already downloaded", http.StatusConflict)
 		return
@@ -153,7 +153,7 @@ func (s *Server) handleAPIModelRetry(w http.ResponseWriter, r *http.Request, mod
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
 	}
-	
+
 	if model == nil {
 		http.Error(w, "Model not found", http.StatusNotFound)
 		return
@@ -321,7 +321,7 @@ func isInstalled(modelName string, installedModels []string) bool {
 func (s *Server) renderModelsHTML(w http.ResponseWriter, r *http.Request, models []ollama.OllamaModel, hasOllama bool) {
 	// Group models by category
 	var chatModels, codeModels, visionModels []interface{}
-	
+
 	for _, model := range models {
 		// Add status text and color for template
 		modelData := map[string]interface{}{
@@ -336,7 +336,7 @@ func (s *Server) renderModelsHTML(w http.ResponseWriter, r *http.Request, models
 			"StatusText":   formatStatusText(model.Status),
 			"StatusColor":  getStatusColorClass(model.Status),
 		}
-		
+
 		switch model.Category {
 		case "chat":
 			chatModels = append(chatModels, modelData)
@@ -346,16 +346,16 @@ func (s *Server) renderModelsHTML(w http.ResponseWriter, r *http.Request, models
 			visionModels = append(visionModels, modelData)
 		}
 	}
-	
+
 	data := map[string]interface{}{
-		"HasOllama":     hasOllama,
-		"Models":        models,
-		"ChatModels":    chatModels,
-		"CodeModels":    codeModels,
-		"VisionModels":  visionModels,
-		"TotalCount":    len(models),
+		"HasOllama":    hasOllama,
+		"Models":       models,
+		"ChatModels":   chatModels,
+		"CodeModels":   codeModels,
+		"VisionModels": visionModels,
+		"TotalCount":   len(models),
 	}
-	
+
 	// Use the pre-loaded template
 	tmpl, ok := s.templates["models_list"]
 	if !ok {
@@ -363,7 +363,7 @@ func (s *Server) renderModelsHTML(w http.ResponseWriter, r *http.Request, models
 		http.Error(w, "Template not found", http.StatusInternalServerError)
 		return
 	}
-	
+
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "models-list-partial", data); err != nil {
 		log.Printf("Failed to execute models list template: %v", err)

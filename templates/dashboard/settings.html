@@ -124,12 +124,27 @@
                                     <h6 class="card-title">Local Agent Settings</h6>
                                     <div class="mb-3">
                                         <label for="agent_llm_model_local" class="form-label">Model Name</label>
-                                        <input type="text" class="form-control" id="agent_llm_model_local" name="agent_llm_model_local" 
-                                               value="{{if eq .AgentLLMAPIURL "http://localhost:11434/v1/chat/completions"}}{{.AgentLLMModel}}{{else}}llama2{{end}}" 
-                                               placeholder="llama2">
-                                        <small class="form-text text-muted">
-                                            The name of the Ollama model to use (e.g., "llama2", "mistral", "codellama")
-                                        </small>
+                                        {{if .CompletedModels}}
+                                            <select class="form-control" id="agent_llm_model_local" name="agent_llm_model_local">
+                                                <option value="">-- Select a model --</option>
+                                                {{range .CompletedModels}}
+                                                    <option value="{{.Name}}" 
+                                                            {{if and $.AgentLLMModel (eq $.AgentLLMAPIURL "http://localhost:11434/v1/chat/completions") (eq $.AgentLLMModel .Name)}}selected{{end}}>
+                                                        {{.DisplayName}} ({{.Category}})
+                                                    </option>
+                                                {{end}}
+                                            </select>
+                                            <small class="form-text text-muted">
+                                                Select from your installed Ollama models
+                                            </small>
+                                        {{else}}
+                                            <input type="text" class="form-control" id="agent_llm_model_local" name="agent_llm_model_local" 
+                                                   value="{{if eq .AgentLLMAPIURL "http://localhost:11434/v1/chat/completions"}}{{.AgentLLMModel}}{{else}}{{end}}" 
+                                                   placeholder="e.g., llama3.2:3b">
+                                            <small class="form-text text-muted">
+                                                No models installed yet. <a href="/models">Install models</a> or enter a model name manually.
+                                            </small>
+                                        {{end}}
                                     </div>
                                     <div class="alert alert-info mb-0">
                                         <small>

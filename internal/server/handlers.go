@@ -7,16 +7,17 @@ import (
 	"html/template"
 	"log"
 	"net/http"
-	"treeos/internal/caddy"
-	"treeos/internal/database"
-	"treeos/internal/yamlutil"
-	"treeos/pkg/compose"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
+	"treeos/internal/caddy"
+	"treeos/internal/database"
+	"treeos/internal/ollama"
+	"treeos/internal/yamlutil"
+	"treeos/pkg/compose"
 
 	"gopkg.in/yaml.v3"
 )
@@ -1136,6 +1137,14 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	data["ConfigAgentEnabled"] = s.config.AgentEnabled
 	data["ConfigAgentLLMAPIKey"] = s.config.AgentLLMAPIKey != ""
 
+	// Get completed models for dropdown
+	completedModels, err := ollama.GetCompletedModels(s.db)
+	if err != nil {
+		log.Printf("Failed to get completed models: %v", err)
+		completedModels = []ollama.OllamaModel{} // Empty list if error
+	}
+	data["CompletedModels"] = completedModels
+
 	// Render template
 	tmpl, ok := s.templates["settings"]
 	if !ok {
@@ -1169,10 +1178,28 @@ func (s *Server) handleSettingsUpdate(w http.ResponseWriter, r *http.Request) {
 	tailscaleTags := strings.TrimSpace(r.FormValue("tailscale_tags"))
 	agentEnabled := r.FormValue("agent_enabled") == "on"
 	agentCheckInterval := strings.TrimSpace(r.FormValue("agent_check_interval"))
-	agentLLMAPIKey := strings.TrimSpace(r.FormValue("agent_llm_api_key"))
-	agentLLMAPIURL := strings.TrimSpace(r.FormValue("agent_llm_api_url"))
-	agentLLMModel := strings.TrimSpace(r.FormValue("agent_llm_model"))
 	uptimeKumaBaseURL := strings.TrimSpace(r.FormValue("uptime_kuma_base_url"))
+
+	// Handle agent type and model selection
+	agentType := r.FormValue("agent_type")
+	var agentLLMAPIKey, agentLLMAPIURL, agentLLMModel string
+
+	if agentType == "local" {
+		// Local agent configuration
+		agentLLMModel = strings.TrimSpace(r.FormValue("agent_llm_model_local"))
+		agentLLMAPIURL = "http://localhost:11434/v1/chat/completions"
+		agentLLMAPIKey = "" // Local doesn't need API key
+	} else if agentType == "cloud" {
+		// Cloud agent configuration
+		agentLLMAPIKey = strings.TrimSpace(r.FormValue("agent_llm_api_key"))
+		agentLLMAPIURL = strings.TrimSpace(r.FormValue("agent_llm_api_url"))
+		agentLLMModel = strings.TrimSpace(r.FormValue("agent_llm_model_cloud"))
+
+		// Default to OpenAI if URL is empty
+		if agentLLMAPIURL == "" {
+			agentLLMAPIURL = "https://api.openai.com/v1/chat/completions"
+		}
+	}
 
 	// Convert bool to int for database
 	agentEnabledInt := 0

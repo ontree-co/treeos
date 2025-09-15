@@ -118,7 +118,7 @@ func (w *Worker) processDownload(job DownloadJob) {
 
 	// Execute the ollama pull command
 	cmd := exec.Command("docker", "exec", w.containerName, "ollama", "pull", job.ModelName)
-	
+
 	// Create pipe for stderr (ollama outputs to stderr)
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
@@ -136,7 +136,7 @@ func (w *Worker) processDownload(job DownloadJob) {
 	reader := bufio.NewReader(stderr)
 	var lastProgress int
 	var buffer []byte
-	
+
 	for {
 		b, err := reader.ReadByte()
 		if err != nil {
@@ -145,25 +145,25 @@ func (w *Worker) processDownload(job DownloadJob) {
 			}
 			break
 		}
-		
+
 		// Handle carriage return or newline - process the line
 		if b == '\r' || b == '\n' {
 			if len(buffer) > 0 {
 				line := string(buffer)
-				
+
 				// Parse progress from the output
 				progress := ParseProgress(line)
 				if progress > 0 {
 					log.Printf("Parsed progress: %d%%", progress)
 					if progress != lastProgress {
 						lastProgress = progress
-						
+
 						// Update database
 						err = UpdateModelStatus(w.db, job.ModelName, StatusDownloading, progress)
 						if err != nil {
 							log.Printf("Failed to update progress: %v", err)
 						}
-						
+
 						// Send progress update
 						w.sendUpdate(ProgressUpdate{
 							ModelName: job.ModelName,
@@ -216,7 +216,7 @@ func (w *Worker) processDownload(job DownloadJob) {
 // handleError handles download errors
 func (w *Worker) handleError(job DownloadJob, errorMsg string) {
 	log.Printf("Error downloading model %s: %s", job.ModelName, errorMsg)
-	
+
 	// Update model error state
 	err := UpdateModelError(w.db, job.ModelName, errorMsg)
 	if err != nil {
@@ -285,34 +285,34 @@ func (w *Worker) startCleanupTask() {
 func ParseProgress(line string) int {
 	// First, handle the ANSI escape codes that ollama uses
 	// Remove all ANSI escape sequences
-	
+
 	// Remove the [?2026h, [?2026l, [?25h, [?25l sequences
 	line = strings.ReplaceAll(line, "[?2026h", "")
 	line = strings.ReplaceAll(line, "[?2026l", "")
 	line = strings.ReplaceAll(line, "[?25h", "")
 	line = strings.ReplaceAll(line, "[?25l", "")
-	
+
 	// Remove cursor position sequences like [1G, [K, [A
 	line = strings.ReplaceAll(line, "[1G", "")
 	line = strings.ReplaceAll(line, "[K", "")
 	line = strings.ReplaceAll(line, "[A", "")
-	
+
 	// Remove carriage returns and newlines
 	line = strings.ReplaceAll(line, "\r", "")
 	line = strings.ReplaceAll(line, "\n", "")
-	
+
 	// Trim spaces
 	line = strings.TrimSpace(line)
-	
+
 	// Log cleaned line for debugging
-	if line != "" && !strings.Contains(line, "⠋") && !strings.Contains(line, "⠙") && 
-	   !strings.Contains(line, "⠹") && !strings.Contains(line, "⠸") && 
-	   !strings.Contains(line, "⠼") && !strings.Contains(line, "⠴") &&
-	   !strings.Contains(line, "⠦") && !strings.Contains(line, "⠧") &&
-	   !strings.Contains(line, "⠇") && !strings.Contains(line, "⠏") {
+	if line != "" && !strings.Contains(line, "⠋") && !strings.Contains(line, "⠙") &&
+		!strings.Contains(line, "⠹") && !strings.Contains(line, "⠸") &&
+		!strings.Contains(line, "⠼") && !strings.Contains(line, "⠴") &&
+		!strings.Contains(line, "⠦") && !strings.Contains(line, "⠧") &&
+		!strings.Contains(line, "⠇") && !strings.Contains(line, "⠏") {
 		log.Printf("ParseProgress: cleaned line = '%s'", line)
 	}
-	
+
 	// Check for percentage in the format "pulling 74701a8c35f6... 100%"
 	if strings.Contains(line, "%") {
 		// Find the percentage value
@@ -329,7 +329,7 @@ func ParseProgress(line string) int {
 			}
 		}
 	}
-	
+
 	// Map specific messages to progress values
 	switch {
 	case strings.Contains(line, "pulling manifest"):
@@ -344,6 +344,6 @@ func ParseProgress(line string) int {
 		// Initial pulling without percentage
 		return 10
 	}
-	
+
 	return 0
 }
