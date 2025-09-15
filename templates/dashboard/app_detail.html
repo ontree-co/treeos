@@ -870,13 +870,60 @@
                     <li>Remove the entire app directory at <code>{{.App.Path}}</code></li>
                 </ul>
                 <p class="small text-danger"><strong>This action cannot be undone!</strong></p>
-                <form method="post" action="/api/apps/{{.App.Name}}" class="d-inline"
-                      onsubmit="event.preventDefault(); handleAppDelete(this);">
-                    <button type="button" class="btn btn-danger confirm-action" data-confirm-text="Are you sure? Click to confirm"
-                            data-custom-action="delete">
-                        <i class="fas fa-trash-alt me-1"></i> Delete App Permanently
-                    </button>
-                </form>
+                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteConfirmModal">
+                    <i class="fas fa-trash-alt me-1"></i> Delete App Permanently
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteConfirmModalLabel">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Confirm Permanent Deletion
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger mb-3">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    <strong>Warning!</strong> You are about to permanently delete the application <strong>"{{.App.Name}}"</strong>.
+                </div>
+
+                <p><strong>This action will:</strong></p>
+                <ul>
+                    <li>Stop and remove all Docker containers for this app</li>
+                    <li>Delete all volumes and persistent data</li>
+                    <li>Remove all configuration files</li>
+                    <li>Delete the entire app directory at:<br><code>{{.App.Path}}</code></li>
+                </ul>
+
+                <div class="alert alert-warning">
+                    <i class="fas fa-database me-2"></i>
+                    <strong>All data will be permanently lost!</strong> This includes:
+                    <ul class="mb-0 mt-2">
+                        <li>Database contents</li>
+                        <li>Uploaded files</li>
+                        <li>Application settings</li>
+                        <li>User data</li>
+                    </ul>
+                </div>
+
+                <p class="text-danger mb-0">
+                    <strong><i class="fas fa-undo-alt me-1"></i> This action cannot be undone!</strong>
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> Cancel
+                </button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn" onclick="performDelete()">
+                    <i class="fas fa-trash-alt me-1"></i> Yes, Delete Permanently
+                </button>
             </div>
         </div>
     </div>
@@ -949,47 +996,6 @@ function handleAppAction(form, action) {
     });
 }
 
-// Handle app delete
-function handleAppDelete(form) {
-    const appName = '{{.App.Name}}';
-    const button = form.querySelector('button');
-    
-    // Check if button is in confirming state (second click)
-    if (button && button.classList.contains('confirming')) {
-        const originalButtonHTML = button.innerHTML;
-        
-        // Disable button and show spinner
-        button.disabled = true;
-        button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Deleting...';
-        
-        // Make DELETE API call
-        fetch(form.action, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Redirect to dashboard
-                window.location.href = '/';
-            } else {
-                // Show error and restore button
-                alert('Error: ' + (data.error || 'Failed to delete app'));
-                button.disabled = false;
-                button.innerHTML = originalButtonHTML;
-                button.classList.remove('confirming');
-            }
-        })
-        .catch(error => {
-            alert('Error: ' + error.message);
-            button.disabled = false;
-            button.innerHTML = originalButtonHTML;
-            button.classList.remove('confirming');
-        });
-    }
-}
 
 // Chat messages functionality
 function loadChatMessages() {
@@ -1595,12 +1601,77 @@ window.addEventListener('beforeunload', function() {
     }
 });
 
+// Perform the delete action after modal confirmation
+function performDelete() {
+    const appName = '{{.App.Name}}';
+    const confirmBtn = document.getElementById('confirmDeleteBtn');
+    const modal = bootstrap.Modal.getInstance(document.getElementById('deleteConfirmModal'));
+
+    // Disable button and show spinner
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Deleting...';
+
+    // Make DELETE API call
+    fetch(`/api/apps/${appName}`, {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        credentials: 'same-origin' // Include cookies for authentication
+    })
+    .then(response => {
+        if (response.redirected) {
+            throw new Error('Session expired. Please login again.');
+        }
+
+        if (!response.ok) {
+            return response.text().then(text => {
+                throw new Error(text || `Request failed with status ${response.status}`);
+            });
+        }
+
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            // Hide modal
+            modal.hide();
+
+            // Show success message briefly then redirect
+            document.body.insertAdjacentHTML('beforeend', `
+                <div class="position-fixed top-50 start-50 translate-middle" style="z-index: 9999;">
+                    <div class="alert alert-success shadow-lg">
+                        <i class="fas fa-check-circle me-2"></i>
+                        Application deleted successfully. Redirecting...
+                    </div>
+                </div>
+            `);
+
+            // Redirect to dashboard after a short delay
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 1500);
+        } else {
+            // Show error and restore button
+            alert('Error: ' + (data.error || 'Failed to delete app'));
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = '<i class="fas fa-trash-alt me-1"></i> Yes, Delete Permanently';
+        }
+    })
+    .catch(error => {
+        // Show error and restore button
+        alert('Error: ' + error.message);
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = '<i class="fas fa-trash-alt me-1"></i> Yes, Delete Permanently';
+    });
+}
+
 // Recreate a specific service with the latest image
 function recreateService(appName, serviceName) {
     if (!confirm(`Recreate service ${serviceName} with the latest image? This will stop and restart the service.`)) {
         return;
     }
-    
+
     // For now, just reload the page after confirmation
     // TODO: Implement actual recreate API endpoint
     fetch(`/api/apps/${appName}/recreate?service=${serviceName}`, {
