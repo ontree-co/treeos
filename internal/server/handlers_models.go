@@ -485,18 +485,16 @@ func (s *Server) startOllamaWorker() {
 		return
 	}
 
-	// Discover the Ollama container
+	// Log if an Ollama container is available at startup (for debugging)
 	container := s.discoverOllamaContainer()
-	containerName := ""
 	if container != nil {
-		containerName = container.Name
-		log.Printf("Discovered Ollama container: %s on port %s", container.Name, container.Port)
+		log.Printf("Ollama container available at startup: %s on port %s", container.Name, container.Port)
 	} else {
-		log.Printf("Warning: No Ollama container found with ontree.inference=true label")
+		log.Printf("No Ollama container found at startup - will discover dynamically when needed")
 	}
 
-	// Create and start worker with discovered container name
-	s.ollamaWorker = ollama.NewWorker(s.db, containerName)
+	// Create and start worker (no container name needed - will discover dynamically)
+	s.ollamaWorker = ollama.NewWorker(s.db)
 	s.ollamaWorker.Start(3) // Start with 3 workers
 
 	// Listen for updates and broadcast via SSE

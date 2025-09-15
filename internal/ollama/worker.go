@@ -13,35 +13,20 @@ import (
 
 // Worker manages the background processing of Ollama model downloads
 type Worker struct {
-	db            *sql.DB
-	jobQueue      chan DownloadJob
-	updates       chan ProgressUpdate
-	stopCh        chan struct{}
-	wg            sync.WaitGroup
-	containerName string
+	db       *sql.DB
+	jobQueue chan DownloadJob
+	updates  chan ProgressUpdate
+	stopCh   chan struct{}
+	wg       sync.WaitGroup
 }
 
 // NewWorker creates a new worker instance
-func NewWorker(db *sql.DB, containerName string) *Worker {
-	// Use a default if none provided
-	if containerName == "" {
-		containerName = "ontree-ollama-ollama-1" // Fallback name
-	}
-
+func NewWorker(db *sql.DB) *Worker {
 	return &Worker{
-		db:            db,
-		jobQueue:      make(chan DownloadJob, 100),
-		updates:       make(chan ProgressUpdate, 1000),
-		stopCh:        make(chan struct{}),
-		containerName: containerName,
-	}
-}
-
-// SetContainerName updates the container name (useful if container is recreated)
-func (w *Worker) SetContainerName(containerName string) {
-	if containerName != "" {
-		w.containerName = containerName
-		log.Printf("Updated Ollama worker container name to: %s", containerName)
+		db:       db,
+		jobQueue: make(chan DownloadJob, 100),
+		updates:  make(chan ProgressUpdate, 1000),
+		stopCh:   make(chan struct{}),
 	}
 }
 
@@ -108,12 +93,47 @@ func (w *Worker) processJobs(workerID int) {
 	}
 }
 
+// discoverOllamaContainer finds the running Ollama container using label-based detection
+func (w *Worker) discoverOllamaContainer() (string, error) {
+	// Look for containers with the ontree.inference=true label
+	cmd := exec.Command("docker", "ps", "--filter", "label=ontree.inference=true", "--format", "{{.Names}}")
+	output, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("failed to list containers: %w", err)
+	}
+
+	// Parse output
+	containers := strings.TrimSpace(string(output))
+	if containers == "" {
+		return "", fmt.Errorf("no Ollama container is running")
+	}
+
+	// Split into individual container names
+	containerList := strings.Split(containers, "\n")
+
+	// If multiple containers found, return error
+	if len(containerList) > 1 {
+		return "", fmt.Errorf("multiple Ollama containers found (%d containers). Please ensure only one is running", len(containerList))
+	}
+
+	containerName := strings.TrimSpace(containerList[0])
+	log.Printf("Discovered Ollama container: %s", containerName)
+	return containerName, nil
+}
+
 // processDownload handles the actual model download
 func (w *Worker) processDownload(job DownloadJob) {
 	// Update job status to processing
 	err := UpdateJobStatus(w.db, job.ID, "processing")
 	if err != nil {
 		log.Printf("Failed to update job status: %v", err)
+	}
+
+	// Discover the Ollama container dynamically
+	containerName, err := w.discoverOllamaContainer()
+	if err != nil {
+		w.handleError(job, fmt.Sprintf("Failed to discover Ollama container: %v", err))
+		return
 	}
 
 	// Update model status to downloading
@@ -130,7 +150,7 @@ func (w *Worker) processDownload(job DownloadJob) {
 	})
 
 	// Execute the ollama pull command
-	cmd := exec.Command("docker", "exec", w.containerName, "ollama", "pull", job.ModelName)
+	cmd := exec.Command("docker", "exec", containerName, "ollama", "pull", job.ModelName)
 
 	// Create pipe for stderr (ollama outputs to stderr)
 	stderr, err := cmd.StderrPipe()
