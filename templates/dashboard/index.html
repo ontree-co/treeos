@@ -275,33 +275,19 @@
     </div>
 </div>
 
-<!-- Modal for detailed charts -->
-<div class="modal fade" id="chartModal" tabindex="-1" aria-labelledby="chartModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="chartModalLabel">Metric Details</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body" id="modal-content">
-                <!-- Detailed chart will be loaded here -->
-            </div>
-        </div>
-    </div>
-</div>
 
 <style>
     /* Monitoring card styles for dashboard */
     .monitoring-card {
-        transition: transform 0.2s, box-shadow 0.2s;
+        transition: background-color 0.2s, box-shadow 0.2s;
         height: 100%;
         border: 1px solid rgba(0,0,0,0.125);
         cursor: pointer;
     }
-    
+
     .monitoring-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        background-color: #ededed !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     }
     
     .metric-value {
@@ -339,7 +325,12 @@
     
     /* Ensure white background for cards inside gradient container */
     .funky-gradient-card .monitoring-card {
-        background-color: white !important;
+        background-color: white;
+    }
+
+    /* Gray background on hover for cards inside gradient container */
+    .funky-gradient-card .monitoring-card:hover {
+        background-color: #ededed !important;
     }
     
     /* Adjust text color for gradient background */
@@ -369,20 +360,14 @@
         });
     });
     
-    // Handle monitoring card clicks to show detailed view
+    // Handle monitoring card clicks to navigate to detailed view
     document.addEventListener('click', function(e) {
         const monitoringCard = e.target.closest('.monitoring-card');
         if (monitoringCard) {
             const cardWrapper = monitoringCard.closest('[id$="-card"]');
             if (cardWrapper) {
                 const metric = cardWrapper.id.replace('-card', '');
-                htmx.ajax('GET', '/monitoring/charts/' + metric, {
-                    target: '#modal-content',
-                    swap: 'innerHTML'
-                }).then(() => {
-                    const modal = new bootstrap.Modal(document.getElementById('chartModal'));
-                    modal.show();
-                });
+                window.location.href = '/monitoring/detail/' + metric;
             }
         }
     });

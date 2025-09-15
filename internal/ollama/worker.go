@@ -28,7 +28,7 @@ func NewWorker(db *sql.DB) *Worker {
 		jobQueue:      make(chan DownloadJob, 100),
 		updates:       make(chan ProgressUpdate, 1000),
 		stopCh:        make(chan struct{}),
-		containerName: "ontree-ollama-cpu-ollama-1", // Default container name
+		containerName: "", // Will be determined dynamically
 	}
 }
 
@@ -95,8 +95,45 @@ func (w *Worker) processJobs(workerID int) {
 	}
 }
 
+// findOllamaContainer finds which Ollama container is running
+func (w *Worker) findOllamaContainer() string {
+	// Check for containers with the Ollama service label
+	cmd := exec.Command("docker", "ps", "--filter", "label=com.docker.compose.service=ollama", "--format", "{{.Names}}")
+	output, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+
+	// Get the list of containers
+	containers := strings.TrimSpace(string(output))
+	if containers == "" {
+		return ""
+	}
+
+	// Split into individual container names
+	containerList := strings.Split(containers, "\n")
+
+	// If multiple containers, log a warning and use the first one
+	if len(containerList) > 1 {
+		log.Printf("WARNING: Multiple Ollama containers found (%d) when trying to download model, using the first one: %s",
+			len(containerList), containerList[0])
+		log.Printf("All Ollama containers: %v", containerList)
+		// In the future, this should probably return an error
+	}
+
+	return containerList[0]
+}
+
 // processDownload handles the actual model download
 func (w *Worker) processDownload(job DownloadJob) {
+	// Find the Ollama container dynamically
+	containerName := w.findOllamaContainer()
+	if containerName == "" {
+		w.handleError(job, "No Ollama container is running")
+		return
+	}
+	log.Printf("Using Ollama container: %s", containerName)
+
 	// Update job status to processing
 	err := UpdateJobStatus(w.db, job.ID, "processing")
 	if err != nil {
@@ -117,7 +154,7 @@ func (w *Worker) processDownload(job DownloadJob) {
 	})
 
 	// Execute the ollama pull command
-	cmd := exec.Command("docker", "exec", w.containerName, "ollama", "pull", job.ModelName)
+	cmd := exec.Command("docker", "exec", containerName, "ollama", "pull", job.ModelName)
 
 	// Create pipe for stderr (ollama outputs to stderr)
 	stderr, err := cmd.StderrPipe()

@@ -264,20 +264,70 @@ func (s *Server) handleAPIModelsSSE(w http.ResponseWriter, r *http.Request) {
 
 // checkOllamaContainer checks if the Ollama container is running
 func (s *Server) checkOllamaContainer() bool {
-	cmd := exec.Command("docker", "ps", "--filter", "name=ontree-ollama-cpu-ollama-1", "--format", "{{.Names}}")
+	// Check for containers with the Ollama service label
+	cmd := exec.Command("docker", "ps", "--filter", "label=com.docker.compose.service=ollama", "--format", "{{.Names}}")
 	output, err := cmd.Output()
 	if err != nil {
 		return false
 	}
-	return strings.TrimSpace(string(output)) == "ontree-ollama-cpu-ollama-1"
+
+	// Check if we found any containers
+	containers := strings.TrimSpace(string(output))
+	if containers == "" {
+		return false
+	}
+
+	// Check if there are multiple Ollama containers running
+	containerList := strings.Split(containers, "\n")
+	if len(containerList) > 1 {
+		log.Printf("WARNING: Multiple Ollama containers found: %v", containerList)
+	}
+
+	return true
+}
+
+// findOllamaContainer finds which Ollama container is running and returns its name
+func (s *Server) findOllamaContainer() string {
+	// Check for containers with the Ollama service label
+	cmd := exec.Command("docker", "ps", "--filter", "label=com.docker.compose.service=ollama", "--format", "{{.Names}}")
+	output, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+
+	// Get the list of containers
+	containers := strings.TrimSpace(string(output))
+	if containers == "" {
+		return ""
+	}
+
+	// Split into individual container names
+	containerList := strings.Split(containers, "\n")
+
+	// If multiple containers, log a warning and use the first one
+	if len(containerList) > 1 {
+		log.Printf("WARNING: Multiple Ollama containers found (%d), using the first one: %s",
+			len(containerList), containerList[0])
+		log.Printf("All Ollama containers: %v", containerList)
+		// In the future, this should probably return an error
+	}
+
+	return containerList[0]
 }
 
 // getInstalledModels retrieves the list of actually installed models from Ollama
 func (s *Server) getInstalledModels() []string {
-	cmd := exec.Command("docker", "exec", "ontree-ollama-cpu-ollama-1", "ollama", "list")
+	// First, find which Ollama container is running
+	containerName := s.findOllamaContainer()
+	if containerName == "" {
+		log.Printf("No Ollama container found")
+		return nil
+	}
+
+	cmd := exec.Command("docker", "exec", containerName, "ollama", "list")
 	output, err := cmd.Output()
 	if err != nil {
-		log.Printf("Failed to list Ollama models: %v", err)
+		log.Printf("Failed to list Ollama models from %s: %v", containerName, err)
 		return nil
 	}
 

@@ -257,6 +257,14 @@ func (s *Server) loadTemplates() error {
 	}
 	s.templates["monitoring"] = tmpl
 
+	// Load monitoring detail template
+	monitoringDetailTemplate := filepath.Join("templates", "dashboard", "monitoring_detail.html")
+	tmpl, err = embeds.ParseTemplate(baseTemplate, monitoringDetailTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse monitoring detail template: %w", err)
+	}
+	s.templates["monitoring_detail"] = tmpl
+
 	// Load monitoring partial templates (loaded separately for HTMX updates)
 	// Note: These partials don't use the base template since they're HTMX fragments
 	cpuCardTemplate := filepath.Join("templates", "dashboard", "_cpu_card.html")
