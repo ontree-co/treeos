@@ -128,18 +128,18 @@ func (s *Server) handleCreateFromTemplate(w http.ResponseWriter, r *http.Request
 			return
 		}
 
-		// If custom port is provided, replace ports in the YAML
+		// Process template content first (replace placeholders)
+		processedContent := s.templateSvc.ProcessTemplateContent(content, appName)
+
+		// If custom port is provided, replace ports in the processed YAML
 		if customPort != "" {
-			content, err = s.replacePortsInYAML(content, customPort)
+			processedContent, err = s.replacePortsInYAML(processedContent, customPort)
 			if err != nil {
 				log.Printf("Error replacing ports in YAML: %v", err)
 				http.Error(w, "Failed to update port configuration", http.StatusInternalServerError)
 				return
 			}
 		}
-
-		// Process template content (for any other replacements)
-		processedContent := s.templateSvc.ProcessTemplateContent(content, appName)
 
 		// Create the app using scaffold logic with template flag
 		if err := s.createAppScaffoldFromTemplate(appName, processedContent, "", emoji); err != nil {

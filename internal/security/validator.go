@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v3"
+	"treeos/internal/config"
 )
 
 // DangerousCapabilities defines the list of Docker capabilities that are not allowed
@@ -134,7 +135,7 @@ func (v *Validator) validateCapabilities(serviceName string, service ServiceConf
 func (v *Validator) validateBindMounts(serviceName string, service ServiceConfig) error {
 	allowedPrefix := fmt.Sprintf("/opt/ontree/apps/mount/%s/", v.appName)
 	requiredPrefix := fmt.Sprintf("/opt/ontree/apps/mount/%s/%s/", v.appName, serviceName)
-	sharedModelsPath := "/opt/ontree/sharedmodels"
+	sharedModelsPath := config.GetSharedModelsPath()
 
 	for _, volume := range service.Volumes {
 		// Volumes can be strings (bind mounts) or maps (named volumes)
@@ -155,25 +156,36 @@ func (v *Validator) validateBindMounts(serviceName string, service ServiceConfig
 					hostPath = strings.TrimSuffix(hostPath, "/")
 
 					// Allow shared models directory (special exception for AI model storage)
-					if hostPath == sharedModelsPath {
+					if hostPath == sharedModelsPath || hostPath == "./sharedmodels" || hostPath == "sharedmodels" {
 						continue
 					}
 
-					// Check if path is within allowed directory
-					if !strings.HasPrefix(hostPath, allowedPrefix) {
-						return ValidationError{
-							Service: serviceName,
-							Rule:    "bind mount path",
-							Detail:  fmt.Sprintf("bind mount path '%s' is not allowed. Use named volumes instead (e.g., 'mydata:/path') or absolute paths within '%s'", hostPath, allowedPrefix),
+					// Check if path is within allowed directory (only for absolute paths)
+					if strings.HasPrefix(hostPath, "/") {
+						if !strings.HasPrefix(hostPath, allowedPrefix) {
+							return ValidationError{
+								Service: serviceName,
+								Rule:    "bind mount path",
+								Detail:  fmt.Sprintf("bind mount path '%s' is not allowed. Use named volumes instead (e.g., 'mydata:/path') or absolute paths within '%s'", hostPath, allowedPrefix),
+							}
 						}
-					}
 
-					// Check if path follows the required naming scheme
-					if !strings.HasPrefix(hostPath, requiredPrefix) {
-						return ValidationError{
-							Service: serviceName,
-							Rule:    "bind mount naming scheme",
-							Detail:  fmt.Sprintf("bind mount path '%s' must follow the pattern '%s'", hostPath, requiredPrefix),
+						// Check if path follows the required naming scheme
+						if !strings.HasPrefix(hostPath, requiredPrefix) {
+							return ValidationError{
+								Service: serviceName,
+								Rule:    "bind mount naming scheme",
+								Detail:  fmt.Sprintf("bind mount path '%s' must follow the pattern '%s'", hostPath, requiredPrefix),
+							}
+						}
+					} else if strings.HasPrefix(hostPath, ".") {
+						// For relative paths, only allow ./sharedmodels
+						if hostPath != "./sharedmodels" && hostPath != "sharedmodels" {
+							return ValidationError{
+								Service: serviceName,
+								Rule:    "bind mount path",
+								Detail:  fmt.Sprintf("bind mount path '%s' is not allowed. Use named volumes, absolute paths within '%s', or './sharedmodels'", hostPath, allowedPrefix),
+							}
 						}
 					}
 				}
@@ -191,25 +203,36 @@ func (v *Validator) validateBindMounts(serviceName string, service ServiceConfig
 					source = strings.TrimSuffix(source, "/")
 
 					// Allow shared models directory (special exception for AI model storage)
-					if source == sharedModelsPath {
+					if source == sharedModelsPath || source == "./sharedmodels" || source == "sharedmodels" {
 						continue
 					}
 
-					// Check if path is within allowed directory
-					if !strings.HasPrefix(source, allowedPrefix) {
-						return ValidationError{
-							Service: serviceName,
-							Rule:    "bind mount path",
-							Detail:  fmt.Sprintf("bind mount path '%s' is not allowed. Use named volumes instead (e.g., 'mydata:/path') or absolute paths within '%s'", source, allowedPrefix),
+					// Check if path is within allowed directory (only for absolute paths)
+					if strings.HasPrefix(source, "/") {
+						if !strings.HasPrefix(source, allowedPrefix) {
+							return ValidationError{
+								Service: serviceName,
+								Rule:    "bind mount path",
+								Detail:  fmt.Sprintf("bind mount path '%s' is not allowed. Use named volumes instead (e.g., 'mydata:/path') or absolute paths within '%s'", source, allowedPrefix),
+							}
 						}
-					}
 
-					// Check if path follows the required naming scheme
-					if !strings.HasPrefix(source, requiredPrefix) {
-						return ValidationError{
-							Service: serviceName,
-							Rule:    "bind mount naming scheme",
-							Detail:  fmt.Sprintf("bind mount path '%s' must follow the pattern '%s'", source, requiredPrefix),
+						// Check if path follows the required naming scheme
+						if !strings.HasPrefix(source, requiredPrefix) {
+							return ValidationError{
+								Service: serviceName,
+								Rule:    "bind mount naming scheme",
+								Detail:  fmt.Sprintf("bind mount path '%s' must follow the pattern '%s'", source, requiredPrefix),
+							}
+						}
+					} else if strings.HasPrefix(source, ".") {
+						// For relative paths, only allow ./sharedmodels
+						if source != "./sharedmodels" && source != "sharedmodels" {
+							return ValidationError{
+								Service: serviceName,
+								Rule:    "bind mount path",
+								Detail:  fmt.Sprintf("bind mount path '%s' is not allowed. Use named volumes, absolute paths within '%s', or './sharedmodels'", source, allowedPrefix),
+							}
 						}
 					}
 				}

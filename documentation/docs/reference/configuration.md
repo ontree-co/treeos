@@ -180,9 +180,25 @@ treeos --debug --log-level debug
 
 #### `apps_directory`
 - **Type**: String
-- **Default**: `"./apps"`
+- **Default**: Platform-specific (see below)
 - **Description**: Directory for application data
 - **Environment**: `APPS_DIRECTORY`
+
+##### Platform-Specific Defaults
+
+OnTree uses different default paths based on the operating system:
+
+**Linux:**
+- Apps directory: `/opt/ontree/apps`
+- Shared models: `/opt/ontree/sharedmodels`
+- Database: `ontree.db` (current directory)
+
+**macOS (Darwin):**
+- Apps directory: `./apps` (relative to binary/repository)
+- Shared models: `./sharedmodels` (relative to binary/repository)
+- Database: `ontree.db` (current directory)
+
+**Note**: On macOS, paths are relative to allow development without root permissions. In production on Linux, absolute paths under `/opt/ontree` are used for system-wide installation.
 
 ## Docker Integration
 

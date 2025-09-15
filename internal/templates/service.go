@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"io/fs"
 	"path/filepath"
+	"strings"
 
+	"treeos/internal/config"
 	"treeos/internal/embeds"
 )
 
@@ -103,7 +105,12 @@ func (s *Service) ProcessTemplateContent(content string, appName string) string 
 	// Service names in templates should be descriptive (e.g., "web", "db", "redis")
 	// rather than matching the app name
 
-	// TODO: In the future, this could support variable substitution like:
+	// Replace platform-specific placeholders
+	// {{SHARED_MODELS_PATH}} - Path to shared models directory (platform-specific)
+	sharedModelsPath := config.GetSharedModelsPath()
+	content = strings.ReplaceAll(content, "{{SHARED_MODELS_PATH}}", sharedModelsPath)
+
+	// TODO: In the future, this could support more variable substitution like:
 	// {{.Port}}, {{.AppName}}, {{.RandomString}}, etc.
 
 	return content

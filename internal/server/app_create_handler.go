@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v3"
+	"treeos/internal/config"
 	"treeos/internal/security"
 	"treeos/internal/yamlutil"
 	"treeos/pkg/compose"
@@ -441,12 +442,14 @@ func extractHostPort(composeContent string) (int, error) {
 
 // usesSharedModels checks if the compose content references the shared models directory
 func usesSharedModels(composeContent string) bool {
-	return strings.Contains(composeContent, "/opt/ontree/sharedmodels")
+	// Check for both Linux and macOS paths
+	return strings.Contains(composeContent, "/opt/ontree/sharedmodels") ||
+		strings.Contains(composeContent, "./sharedmodels")
 }
 
 // ensureSharedModelsDirectory creates the shared models directory with proper permissions
 func ensureSharedModelsDirectory() error {
-	path := "/opt/ontree/sharedmodels"
+	path := config.GetSharedModelsPath()
 	
 	// Check if directory exists
 	if _, err := os.Stat(path); os.IsNotExist(err) {

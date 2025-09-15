@@ -45,6 +45,19 @@ type Config struct {
 	UptimeKumaBaseURL  string `toml:"uptime_kuma_base_url"` // Base URL for Uptime Kuma API
 }
 
+// GetSharedModelsPath returns the path to the shared models directory based on the platform
+func GetSharedModelsPath() string {
+	switch runtime.GOOS {
+	case "linux":
+		return "/opt/ontree/sharedmodels"
+	case "darwin":
+		// On macOS, use a path relative to the current directory/binary
+		return "./sharedmodels"
+	default:
+		return "./sharedmodels"
+	}
+}
+
 // defaultConfig returns the default configuration based on the platform
 func defaultConfig() *Config {
 	config := &Config{

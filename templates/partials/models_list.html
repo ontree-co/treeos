@@ -163,29 +163,24 @@
             {{end}}
         </div>
         {{end}}
-        
-        <script>
-        // Update model count badge
-        document.getElementById('model-count').textContent = '{{.TotalCount}}';
-        </script>
     {{else}}
         <div class="alert alert-info">
-            <h6><i class="bi bi-info-circle"></i> No Models Available</h6>
+            <h6>🎲 No Models Found</h6>
+            <p class="mb-2">
+                No models have been discovered in the models directory
+                (<code>{{.ModelsDir}}</code>).
+            </p>
             <p class="mb-0">
-                No Ollama models are configured. Models will appear here once they are available.
+                Download your first model using the "Download Models" button above.
             </p>
         </div>
     {{end}}
 {{else}}
-    <div class="alert alert-warning">
-        <h6><i class="bi bi-exclamation-triangle"></i> Ollama Not Available</h6>
-        <p class="mb-2">
-            The Ollama container is not running. Please ensure the <code>ontree-ollama-cpu</code> app is installed and running.
-        </p>
+    <div class="alert alert-info">
+        <h6>🎲 Ollama Not Available</h6>
         <p class="mb-0">
-            <a href="/templates" class="btn btn-sm btn-primary">
-                <i class="bi bi-plus-circle"></i> Install Ollama
-            </a>
+            No Ollama container is running. Please install an Ollama container.
+            If you are unsure, choose <code>ollama-cpu</code> for now.
         </p>
     </div>
 {{end}}

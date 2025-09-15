@@ -303,7 +303,20 @@ services:
       - ./data:/usr/share/nginx/html
 `,
 			shouldFail: true,
-			errorMsg:   "is not allowed. Use named volumes instead",
+			errorMsg:   "is not allowed. Use named volumes",
+		},
+		{
+			name:    "shared models relative path (allowed)",
+			appName: "ollama-cpu",
+			yamlContent: `
+version: '3.8'
+services:
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ./sharedmodels:/root/.ollama
+`,
+			shouldFail: false,
 		},
 		{
 			name:    "long-form volume syntax with bind mount",
