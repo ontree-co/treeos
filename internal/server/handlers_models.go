@@ -201,6 +201,8 @@ func (s *Server) handleAPIModelRetry(w http.ResponseWriter, r *http.Request, mod
 
 // handleAPIModelsSSE handles SSE connections for real-time model updates
 func (s *Server) handleAPIModelsSSE(w http.ResponseWriter, r *http.Request) {
+	log.Printf("SSE client connecting from %s", r.RemoteAddr)
+
 	// Set SSE headers
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
@@ -217,7 +219,11 @@ func (s *Server) handleAPIModelsSSE(w http.ResponseWriter, r *http.Request) {
 
 	// Register client with SSE manager
 	s.sseManager.RegisterClient("models", client)
-	defer s.sseManager.UnregisterClient("models", client)
+	log.Printf("SSE client registered for models updates")
+	defer func() {
+		s.sseManager.UnregisterClient("models", client)
+		log.Printf("SSE client disconnected")
+	}()
 
 	// Create a flusher for immediate sending
 	flusher, ok := w.(http.Flusher)
@@ -262,19 +268,78 @@ func (s *Server) handleAPIModelsSSE(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// checkOllamaContainer checks if the Ollama container is running
-func (s *Server) checkOllamaContainer() bool {
-	cmd := exec.Command("docker", "ps", "--filter", "name=ontree-ollama-cpu-ollama-1", "--format", "{{.Names}}")
+// OllamaContainer represents discovered Ollama container info
+type OllamaContainer struct {
+	Name      string
+	Port      string
+	IsRunning bool
+}
+
+// discoverOllamaContainer finds Ollama containers using label-based detection
+func (s *Server) discoverOllamaContainer() *OllamaContainer {
+	// Look for containers with the ontree.inference=true label
+	cmd := exec.Command("docker", "ps", "--filter", "label=ontree.inference=true", "--format", "{{.Names}}\t{{.Ports}}")
 	output, err := cmd.Output()
 	if err != nil {
-		return false
+		log.Printf("Failed to discover Ollama container: %v", err)
+		return nil
 	}
-	return strings.TrimSpace(string(output)) == "ontree-ollama-cpu-ollama-1"
+
+	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	if len(lines) == 0 || lines[0] == "" {
+		return nil
+	}
+
+	// If multiple containers found, log warning and use first
+	if len(lines) > 1 {
+		log.Printf("Warning: Found %d containers with ontree.inference=true label, using first one", len(lines))
+	}
+
+	// Parse first container
+	parts := strings.Split(lines[0], "\t")
+	if len(parts) < 2 {
+		return nil
+	}
+
+	containerName := parts[0]
+	portsInfo := parts[1]
+
+	// Extract port from ports info (e.g., "0.0.0.0:11434->11434/tcp")
+	port := "11434" // Default port
+	if strings.Contains(portsInfo, ":") && strings.Contains(portsInfo, "->") {
+		// Extract host port from mapping
+		portParts := strings.Split(portsInfo, ":")
+		if len(portParts) >= 2 {
+			hostPort := strings.Split(portParts[1], "->")[0]
+			if hostPort != "" {
+				port = hostPort
+			}
+		}
+	}
+
+	return &OllamaContainer{
+		Name:      containerName,
+		Port:      port,
+		IsRunning: true,
+	}
+}
+
+// checkOllamaContainer checks if the Ollama container is running
+func (s *Server) checkOllamaContainer() bool {
+	container := s.discoverOllamaContainer()
+	return container != nil && container.IsRunning
 }
 
 // getInstalledModels retrieves the list of actually installed models from Ollama
 func (s *Server) getInstalledModels() []string {
-	cmd := exec.Command("docker", "exec", "ontree-ollama-cpu-ollama-1", "ollama", "list")
+	// First discover the container
+	container := s.discoverOllamaContainer()
+	if container == nil {
+		log.Printf("No Ollama container found")
+		return nil
+	}
+
+	cmd := exec.Command("docker", "exec", container.Name, "ollama", "list")
 	output, err := cmd.Output()
 	if err != nil {
 		log.Printf("Failed to list Ollama models: %v", err)
@@ -415,14 +480,28 @@ func (s *Server) startOllamaWorker() {
 		return
 	}
 
-	// Create and start worker
-	s.ollamaWorker = ollama.NewWorker(s.db)
+	// Discover the Ollama container
+	container := s.discoverOllamaContainer()
+	containerName := ""
+	if container != nil {
+		containerName = container.Name
+		log.Printf("Discovered Ollama container: %s on port %s", container.Name, container.Port)
+	} else {
+		log.Printf("Warning: No Ollama container found with ontree.inference=true label")
+	}
+
+	// Create and start worker with discovered container name
+	s.ollamaWorker = ollama.NewWorker(s.db, containerName)
 	s.ollamaWorker.Start(3) // Start with 3 workers
 
 	// Listen for updates and broadcast via SSE
 	go func() {
 		updates := s.ollamaWorker.GetUpdatesChannel()
+		log.Println("Starting to listen for Ollama worker updates...")
 		for update := range updates {
+			log.Printf("Received update from worker: model=%s, status=%s, progress=%d%%",
+				update.ModelName, update.Status, update.Progress)
+
 			// Broadcast to all connected SSE clients
 			s.sseManager.BroadcastMessage("models", map[string]interface{}{
 				"event":     "model-update",
@@ -432,6 +511,9 @@ func (s *Server) startOllamaWorker() {
 				"error":     update.Error,
 				"timestamp": time.Now().Unix(),
 			})
+
+			// Note: The broadcast only happens if clients are connected
+			log.Printf("Attempted to broadcast update for model %s (clients may not be connected)", update.ModelName)
 		}
 	}()
 

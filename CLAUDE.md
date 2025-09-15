@@ -76,3 +76,11 @@ In production (default):
 ### Implementation Files
 - `internal/server/handlers_logging.go` - Browser log handling
 - `cmd/treeos/main.go` - Development mode detection and log initialization
+
+## Local Development Credentials
+
+For testing and development purposes, the following credentials are available:
+- Username: `ontree`
+- Password: `_g8CYFF27yURWBo4`
+
+These credentials are stored in the `.env` file and should be used when testing authenticated endpoints or simulating user interactions.

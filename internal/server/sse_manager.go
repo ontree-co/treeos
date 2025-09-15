@@ -62,6 +62,18 @@ func (m *SSEManager) BroadcastMessage(appID string, messageData interface{}) {
 		return
 	}
 
+	// Extract event type if present in messageData
+	eventType := "new-message" // Default event type
+	if msgMap, ok := messageData.(map[string]interface{}); ok {
+		if event, exists := msgMap["event"]; exists {
+			if eventStr, isString := event.(string); isString {
+				eventType = eventStr
+				// Remove the event field from the data since it's now in the SSE event type
+				delete(msgMap, "event")
+			}
+		}
+	}
+
 	// Convert message to JSON
 	jsonData, err := json.Marshal(messageData)
 	if err != nil {
@@ -69,8 +81,8 @@ func (m *SSEManager) BroadcastMessage(appID string, messageData interface{}) {
 		return
 	}
 
-	// Format as SSE event
-	sseMessage := fmt.Sprintf("event: new-message\ndata: %s\n\n", string(jsonData))
+	// Format as SSE event with the correct event type
+	sseMessage := fmt.Sprintf("event: %s\ndata: %s\n\n", eventType, string(jsonData))
 
 	// Send to all clients
 	for client := range clients {

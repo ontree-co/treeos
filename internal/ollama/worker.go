@@ -22,13 +22,26 @@ type Worker struct {
 }
 
 // NewWorker creates a new worker instance
-func NewWorker(db *sql.DB) *Worker {
+func NewWorker(db *sql.DB, containerName string) *Worker {
+	// Use a default if none provided
+	if containerName == "" {
+		containerName = "ontree-ollama-ollama-1" // Fallback name
+	}
+
 	return &Worker{
 		db:            db,
 		jobQueue:      make(chan DownloadJob, 100),
 		updates:       make(chan ProgressUpdate, 1000),
 		stopCh:        make(chan struct{}),
-		containerName: "ontree-ollama-cpu-ollama-1", // Default container name
+		containerName: containerName,
+	}
+}
+
+// SetContainerName updates the container name (useful if container is recreated)
+func (w *Worker) SetContainerName(containerName string) {
+	if containerName != "" {
+		w.containerName = containerName
+		log.Printf("Updated Ollama worker container name to: %s", containerName)
 	}
 }
 
@@ -240,9 +253,13 @@ func (w *Worker) handleError(job DownloadJob, errorMsg string) {
 
 // sendUpdate sends a progress update through the updates channel
 func (w *Worker) sendUpdate(update ProgressUpdate) {
+	log.Printf("Sending update for model %s: status=%s, progress=%d%%",
+		update.ModelName, update.Status, update.Progress)
+
 	select {
 	case w.updates <- update:
 		// Update sent successfully
+		log.Printf("Update sent successfully for model %s", update.ModelName)
 	case <-time.After(100 * time.Millisecond):
 		// Update channel is blocked, skip this update
 		log.Printf("Failed to send update for model %s (channel blocked)", update.ModelName)

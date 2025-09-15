@@ -386,73 +386,126 @@
             }
         }
     });
-
-    // Initialize Models SSE
-    initModelSSE();
 </script>
 
 <script>
 // Model Management Functions
 let modelEventSource;
 
-function initModelSSE() {
+// Make initModelSSE globally available and prevent multiple definitions
+window.initModelSSE = function() {
     if (modelEventSource) {
         modelEventSource.close();
     }
-    
-    modelEventSource = new EventSource('/api/models/events');
-    
+
+    // EventSource with credentials to ensure cookies are sent
+    modelEventSource = new EventSource('/api/models/events', { withCredentials: true });
+
     modelEventSource.addEventListener('connected', function(e) {
         console.log('Connected to model updates stream');
     });
-    
-    modelEventSource.addEventListener('new-message', function(e) {
-        const data = JSON.parse(e.data);
-        console.log('Model update received:', data);
-        updateModelUI(data);
-    });
-    
+
     modelEventSource.addEventListener('model-update', function(e) {
         const data = JSON.parse(e.data);
-        console.log('Model update received:', data);
         updateModelUI(data);
     });
-    
-    modelEventSource.addEventListener('heartbeat', function(e) {
-        console.log('Model SSE heartbeat received');
-    });
-    
+
     modelEventSource.onerror = function(e) {
         console.error('Model SSE error:', e);
+        console.error('SSE readyState:', modelEventSource.readyState);
+        console.error('SSE URL:', modelEventSource.url);
+
+        // Check if it's an auth issue (connection immediately closed)
+        if (modelEventSource.readyState === EventSource.CLOSED) {
+            console.error('SSE connection closed - likely auth issue or endpoint not found');
+        }
+
         // Reconnect after 5 seconds
-        setTimeout(initModelSSE, 5000);
+        setTimeout(window.initModelSSE, 5000);
     };
-}
+};
 
 function updateModelUI(data) {
     // Update specific model's progress bar and status
     const modelRow = document.querySelector(`[data-model="${data.model}"]`);
     if (modelRow) {
-        const progressBar = modelRow.querySelector('.progress-bar');
         const statusBadge = modelRow.querySelector('.status-badge');
-        const actionBtn = modelRow.querySelector('.model-action-btn');
-        
-        if (progressBar) {
-            progressBar.style.width = data.progress + '%';
-            progressBar.setAttribute('aria-valuenow', data.progress);
-            progressBar.textContent = data.progress + '%';
-        }
-        
+        const actionContainer = modelRow.querySelector('.d-flex.align-items-center.gap-2');
+
+        // Update status badge
         if (statusBadge) {
             statusBadge.textContent = formatStatus(data.status);
             statusBadge.className = 'badge status-badge bg-' + getStatusColor(data.status);
         }
-        
-        // Update action button based on status
-        if (actionBtn) {
-            updateActionButton(actionBtn, data.status, data.model);
+
+        // Handle progress bar creation/update for downloading status
+        if (data.status === 'downloading') {
+            let progressContainer = modelRow.querySelector('.progress');
+
+            // Create progress bar if it doesn't exist
+            if (!progressContainer) {
+                // Find the action button and replace its container
+                const actionBtn = modelRow.querySelector('.model-action-btn');
+                if (actionBtn && actionBtn.parentElement) {
+                    const newContainer = document.createElement('div');
+                    newContainer.className = 'd-flex align-items-center gap-2';
+
+                    // Create progress bar
+                    const progressDiv = document.createElement('div');
+                    progressDiv.className = 'progress';
+                    progressDiv.style.width = '150px';
+                    progressDiv.style.height = '20px';
+
+                    const progressBar = document.createElement('div');
+                    progressBar.className = 'progress-bar progress-bar-striped progress-bar-animated';
+                    progressBar.setAttribute('role', 'progressbar');
+                    progressBar.style.width = data.progress + '%';
+                    progressBar.setAttribute('aria-valuenow', data.progress);
+                    progressBar.setAttribute('aria-valuemin', '0');
+                    progressBar.setAttribute('aria-valuemax', '100');
+                    progressBar.textContent = data.progress + '%';
+
+                    progressDiv.appendChild(progressBar);
+                    newContainer.appendChild(progressDiv);
+
+                    // Create downloading button
+                    const downloadingBtn = document.createElement('button');
+                    downloadingBtn.className = 'btn btn-sm btn-primary model-action-btn';
+                    downloadingBtn.disabled = true;
+                    downloadingBtn.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> Downloading';
+
+                    newContainer.appendChild(downloadingBtn);
+
+                    // Replace the old button with the new container
+                    actionBtn.parentElement.replaceChild(newContainer, actionBtn);
+                }
+            } else {
+                // Update existing progress bar
+                const progressBar = progressContainer.querySelector('.progress-bar');
+                if (progressBar) {
+                    progressBar.style.width = data.progress + '%';
+                    progressBar.setAttribute('aria-valuenow', data.progress);
+                    progressBar.textContent = data.progress + '%';
+                }
+            }
+        } else {
+            // For non-downloading states, ensure we have a button (not a progress bar)
+            const progressContainer = modelRow.querySelector('.progress');
+            if (progressContainer && progressContainer.parentElement) {
+                // Remove the progress container and replace with button
+                const actionBtn = document.createElement('button');
+                actionBtn.className = 'btn btn-sm model-action-btn';
+                updateActionButton(actionBtn, data.status, data.model);
+                progressContainer.parentElement.replaceChild(actionBtn, progressContainer.parentElement);
+            } else {
+                // Just update the existing button
+                const actionBtn = modelRow.querySelector('.model-action-btn');
+                if (actionBtn) {
+                    updateActionButton(actionBtn, data.status, data.model);
+                }
+            }
         }
-        
+
         // If there's an error, show it
         if (data.error && data.status === 'failed') {
             let errorDiv = modelRow.querySelector('.error-message');
@@ -470,7 +523,7 @@ function updateModelUI(data) {
             }
         }
     }
-    
+
     // If download completed, refresh the whole models list
     if (data.status === 'completed' || data.status === 'failed') {
         setTimeout(() => {
@@ -633,6 +686,9 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
+// Initialize Models SSE after all functions are defined
+window.initModelSSE();
 </script>
 {{end}}
 
