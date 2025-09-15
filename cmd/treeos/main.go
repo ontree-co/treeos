@@ -13,8 +13,10 @@ import (
 	"strconv"
 	"syscall"
 
+	"github.com/joho/godotenv"
 	"treeos/internal/config"
 	"treeos/internal/database"
+	"treeos/internal/logging"
 	"treeos/internal/migration"
 	"treeos/internal/server"
 	"treeos/internal/telemetry"
@@ -22,6 +24,15 @@ import (
 )
 
 func main() {
+	// Load .env file if it exists (for development)
+	if err := godotenv.Load(); err != nil {
+		// It's okay if .env doesn't exist, especially in production
+		// Only log in debug mode
+		if os.Getenv("DEBUG") == "true" {
+			log.Printf("No .env file found or error loading it: %v", err)
+		}
+	}
+
 	// Handle version flag first, before loading configuration
 	if len(os.Args) > 1 && (os.Args[1] == "--version" || os.Args[1] == "-version" || os.Args[1] == "version") {
 		versionInfo := version.Get()
@@ -67,6 +78,23 @@ func main() {
 			}
 			return
 		}
+	}
+
+	// Initialize file logging ONLY in development mode
+	isDevelopment := os.Getenv("TREEOS_ENV") == "development" || os.Getenv("DEBUG") == "true"
+
+	if isDevelopment {
+		logDir := "./logs" // Always use local directory in development
+		if err := logging.Initialize(logDir); err != nil {
+			log.Printf("Warning: Failed to initialize file logging: %v", err)
+			// Continue with standard logging to stdout
+		} else {
+			defer logging.Close()
+			log.Printf("Development logging initialized to %s", logDir)
+		}
+	} else {
+		// In production, just use stdout (captured by systemd/Docker/etc)
+		log.Printf("Running in production mode - logging to stdout only")
 	}
 
 	// Initialize telemetry

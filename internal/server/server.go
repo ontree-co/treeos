@@ -470,6 +470,10 @@ func (s *Server) Start() error {
 	// Version endpoint (no auth required for automation/monitoring)
 	mux.HandleFunc("/version", s.TracingMiddleware(s.handleVersion))
 
+	// Logging endpoints
+	mux.HandleFunc("/api/log", s.TracingMiddleware(s.handleBrowserLog))
+	mux.HandleFunc("/api/logs", s.TracingMiddleware(s.AuthRequiredMiddleware(s.handleGetLogs)))
+
 	// Pattern library routes (no auth required - public access)
 	mux.HandleFunc("/patterns", s.TracingMiddleware(s.routePatterns))
 	mux.HandleFunc("/patterns/", s.TracingMiddleware(s.routePatterns))
