@@ -323,7 +323,136 @@
         });
     </script>
     {{end}}
-    
+
+    <!-- Unified Logging System -->
+    <script>
+    (function() {
+        // Only enable browser logging if not in production or if explicitly enabled
+        const isProduction = window.location.hostname !== 'localhost' && !window.location.hostname.startsWith('192.168');
+        const loggingEnabled = !isProduction || localStorage.getItem('enableLogging') === 'true';
+
+        if (!loggingEnabled) return;
+
+        // Store original console functions
+        const originalConsole = {
+            log: console.log,
+            error: console.error,
+            warn: console.warn,
+            info: console.info,
+            debug: console.debug
+        };
+
+        // Function to send logs to server
+        function sendLogToServer(level, args) {
+            try {
+                const message = Array.from(args).map(arg => {
+                    if (typeof arg === 'object') {
+                        try {
+                            return JSON.stringify(arg, null, 2);
+                        } catch (e) {
+                            return String(arg);
+                        }
+                    }
+                    return String(arg);
+                }).join(' ');
+
+                // Skip empty messages or certain noisy messages
+                if (!message || message.includes('DevTools') || message.includes('[HMR]')) {
+                    return;
+                }
+
+                fetch('/api/log', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{.CSRFToken}}'
+                    },
+                    body: JSON.stringify({
+                        level: level,
+                        source: 'browser',
+                        message: message,
+                        timestamp: new Date().toISOString(),
+                        details: {
+                            url: window.location.href,
+                            userAgent: navigator.userAgent
+                        }
+                    })
+                }).catch(err => {
+                    // Silently fail to avoid infinite loop
+                    originalConsole.error('Failed to send log:', err);
+                });
+            } catch (e) {
+                // Silently fail
+            }
+        }
+
+        // Override console methods
+        console.log = function(...args) {
+            originalConsole.log.apply(console, args);
+            sendLogToServer('info', args);
+        };
+
+        console.error = function(...args) {
+            originalConsole.error.apply(console, args);
+            sendLogToServer('error', args);
+        };
+
+        console.warn = function(...args) {
+            originalConsole.warn.apply(console, args);
+            sendLogToServer('warn', args);
+        };
+
+        console.info = function(...args) {
+            originalConsole.info.apply(console, args);
+            sendLogToServer('info', args);
+        };
+
+        console.debug = function(...args) {
+            originalConsole.debug.apply(console, args);
+            if (localStorage.getItem('debug') === 'true') {
+                sendLogToServer('debug', args);
+            }
+        };
+
+        // Capture HTMX errors
+        document.body.addEventListener('htmx:responseError', function(evt) {
+            const errorInfo = {
+                url: evt.detail.xhr.responseURL,
+                status: evt.detail.xhr.status,
+                statusText: evt.detail.xhr.statusText,
+                responseText: evt.detail.xhr.responseText?.substring(0, 500)
+            };
+            console.error('HTMX Response Error:', errorInfo);
+        });
+
+        document.body.addEventListener('htmx:sendError', function(evt) {
+            console.error('HTMX Send Error:', evt.detail);
+        });
+
+        document.body.addEventListener('htmx:timeout', function(evt) {
+            console.error('HTMX Timeout:', evt.detail);
+        });
+
+        // Capture unhandled errors
+        window.addEventListener('error', function(event) {
+            console.error('Uncaught error:', {
+                message: event.message,
+                filename: event.filename,
+                line: event.lineno,
+                column: event.colno,
+                error: event.error?.stack || event.error
+            });
+        });
+
+        window.addEventListener('unhandledrejection', function(event) {
+            console.error('Unhandled promise rejection:', event.reason);
+        });
+
+        // Log initial page load
+        console.info('Page loaded:', window.location.pathname);
+    })();
+    </script>
+
     {{block "extra_js" .}}{{end}}
 </body>
 </html>
