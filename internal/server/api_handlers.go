@@ -149,12 +149,29 @@ func (s *Server) handleCreateApp(w http.ResponseWriter, r *http.Request) {
 	if s.composeSvc != nil {
 		log.Printf("Starting containers for newly created app: %s at path: %s", req.Name, appDir)
 
-		// Validate security rules first
-		validator := security.NewValidator(req.Name)
-		if err := validator.ValidateCompose([]byte(req.ComposeYAML)); err != nil {
-			log.Printf("Security validation failed for app %s: %v", req.Name, err)
-			// Don't fail app creation, just skip container creation
+		// Check if security bypass is enabled for this app
+		metadata, err := yamlutil.ReadComposeMetadata(appDir)
+		if err != nil {
+			log.Printf("Failed to read metadata for app %s, assuming security enabled: %v", req.Name, err)
+			metadata = &yamlutil.OnTreeMetadata{}
+		}
+
+		// Validate security rules unless bypassed
+		shouldStart := false
+		if !metadata.BypassSecurity {
+			validator := security.NewValidator(req.Name)
+			if err := validator.ValidateCompose([]byte(req.ComposeYAML)); err != nil {
+				log.Printf("Security validation failed for app %s: %v", req.Name, err)
+				// Don't fail app creation, just skip container creation
+			} else {
+				shouldStart = true
+			}
 		} else {
+			log.Printf("SECURITY: Bypassing security validation for app '%s' (user-configured)", req.Name)
+			shouldStart = true
+		}
+
+		if shouldStart {
 			// Start the app using compose SDK
 			ctx := context.Background()
 			opts := compose.Options{
@@ -325,12 +342,23 @@ func (s *Server) handleAPIAppStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate security rules
-	validator := security.NewValidator(appName)
-	if err := validator.ValidateCompose(yamlContent); err != nil {
-		log.Printf("Security validation failed for app %s: %v", appName, err)
-		http.Error(w, fmt.Sprintf("Security validation failed: %v", err), http.StatusBadRequest)
-		return
+	// Check if security bypass is enabled for this app
+	metadata, err := yamlutil.ReadComposeMetadata(appDir)
+	if err != nil {
+		log.Printf("Failed to read metadata for app %s, assuming security enabled: %v", appName, err)
+		metadata = &yamlutil.OnTreeMetadata{}
+	}
+
+	// Validate security rules unless bypassed
+	if !metadata.BypassSecurity {
+		validator := security.NewValidator(appName)
+		if err := validator.ValidateCompose(yamlContent); err != nil {
+			log.Printf("Security validation failed for app %s: %v", appName, err)
+			http.Error(w, fmt.Sprintf("Security validation failed: %v", err), http.StatusBadRequest)
+			return
+		}
+	} else {
+		log.Printf("SECURITY: Bypassing security validation for app '%s' (user-configured)", appName)
 	}
 
 	// Start the app using compose SDK
@@ -487,6 +515,75 @@ func (s *Server) handleAPIAppDelete(w http.ResponseWriter, r *http.Request) {
 	response := map[string]interface{}{
 		"success": true,
 		"message": fmt.Sprintf("App '%s' deleted successfully", appName),
+	}
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("Failed to encode response: %v", err)
+	}
+}
+
+// handleAPIAppSecurityBypass handles POST /api/apps/{appName}/security-bypass
+func (s *Server) handleAPIAppSecurityBypass(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Extract app name from URL
+	path := strings.TrimPrefix(r.URL.Path, "/api/apps/")
+	appName := strings.TrimSuffix(path, "/security-bypass")
+
+	if appName == "" {
+		http.Error(w, "App name is required", http.StatusBadRequest)
+		return
+	}
+
+	// Parse request body
+	var request struct {
+		BypassSecurity bool `json:"bypassSecurity"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Check if app exists
+	appDir := filepath.Join(s.config.AppsDir, appName)
+	if _, err := os.Stat(appDir); os.IsNotExist(err) {
+		http.Error(w, fmt.Sprintf("App '%s' not found", appName), http.StatusNotFound)
+		return
+	}
+
+	// Read current metadata
+	metadata, err := yamlutil.ReadComposeMetadata(appDir)
+	if err != nil {
+		log.Printf("Failed to read metadata for app %s: %v", appName, err)
+		// Initialize with empty metadata if file doesn't exist
+		metadata = &yamlutil.OnTreeMetadata{}
+	}
+
+	// Update the bypass security flag
+	metadata.BypassSecurity = request.BypassSecurity
+
+	// Write updated metadata back
+	if err := yamlutil.UpdateComposeMetadata(appDir, metadata); err != nil {
+		log.Printf("Failed to update metadata for app %s: %v", appName, err)
+		http.Error(w, "Failed to update security settings", http.StatusInternalServerError)
+		return
+	}
+
+	// Log the security bypass change for audit purposes
+	if request.BypassSecurity {
+		log.Printf("SECURITY: Security validation BYPASSED for app '%s'", appName)
+	} else {
+		log.Printf("SECURITY: Security validation ENABLED for app '%s'", appName)
+	}
+
+	// Return success response
+	w.Header().Set("Content-Type", "application/json")
+	response := map[string]interface{}{
+		"success":        true,
+		"bypassSecurity": request.BypassSecurity,
+		"message":        fmt.Sprintf("Security settings updated for app '%s'", appName),
 	}
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		log.Printf("Failed to encode response: %v", err)

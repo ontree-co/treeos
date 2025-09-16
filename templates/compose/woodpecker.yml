@@ -23,8 +23,9 @@ services:
       - WOODPECKER_FORGEJO_CLIENT=${WOODPECKER_FORGEJO_CLIENT:-CHANGE_ME}
       - WOODPECKER_FORGEJO_SECRET=${WOODPECKER_FORGEJO_SECRET:-CHANGE_ME}
       
-      # Security - Generate with: openssl rand -hex 32
-      - WOODPECKER_AGENT_SECRET=${WOODPECKER_AGENT_SECRET:-CHANGE_ME_TO_RANDOM_32_HEX}
+      # CRITICAL: Must be set in .env file! Generate with: openssl rand -hex 32
+      # This MUST match between server and agent for authentication
+      - WOODPECKER_AGENT_SECRET=${WOODPECKER_AGENT_SECRET}
       
       # Database (uses SQLite by default)
       - WOODPECKER_DATABASE_DRIVER=${WOODPECKER_DATABASE_DRIVER:-sqlite3}
@@ -36,7 +37,9 @@ services:
       
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8000/healthz"]
+      # Using /bin/sh -c to check if port 8000 is responding
+      # Note: wget is not available in the container, so we use a simple TCP check
+      test: ["CMD", "/bin/sh", "-c", "nc -z localhost 8000 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -45,8 +48,9 @@ services:
   woodpecker-agent:
     image: woodpeckerci/woodpecker-agent:v3
     depends_on:
+      # Note: Changed from service_healthy to service_started due to health check issues
       woodpecker-server:
-        condition: service_healthy
+        condition: service_started
     networks:
       - woodpecker
     volumes:
@@ -54,6 +58,7 @@ services:
       - woodpecker_agent_config:/etc/woodpecker
     environment:
       - WOODPECKER_SERVER=woodpecker-server:9000
+      # CRITICAL: Must be set in .env file and match the server's secret!
       - WOODPECKER_AGENT_SECRET=${WOODPECKER_AGENT_SECRET}
       - WOODPECKER_MAX_WORKFLOWS=${WOODPECKER_MAX_WORKFLOWS:-2}
       - WOODPECKER_BACKEND=${WOODPECKER_BACKEND:-docker}

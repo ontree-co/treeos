@@ -848,31 +848,57 @@
     </div>
 </div>
 
-<!-- Delete App -->
+<!-- Danger Zone -->
 <div class="row mt-4">
     <div class="col-12">
         <div class="card border-danger">
             <div class="card-header bg-danger text-white">
                 <h5 class="mb-0">
-                    <i class="fas fa-trash-alt me-2"></i>Delete
+                    <i class="fas fa-exclamation-triangle me-2"></i>Danger Zone
                 </h5>
             </div>
             <div class="card-body">
-                <div class="alert alert-danger mb-3">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    <strong>Warning:</strong> This will permanently delete the application.
+                <!-- Security Bypass Section -->
+                <div class="border rounded p-3 mb-4">
+                    <h6 class="text-danger mb-3">
+                        <i class="fas fa-shield-alt me-2"></i>Security Validation
+                    </h6>
+                    <div class="alert alert-warning mb-3">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Warning:</strong> Disabling security validation allows containers to run with dangerous capabilities, privileged mode, and unrestricted bind mounts. Only use this if you trust the application completely.
+                    </div>
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="bypassSecuritySwitch" {{if .App.BypassSecurity}}checked{{end}}>
+                        <label class="form-check-label" for="bypassSecuritySwitch">
+                            Bypass security validation for this app
+                        </label>
+                    </div>
+                    <button type="button" class="btn btn-warning" onclick="saveSecurityBypass()" id="saveSecurityBtn">
+                        <i class="fas fa-save me-1"></i> Save Security Settings
+                    </button>
                 </div>
-                
-                <p class="small text-muted">This action will:</p>
-                <ul class="small text-muted">
-                    <li>Stop and remove all Docker containers</li>
-                    <li>Delete all app data and configuration files</li>
-                    <li>Remove the entire app directory at <code>{{.App.Path}}</code></li>
-                </ul>
-                <p class="small text-danger"><strong>This action cannot be undone!</strong></p>
-                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteConfirmModal">
-                    <i class="fas fa-trash-alt me-1"></i> Delete App Permanently
-                </button>
+
+                <!-- Delete App Section -->
+                <div class="border rounded p-3">
+                    <h6 class="text-danger mb-3">
+                        <i class="fas fa-trash-alt me-2"></i>Delete Application
+                    </h6>
+                    <div class="alert alert-danger mb-3">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Warning:</strong> This will permanently delete the application.
+                    </div>
+
+                    <p class="small text-muted">This action will:</p>
+                    <ul class="small text-muted">
+                        <li>Stop and remove all Docker containers</li>
+                        <li>Delete all app data and configuration files</li>
+                        <li>Remove the entire app directory at <code>{{.App.Path}}</code></li>
+                    </ul>
+                    <p class="small text-danger"><strong>This action cannot be undone!</strong></p>
+                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteConfirmModal">
+                        <i class="fas fa-trash-alt me-1"></i> Delete App Permanently
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -1600,6 +1626,77 @@ window.addEventListener('beforeunload', function() {
         toggleFollowLogs();
     }
 });
+
+// Save security bypass settings
+function saveSecurityBypass() {
+    const appName = '{{.App.Name}}';
+    const bypassSwitch = document.getElementById('bypassSecuritySwitch');
+    const saveBtn = document.getElementById('saveSecurityBtn');
+    const bypassEnabled = bypassSwitch.checked;
+
+    // Confirm if enabling bypass
+    if (bypassEnabled) {
+        if (!confirm('Are you sure you want to bypass security validation for this app? This will allow it to run with potentially dangerous permissions.')) {
+            bypassSwitch.checked = false;
+            return;
+        }
+    }
+
+    // Disable button and show loading state
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Saving...';
+
+    // Send API request
+    fetch(`/api/apps/${appName}/security-bypass`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            bypassSecurity: bypassEnabled
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Failed to update security settings');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            // Show success message
+            const alertHtml = `
+                <div class="alert alert-success alert-dismissible fade show mt-3" role="alert">
+                    <i class="fas fa-check-circle me-2"></i>
+                    Security settings updated successfully.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            `;
+            saveBtn.parentElement.insertAdjacentHTML('beforeend', alertHtml);
+
+            // Remove alert after 3 seconds
+            setTimeout(() => {
+                const alert = saveBtn.parentElement.querySelector('.alert');
+                if (alert) {
+                    alert.remove();
+                }
+            }, 3000);
+        } else {
+            throw new Error(data.message || 'Failed to update security settings');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to update security settings: ' + error.message);
+        // Revert switch state on error
+        bypassSwitch.checked = !bypassEnabled;
+    })
+    .finally(() => {
+        // Restore button state
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<i class="fas fa-save me-1"></i> Save Security Settings';
+    });
+}
 
 // Perform the delete action after modal confirmation
 function performDelete() {

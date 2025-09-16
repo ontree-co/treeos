@@ -49,11 +49,17 @@ The Woodpecker template includes:
 
 ### Step 3: Configure Environment Variables
 
+**⚠️ CRITICAL: The `.env` file MUST be configured before starting Woodpecker! ⚠️**
+
 1. In TreeOS, go to your Woodpecker app detail page
 2. Click **"Edit Configuration"**
 3. Create or edit the `.env` file with the following:
 
 ```env
+# REQUIRED: TreeOS compose configuration
+COMPOSE_PROJECT_NAME=ontree-woodpecker
+COMPOSE_SEPARATOR=-
+
 # Your Woodpecker instance URL (must be accessible from Codeberg)
 WOODPECKER_HOST=http://YOUR_DOMAIN:8000
 
@@ -69,7 +75,8 @@ WOODPECKER_FORGEJO_URL=https://codeberg.org
 WOODPECKER_FORGEJO_CLIENT=your-oauth-client-id-here
 WOODPECKER_FORGEJO_SECRET=your-oauth-client-secret-here
 
-# Security - MUST generate a unique secret
+# ⚠️ CRITICAL - MUST BE SET OR AGENT WILL NOT START! ⚠️
+# Security token for agent-server communication
 # Generate with: openssl rand -hex 32
 WOODPECKER_AGENT_SECRET=paste-generated-32-hex-string-here
 
@@ -78,21 +85,40 @@ WOODPECKER_MAX_WORKFLOWS=2
 WOODPECKER_LOG_LEVEL=info
 ```
 
-4. To generate the agent secret, run:
+4. **To generate the agent secret (REQUIRED):**
    ```bash
    openssl rand -hex 32
    ```
-   Copy the output and paste it as `WOODPECKER_AGENT_SECRET`
+   Copy the ENTIRE output and paste it as the value for `WOODPECKER_AGENT_SECRET`
+
+   ⚠️ **Without this, the agent will fail with "agent could not auth: please provide a token"** ⚠️
 
 5. Save the configuration
 
-### Step 4: Start Woodpecker
+### Step 4: Enable Security Bypass (Required for Docker Socket Access)
+
+**⚠️ IMPORTANT: Woodpecker requires Docker socket access, which is blocked by TreeOS security by default ⚠️**
+
+1. Go to your Woodpecker app detail page in TreeOS
+2. Scroll down to the **"Danger Zone"** section
+3. Enable **"Bypass security validation for this app"**
+4. Click **"Save Security Settings"**
+5. Confirm the warning dialog
+
+This allows Woodpecker agent to access `/var/run/docker.sock` to create and manage CI/CD pipeline containers.
+
+### Step 5: Start Woodpecker
 
 1. From the app detail page, click **"Start"** to launch Woodpecker
 2. Wait for the containers to start (check the logs if needed)
 3. Once running, access Woodpecker at `http://YOUR_DOMAIN:8000`
 
-### Step 5: First Login and Repository Setup
+**Note:** The server health check might show as "unhealthy" but the service should still work. If the agent doesn't start automatically, you can manually start it with:
+```bash
+docker start ontree-woodpecker-woodpecker-agent-1
+```
+
+### Step 6: First Login and Repository Setup
 
 1. Visit your Woodpecker instance URL
 2. Click **"Login"** - you'll be redirected to Codeberg
@@ -130,19 +156,31 @@ steps:
 
 ### Common Issues
 
-1. **"Host key verification failed"**
+1. **"Security validation failed: bind mount path '/var/run/docker.sock' is not allowed"**
+   - **Solution:** Enable security bypass in the Danger Zone (see Step 4)
+   - This is required for Woodpecker to function properly
+
+2. **"agent could not auth: please provide a token"**
+   - **Cause:** Missing or mismatched `WOODPECKER_AGENT_SECRET`
+   - **Solution:** Ensure the secret is set in `.env` file (not empty!)
+   - Generate with: `openssl rand -hex 32`
+
+3. **Agent container shows as "Created" but not "Running"**
+   - **Cause:** Depends on server health check which may fail
+   - **Solution:** Manually start the agent:
+     ```bash
+     docker start ontree-woodpecker-woodpecker-agent-1
+     ```
+
+4. **"Host key verification failed"**
    - Woodpecker needs to trust Codeberg's SSH keys
    - This should be handled automatically
 
-2. **OAuth redirect mismatch**
+5. **OAuth redirect mismatch**
    - Ensure the redirect URL in Codeberg matches exactly: `http://YOUR_DOMAIN:8000/authorize`
    - The scheme (http/https) must match exactly
 
-3. **Agent can't connect to server**
-   - Check that both containers are on the same Docker network
-   - Verify the agent secret matches in both services
-
-4. **Can't access Woodpecker externally**
+6. **Can't access Woodpecker externally**
    - Ensure the port is open in your firewall
    - Check that WOODPECKER_HOST is set to a publicly accessible URL
 

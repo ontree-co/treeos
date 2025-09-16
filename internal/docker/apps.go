@@ -14,12 +14,13 @@ import (
 
 // App represents a discovered application
 type App struct {
-	Name     string                    `json:"name"`
-	Path     string                    `json:"path"`
-	Status   string                    `json:"status"`
-	Services map[string]ComposeService `json:"services,omitempty"`
-	Error    string                    `json:"error,omitempty"`
-	Emoji    string                    `json:"emoji,omitempty"`
+	Name           string                    `json:"name"`
+	Path           string                    `json:"path"`
+	Status         string                    `json:"status"`
+	Services       map[string]ComposeService `json:"services,omitempty"`
+	Error          string                    `json:"error,omitempty"`
+	Emoji          string                    `json:"emoji,omitempty"`
+	BypassSecurity bool                      `json:"bypassSecurity"`
 }
 
 // ComposeService represents a service definition in docker-compose.yml
@@ -35,10 +36,11 @@ type Compose struct {
 	Version  string                    `yaml:"version"`
 	Services map[string]ComposeService `yaml:"services"`
 	XOnTree  *struct {
-		Subdomain string `yaml:"subdomain,omitempty"`
-		HostPort  int    `yaml:"host_port,omitempty"`
-		IsExposed bool   `yaml:"is_exposed"`
-		Emoji     string `yaml:"emoji,omitempty"`
+		Subdomain      string `yaml:"subdomain,omitempty"`
+		HostPort       int    `yaml:"host_port,omitempty"`
+		IsExposed      bool   `yaml:"is_exposed"`
+		Emoji          string `yaml:"emoji,omitempty"`
+		BypassSecurity bool   `yaml:"bypass_security"`
 	} `yaml:"x-ontree,omitempty"`
 }
 
@@ -78,13 +80,14 @@ func (c *Client) ScanApps(appsDir string) ([]*App, error) {
 		}
 
 		// Parse docker-compose.yml
-		services, emoji, err := parseDockerCompose(composePath)
+		services, emoji, bypassSecurity, err := parseDockerCompose(composePath)
 		if err != nil {
 			app.Status = "error"
 			app.Error = fmt.Sprintf("Failed to parse docker-compose.yml: %v", err)
 		} else {
 			app.Services = services
 			app.Emoji = emoji
+			app.BypassSecurity = bypassSecurity
 			// Get container status
 			app.Status = c.getContainerStatus(app.Name)
 		}
@@ -96,25 +99,27 @@ func (c *Client) ScanApps(appsDir string) ([]*App, error) {
 }
 
 // parseDockerCompose parses a docker-compose.yml file and returns all services
-func parseDockerCompose(path string) (map[string]ComposeService, string, error) {
+func parseDockerCompose(path string) (map[string]ComposeService, string, bool, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, "", err
+		return nil, "", false, err
 	}
 
 	var compose Compose
 	if err := yaml.Unmarshal(data, &compose); err != nil {
-		return nil, "", err
+		return nil, "", false, err
 	}
 
-	// Extract emoji from x-ontree metadata
+	// Extract metadata from x-ontree
 	emoji := ""
+	bypassSecurity := false
 	if compose.XOnTree != nil {
 		emoji = compose.XOnTree.Emoji
+		bypassSecurity = compose.XOnTree.BypassSecurity
 	}
 
 	// Return all services
-	return compose.Services, emoji, nil
+	return compose.Services, emoji, bypassSecurity, nil
 }
 
 // getContainerStatus gets the status of containers for a compose app
@@ -176,13 +181,14 @@ func (c *Client) GetAppDetails(appsDir, appName string) (*App, error) {
 	}
 
 	// Parse docker-compose.yml
-	services, emoji, err := parseDockerCompose(composePath)
+	services, emoji, bypassSecurity, err := parseDockerCompose(composePath)
 	if err != nil {
 		app.Status = "error"
 		app.Error = fmt.Sprintf("Failed to parse docker-compose.yml: %v", err)
 	} else {
 		app.Services = services
 		app.Emoji = emoji
+		app.BypassSecurity = bypassSecurity
 		app.Status = c.getContainerStatus(appName)
 	}
 

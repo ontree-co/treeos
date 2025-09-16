@@ -1299,6 +1299,9 @@ func (s *Server) routeAPIApps(w http.ResponseWriter, r *http.Request) {
 	} else if strings.HasSuffix(path, "/chat") {
 		// Regular chat endpoint
 		s.handleAPIAppChat(w, r)
+	} else if strings.HasSuffix(path, "/security-bypass") {
+		// Toggle security bypass for an app
+		s.handleAPIAppSecurityBypass(w, r)
 	} else if strings.HasPrefix(path, "/api/apps/") {
 		// Check if it's a DELETE request for app deletion
 		if r.Method == http.MethodDelete {

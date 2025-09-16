@@ -87,6 +87,7 @@ type OnTreeMetadata struct {
 	TailscaleHostname string `yaml:"tailscale_hostname,omitempty"` // e.g., "jellyfin"
 	TailscaleExposed  bool   `yaml:"tailscale_exposed"`            // Separate from public exposure
 	Emoji             string `yaml:"emoji,omitempty"`
+	BypassSecurity    bool   `yaml:"bypass_security"`              // Skip security validation for this app
 }
 
 // ComposeFile represents a docker-compose.yml file structure

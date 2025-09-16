@@ -263,12 +263,23 @@ func (s *Server) createAppScaffoldInternal(appPath, appName, composeContent, env
 func (s *Server) startContainersForNewApp(appName, appPath, composeContent string) error {
 	log.Printf("Starting containers for newly created app: %s at path: %s", appName, appPath)
 
-	// Validate security rules first
-	validator := security.NewValidator(appName)
-	if err := validator.ValidateCompose([]byte(composeContent)); err != nil {
-		log.Printf("Security validation failed for app %s: %v", appName, err)
-		// Don't fail app creation, just skip container creation
-		return fmt.Errorf("security validation failed: %v", err)
+	// Check if security bypass is enabled for this app
+	metadata, err := yamlutil.ReadComposeMetadata(appPath)
+	if err != nil {
+		log.Printf("Failed to read metadata for app %s, assuming security enabled: %v", appName, err)
+		metadata = &yamlutil.OnTreeMetadata{}
+	}
+
+	// Validate security rules unless bypassed
+	if !metadata.BypassSecurity {
+		validator := security.NewValidator(appName)
+		if err := validator.ValidateCompose([]byte(composeContent)); err != nil {
+			log.Printf("Security validation failed for app %s: %v", appName, err)
+			// Don't fail app creation, just skip container creation
+			return fmt.Errorf("security validation failed: %v", err)
+		}
+	} else {
+		log.Printf("SECURITY: Bypassing security validation for app '%s' (user-configured)", appName)
 	}
 
 	// Start the app using compose SDK
