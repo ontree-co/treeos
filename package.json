@@ -1,0 +1,10 @@
+{
+  "name": "treeos",
+  "version": "1.0.0",
+  "description": "TreeOS - A modern application management platform",
+  "private": true,
+  "engines": {
+    "node": ">=22.0.0 <23.0.0",
+    "npm": ">=10.0.0"
+  }
+}

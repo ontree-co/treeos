@@ -2,6 +2,10 @@
   "name": "ontree-e2e-tests",
   "version": "1.0.0",
   "description": "End-to-end tests for OnTree Node application",
+  "engines": {
+    "node": ">=22.0.0 <23.0.0",
+    "npm": ">=10.0.0"
+  },
   "scripts": {
     "test": "playwright test",
     "test:ui": "playwright test --ui",

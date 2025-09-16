@@ -9,18 +9,21 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        go-version: ['1.21', '1.22', '1.23']
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Read Go version from go.mod
+      id: go-version
+      run: |
+        GO_VERSION=$(grep '^go ' go.mod | awk '{print $2}')
+        echo "version=$GO_VERSION" >> $GITHUB_OUTPUT
+
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: ${{ matrix.go-version }}
+        go-version: ${{ steps.go-version.outputs.version }}
         cache: true
         cache-dependency-path: go.sum
 
@@ -54,10 +57,16 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Read Go version from go.mod
+      id: go-version
+      run: |
+        GO_VERSION=$(grep '^go ' go.mod | awk '{print $2}')
+        echo "version=$GO_VERSION" >> $GITHUB_OUTPUT
+
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.21'
+        go-version: ${{ steps.go-version.outputs.version }}
         cache: true
         cache-dependency-path: go.sum
 
@@ -83,10 +92,16 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Read Go version from go.mod
+      id: go-version
+      run: |
+        GO_VERSION=$(grep '^go ' go.mod | awk '{print $2}')
+        echo "version=$GO_VERSION" >> $GITHUB_OUTPUT
+
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.21'
+        go-version: ${{ steps.go-version.outputs.version }}
         cache: true
         cache-dependency-path: go.sum
 
@@ -108,17 +123,23 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Read Go version from go.mod
+      id: go-version
+      run: |
+        GO_VERSION=$(grep '^go ' go.mod | awk '{print $2}')
+        echo "version=$GO_VERSION" >> $GITHUB_OUTPUT
+
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.21'
+        go-version: ${{ steps.go-version.outputs.version }}
         cache: true
         cache-dependency-path: go.sum
 
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '18'
+        node-version-file: '.node-version'
 
     - name: Install dependencies
       run: make deps
@@ -162,19 +183,10 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Read Node version
-      id: node-version
-      run: |
-        if [ -f documentation/.node-version ]; then
-          echo "version=$(cat documentation/.node-version)" >> $GITHUB_OUTPUT
-        else
-          echo "version=20.18.1" >> $GITHUB_OUTPUT
-        fi
-
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: ${{ steps.node-version.outputs.version }}
+        node-version-file: '.node-version'
 
     - name: Install documentation dependencies
       working-directory: ./documentation

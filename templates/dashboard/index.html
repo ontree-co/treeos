@@ -23,7 +23,7 @@
                                     <div class="card-body">
                                         <h6 class="metric-title">CPU Usage</h6>
                                         <div class="metric-value">{{.MonitoringData.CPUPercent}}%</div>
-                                        <div class="sparkline-container" data-metric="cpu">
+                                        <div class="sparkline-container" data-metric="cpu" title="Click for detailed view">
                                             {{.MonitoringData.CPUSparkline}}
                                         </div>
                                     </div>
@@ -38,7 +38,7 @@
                                     <div class="card-body">
                                         <h6 class="metric-title">GPU Load</h6>
                                         <div class="metric-value">{{.MonitoringData.GPULoad}}%</div>
-                                        <div class="sparkline-container" data-metric="gpu">
+                                        <div class="sparkline-container" data-metric="gpu" title="Click for detailed view">
                                             {{.MonitoringData.GPUSparkline}}
                                         </div>
                                     </div>
@@ -53,7 +53,7 @@
                                     <div class="card-body">
                                         <h6 class="metric-title">Memory Usage</h6>
                                         <div class="metric-value">{{.MonitoringData.MemoryPercent}}%</div>
-                                        <div class="sparkline-container" data-metric="memory">
+                                        <div class="sparkline-container" data-metric="memory" title="Click for detailed view">
                                             {{.MonitoringData.MemorySparkline}}
                                         </div>
                                     </div>
@@ -69,7 +69,7 @@
                                     <div class="card-body">
                                         <h6 class="metric-title">Disk Usage (/)</h6>
                                         <div class="metric-value">{{.MonitoringData.DiskUsagePercent}}%</div>
-                                        <div class="sparkline-container" data-metric="disk">
+                                        <div class="sparkline-container" data-metric="disk" title="Click for detailed view">
                                             {{.MonitoringData.DiskSparkline}}
                                         </div>
                                     </div>
@@ -84,7 +84,7 @@
                                     <div class="card-body">
                                         <h6 class="metric-title">Download</h6>
                                         <div class="metric-value">{{.MonitoringData.DownloadRate}}</div>
-                                        <div class="sparkline-container" data-metric="download">
+                                        <div class="sparkline-container" data-metric="download" title="Click for detailed view">
                                             {{.MonitoringData.DownloadSparkline}}
                                         </div>
                                     </div>
@@ -99,7 +99,7 @@
                                     <div class="card-body">
                                         <h6 class="metric-title">Upload</h6>
                                         <div class="metric-value">{{.MonitoringData.UploadRate}}</div>
-                                        <div class="sparkline-container" data-metric="upload">
+                                        <div class="sparkline-container" data-metric="upload" title="Click for detailed view">
                                             {{.MonitoringData.UploadSparkline}}
                                         </div>
                                     </div>

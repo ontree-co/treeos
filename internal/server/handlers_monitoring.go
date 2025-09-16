@@ -220,9 +220,10 @@ func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, r *http.
 						<div class="card-body">
 							<h6 class="metric-title">CPU Usage</h6>
 							<div class="metric-value">%.1f%%</div>
-							<div class="sparkline-container" data-metric="cpu">
+							<div class="sparkline-container" data-metric="cpu" title="Click for detailed view">
 								%s
 							</div>
+							<small class="text-muted">Last 24 hours</small>
 						</div>
 					</div>
 				</div>
@@ -235,9 +236,10 @@ func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, r *http.
 						<div class="card-body">
 							<h6 class="metric-title">GPU Load</h6>
 							<div class="metric-value">%.1f%%</div>
-							<div class="sparkline-container" data-metric="gpu">
+							<div class="sparkline-container" data-metric="gpu" title="Click for detailed view">
 								%s
 							</div>
+							<small class="text-muted">Last 24 hours</small>
 						</div>
 					</div>
 				</div>
@@ -250,9 +252,10 @@ func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, r *http.
 						<div class="card-body">
 							<h6 class="metric-title">Memory Usage</h6>
 							<div class="metric-value">%.1f%%</div>
-							<div class="sparkline-container" data-metric="memory">
+							<div class="sparkline-container" data-metric="memory" title="Click for detailed view">
 								%s
 							</div>
+							<small class="text-muted">Last 24 hours</small>
 						</div>
 					</div>
 				</div>
@@ -266,9 +269,10 @@ func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, r *http.
 						<div class="card-body">
 							<h6 class="metric-title">Disk Usage (/)</h6>
 							<div class="metric-value">%.1f%%</div>
-							<div class="sparkline-container" data-metric="disk">
+							<div class="sparkline-container" data-metric="disk" title="Click for detailed view">
 								%s
 							</div>
+							<small class="text-muted">Last 24 hours</small>
 						</div>
 					</div>
 				</div>
@@ -281,9 +285,10 @@ func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, r *http.
 						<div class="card-body">
 							<h6 class="metric-title">Download</h6>
 							<div class="metric-value">%s</div>
-							<div class="sparkline-container" data-metric="download">
+							<div class="sparkline-container" data-metric="download" title="Click for detailed view">
 								%s
 							</div>
+							<small class="text-muted">Last 24 hours</small>
 						</div>
 					</div>
 				</div>
@@ -296,9 +301,10 @@ func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, r *http.
 						<div class="card-body">
 							<h6 class="metric-title">Upload</h6>
 							<div class="metric-value">%s</div>
-							<div class="sparkline-container" data-metric="upload">
+							<div class="sparkline-container" data-metric="upload" title="Click for detailed view">
 								%s
 							</div>
+							<small class="text-muted">Last 24 hours</small>
 						</div>
 					</div>
 				</div>

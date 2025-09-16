@@ -1,6 +1,6 @@
 module treeos
 
-go 1.23.10
+go 1.24.4
 
 require (
 	github.com/BurntSushi/toml v1.5.0
