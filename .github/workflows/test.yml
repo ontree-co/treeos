@@ -82,7 +82,7 @@ jobs:
     - name: Run golangci-lint
       uses: golangci/golangci-lint-action@v6
       with:
-        version: v1.62.2
+        version: v2.4.0
         args: --timeout=5m
 
   build:
