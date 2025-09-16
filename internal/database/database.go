@@ -139,6 +139,28 @@ func createTables() error {
 		`CREATE INDEX IF NOT EXISTS idx_chat_messages_app_timestamp ON chat_messages(app_id, timestamp DESC)`,
 		`CREATE INDEX IF NOT EXISTS idx_chat_messages_sender_type ON chat_messages(sender_type, timestamp DESC)`,
 		`CREATE INDEX IF NOT EXISTS idx_chat_messages_app_sender ON chat_messages(app_id, sender_type)`,
+		`CREATE TABLE IF NOT EXISTS ollama_models (
+			name TEXT PRIMARY KEY,
+			display_name TEXT NOT NULL,
+			size_estimate TEXT,
+			description TEXT,
+			category TEXT,
+			status TEXT DEFAULT 'not_downloaded',
+			progress INTEGER DEFAULT 0,
+			last_error TEXT,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			completed_at DATETIME
+		)`,
+		`CREATE TABLE IF NOT EXISTS ollama_download_jobs (
+			id TEXT PRIMARY KEY,
+			model_name TEXT NOT NULL,
+			status TEXT DEFAULT 'queued',
+			started_at DATETIME,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (model_name) REFERENCES ollama_models(name)
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_ollama_models_status ON ollama_models(status)`,
+		`CREATE INDEX IF NOT EXISTS idx_download_jobs_status ON ollama_download_jobs(status, created_at)`,
 	}
 
 	for _, query := range queries {

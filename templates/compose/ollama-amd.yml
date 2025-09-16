@@ -15,4 +15,4 @@ services:
       - /dev/kfd
       - /dev/dri
     environment:
-      - HSA_OVERRIDE_GFX_VERSION=10.3.0
+      - HSA_OVERRIDE_GFX_VERSION=11.0.0

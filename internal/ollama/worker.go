@@ -100,7 +100,28 @@ func (w *Worker) CancelDownload(modelName string) error {
 		return fmt.Errorf("no active download found for model %s", modelName)
 	}
 
-	// Kill the process
+	// First, try to kill any ollama pull processes inside the container
+	// This is necessary because killing the docker exec process doesn't propagate to the container
+	// We need to discover the container name in case it changed
+	containerName := w.containerName
+	if containerName == "" {
+		// Try to discover it
+		if discovered, err := w.discoverOllamaContainer(); err == nil {
+			containerName = discovered
+		}
+	}
+
+	if containerName != "" {
+		killInsideCmd := exec.Command("docker", "exec", containerName, "sh", "-c",
+			fmt.Sprintf("pkill -f 'ollama pull %s' || true", modelName))
+		if err := killInsideCmd.Run(); err != nil {
+			log.Printf("Warning: Failed to kill ollama process inside container: %v", err)
+		}
+	} else {
+		log.Printf("Warning: No container name available to kill ollama process inside container")
+	}
+
+	// Then kill the docker exec process
 	if cmd.Process != nil {
 		log.Printf("Cancelling download for model %s (PID: %d)", modelName, cmd.Process.Pid)
 		err := cmd.Process.Kill()
