@@ -1,4 +1,4 @@
-# OnTree
+# TreeOS
 
 OnTree is a Docker container management application with a web interface for managing containerized applications. It provides an intuitive UI for creating, managing, and monitoring Docker containers on your local system or server.
 
@@ -24,11 +24,13 @@ OnTree is a Docker container management application with a web interface for man
 1. Download the latest release for your platform from [GitHub Releases](https://github.com/stefanmunz/treeos/releases)
 
 2. Make the binary executable:
+
    ```bash
    chmod +x treeos
    ```
 
 3. Run OnTree:
+
    ```bash
    ./treeos
    ```
@@ -49,6 +51,7 @@ OnTree can be configured using environment variables:
 - `TAILSCALE_BASE_DOMAIN`: Tailscale domain for app exposure via Caddy
 
 Example:
+
 ```bash
 export AUTH_USERNAME="admin"
 export AUTH_PASSWORD="secure-password"
@@ -77,8 +80,9 @@ OnTree includes a comprehensive system monitoring dashboard that provides real-t
 ### Time Ranges
 
 Detailed charts support multiple time ranges:
+
 - 1 Hour - For immediate performance troubleshooting
-- 6 Hours - For recent trend analysis  
+- 6 Hours - For recent trend analysis
 - 24 Hours - Default view showing daily patterns
 - 7 Days - For weekly trend analysis
 
@@ -91,6 +95,7 @@ Detailed charts support multiple time ranges:
 ### Performance Optimization
 
 The monitoring system includes several optimizations:
+
 - 5-minute caching for sparkline generation
 - Batch database queries for efficiency
 - Optimized SVG generation for fast rendering
@@ -99,12 +104,14 @@ The monitoring system includes several optimizations:
 ### Configuration
 
 To disable monitoring (if needed for performance reasons):
+
 ```bash
 export MONITORING_ENABLED=false
 ./treeos
 ```
 
 Or in `config.toml`:
+
 ```toml
 monitoring_enabled = false
 ```
@@ -120,12 +127,14 @@ monitoring_enabled = false
 ### Building from Source
 
 1. Clone the repository:
+
    ```bash
    git clone https://github.com/stefanmunz/treeos.git
    cd treeos
    ```
 
 2. Install dependencies:
+
    ```bash
    go mod download
    ```
@@ -164,6 +173,7 @@ make lint
 The E2E test suite uses Playwright to test the application through real browser interactions:
 
 - **Automatic Setup**: The `make test-e2e` command automatically:
+
   - Builds the application if needed
   - Starts the server on port 3001
   - Waits for the server to be ready
@@ -171,6 +181,7 @@ The E2E test suite uses Playwright to test the application through real browser 
   - Generates HTML reports in `tests/e2e/playwright-report/`
 
 - **Test Coverage**: E2E tests cover:
+
   - Authentication flows (login/logout)
   - Dashboard functionality and system vitals
   - Simple app lifecycle (create, start, stop, delete)
@@ -186,6 +197,7 @@ The E2E test suite uses Playwright to test the application through real browser 
 ### Development Mode
 
 For development with hot-reloading:
+
 ```bash
 go run cmd/treeos/main.go
 ```
@@ -203,6 +215,7 @@ make build
 ```
 
 The template checker validates:
+
 - All HTML templates against the base template
 - Template syntax (proper opening/closing of blocks)
 - Component templates for standalone validity
@@ -216,6 +229,7 @@ OnTree uses [GoReleaser](https://goreleaser.com/) for automated release builds. 
 ### Creating a Release
 
 1. **Tag your release**:
+
    ```bash
    git tag -a v1.0.0 -m "Release version 1.0.0"
    git push origin v1.0.0
@@ -231,11 +245,13 @@ OnTree uses [GoReleaser](https://goreleaser.com/) for automated release builds. 
 To build a release locally (useful for testing):
 
 1. **Install GoReleaser**:
+
    ```bash
    go install github.com/goreleaser/goreleaser/v2@latest
    ```
 
 2. **Build a snapshot release** (without publishing):
+
    ```bash
    goreleaser build --snapshot --clean
    ```
@@ -248,6 +264,7 @@ To build a release locally (useful for testing):
 ### Release Artifacts
 
 Each release includes:
+
 - `treeos_VERSION_linux_x86_64.tar.gz` - Linux AMD64 binary
 - `treeos_VERSION_darwin_arm64.tar.gz` - macOS Apple Silicon binary
 - `checksums.txt` - SHA256 checksums for verification
