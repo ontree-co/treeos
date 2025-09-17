@@ -1045,7 +1045,7 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	// Get current system setup
 	var setup database.SystemSetup
 
-	// First try with update_channel column (new schema)
+	// Query the database - the column should exist now after migrations
 	err := s.db.QueryRow(`
 		SELECT id, public_base_domain, tailscale_auth_key, tailscale_tags,
 		       agent_enabled, agent_check_interval, agent_llm_api_key,
@@ -1057,24 +1057,6 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 		&setup.AgentEnabled, &setup.AgentCheckInterval, &setup.AgentLLMAPIKey,
 		&setup.AgentLLMAPIURL, &setup.AgentLLMModel,
 		&setup.UptimeKumaBaseURL, &setup.UpdateChannel)
-
-	// If the column doesn't exist, try without it (old schema)
-	if err != nil && strings.Contains(err.Error(), "no such column: update_channel") {
-		err = s.db.QueryRow(`
-			SELECT id, public_base_domain, tailscale_auth_key, tailscale_tags,
-			       agent_enabled, agent_check_interval, agent_llm_api_key,
-			       agent_llm_api_url, agent_llm_model,
-			       uptime_kuma_base_url
-			FROM system_setup
-			WHERE id = 1
-		`).Scan(&setup.ID, &setup.PublicBaseDomain, &setup.TailscaleAuthKey, &setup.TailscaleTags,
-			&setup.AgentEnabled, &setup.AgentCheckInterval, &setup.AgentLLMAPIKey,
-			&setup.AgentLLMAPIURL, &setup.AgentLLMModel,
-			&setup.UptimeKumaBaseURL)
-		// Default to beta channel if column doesn't exist
-		setup.UpdateChannel.String = "beta"
-		setup.UpdateChannel.Valid = true
-	}
 
 	if err != nil && err != sql.ErrNoRows {
 		log.Printf("Failed to get system setup: %v", err)
@@ -1153,6 +1135,9 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	if setup.UpdateChannel.Valid {
 		data["UpdateChannel"] = setup.UpdateChannel.String
+	} else {
+		// Default to beta if not set
+		data["UpdateChannel"] = "beta"
 	}
 
 	// Also show current values from config (to show if env vars are overriding)

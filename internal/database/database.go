@@ -161,6 +161,17 @@ func createTables() error {
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_ollama_models_status ON ollama_models(status)`,
 		`CREATE INDEX IF NOT EXISTS idx_download_jobs_status ON ollama_download_jobs(status, created_at)`,
+		`CREATE TABLE IF NOT EXISTS update_history (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			version TEXT NOT NULL,
+			channel TEXT NOT NULL,
+			status TEXT NOT NULL,
+			error_message TEXT,
+			started_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			completed_at TIMESTAMP,
+			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_update_history_started_at ON update_history(started_at DESC)`,
 	}
 
 	for _, query := range queries {
@@ -181,19 +192,8 @@ func createTables() error {
 
 // migrateColumnsIfNeeded checks if columns exist before trying to add them
 func migrateColumnsIfNeeded() error {
-	// Check if we need to run migrations by checking for a newer column
-	var count int
-	row := db.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('system_vital_logs') WHERE name='gpu_load'`)
-	if err := row.Scan(&count); err != nil {
-		// If we can't check, assume we need to migrate
-		count = 0
-	}
-
-	// If the gpu_load column already exists, skip all migrations
-	// (they were already done or the table was created with all columns)
-	if count > 0 {
-		return nil
-	}
+	// Don't skip migrations based on a single column - run each migration check individually
+	// This allows us to add new migrations later without issues
 
 	// Migration queries for older databases
 	migrations := []struct {
@@ -210,6 +210,7 @@ func migrateColumnsIfNeeded() error {
 		{"system_setup", "agent_llm_api_url", `ALTER TABLE system_setup ADD COLUMN agent_llm_api_url TEXT`},
 		{"system_setup", "agent_llm_model", `ALTER TABLE system_setup ADD COLUMN agent_llm_model TEXT`},
 		{"system_setup", "uptime_kuma_base_url", `ALTER TABLE system_setup ADD COLUMN uptime_kuma_base_url TEXT`},
+		{"system_setup", "update_channel", `ALTER TABLE system_setup ADD COLUMN update_channel TEXT DEFAULT 'beta'`},
 		{"system_vital_logs", "upload_rate", `ALTER TABLE system_vital_logs ADD COLUMN upload_rate INTEGER DEFAULT 0`},
 		{"system_vital_logs", "download_rate", `ALTER TABLE system_vital_logs ADD COLUMN download_rate INTEGER DEFAULT 0`},
 		{"system_vital_logs", "gpu_load", `ALTER TABLE system_vital_logs ADD COLUMN gpu_load REAL DEFAULT 0`},
