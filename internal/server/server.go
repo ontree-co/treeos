@@ -89,12 +89,20 @@ func New(cfg *config.Config, versionInfo version.Info) (*Server, error) {
 		return nil, fmt.Errorf("failed to load templates: %w", err)
 	}
 
-	// Initialize database
+	// Initialize database with migration verification
+	log.Printf("Initializing database at %s...", cfg.DatabasePath)
 	db, err := database.New(cfg.DatabasePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize database: %w", err)
 	}
 	s.db = db
+
+	// Verify migrations completed by checking a recent column
+	// This ensures migrations are fully applied before serving requests
+	if err := s.verifyMigrationsComplete(); err != nil {
+		return nil, fmt.Errorf("database migrations incomplete: %w", err)
+	}
+	log.Printf("Database initialized and migrations verified")
 
 	// Initialize Docker client
 	dockerClient, err := docker.NewClient()
@@ -165,7 +173,8 @@ func (s *Server) Shutdown() {
 		}
 	}
 	if s.db != nil {
-		if err := s.db.Close(); err != nil {
+		// Close the global database connection, not just the local one
+		if err := database.Close(); err != nil {
 			log.Printf("Error closing database: %v", err)
 		}
 	}
@@ -1426,4 +1435,44 @@ func getTailscaleDNS() string {
 	}
 	
 	return dnsName
+}
+
+// verifyMigrationsComplete checks that all expected database columns exist
+// This ensures migrations have fully completed before the server starts serving requests
+func (s *Server) verifyMigrationsComplete() error {
+	// Force a checkpoint first to ensure WAL changes are written to the main database file
+	// This is crucial after a self-update when the database file might be in WAL mode
+	if _, err := s.db.Exec("PRAGMA wal_checkpoint(TRUNCATE)"); err != nil {
+		// Log but don't fail - not all SQLite builds support WAL
+		log.Printf("Warning: Could not checkpoint WAL: %v", err)
+	}
+
+	// Check for the most recently added columns to ensure all migrations ran
+	// We check these specific columns as they were added in recent updates
+	verifyQueries := map[string]string{
+		"system_setup.update_channel":  "SELECT COUNT(*) FROM pragma_table_info('system_setup') WHERE name='update_channel'",
+		"update_history.channel":       "SELECT COUNT(*) FROM pragma_table_info('update_history') WHERE name='channel'",
+		"system_vital_logs.gpu_load":   "SELECT COUNT(*) FROM pragma_table_info('system_vital_logs') WHERE name='gpu_load'",
+	}
+
+	for description, query := range verifyQueries {
+		var colCount int
+		row := s.db.QueryRow(query)
+		if err := row.Scan(&colCount); err != nil {
+			// If we can't even query pragma_table_info, the table might not exist
+			return fmt.Errorf("failed to verify %s: %w", description, err)
+		}
+		if colCount == 0 {
+			return fmt.Errorf("migration incomplete: %s does not exist", description)
+		}
+	}
+
+	// Verify we can actually read from a table with new columns
+	var testValue sql.NullString
+	err := s.db.QueryRow("SELECT update_channel FROM system_setup LIMIT 1").Scan(&testValue)
+	if err != nil && err != sql.ErrNoRows {
+		return fmt.Errorf("migration verification failed: cannot read update_channel: %w", err)
+	}
+
+	return nil
 }

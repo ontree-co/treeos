@@ -111,16 +111,8 @@ func main() {
 		}()
 	}
 
-	// Initialize database
-	if err := database.Initialize(cfg.DatabasePath); err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to initialize database: %v\n", err)
-		os.Exit(1)
-	}
-	defer func() {
-		if err := database.Close(); err != nil {
-			log.Printf("Failed to close database: %v", err)
-		}
-	}()
+	// Database initialization is now handled in server.New()
+	// to avoid double initialization and ensure proper migration
 
 	// Get version information
 	versionInfo := version.Get()

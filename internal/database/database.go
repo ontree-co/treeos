@@ -20,23 +20,45 @@ func GetDB() *sql.DB {
 // Initialize opens a connection to the SQLite database and runs migrations.
 func Initialize(dbPath string) error {
 	var err error
+
+	// Close any existing connection first
+	if db != nil {
+		db.Close()
+		db = nil
+	}
+
 	db, err = sql.Open("sqlite3", dbPath)
 	if err != nil {
 		return fmt.Errorf("failed to open database: %w", err)
 	}
 
+	// Configure connection pool for better concurrency handling
 	db.SetMaxOpenConns(25)
 	db.SetMaxIdleConns(5)
 	db.SetConnMaxLifetime(5 * time.Minute)
+
+	// Enable WAL mode for better concurrency (if not already enabled)
+	if _, err := db.Exec("PRAGMA journal_mode=WAL"); err != nil {
+		log.Printf("Warning: Could not enable WAL mode: %v", err)
+	}
+
+	// Set synchronous to NORMAL for better performance while maintaining safety
+	if _, err := db.Exec("PRAGMA synchronous=NORMAL"); err != nil {
+		log.Printf("Warning: Could not set synchronous mode: %v", err)
+	}
 
 	if err := db.Ping(); err != nil {
 		return fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	// For now, keep the old createTables() for backward compatibility
-	// Once migrations are fully tested, this can be removed
+	// Run migrations - this must complete synchronously
 	if err := createTables(); err != nil {
 		return fmt.Errorf("failed to create tables: %w", err)
+	}
+
+	// Force a checkpoint to ensure all changes are written
+	if _, err := db.Exec("PRAGMA wal_checkpoint(TRUNCATE)"); err != nil {
+		log.Printf("Warning: Could not checkpoint after migrations: %v", err)
 	}
 
 	log.Printf("Database initialized successfully at %s", dbPath)

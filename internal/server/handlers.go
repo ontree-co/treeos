@@ -1045,7 +1045,7 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	// Get current system setup
 	var setup database.SystemSetup
 
-	// Query the database - the column should exist now after migrations
+	// Query the database
 	err := s.db.QueryRow(`
 		SELECT id, public_base_domain, tailscale_auth_key, tailscale_tags,
 		       agent_enabled, agent_check_interval, agent_llm_api_key,
