@@ -117,3 +117,40 @@ func (m *SSEManager) SendHeartbeat(appID string) {
 		}
 	}
 }
+
+// SendToAll sends a message to all connected clients across all apps
+func (m *SSEManager) SendToAll(eventType string, messageData interface{}) {
+	m.mu.RLock()
+	allClients := make(map[*SSEClient]bool)
+	for _, clientsMap := range m.clients {
+		for client := range clientsMap {
+			allClients[client] = true
+		}
+	}
+	m.mu.RUnlock()
+
+	if len(allClients) == 0 {
+		return
+	}
+
+	// Convert message to JSON
+	jsonData, err := json.Marshal(messageData)
+	if err != nil {
+		log.Printf("Failed to marshal SSE message: %v", err)
+		return
+	}
+
+	// Format as SSE event with the correct event type
+	sseMessage := fmt.Sprintf("event: %s\ndata: %s\n\n", eventType, string(jsonData))
+
+	// Send to all clients
+	for client := range allClients {
+		select {
+		case client.Messages <- sseMessage:
+			// Message sent successfully
+		case <-time.After(100 * time.Millisecond):
+			// Client is not receiving, likely disconnected
+			log.Printf("SSE client is not receiving, will be cleaned up")
+		}
+	}
+}

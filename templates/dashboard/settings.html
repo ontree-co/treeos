@@ -44,6 +44,59 @@
     <div class="col-12">
         <div class="card">
             <div class="card-header">
+                <h5 class="mb-0">System Updates</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-4">
+                    Configure automatic system updates for TreeOS.
+                </p>
+
+                <form method="post" action="/settings">
+                    <div class="mb-4">
+                        <label class="form-label">Current Version</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" value="{{.CurrentVersion}}" readonly>
+                            <button type="button" class="btn btn-outline-primary" id="checkUpdateBtn" onclick="checkForUpdate()">
+                                <i>🔄</i> Check for Update
+                            </button>
+                        </div>
+                        <div id="updateStatus" class="mt-2"></div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label">Update Channel</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="update_channel" id="channel_stable" value="stable"
+                                   {{if eq .UpdateChannel "stable"}}checked{{end}}>
+                            <label class="form-check-label" for="channel_stable">
+                                <strong>🛡️ Stable</strong>
+                                <small class="text-muted d-block">Tested releases only</small>
+                            </label>
+                        </div>
+                        <div class="form-check mt-2">
+                            <input class="form-check-input" type="radio" name="update_channel" id="channel_beta" value="beta"
+                                   {{if or (eq .UpdateChannel "beta") (eq .UpdateChannel "")}}checked{{end}}>
+                            <label class="form-check-label" for="channel_beta">
+                                <strong>🚀 Beta</strong>
+                                <small class="text-muted d-block">Latest features and fixes</small>
+                            </label>
+                        </div>
+                        <small class="form-text text-muted mt-2">
+                            Choose which update channel to receive updates from
+                        </small>
+                    </div>
+
+                    <div class="d-flex justify-content-end">
+                        <button type="submit" class="btn btn-primary">
+                            <i>💾</i> Save Settings
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">
                 <h5 class="mb-0">AI Agent Configuration</h5>
             </div>
             <div class="card-body">
@@ -527,5 +580,289 @@ document.addEventListener('DOMContentLoaded', function() {
         testResult.innerHTML = message;
     }
 });
+
+// System update functions
+function checkForUpdate() {
+    const btn = document.getElementById('checkUpdateBtn');
+    const statusDiv = document.getElementById('updateStatus');
+
+    btn.disabled = true;
+    btn.innerHTML = '<i>⏳</i> Checking...';
+    statusDiv.innerHTML = '';
+
+    fetch('/api/system/update/check')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Server responded with status ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.error) {
+                statusDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i>❌</i> Failed to check for updates: ${data.error}
+                    </div>`;
+            } else if (data.update_available) {
+                statusDiv.innerHTML = `
+                    <div class="alert alert-info">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <i>🎉</i> <strong>Update Available!</strong><br>
+                                <small>Version ${data.latest_version} is available (current: ${data.current_version})</small><br>
+                                ${data.release_notes ? `<small class="mt-2 d-block">${data.release_notes}</small>` : ''}
+                            </div>
+                            <button type="button" class="btn btn-sm btn-success" onclick="applyUpdate()" title="Update and restart TreeOS">
+                                <i>⬆️</i> Update Now
+                            </button>
+                        </div>
+                    </div>`;
+            } else {
+                statusDiv.innerHTML = `
+                    <div class="alert alert-success">
+                        <i>✅</i> You're running the latest version (${data.current_version})
+                    </div>`;
+            }
+        })
+        .catch(error => {
+            let errorMessage = "Unable to check for updates.";
+            let helpText = "";
+
+            if (error.message && error.message.toLowerCase().includes('network')) {
+                errorMessage = "Connection failed while checking for updates.";
+                helpText = "Please check your internet connection and try again.";
+            } else if (error.message && error.message.toLowerCase().includes('fetch')) {
+                errorMessage = "Could not reach the update server.";
+                helpText = "The update server might be temporarily unavailable.";
+            } else if (error.message) {
+                helpText = `Technical details: ${error.message}`;
+            }
+
+            statusDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <i>❌</i> <strong>${errorMessage}</strong>
+                    ${helpText ? `<br><small class="text-muted mt-2 d-block">${helpText}</small>` : ''}
+                    <br>
+                    <small class="mt-2 d-block">
+                        <a href="#" onclick="checkForUpdate(); return false;">Click here to try again</a>
+                    </small>
+                </div>`;
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i>🔄</i> Check for Update';
+        });
+}
+
+function applyUpdate() {
+    const statusDiv = document.getElementById('updateStatus');
+    let updateInProgress = true;
+
+    // Initial status showing that system will restart
+    statusDiv.innerHTML = `
+        <div class="alert alert-warning">
+            <i>⏳</i> Starting update process... The system will restart automatically.
+        </div>`;
+
+    fetch('/api/system/update/apply', {
+        method: 'POST'
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`Server responded with status ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.status === 'Update started') {
+            statusDiv.innerHTML = `
+                <div class="alert alert-info">
+                    <i>🔄</i> ${data.message}
+                    <div class="progress mt-2">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 100%"></div>
+                    </div>
+                    <small class="text-muted">Downloading update package...</small>
+                </div>`;
+
+            // Start monitoring for completion or failure
+            // Wait a bit then start checking for reconnection
+            setTimeout(() => {
+                checkUpdateStatusAndReconnect();
+            }, 10000); // Wait 10 seconds before checking
+        } else {
+            updateInProgress = false;
+            statusDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <i>❌</i> Failed to start update: ${data.error || 'Unknown error'}
+                </div>`;
+        }
+    })
+    .catch(error => {
+        updateInProgress = false;
+
+        // Provide user-friendly error messages
+        let errorMessage = "Unable to start the update process.";
+        let helpText = "";
+
+        if (error.message && error.message.toLowerCase().includes('network')) {
+            errorMessage = "Connection failed. Unable to reach the TreeOS server.";
+            helpText = "Please check your internet connection and try again.";
+        } else if (error.message && error.message.toLowerCase().includes('fetch')) {
+            errorMessage = "Could not connect to the update server.";
+            helpText = "The server might be temporarily unavailable. Please try again in a few minutes.";
+        } else if (error.message && error.message.toLowerCase().includes('timeout')) {
+            errorMessage = "The request timed out.";
+            helpText = "The server is taking too long to respond. Please try again later.";
+        } else if (error.message) {
+            // Generic error with the actual message as help text
+            errorMessage = "An error occurred while starting the update.";
+            helpText = `Technical details: ${error.message}`;
+        }
+
+        statusDiv.innerHTML = `
+            <div class="alert alert-danger">
+                <i>❌</i> <strong>${errorMessage}</strong>
+                ${helpText ? `<br><small class="mt-2 d-block">${helpText}</small>` : ''}
+                <hr>
+                <strong>What to do:</strong>
+                <ul class="mt-2 mb-0">
+                    <li>Check your internet connection and try again in a few minutes</li>
+                    <li><a href="https://github.com/ontree-co/treeos/issues" target="_blank">File an issue</a> if the problem persists</li>
+                </ul>
+            </div>`;
+    });
+}
+
+function checkUpdateStatusAndReconnect() {
+    const statusDiv = document.getElementById('updateStatus');
+    let attempts = 0;
+    const maxAttempts = 60; // Try for about 2 minutes
+
+    function checkStatus() {
+        attempts++;
+
+        // First check the update status
+        fetch('/api/system/update/status')
+            .then(response => {
+                if (!response.ok) {
+                    // Server might be restarting or having issues
+                    throw new Error('Status check failed');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.failed) {
+                    // Update failed - show error message
+                    statusDiv.innerHTML = `
+                        <div class="alert alert-danger">
+                            <i>❌</i> <strong>Update Failed</strong><br>
+                            ${data.error}<br>
+                            ${data.message ? `<small class="text-muted mt-2 d-block">Technical details: ${data.message}</small>` : ''}
+                            <hr>
+                            <small>If this issue persists, please <a href="https://github.com/ontree-co/treeos/issues" target="_blank">file an issue</a>.</small>
+                        </div>`;
+                    return; // Stop checking
+                } else if (data.success) {
+                    // Update succeeded, system should be restarting
+                    statusDiv.innerHTML = `
+                        <div class="alert alert-success">
+                            <i>✅</i> Update applied successfully! System is restarting...
+                            <div class="progress mt-2">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" style="width: 100%"></div>
+                            </div>
+                        </div>`;
+                    // Start checking for reconnection
+                    setTimeout(() => checkForReconnection(), 5000);
+                    return; // Stop status checking
+                } else if (data.in_progress) {
+                    // Update still in progress
+                    statusDiv.innerHTML = `
+                        <div class="alert alert-info">
+                            <i>🔄</i> ${data.message || 'Update in progress...'}
+                            <div class="progress mt-2">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                     style="width: ${data.percentage || 0}%"></div>
+                            </div>
+                            <small class="text-muted">${data.stage || 'Processing'}: ${Math.round(data.percentage || 0)}%</small>
+                        </div>`;
+                    // Continue checking
+                    setTimeout(checkStatus, 2000);
+                } else if (attempts >= maxAttempts) {
+                    // Timeout - update taking too long
+                    statusDiv.innerHTML = `
+                        <div class="alert alert-warning">
+                            <i>⚠️</i> <strong>Update Timeout</strong><br>
+                            The update is taking longer than expected. This could mean:<br>
+                            <ul class="mt-2">
+                                <li>The update package is not available yet</li>
+                                <li>Network issues prevented the download</li>
+                                <li>The system is still processing the update</li>
+                            </ul>
+                            <small>Please try again later or <a href="https://github.com/ontree-co/treeos/issues" target="_blank">file an issue</a> if the problem persists.</small>
+                        </div>`;
+                } else {
+                    // No status yet, keep checking
+                    setTimeout(checkStatus, 2000);
+                }
+            })
+            .catch(error => {
+                // Can't reach status endpoint - system might be restarting
+                if (attempts >= 10) {
+                    // After 20 seconds, assume system is restarting
+                    statusDiv.innerHTML = `
+                        <div class="alert alert-info">
+                            <i>⏳</i> System appears to be restarting...
+                            <div class="progress mt-2">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 100%"></div>
+                            </div>
+                        </div>`;
+                    checkForReconnection();
+                } else {
+                    setTimeout(checkStatus, 2000);
+                }
+            });
+    }
+
+    // Start checking immediately
+    checkStatus();
+}
+
+function checkForReconnection() {
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 30;
+
+    function tryReconnect() {
+        reconnectAttempts++;
+
+        fetch('/version')
+            .then(() => {
+                // System is back online
+                const statusDiv = document.getElementById('updateStatus');
+                statusDiv.innerHTML = `
+                    <div class="alert alert-success">
+                        <i>✅</i> System is back online! Reloading...
+                    </div>`;
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            })
+            .catch(() => {
+                if (reconnectAttempts >= maxReconnectAttempts) {
+                    const statusDiv = document.getElementById('updateStatus');
+                    statusDiv.innerHTML = `
+                        <div class="alert alert-danger">
+                            <i>❌</i> <strong>Could not reconnect</strong><br>
+                            The system did not come back online after the update.<br>
+                            Please check the system manually or contact support.
+                        </div>`;
+                } else {
+                    // Keep trying
+                    setTimeout(tryReconnect, 2000);
+                }
+            });
+    }
+
+    tryReconnect();
+}
 </script>
 {{end}}

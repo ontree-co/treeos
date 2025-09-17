@@ -1,0 +1,361 @@
+package server
+
+import (
+	"database/sql"
+	"encoding/json"
+	"log"
+	"net/http"
+	"strings"
+	"time"
+
+	"treeos/internal/database"
+	"treeos/internal/update"
+)
+
+// handleSystemUpdateCheck checks for available system updates
+func (s *Server) handleSystemUpdateCheck(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Get current update channel from database
+	var setup database.SystemSetup
+	err := s.db.QueryRow(`SELECT update_channel FROM system_setup WHERE id = 1`).Scan(&setup.UpdateChannel)
+	if err != nil {
+		// Default to beta if not found or column doesn't exist
+		if err == sql.ErrNoRows || strings.Contains(err.Error(), "no such column") {
+			setup.UpdateChannel.String = "beta"
+			setup.UpdateChannel.Valid = true
+		} else {
+			log.Printf("Failed to get update channel: %v", err)
+			setup.UpdateChannel.String = "beta"
+			setup.UpdateChannel.Valid = true
+		}
+	}
+
+	channel := update.ChannelBeta
+	if setup.UpdateChannel.Valid && setup.UpdateChannel.String == "stable" {
+		channel = update.ChannelStable
+	}
+
+	// Create update service
+	updateSvc := update.NewService(channel)
+
+	// Check for updates
+	updateInfo, err := updateSvc.CheckForUpdate()
+	if err != nil {
+		log.Printf("Failed to check for updates: %v", err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"error": "Failed to check for updates",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(updateInfo)
+}
+
+// handleSystemUpdateApply applies a system update
+func (s *Server) handleSystemUpdateApply(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Check authentication - only admins can update
+	user := getUserFromContext(r.Context())
+	if user == nil || !user.IsStaff {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Get current update channel from database
+	var setup database.SystemSetup
+	err := s.db.QueryRow(`SELECT update_channel FROM system_setup WHERE id = 1`).Scan(&setup.UpdateChannel)
+	if err != nil {
+		// Default to beta if not found or column doesn't exist
+		if err == sql.ErrNoRows || strings.Contains(err.Error(), "no such column") {
+			setup.UpdateChannel.String = "beta"
+			setup.UpdateChannel.Valid = true
+		} else {
+			log.Printf("Failed to get update channel: %v", err)
+			setup.UpdateChannel.String = "beta"
+			setup.UpdateChannel.Valid = true
+		}
+	}
+
+	channel := update.ChannelBeta
+	if setup.UpdateChannel.Valid && setup.UpdateChannel.String == "stable" {
+		channel = update.ChannelStable
+	}
+
+	// Create update service
+	updateSvc := update.NewService(channel)
+
+	// Record update attempt in history (if table exists)
+	var historyID int64
+	result, err := s.db.Exec(`
+		INSERT INTO update_history (version, channel, status, started_at)
+		VALUES (?, ?, 'in_progress', CURRENT_TIMESTAMP)
+	`, updateSvc.GetCurrentVersion(), string(channel))
+
+	if err == nil {
+		historyID, _ = result.LastInsertId()
+	} else if strings.Contains(err.Error(), "no such table") {
+		// Table doesn't exist yet, migrations haven't run
+		log.Printf("update_history table doesn't exist, skipping history recording")
+	} else {
+		log.Printf("Failed to record update attempt: %v", err)
+	}
+
+	// Reset update status and mark as in progress
+	SetUpdateStatus(UpdateStatus{
+		InProgress: true,
+		Message:    "Starting update...",
+		Stage:      "initializing",
+		StartedAt:  time.Now(),
+	})
+
+	// Start update in background
+	go func() {
+		// Apply the update
+		err := updateSvc.ApplyUpdate(func(stage string, percentage float64, message string) {
+			// Log progress
+			log.Printf("Update progress: [%s] %.0f%% - %s", stage, percentage, message)
+
+			// Update status
+			SetUpdateStatus(UpdateStatus{
+				InProgress: true,
+				Message:    message,
+				Stage:      stage,
+				Percentage: percentage,
+				StartedAt:  GetUpdateStatus().StartedAt,
+			})
+
+			// Could send SSE events here if we implement real-time updates
+			if s.sseManager != nil {
+				s.sseManager.SendToAll("update-progress", map[string]interface{}{
+					"stage":      stage,
+					"percentage": percentage,
+					"message":    message,
+				})
+			}
+		})
+
+		// Update history record
+		if historyID > 0 {
+			status := "success"
+			var errorMsg *string
+			if err != nil {
+				status = "failed"
+				errStr := err.Error()
+				errorMsg = &errStr
+			}
+
+			_, updateErr := s.db.Exec(`
+				UPDATE update_history
+				SET status = ?, error_message = ?, completed_at = CURRENT_TIMESTAMP
+				WHERE id = ?
+			`, status, errorMsg, historyID)
+
+			if updateErr != nil {
+				log.Printf("Failed to update history record: %v", updateErr)
+			}
+		}
+
+		if err != nil {
+			log.Printf("Update failed: %v", err)
+
+			// Prepare user-friendly error message
+			userMessage := "The update process failed. Please try again later."
+			if strings.Contains(err.Error(), "404") || strings.Contains(err.Error(), "not found") {
+				userMessage = "Update package not found. The update may not be available yet. Please try again later."
+			} else if strings.Contains(err.Error(), "download") || strings.Contains(err.Error(), "network") {
+				userMessage = "Failed to download the update. Please check your internet connection and try again."
+			} else if strings.Contains(err.Error(), "checksum") {
+				userMessage = "Update verification failed. The downloaded file may be corrupted. Please try again."
+			} else if strings.Contains(err.Error(), "permission") {
+				userMessage = "Permission denied. Please ensure TreeOS has write access to its installation directory."
+			}
+
+			// Set error status
+			SetUpdateStatus(UpdateStatus{
+				InProgress: false,
+				Failed:     true,
+				Error:      userMessage,
+				Message:    err.Error(), // Technical details in message
+				Stage:      "failed",
+			})
+
+			if s.sseManager != nil {
+				s.sseManager.SendToAll("update-failed", map[string]interface{}{
+					"error": userMessage,
+					"details": err.Error(),
+				})
+			}
+			return
+		}
+
+		// Set success status
+		SetUpdateStatus(UpdateStatus{
+			InProgress: false,
+			Success:    true,
+			Message:    "Update applied successfully, restarting...",
+			Stage:      "complete",
+		})
+
+		log.Println("Update applied successfully, system will restart...")
+
+		// Send success notification
+		if s.sseManager != nil {
+			s.sseManager.SendToAll("update-complete", map[string]interface{}{
+				"message": "Update complete, restarting...",
+			})
+		}
+
+		// Give time for the response to be sent
+		time.Sleep(2 * time.Second)
+
+		// The systemd service should restart the application
+		// Exit cleanly to trigger restart
+		s.Shutdown()
+	}()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status": "Update started",
+		"message": "The system will restart automatically after the update is applied",
+	})
+}
+
+// handleSystemUpdateChannel gets or sets the update channel
+func (s *Server) handleSystemUpdateChannel(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		s.handleGetUpdateChannel(w, r)
+	case http.MethodPut:
+		s.handleSetUpdateChannel(w, r)
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func (s *Server) handleGetUpdateChannel(w http.ResponseWriter, r *http.Request) {
+	var channel string
+	err := s.db.QueryRow(`SELECT update_channel FROM system_setup WHERE id = 1`).Scan(&channel)
+	if err != nil {
+		// Default to beta if not found or column doesn't exist
+		channel = "beta"
+		if err != sql.ErrNoRows && !strings.Contains(err.Error(), "no such column") {
+			log.Printf("Failed to get update channel: %v", err)
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"channel": channel,
+	})
+}
+
+func (s *Server) handleSetUpdateChannel(w http.ResponseWriter, r *http.Request) {
+	// Check authentication - only admins can change channel
+	user := getUserFromContext(r.Context())
+	if user == nil || !user.IsStaff {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	var req struct {
+		Channel string `json:"channel"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Validate channel
+	if req.Channel != "stable" && req.Channel != "beta" {
+		http.Error(w, "Invalid channel, must be 'stable' or 'beta'", http.StatusBadRequest)
+		return
+	}
+
+	// Update database
+	_, err := s.db.Exec(`
+		UPDATE system_setup
+		SET update_channel = ?
+		WHERE id = 1
+	`, req.Channel)
+
+	if err != nil {
+		// If column doesn't exist, we can't save it but continue anyway
+		if strings.Contains(err.Error(), "no such column") {
+			log.Printf("update_channel column doesn't exist yet, will use default")
+			// Still return success since the in-memory value can be used
+		} else {
+			log.Printf("Failed to update channel: %v", err)
+			http.Error(w, "Failed to update channel", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	log.Printf("Update channel changed to: %s", req.Channel)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"status": "success",
+		"channel": req.Channel,
+	})
+}
+
+// handleSystemUpdateStatus returns the current update status
+func (s *Server) handleSystemUpdateStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	status := GetUpdateStatus()
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(status)
+}
+
+// handleSystemUpdateHistory returns the update history
+func (s *Server) handleSystemUpdateHistory(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	rows, err := s.db.Query(`
+		SELECT id, version, channel, status, error_message, started_at, completed_at, created_at
+		FROM update_history
+		ORDER BY started_at DESC
+		LIMIT 20
+	`)
+	if err != nil {
+		log.Printf("Failed to query update history: %v", err)
+		http.Error(w, "Failed to retrieve update history", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var history []database.UpdateHistory
+	for rows.Next() {
+		var h database.UpdateHistory
+		err := rows.Scan(&h.ID, &h.Version, &h.Channel, &h.Status,
+			&h.ErrorMessage, &h.StartedAt, &h.CompletedAt, &h.CreatedAt)
+		if err != nil {
+			log.Printf("Failed to scan update history row: %v", err)
+			continue
+		}
+		history = append(history, h)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(history)
+}

@@ -37,6 +37,7 @@ type SystemSetup struct {
 	AgentLLMAPIURL     sql.NullString
 	AgentLLMModel      sql.NullString
 	UptimeKumaBaseURL  sql.NullString
+	UpdateChannel      sql.NullString // "stable" or "beta", defaults to "beta"
 }
 
 // SystemVitalLog stores system performance metrics.
@@ -89,6 +90,18 @@ type ChatMessage struct {
 	StatusLevel   sql.NullString // "info", "warning", "error", "critical" (for agent monitoring)
 	Details       sql.NullString // Extended details
 	CreatedAt     time.Time
+}
+
+// UpdateHistory tracks system update attempts
+type UpdateHistory struct {
+	ID           int
+	Version      string
+	Channel      string // "stable" or "beta"
+	Status       string // "success", "failed", "rolled_back"
+	ErrorMessage sql.NullString
+	StartedAt    time.Time
+	CompletedAt  sql.NullTime
+	CreatedAt    time.Time
 }
 
 const (

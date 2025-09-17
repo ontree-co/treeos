@@ -491,6 +491,13 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/api/log", s.TracingMiddleware(s.handleBrowserLog))
 	mux.HandleFunc("/api/logs", s.TracingMiddleware(s.AuthRequiredMiddleware(s.handleGetLogs)))
 
+	// System update endpoints
+	mux.HandleFunc("/api/system/update/check", s.TracingMiddleware(s.AuthRequiredMiddleware(s.handleSystemUpdateCheck)))
+	mux.HandleFunc("/api/system/update/apply", s.TracingMiddleware(s.AuthRequiredMiddleware(s.handleSystemUpdateApply)))
+	mux.HandleFunc("/api/system/update/status", s.TracingMiddleware(s.AuthRequiredMiddleware(s.handleSystemUpdateStatus)))
+	mux.HandleFunc("/api/system/update/channel", s.TracingMiddleware(s.AuthRequiredMiddleware(s.handleSystemUpdateChannel)))
+	mux.HandleFunc("/api/system/update/history", s.TracingMiddleware(s.AuthRequiredMiddleware(s.handleSystemUpdateHistory)))
+
 	// Pattern library routes (no auth required - public access)
 	mux.HandleFunc("/patterns", s.TracingMiddleware(s.routePatterns))
 	mux.HandleFunc("/patterns/", s.TracingMiddleware(s.routePatterns))

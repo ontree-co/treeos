@@ -1044,17 +1044,37 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 
 	// Get current system setup
 	var setup database.SystemSetup
+
+	// First try with update_channel column (new schema)
 	err := s.db.QueryRow(`
 		SELECT id, public_base_domain, tailscale_auth_key, tailscale_tags,
 		       agent_enabled, agent_check_interval, agent_llm_api_key,
 		       agent_llm_api_url, agent_llm_model,
-		       uptime_kuma_base_url
-		FROM system_setup 
+		       uptime_kuma_base_url, update_channel
+		FROM system_setup
 		WHERE id = 1
 	`).Scan(&setup.ID, &setup.PublicBaseDomain, &setup.TailscaleAuthKey, &setup.TailscaleTags,
 		&setup.AgentEnabled, &setup.AgentCheckInterval, &setup.AgentLLMAPIKey,
 		&setup.AgentLLMAPIURL, &setup.AgentLLMModel,
-		&setup.UptimeKumaBaseURL)
+		&setup.UptimeKumaBaseURL, &setup.UpdateChannel)
+
+	// If the column doesn't exist, try without it (old schema)
+	if err != nil && strings.Contains(err.Error(), "no such column: update_channel") {
+		err = s.db.QueryRow(`
+			SELECT id, public_base_domain, tailscale_auth_key, tailscale_tags,
+			       agent_enabled, agent_check_interval, agent_llm_api_key,
+			       agent_llm_api_url, agent_llm_model,
+			       uptime_kuma_base_url
+			FROM system_setup
+			WHERE id = 1
+		`).Scan(&setup.ID, &setup.PublicBaseDomain, &setup.TailscaleAuthKey, &setup.TailscaleTags,
+			&setup.AgentEnabled, &setup.AgentCheckInterval, &setup.AgentLLMAPIKey,
+			&setup.AgentLLMAPIURL, &setup.AgentLLMModel,
+			&setup.UptimeKumaBaseURL)
+		// Default to beta channel if column doesn't exist
+		setup.UpdateChannel.String = "beta"
+		setup.UpdateChannel.Valid = true
+	}
 
 	if err != nil && err != sql.ErrNoRows {
 		log.Printf("Failed to get system setup: %v", err)
@@ -1101,6 +1121,8 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	data["AgentLLMAPIURL"] = ""
 	data["AgentLLMModel"] = ""
 	data["UptimeKumaBaseURL"] = ""
+	data["UpdateChannel"] = "beta" // Default to beta
+	data["CurrentVersion"] = s.versionInfo.Version
 
 	if setup.PublicBaseDomain.Valid {
 		data["PublicBaseDomain"] = setup.PublicBaseDomain.String
@@ -1128,6 +1150,9 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	if setup.UptimeKumaBaseURL.Valid {
 		data["UptimeKumaBaseURL"] = setup.UptimeKumaBaseURL.String
+	}
+	if setup.UpdateChannel.Valid {
+		data["UpdateChannel"] = setup.UpdateChannel.String
 	}
 
 	// Also show current values from config (to show if env vars are overriding)
@@ -1179,6 +1204,12 @@ func (s *Server) handleSettingsUpdate(w http.ResponseWriter, r *http.Request) {
 	agentEnabled := r.FormValue("agent_enabled") == "on"
 	agentCheckInterval := strings.TrimSpace(r.FormValue("agent_check_interval"))
 	uptimeKumaBaseURL := strings.TrimSpace(r.FormValue("uptime_kuma_base_url"))
+	updateChannel := strings.TrimSpace(r.FormValue("update_channel"))
+
+	// Validate update channel
+	if updateChannel != "stable" && updateChannel != "beta" {
+		updateChannel = "beta" // Default to beta
+	}
 
 	// Handle agent type and model selection
 	agentType := r.FormValue("agent_type")
@@ -1216,17 +1247,31 @@ func (s *Server) handleSettingsUpdate(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Failed to ensure system_setup exists: %v", err)
 	}
 
-	// Update database
+	// Update database - try with update_channel first
 	_, err = s.db.Exec(`
-		UPDATE system_setup 
+		UPDATE system_setup
 		SET public_base_domain = ?, tailscale_auth_key = ?, tailscale_tags = ?,
 		    agent_enabled = ?, agent_check_interval = ?, agent_llm_api_key = ?,
 		    agent_llm_api_url = ?, agent_llm_model = ?,
-		    uptime_kuma_base_url = ?
+		    uptime_kuma_base_url = ?, update_channel = ?
 		WHERE id = 1
 	`, publicDomain, tailscaleAuthKey, tailscaleTags, agentEnabledInt, agentCheckInterval,
 		agentLLMAPIKey, agentLLMAPIURL, agentLLMModel,
-		uptimeKumaBaseURL)
+		uptimeKumaBaseURL, updateChannel)
+
+	// If update_channel column doesn't exist, try without it
+	if err != nil && strings.Contains(err.Error(), "no such column: update_channel") {
+		_, err = s.db.Exec(`
+			UPDATE system_setup
+			SET public_base_domain = ?, tailscale_auth_key = ?, tailscale_tags = ?,
+			    agent_enabled = ?, agent_check_interval = ?, agent_llm_api_key = ?,
+			    agent_llm_api_url = ?, agent_llm_model = ?,
+			    uptime_kuma_base_url = ?
+			WHERE id = 1
+		`, publicDomain, tailscaleAuthKey, tailscaleTags, agentEnabledInt, agentCheckInterval,
+			agentLLMAPIKey, agentLLMAPIURL, agentLLMModel,
+			uptimeKumaBaseURL)
+	}
 
 	if err != nil {
 		log.Printf("Failed to update settings: %v", err)
