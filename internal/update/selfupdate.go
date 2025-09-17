@@ -109,7 +109,7 @@ func (s *Service) ApplyUpdate(progressCallback func(stage string, percentage flo
 	}
 
 	// Download the update
-	binaryData, err := s.downloadAndExtractBinary(asset, func(downloaded, total int64) {
+	archiveData, binaryData, err := s.downloadAndExtractBinary(asset, func(downloaded, total int64) {
 		if progressCallback != nil && total > 0 {
 			percentage := float64(downloaded) / float64(total) * 100
 			progressCallback("downloading", percentage,
@@ -124,8 +124,8 @@ func (s *Service) ApplyUpdate(progressCallback func(stage string, percentage flo
 		progressCallback("verifying", 90, "Verifying checksum...")
 	}
 
-	// Verify checksum
-	if err := s.verifyChecksum(binaryData, asset.SHA256); err != nil {
+	// Verify checksum of the downloaded archive (tar.gz), not the extracted binary
+	if err := s.verifyChecksum(archiveData, asset.SHA256); err != nil {
 		return fmt.Errorf("checksum verification failed: %w", err)
 	}
 
@@ -152,19 +152,20 @@ func (s *Service) ApplyUpdate(progressCallback func(stage string, percentage flo
 }
 
 // downloadAndExtractBinary downloads the asset and extracts the binary from tar.gz
-func (s *Service) downloadAndExtractBinary(asset *Asset, progressCallback func(downloaded, total int64)) ([]byte, error) {
+// Returns both the archive data (for checksum verification) and the extracted binary
+func (s *Service) downloadAndExtractBinary(asset *Asset, progressCallback func(downloaded, total int64)) ([]byte, []byte, error) {
 	resp, err := s.source.HTTPClient.Get(asset.URL)
 	if err != nil {
-		return nil, fmt.Errorf("failed to download from %s: %w", asset.URL, err)
+		return nil, nil, fmt.Errorf("failed to download from %s: %w", asset.URL, err)
 	}
 	defer resp.Body.Close()
 
 	// Check HTTP status
 	if resp.StatusCode == http.StatusNotFound {
-		return nil, fmt.Errorf("update package not found (404): %s", asset.URL)
+		return nil, nil, fmt.Errorf("update package not found (404): %s", asset.URL)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to download update (HTTP %d): %s", resp.StatusCode, asset.URL)
+		return nil, nil, fmt.Errorf("failed to download update (HTTP %d): %s", resp.StatusCode, asset.URL)
 	}
 
 	// Read with progress tracking
@@ -186,16 +187,24 @@ func (s *Service) downloadAndExtractBinary(asset *Asset, progressCallback func(d
 			break
 		}
 		if err != nil {
-			return nil, fmt.Errorf("download error: %w", err)
+			return nil, nil, fmt.Errorf("download error: %w", err)
 		}
 	}
 
+	// Store the original archive data for checksum verification
+	archiveData := buf.Bytes()
+
 	// Extract binary from tar.gz if needed
 	if strings.HasSuffix(asset.URL, ".tar.gz") {
-		return s.extractBinaryFromTarGz(&buf)
+		binaryData, err := s.extractBinaryFromTarGz(bytes.NewReader(archiveData))
+		if err != nil {
+			return nil, nil, err
+		}
+		return archiveData, binaryData, nil
 	}
 
-	return buf.Bytes(), nil
+	// For non-tar.gz files, the archive and binary are the same
+	return archiveData, archiveData, nil
 }
 
 // extractBinaryFromTarGz extracts the treeos binary from a tar.gz archive
