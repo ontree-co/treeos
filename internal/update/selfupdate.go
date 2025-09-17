@@ -282,7 +282,7 @@ func (s *Service) BackupCurrentBinary() (string, error) {
 	}
 
 	// Write backup
-	err = os.WriteFile(backupPath, data, 0755)
+	err = os.WriteFile(backupPath, data, 0600)
 	if err != nil {
 		return "", fmt.Errorf("failed to write backup: %w", err)
 	}
@@ -305,7 +305,7 @@ func (s *Service) RestoreBackup(backupPath string) error {
 	}
 
 	// Restore
-	err = os.WriteFile(execPath, data, 0755)
+	err = os.WriteFile(execPath, data, 0600)
 	if err != nil {
 		return fmt.Errorf("failed to restore backup: %w", err)
 	}

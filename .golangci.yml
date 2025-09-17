@@ -157,5 +157,9 @@ issues:
         - staticcheck
       path: internal/docker/container_naming_test\.go
       text: 'SA1019: types.Container is deprecated'
+    - linters:
+        - revive
+      path: internal/update/types\.go
+      text: 'exported: type name will be used as update\.'
   max-issues-per-linter: 0
   max-same-issues: 0

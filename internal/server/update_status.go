@@ -7,7 +7,6 @@ import (
 
 // UpdateStatus tracks the current update operation status
 type UpdateStatus struct {
-	mu         sync.RWMutex
 	InProgress bool      `json:"in_progress"`
 	Success    bool      `json:"success"`
 	Failed     bool      `json:"failed"`
@@ -19,50 +18,35 @@ type UpdateStatus struct {
 	UpdatedAt  time.Time `json:"updated_at"`
 }
 
-// Global update status (simple solution for now)
-var currentUpdateStatus = &UpdateStatus{}
+// Global update status with mutex protection
+var (
+	updateStatusMu     sync.RWMutex
+	currentUpdateStatus = UpdateStatus{}
+)
 
 // GetUpdateStatus returns the current update status
 func GetUpdateStatus() UpdateStatus {
-	currentUpdateStatus.mu.RLock()
-	defer currentUpdateStatus.mu.RUnlock()
+	updateStatusMu.RLock()
+	defer updateStatusMu.RUnlock()
 
-	// Return a copy without the mutex
-	return UpdateStatus{
-		InProgress: currentUpdateStatus.InProgress,
-		Success:    currentUpdateStatus.Success,
-		Failed:     currentUpdateStatus.Failed,
-		Error:      currentUpdateStatus.Error,
-		Message:    currentUpdateStatus.Message,
-		Stage:      currentUpdateStatus.Stage,
-		Percentage: currentUpdateStatus.Percentage,
-		StartedAt:  currentUpdateStatus.StartedAt,
-		UpdatedAt:  currentUpdateStatus.UpdatedAt,
-	}
+	// Return a copy
+	return currentUpdateStatus
 }
 
 // SetUpdateStatus updates the current status
 func SetUpdateStatus(status UpdateStatus) {
-	currentUpdateStatus.mu.Lock()
-	defer currentUpdateStatus.mu.Unlock()
+	updateStatusMu.Lock()
+	defer updateStatusMu.Unlock()
 
-	// Only update the data fields, not the mutex
-	currentUpdateStatus.InProgress = status.InProgress
-	currentUpdateStatus.Success = status.Success
-	currentUpdateStatus.Failed = status.Failed
-	currentUpdateStatus.Error = status.Error
-	currentUpdateStatus.Message = status.Message
-	currentUpdateStatus.Stage = status.Stage
-	currentUpdateStatus.Percentage = status.Percentage
-	currentUpdateStatus.StartedAt = status.StartedAt
-	currentUpdateStatus.UpdatedAt = time.Now()
+	status.UpdatedAt = time.Now()
+	currentUpdateStatus = status
 }
 
 // ResetUpdateStatus clears the update status
 func ResetUpdateStatus() {
-	currentUpdateStatus.mu.Lock()
-	defer currentUpdateStatus.mu.Unlock()
-	*currentUpdateStatus = UpdateStatus{
+	updateStatusMu.Lock()
+	defer updateStatusMu.Unlock()
+	currentUpdateStatus = UpdateStatus{
 		UpdatedAt: time.Now(),
 	}
 }

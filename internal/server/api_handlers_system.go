@@ -48,15 +48,19 @@ func (s *Server) handleSystemUpdateCheck(w http.ResponseWriter, r *http.Request)
 		log.Printf("Failed to check for updates: %v", err)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusServiceUnavailable)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
 			"error": "Failed to check for updates",
 			"details": err.Error(),
-		})
+		}); err != nil {
+			log.Printf("Failed to encode response: %v", err)
+		}
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(updateInfo)
+	if err := json.NewEncoder(w).Encode(updateInfo); err != nil {
+		log.Printf("Failed to encode update info: %v", err)
+	}
 }
 
 // handleSystemUpdateApply applies a system update
@@ -104,7 +108,10 @@ func (s *Server) handleSystemUpdateApply(w http.ResponseWriter, r *http.Request)
 	`, updateSvc.GetCurrentVersion(), string(channel))
 
 	if err == nil {
-		historyID, _ = result.LastInsertId()
+		historyID, err = result.LastInsertId()
+		if err != nil {
+			log.Printf("Failed to get last insert ID: %v", err)
+		}
 	} else if strings.Contains(err.Error(), "no such table") {
 		// Table doesn't exist yet, migrations haven't run
 		log.Printf("update_history table doesn't exist, skipping history recording")
@@ -226,10 +233,12 @@ func (s *Server) handleSystemUpdateApply(w http.ResponseWriter, r *http.Request)
 	}()
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"status": "Update started",
 		"message": "The system will restart automatically after the update is applied",
-	})
+	}); err != nil {
+		log.Printf("Failed to encode response: %v", err)
+	}
 }
 
 // handleSystemUpdateChannel gets or sets the update channel
@@ -256,9 +265,11 @@ func (s *Server) handleGetUpdateChannel(w http.ResponseWriter, r *http.Request) 
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
+	if err := json.NewEncoder(w).Encode(map[string]string{
 		"channel": channel,
-	})
+	}); err != nil {
+		log.Printf("Failed to encode channel response: %v", err)
+	}
 }
 
 func (s *Server) handleSetUpdateChannel(w http.ResponseWriter, r *http.Request) {
@@ -306,10 +317,12 @@ func (s *Server) handleSetUpdateChannel(w http.ResponseWriter, r *http.Request) 
 	log.Printf("Update channel changed to: %s", req.Channel)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
+	if err := json.NewEncoder(w).Encode(map[string]string{
 		"status": "success",
 		"channel": req.Channel,
-	})
+	}); err != nil {
+		log.Printf("Failed to encode response: %v", err)
+	}
 }
 
 // handleSystemUpdateStatus returns the current update status
@@ -321,7 +334,9 @@ func (s *Server) handleSystemUpdateStatus(w http.ResponseWriter, r *http.Request
 
 	status := GetUpdateStatus()
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(status)
+	if err := json.NewEncoder(w).Encode(status); err != nil {
+		log.Printf("Failed to encode status: %v", err)
+	}
 }
 
 // handleSystemUpdateHistory returns the update history
@@ -357,5 +372,7 @@ func (s *Server) handleSystemUpdateHistory(w http.ResponseWriter, r *http.Reques
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(history)
+	if err := json.NewEncoder(w).Encode(history); err != nil {
+		log.Printf("Failed to encode history: %v", err)
+	}
 }
