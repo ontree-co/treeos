@@ -27,8 +27,8 @@ func TestMonitoringDashboard(t *testing.T) {
 			method:            "GET",
 			path:              "/monitoring",
 			monitoringEnabled: true,
-			wantStatusCode:    http.StatusInternalServerError, // Template not found in test
-			description:       "Should attempt to return monitoring dashboard when feature is enabled",
+			wantStatusCode:    http.StatusMovedPermanently, // Redirects to main dashboard
+			description:       "Should redirect to main dashboard when monitoring route is accessed",
 		},
 		{
 			name:              "GET monitoring dashboard when disabled",

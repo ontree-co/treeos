@@ -62,9 +62,8 @@ func TestHandleSettings(t *testing.T) {
 			expectedStatus: http.StatusOK,
 			expectedInBody: []string{
 				"Settings",
-				"Domain Configuration",
 				"AI Agent Configuration",
-				"Uptime Kuma Integration",
+				// Note: Domain Configuration and Uptime Kuma Integration are hidden for initial release
 			},
 		},
 	}
@@ -262,12 +261,11 @@ func TestSettingsWithDatabaseMigration(t *testing.T) {
 		t.Errorf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
 	}
 
-	// Check that the page loads with all sections
+	// Check that the page loads with expected sections
 	body := w.Body.String()
 	expectedSections := []string{
-		"Domain Configuration",
 		"AI Agent Configuration",
-		"Uptime Kuma Integration",
+		// Note: Domain Configuration and Uptime Kuma Integration are hidden for initial release
 	}
 
 	for _, section := range expectedSections {

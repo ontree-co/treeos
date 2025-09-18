@@ -42,6 +42,72 @@
 
 <div class="row">
     <div class="col-12">
+        <!-- Node Appearance -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Node Appearance</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" action="/settings">
+                    <div class="mb-3">
+                        <label class="form-label">Node Icon</label>
+                        <div class="tree-selector" id="tree-selector">
+                            <div class="tree-grid mb-3" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                <button type="button"
+                                        class="tree-option {{if eq .CurrentNodeIcon "tree0.png"}}selected{{end}}"
+                                        data-tree="tree0.png"
+                                        onclick="selectTree(this)"
+                                        aria-label="Select tree 0"
+                                        style="padding: 5px; border: 2px solid transparent; border-radius: 8px; background: #f8f9fa; cursor: pointer; transition: all 0.2s;">
+                                    <img src="/static/images/trees/tree0.png" alt="Tree 0" style="width: 40px; height: 40px; object-fit: contain;">
+                                </button>
+                                <button type="button"
+                                        class="tree-option {{if eq .CurrentNodeIcon "tree00.png"}}selected{{end}}"
+                                        data-tree="tree00.png"
+                                        onclick="selectTree(this)"
+                                        aria-label="Select tree 00"
+                                        style="padding: 5px; border: 2px solid transparent; border-radius: 8px; background: #f8f9fa; cursor: pointer; transition: all 0.2s;">
+                                    <img src="/static/images/trees/tree00.png" alt="Tree 00" style="width: 40px; height: 40px; object-fit: contain;">
+                                </button>
+                                <button type="button"
+                                        class="tree-option {{if eq .CurrentNodeIcon "tree1.png"}}selected{{end}}"
+                                        data-tree="tree1.png"
+                                        onclick="selectTree(this)"
+                                        aria-label="Select tree 1"
+                                        style="padding: 5px; border: 2px solid transparent; border-radius: 8px; background: #f8f9fa; cursor: pointer; transition: all 0.2s;">
+                                    <img src="/static/images/trees/tree1.png" alt="Tree 1" style="width: 40px; height: 40px; object-fit: contain;">
+                                </button>
+                                <button type="button"
+                                        class="tree-option {{if eq .CurrentNodeIcon "tree2.png"}}selected{{end}}"
+                                        data-tree="tree2.png"
+                                        onclick="selectTree(this)"
+                                        aria-label="Select tree 2"
+                                        style="padding: 5px; border: 2px solid transparent; border-radius: 8px; background: #f8f9fa; cursor: pointer; transition: all 0.2s;">
+                                    <img src="/static/images/trees/tree2.png" alt="Tree 2" style="width: 40px; height: 40px; object-fit: contain;">
+                                </button>
+                                <button type="button"
+                                        class="tree-option {{if eq .CurrentNodeIcon "tree3.png"}}selected{{end}}"
+                                        data-tree="tree3.png"
+                                        onclick="selectTree(this)"
+                                        aria-label="Select tree 3"
+                                        style="padding: 5px; border: 2px solid transparent; border-radius: 8px; background: #f8f9fa; cursor: pointer; transition: all 0.2s;">
+                                    <img src="/static/images/trees/tree3.png" alt="Tree 3" style="width: 40px; height: 40px; object-fit: contain;">
+                                </button>
+                            </div>
+                            <input type="hidden" name="node_icon" id="selected-tree" value="{{.CurrentNodeIcon}}">
+                            <small class="form-text text-muted">Choose an icon for your TreeOS node. Changes are reflected immediately in the header (save to make permanent).</small>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end">
+                        <button type="submit" class="btn btn-primary">
+                            <i>💾</i> Save Node Icon
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <div class="card">
             <div class="card-header">
                 <h5 class="mb-0">System Updates</h5>
@@ -267,6 +333,8 @@
             </div>
         </div>
 
+        <!-- Uptime Kuma Integration - HIDDEN FOR INITIAL RELEASE -->
+        <!--
         <div class="card mt-4">
             <div class="card-header">
                 <h5 class="mb-0">Uptime Kuma Integration</h5>
@@ -275,11 +343,11 @@
                 <p class="text-muted mb-4">
                     Connect to Uptime Kuma for external monitoring of your applications.
                 </p>
-                
+
                 <form method="post" action="/settings">
                     <div class="mb-3">
                         <label for="uptime_kuma_base_url" class="form-label">Uptime Kuma Base URL</label>
-                        <input type="text" class="form-control" id="uptime_kuma_base_url" name="uptime_kuma_base_url" 
+                        <input type="text" class="form-control" id="uptime_kuma_base_url" name="uptime_kuma_base_url"
                                value="{{.UptimeKumaBaseURL}}" placeholder="http://localhost:3001">
                         <small class="form-text text-muted">
                             The base URL of your Uptime Kuma instance (e.g., http://localhost:3001)
@@ -294,13 +362,16 @@
 
                     <div class="d-flex justify-content-end">
                         <button type="submit" class="btn btn-primary">
-                            <i>💾</i> Save Uptime Kuma Settings  
+                            <i>💾</i> Save Uptime Kuma Settings
                         </button>
                     </div>
                 </form>
             </div>
         </div>
+        -->
 
+        <!-- Help - HIDDEN FOR INITIAL RELEASE -->
+        <!--
         <div class="card mt-4">
             <div class="card-header">
                 <h5 class="mb-0">Help</h5>
@@ -313,7 +384,7 @@
                     <li>Caddy will automatically obtain HTTPS certificates</li>
                     <li>Apps can then be exposed via the app detail page</li>
                 </ol>
-                
+
                 <h6 class="mt-3">Requirements:</h6>
                 <ul class="small">
                     <li>Linux server (not macOS)</li>
@@ -323,7 +394,10 @@
                 </ul>
             </div>
         </div>
+        -->
 
+        <!-- Domain Configuration - HIDDEN FOR INITIAL RELEASE -->
+        <!--
         <div class="card mt-4">
             <div class="card-header">
                 <h5 class="mb-0">Domain Configuration</h5>
@@ -338,15 +412,15 @@
                     <p class="text-muted mb-4">
                         Configure base domains for exposing applications. These settings allow apps to be accessed via custom subdomains with automatic HTTPS certificates.
                     </p>
-                    
+
                     <form method="post" action="/settings">
                         <div class="mb-4">
                             <label for="public_base_domain" class="form-label">
                                 Public Base Domain
                             </label>
-                            <input type="text" 
-                                   class="form-control" 
-                                   id="public_base_domain" 
+                            <input type="text"
+                                   class="form-control"
+                                   id="public_base_domain"
                                    name="public_base_domain"
                                    placeholder="example.com"
                                    value="{{.PublicBaseDomain}}"
@@ -362,15 +436,15 @@
                                 </div>
                             {{end}}
                         </div>
-                        
+
                         <div class="mb-3">
                             <label for="tailscale_auth_key" class="form-label">
                                 Tailscale Auth Key
                                 <span class="badge bg-secondary">Required for Tailscale</span>
                             </label>
-                            <input type="password" 
-                                   class="form-control" 
-                                   id="tailscale_auth_key" 
+                            <input type="password"
+                                   class="form-control"
+                                   id="tailscale_auth_key"
                                    name="tailscale_auth_key"
                                    placeholder="tskey-auth-..."
                                    value="{{.TailscaleAuthKey}}">
@@ -391,9 +465,9 @@
                                 Tailscale Tags
                                 <span class="badge bg-secondary">Optional</span>
                             </label>
-                            <input type="text" 
-                                   class="form-control" 
-                                   id="tailscale_tags" 
+                            <input type="text"
+                                   class="form-control"
+                                   id="tailscale_tags"
                                    name="tailscale_tags"
                                    placeholder="tag:ontree-apps"
                                    value="{{.TailscaleTags}}"
@@ -410,7 +484,7 @@
                                 </div>
                             {{end}}
                         </div>
-                        
+
                         <div class="d-flex justify-content-between align-items-center">
                             {{if .CaddyAvailable}}
                                 <span class="text-success">
@@ -423,7 +497,7 @@
                             {{else}}
                                 <span></span>
                             {{end}}
-                            
+
                             <button type="submit" class="btn btn-primary" {{if not .PlatformSupportsCaddy}}disabled{{end}}>
                                 <i>💾</i> Save Settings
                             </button>
@@ -432,7 +506,10 @@
                 {{end}}
             </div>
         </div>
+        -->
         
+        <!-- Environment Variables - HIDDEN FOR INITIAL RELEASE -->
+        <!--
         <div class="card mt-4">
             <div class="card-header">
                 <h5 class="mb-0">Environment Variables</h5>
@@ -448,6 +525,7 @@
                 </ul>
             </div>
         </div>
+        -->
     </div>
 </div>
 
@@ -864,5 +942,52 @@ function checkForReconnection() {
 
     tryReconnect();
 }
+
+// Tree selector functionality
+function selectTree(button) {
+    // Remove selected class from all tree buttons
+    document.querySelectorAll('.tree-option').forEach(btn => {
+        btn.classList.remove('selected');
+    });
+
+    // Add selected class to clicked button
+    button.classList.add('selected');
+
+    // Update hidden input value
+    const tree = button.getAttribute('data-tree');
+    document.getElementById('selected-tree').value = tree;
+
+    // Update the icon in the header immediately
+    updateHeaderIcon(tree);
+}
+
+function updateHeaderIcon(iconName) {
+    // Find the header icon image
+    const headerIcon = document.querySelector('.navbar-brand img');
+
+    if (headerIcon) {
+        // Update the src to the new icon
+        headerIcon.src = '/static/images/trees/' + iconName;
+
+        // Add a subtle animation effect
+        headerIcon.style.transition = 'transform 0.3s ease';
+        headerIcon.style.transform = 'scale(1.1)';
+        setTimeout(() => {
+            headerIcon.style.transform = 'scale(1)';
+        }, 300);
+    }
+}
 </script>
+
+<style>
+.tree-option.selected {
+    border-color: #0d6efd !important;
+    background: #e7f3ff !important;
+    transform: scale(1.05);
+}
+.tree-option:hover:not(.selected) {
+    border-color: #6c757d !important;
+    background: #e9ecef !important;
+}
+</style>
 {{end}}

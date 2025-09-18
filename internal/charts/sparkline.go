@@ -29,7 +29,7 @@ func GenerateSparklineSVG(dataPoints []float64, width, height int) template.HTML
 	// Generate SVG
 	svg := fmt.Sprintf(
 		`<svg width="%d" height="%d" viewBox="0 0 %d %d" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
-			<polyline fill="none" stroke="#007bff" stroke-width="2" points="%s" />
+			<polyline fill="none" stroke="#198754" stroke-width="2" points="%s" />
 		</svg>`,
 		width, height, width, height, points,
 	)
@@ -135,7 +135,7 @@ func GeneratePercentageSparkline(dataPoints []float64, width, height int) templa
 	svg.WriteString(fmt.Sprintf("%d", height))
 	svg.WriteString(`" viewBox="0 0 `)
 	svg.WriteString(fmt.Sprintf("%d %d", width, height))
-	svg.WriteString(`" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"><polyline fill="none" stroke="#007bff" stroke-width="2" points="`)
+	svg.WriteString(`" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"><polyline fill="none" stroke="#198754" stroke-width="2" points="`)
 	svg.WriteString(points)
 	svg.WriteString(`"/></svg>`)
 

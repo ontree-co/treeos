@@ -603,7 +603,8 @@
 </div>
 {{end}}
 
-<!-- Public Access (Caddy) -->
+<!-- Public Access (Caddy) - HIDDEN FOR INITIAL RELEASE -->
+{{/*
 {{$hasPorts := false}}
 {{range $serviceName, $service := .App.Services}}
     {{if $service.Ports}}
@@ -677,13 +678,13 @@
                         </p>
                         <div class="btn-group" role="group">
                             <form method="post" action="/apps/{{.App.Name}}/unexpose" class="d-inline">
-                                <button type="submit" class="btn btn-warning confirm-action" 
+                                <button type="submit" class="btn btn-warning confirm-action"
                                         data-action="Unexpose"
                                         data-confirm-text="Confirm Unexpose?">
                                     <i>🔒</i> Unexpose Publicly
                                 </button>
                             </form>
-                            <button type="button" 
+                            <button type="button"
                                     class="btn btn-primary"
                                     hx-get="/api/apps/{{.App.Name}}/status"
                                     hx-target="#status-result"
@@ -702,11 +703,11 @@
                         <div class="mb-3">
                             <label for="subdomain" class="form-label">Subdomain</label>
                             <div class="input-group">
-                                <input type="text" 
-                                       class="form-control" 
-                                       id="subdomain" 
-                                       name="subdomain" 
-                                       placeholder="myapp" 
+                                <input type="text"
+                                       class="form-control"
+                                       id="subdomain"
+                                       name="subdomain"
+                                       placeholder="myapp"
                                        pattern="[a-z0-9-]+"
                                        title="Only lowercase letters, numbers, and hyphens allowed"
                                        required
@@ -761,7 +762,7 @@
                             </a>
                         </p>
                         <form method="post" action="/apps/{{.App.Name}}/unexpose-tailscale" class="d-inline">
-                            <button type="submit" class="btn btn-warning confirm-action" 
+                            <button type="submit" class="btn btn-warning confirm-action"
                                     data-action="Remove from Tailscale"
                                     data-confirm-text="Confirm Remove from Tailscale?">
                                 <i>🔒</i> Remove from Tailscale
@@ -786,6 +787,7 @@
     </div>
 </div>
 {{end}}
+*/}}
 
 <!-- Configuration Files -->
 <!-- .env Configuration -->
@@ -885,7 +887,7 @@
                     </h6>
                     <div class="alert alert-danger mb-3">
                         <i class="fas fa-exclamation-triangle me-2"></i>
-                        <strong>Warning:</strong> This will permanently delete the application.
+                        <strong>Warning:</strong> This will permanently delete the application and its data.
                     </div>
 
                     <p class="small text-muted">This action will:</p>

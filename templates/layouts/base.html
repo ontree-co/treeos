@@ -215,6 +215,9 @@
     <nav class="navbar navbar-expand-lg navbar-light main-header">
         <div class="container">
             <a class="navbar-brand" href="/">
+                {{if .NodeIcon}}
+                <img src="/static/images/trees/{{.NodeIcon}}" alt="Tree" style="width: 30px; height: 30px; object-fit: contain; margin-right: 8px;">
+                {{end}}
                 <span>OnTree.co</span>
             </a>
             
@@ -243,21 +246,6 @@
                                 </div>
                             </li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="/">
-                                <i>🏠</i> Dashboard
-                            </a></li>
-                            <li><a class="dropdown-item" href="/apps/create">
-                                <i>➕</i> Create App
-                            </a></li>
-                            <li><a class="dropdown-item" href="/docker/operations">
-                                <i>📋</i> Docker Operations
-                            </a></li>
-                            {{if .MonitoringEnabled}}
-                            <li><a class="dropdown-item" href="/monitoring">
-                                <i>📊</i> System Monitoring
-                            </a></li>
-                            {{end}}
-                            <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="/settings">
                                 <i>⚙️</i> Settings
                             </a></li>
@@ -269,10 +257,6 @@
                             </a></li>
                         </ul>
                     </div>
-                {{else}}
-                    <a class="nav-link" href="/login">
-                        <i>🔐</i> Login
-                    </a>
                 {{end}}
             </div>
         </div>

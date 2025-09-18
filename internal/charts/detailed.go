@@ -210,7 +210,7 @@ func generateDataLine(points []DataPoint, left, top, width, height int, minVal, 
 		x := left + width/2 // Center it
 		normalized := (point.Value - minVal) / (maxVal - minVal)
 		y := top + height - int(normalized*float64(height))
-		return fmt.Sprintf(`<circle cx="%d" cy="%d" r="4" fill="#007bff"/>`, x, y)
+		return fmt.Sprintf(`<circle cx="%d" cy="%d" r="4" fill="#198754"/>`, x, y)
 	}
 
 	// Use requested time range for positioning
@@ -254,7 +254,7 @@ func generateDataLine(points []DataPoint, left, top, width, height int, minVal, 
 			x := left + int(float64(elapsed)/float64(timeRange)*float64(width))
 			normalized := (point.Value - minVal) / (maxVal - minVal)
 			y := top + height - int(normalized*float64(height))
-			svg += fmt.Sprintf(`<circle cx="%d" cy="%d" r="3" fill="#007bff"/>`, x, y)
+			svg += fmt.Sprintf(`<circle cx="%d" cy="%d" r="3" fill="#198754"/>`, x, y)
 			continue
 		}
 
@@ -293,8 +293,8 @@ func generateDataLine(points []DataPoint, left, top, width, height int, minVal, 
 		areaPoints += fmt.Sprintf(" %d,%d", lastX, top+height)
 		areaPoints += fmt.Sprintf(" %d,%d", firstX, top+height)
 
-		svg += fmt.Sprintf(`<polygon points="%s" fill="#007bff" fill-opacity="0.1"/>`, areaPoints)
-		svg += fmt.Sprintf(`<polyline points="%s" fill="none" stroke="#007bff" stroke-width="2"/>`, polylinePoints)
+		svg += fmt.Sprintf(`<polygon points="%s" fill="#198754" fill-opacity="0.1"/>`, areaPoints)
+		svg += fmt.Sprintf(`<polyline points="%s" fill="none" stroke="#198754" stroke-width="2"/>`, polylinePoints)
 
 		// Add dots for small segments
 		if len(segment) < 20 {
@@ -308,7 +308,7 @@ func generateDataLine(points []DataPoint, left, top, width, height int, minVal, 
 					normalized = 1
 				}
 				y := top + height - int(normalized*float64(height))
-				svg += fmt.Sprintf(`<circle cx="%d" cy="%d" r="3" fill="#007bff"/>`, x, y)
+				svg += fmt.Sprintf(`<circle cx="%d" cy="%d" r="3" fill="#198754"/>`, x, y)
 			}
 		}
 	}

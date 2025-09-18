@@ -805,8 +805,8 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		diskSparkline = charts.GenerateSparklineSVG(diskPoints, 150, 40)
 		gpuSparkline = charts.GenerateSparklineSVG(gpuPoints, 150, 40)
 		// For network rates, normalize the values
-		uploadSparkline = charts.GenerateSparklineSVGWithStyle(normalizeNetworkRates(uploadPoints), 150, 40, "#28a745", 2)
-		downloadSparkline = charts.GenerateSparklineSVGWithStyle(normalizeNetworkRates(downloadPoints), 150, 40, "#17a2b8", 2)
+		uploadSparkline = charts.GenerateSparklineSVGWithStyle(normalizeNetworkRates(uploadPoints), 150, 40, "#198754", 2)
+		downloadSparkline = charts.GenerateSparklineSVGWithStyle(normalizeNetworkRates(downloadPoints), 150, 40, "#198754", 2)
 	}
 
 	// Prepare monitoring data with formatting
@@ -904,6 +904,15 @@ func (s *Server) baseTemplateData(user *database.User) map[string]interface{} {
 
 	// Monitoring availability
 	data["MonitoringEnabled"] = s.config.MonitoringEnabled
+
+	// Get node icon from database
+	db := database.GetDB()
+	var nodeIcon string
+	err := db.QueryRow("SELECT node_icon FROM system_setup WHERE id = 1").Scan(&nodeIcon)
+	if err != nil || nodeIcon == "" {
+		nodeIcon = "tree1.png" // Default icon
+	}
+	data["NodeIcon"] = nodeIcon
 
 	// Messages field is required by base template
 	data["Messages"] = nil
@@ -1451,6 +1460,7 @@ func (s *Server) verifyMigrationsComplete() error {
 	// We check these specific columns as they were added in recent updates
 	verifyQueries := map[string]string{
 		"system_setup.update_channel":  "SELECT COUNT(*) FROM pragma_table_info('system_setup') WHERE name='update_channel'",
+		"system_setup.node_icon":       "SELECT COUNT(*) FROM pragma_table_info('system_setup') WHERE name='node_icon'",
 		"update_history.channel":       "SELECT COUNT(*) FROM pragma_table_info('update_history') WHERE name='channel'",
 		"system_vital_logs.gpu_load":   "SELECT COUNT(*) FROM pragma_table_info('system_vital_logs') WHERE name='gpu_load'",
 	}

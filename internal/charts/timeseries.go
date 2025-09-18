@@ -32,7 +32,7 @@ func DefaultSparklineOptions() TimeSeriesOptions {
 	return TimeSeriesOptions{
 		Width:        150,
 		Height:       40,
-		StrokeColor:  "#007bff",
+		StrokeColor:  "#198754",
 		StrokeWidth:  2,
 		GapThreshold: 2 * time.Minute, // 2x the normal collection interval of 60s
 		ShowNoData:   true,

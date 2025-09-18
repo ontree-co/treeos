@@ -38,7 +38,7 @@ func TestGenerateSparklineSVG(t *testing.T) {
 			contains: []string{
 				`<svg width="100" height="40"`,
 				`viewBox="0 0 100 40"`,
-				`stroke="#007bff"`,
+				`stroke="#198754"`,
 				`stroke-width="2"`,
 				`<polyline`,
 			},

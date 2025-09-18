@@ -236,6 +236,7 @@ func migrateColumnsIfNeeded() error {
 		{"system_vital_logs", "upload_rate", `ALTER TABLE system_vital_logs ADD COLUMN upload_rate INTEGER DEFAULT 0`},
 		{"system_vital_logs", "download_rate", `ALTER TABLE system_vital_logs ADD COLUMN download_rate INTEGER DEFAULT 0`},
 		{"system_vital_logs", "gpu_load", `ALTER TABLE system_vital_logs ADD COLUMN gpu_load REAL DEFAULT 0`},
+		{"system_setup", "node_icon", `ALTER TABLE system_setup ADD COLUMN node_icon TEXT DEFAULT 'tree1.png'`},
 	}
 
 	for _, m := range migrations {

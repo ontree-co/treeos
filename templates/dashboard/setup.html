@@ -5,9 +5,9 @@
     <div class="col-md-6 col-lg-5">
         <div class="card shadow-sm">
             <div class="card-body">
-                <h2 class="card-title text-center mb-4">Welcome to OnTree</h2>
+                <h2 class="card-title text-center mb-4">Welcome to TreeOS</h2>
                 <p class="text-muted text-center mb-4">
-                    Let's set up your OnTree node. Create an admin account to get started.
+                    Let's set up your TreeOS node. Create an admin account to get started.
                 </p>
 
                 {{if .Errors}}
@@ -55,10 +55,53 @@
                     </div>
 
                     <div class="mb-3">
-                        <label for="node_description" class="form-label">Node Description (Optional)</label>
-                        <textarea class="form-control" id="node_description" name="node_description" 
-                                  rows="3" placeholder="Optional description of this node's purpose">{{.FormData.node_description}}</textarea>
-                        <small class="form-text text-muted">Optional description of this node's purpose</small>
+                        <label class="form-label">Node Icon</label>
+                        <div class="tree-selector" id="tree-selector">
+                            <div class="tree-grid mb-3" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                <button type="button"
+                                        class="tree-option"
+                                        data-tree="tree0.png"
+                                        onclick="selectTree(this)"
+                                        aria-label="Select tree 0"
+                                        style="padding: 5px; border: 2px solid transparent; border-radius: 8px; background: #f8f9fa; cursor: pointer; transition: all 0.2s;">
+                                    <img src="/static/images/trees/tree0.png" alt="Tree 0" style="width: 40px; height: 40px; object-fit: contain;">
+                                </button>
+                                <button type="button"
+                                        class="tree-option"
+                                        data-tree="tree00.png"
+                                        onclick="selectTree(this)"
+                                        aria-label="Select tree 00"
+                                        style="padding: 5px; border: 2px solid transparent; border-radius: 8px; background: #f8f9fa; cursor: pointer; transition: all 0.2s;">
+                                    <img src="/static/images/trees/tree00.png" alt="Tree 00" style="width: 40px; height: 40px; object-fit: contain;">
+                                </button>
+                                <button type="button"
+                                        class="tree-option"
+                                        data-tree="tree1.png"
+                                        onclick="selectTree(this)"
+                                        aria-label="Select tree 1"
+                                        style="padding: 5px; border: 2px solid transparent; border-radius: 8px; background: #f8f9fa; cursor: pointer; transition: all 0.2s;">
+                                    <img src="/static/images/trees/tree1.png" alt="Tree 1" style="width: 40px; height: 40px; object-fit: contain;">
+                                </button>
+                                <button type="button"
+                                        class="tree-option"
+                                        data-tree="tree2.png"
+                                        onclick="selectTree(this)"
+                                        aria-label="Select tree 2"
+                                        style="padding: 5px; border: 2px solid transparent; border-radius: 8px; background: #f8f9fa; cursor: pointer; transition: all 0.2s;">
+                                    <img src="/static/images/trees/tree2.png" alt="Tree 2" style="width: 40px; height: 40px; object-fit: contain;">
+                                </button>
+                                <button type="button"
+                                        class="tree-option"
+                                        data-tree="tree3.png"
+                                        onclick="selectTree(this)"
+                                        aria-label="Select tree 3"
+                                        style="padding: 5px; border: 2px solid transparent; border-radius: 8px; background: #f8f9fa; cursor: pointer; transition: all 0.2s;">
+                                    <img src="/static/images/trees/tree3.png" alt="Tree 3" style="width: 40px; height: 40px; object-fit: contain;">
+                                </button>
+                            </div>
+                            <input type="hidden" name="node_icon" id="selected-tree" value="">
+                            <small class="form-text text-muted">Choose an icon for your TreeOS node - it will appear in the header next to the logo</small>
+                        </div>
                     </div>
 
                     <div class="d-grid">
@@ -68,11 +111,86 @@
             </div>
         </div>
 
-        <div class="text-center mt-4 text-muted">
-            <small>
-                OnTree Node - Container Management System
-            </small>
-        </div>
     </div>
 </div>
+
+<style>
+.tree-option.selected {
+    border-color: #0d6efd !important;
+    background: #e7f3ff !important;
+    transform: scale(1.05);
+}
+.tree-option:hover:not(.selected) {
+    border-color: #6c757d !important;
+    background: #e9ecef !important;
+}
+</style>
+
+<script>
+function selectTree(button) {
+    // Remove selected class from all tree buttons
+    document.querySelectorAll('.tree-option').forEach(btn => {
+        btn.classList.remove('selected');
+    });
+
+    // Add selected class to clicked button
+    button.classList.add('selected');
+
+    // Update hidden input value
+    const tree = button.getAttribute('data-tree');
+    document.getElementById('selected-tree').value = tree;
+
+    // Update the icon in the header immediately
+    updateHeaderIcon(tree);
+}
+
+function updateHeaderIcon(iconName) {
+    // Find the header icon image
+    const headerIcon = document.querySelector('.navbar-brand img');
+
+    if (headerIcon) {
+        // Update the src to the new icon
+        headerIcon.src = '/static/images/trees/' + iconName;
+    } else {
+        // If no icon exists in header yet, create and insert it
+        const navbarBrand = document.querySelector('.navbar-brand');
+        if (navbarBrand) {
+            const img = document.createElement('img');
+            img.src = '/static/images/trees/' + iconName;
+            img.alt = 'Tree';
+            img.style.width = '30px';
+            img.style.height = '30px';
+            img.style.objectFit = 'contain';
+            img.style.marginRight = '8px';
+
+            // Insert before the text
+            const span = navbarBrand.querySelector('span');
+            navbarBrand.insertBefore(img, span);
+        }
+    }
+}
+
+// On page load, randomly select a tree
+document.addEventListener('DOMContentLoaded', function() {
+    const treeOptions = document.querySelectorAll('.tree-option');
+    if (treeOptions.length > 0) {
+        // Check if there's already a selected value
+        let selectedValue = document.getElementById('selected-tree').value;
+
+        // If no value, randomly select one
+        if (!selectedValue) {
+            const randomIndex = Math.floor(Math.random() * treeOptions.length);
+            const randomTree = treeOptions[randomIndex];
+            randomTree.classList.add('selected');
+            document.getElementById('selected-tree').value = randomTree.getAttribute('data-tree');
+        } else {
+            // Mark the pre-selected tree
+            const button = document.querySelector(`[data-tree="${selectedValue}"]`);
+            if (button) {
+                button.classList.add('selected');
+            }
+        }
+    }
+});
+</script>
 {{end}}

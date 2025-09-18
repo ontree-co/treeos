@@ -26,6 +26,7 @@ func TestMigrationCompletion(t *testing.T) {
 		column string
 	}{
 		{"system_setup", "update_channel"},
+		{"system_setup", "node_icon"},
 		{"update_history", "channel"},
 		{"system_vital_logs", "gpu_load"},
 	}
@@ -116,22 +117,33 @@ func TestMigrationAfterRestart(t *testing.T) {
 	}
 	defer Close()
 
-	// Verify the new column was added
+	// Verify the new columns were added
 	currentDB := GetDB()
-	var colCount int
-	query := `SELECT COUNT(*) FROM pragma_table_info('system_setup') WHERE name='update_channel'`
-	row := currentDB.QueryRow(query)
-	if err := row.Scan(&colCount); err != nil {
-		t.Errorf("Failed to check for update_channel column: %v", err)
-	}
-	if colCount == 0 {
-		t.Errorf("Migration did not add update_channel column")
+	columnsToCheck := []string{"update_channel", "node_icon"}
+
+	for _, col := range columnsToCheck {
+		var colCount int
+		query := `SELECT COUNT(*) FROM pragma_table_info('system_setup') WHERE name='` + col + `'`
+		row := currentDB.QueryRow(query)
+		if err := row.Scan(&colCount); err != nil {
+			t.Errorf("Failed to check for %s column: %v", col, err)
+		}
+		if colCount == 0 {
+			t.Errorf("Migration did not add %s column", col)
+		}
 	}
 
-	// Verify we can read from it
+	// Verify we can read from the new columns
 	var testValue sql.NullString
 	err = currentDB.QueryRow("SELECT update_channel FROM system_setup LIMIT 1").Scan(&testValue)
 	if err != nil && err != sql.ErrNoRows {
 		t.Errorf("Cannot read from newly added update_channel column: %v", err)
+	}
+
+	// Test node_icon column specifically
+	var nodeIcon sql.NullString
+	err = currentDB.QueryRow("SELECT node_icon FROM system_setup LIMIT 1").Scan(&nodeIcon)
+	if err != nil && err != sql.ErrNoRows {
+		t.Errorf("Cannot read from newly added node_icon column: %v", err)
 	}
 }

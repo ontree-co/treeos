@@ -58,6 +58,12 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 		password2 := r.FormValue("password2")
 		nodeName := r.FormValue("node_name")
 		nodeDescription := r.FormValue("node_description")
+		nodeIcon := r.FormValue("node_icon")
+
+		// Default icon if none selected
+		if nodeIcon == "" {
+			nodeIcon = "tree1.png"
+		}
 
 		// Validate
 		var errors []string
@@ -86,15 +92,15 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 				// Update or create system setup
 				if setupComplete {
 					_, err = db.Exec(`
-						UPDATE system_setup 
-						SET is_setup_complete = 1, setup_date = ?, node_name = ?, node_description = ?
+						UPDATE system_setup
+						SET is_setup_complete = 1, setup_date = ?, node_name = ?, node_description = ?, node_icon = ?
 						WHERE id = 1
-					`, time.Now(), nodeName, nodeDescription)
+					`, time.Now(), nodeName, nodeDescription, nodeIcon)
 				} else {
 					_, err = db.Exec(`
-						INSERT INTO system_setup (id, is_setup_complete, setup_date, node_name, node_description)
-						VALUES (1, 1, ?, ?, ?)
-					`, time.Now(), nodeName, nodeDescription)
+						INSERT INTO system_setup (id, is_setup_complete, setup_date, node_name, node_description, node_icon)
+						VALUES (1, 1, ?, ?, ?, ?)
+					`, time.Now(), nodeName, nodeDescription, nodeIcon)
 				}
 
 				if err != nil {
@@ -120,22 +126,13 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Render with errors
-		data := struct {
-			User      interface{}
-			Errors    []string
-			FormData  map[string]string
-			CSRFToken string
-			Messages  []interface{}
-		}{
-			User:   nil,
-			Errors: errors,
-			FormData: map[string]string{
-				"username":         username,
-				"node_name":        nodeName,
-				"node_description": nodeDescription,
-			},
-			CSRFToken: "",
-			Messages:  nil,
+		data := s.baseTemplateData(nil) // nil for user since not logged in
+		data["Errors"] = errors
+		data["FormData"] = map[string]string{
+			"username":         username,
+			"node_name":        nodeName,
+			"node_description": nodeDescription,
+			"node_icon":        nodeIcon,
 		}
 
 		tmpl := s.templates["setup"]
@@ -148,20 +145,10 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// GET request - show form
-	data := struct {
-		User      interface{}
-		Errors    []string
-		FormData  map[string]string
-		CSRFToken string
-		Messages  []interface{}
-	}{
-		User:   nil,
-		Errors: nil,
-		FormData: map[string]string{
-			"node_name": "OnTree Node",
-		},
-		CSRFToken: "",
-		Messages:  nil,
+	data := s.baseTemplateData(nil) // nil for user since not logged in
+	data["Errors"] = nil
+	data["FormData"] = map[string]string{
+		"node_name": "OnTree Node",
 	}
 
 	tmpl := s.templates["setup"]
@@ -200,19 +187,9 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		user, err := s.authenticateUser(username, password)
 		if err != nil {
 			// Render with error
-			data := struct {
-				User      interface{}
-				Error     string
-				Username  string
-				CSRFToken string
-				Messages  []interface{}
-			}{
-				User:      nil,
-				Error:     "Invalid username or password",
-				Username:  username,
-				CSRFToken: "",
-				Messages:  nil,
-			}
+			data := s.baseTemplateData(nil) // nil for user since not logged in
+			data["Error"] = "Invalid username or password"
+			data["Username"] = username
 
 			tmpl := s.templates["login"]
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -252,19 +229,9 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// GET request - show form
-	data := struct {
-		User      interface{}
-		Error     string
-		Username  string
-		CSRFToken string
-		Messages  []interface{}
-	}{
-		User:      nil,
-		Error:     "",
-		Username:  "",
-		CSRFToken: "",
-		Messages:  nil,
-	}
+	data := s.baseTemplateData(nil) // nil for user since not logged in
+	data["Error"] = ""
+	data["Username"] = ""
 
 	tmpl := s.templates["login"]
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -1046,17 +1013,18 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	var setup database.SystemSetup
 
 	// Query the database
+	var nodeIcon sql.NullString
 	err := s.db.QueryRow(`
 		SELECT id, public_base_domain, tailscale_auth_key, tailscale_tags,
 		       agent_enabled, agent_check_interval, agent_llm_api_key,
 		       agent_llm_api_url, agent_llm_model,
-		       uptime_kuma_base_url, update_channel
+		       uptime_kuma_base_url, update_channel, node_icon
 		FROM system_setup
 		WHERE id = 1
 	`).Scan(&setup.ID, &setup.PublicBaseDomain, &setup.TailscaleAuthKey, &setup.TailscaleTags,
 		&setup.AgentEnabled, &setup.AgentCheckInterval, &setup.AgentLLMAPIKey,
 		&setup.AgentLLMAPIURL, &setup.AgentLLMModel,
-		&setup.UptimeKumaBaseURL, &setup.UpdateChannel)
+		&setup.UptimeKumaBaseURL, &setup.UpdateChannel, &nodeIcon)
 
 	if err != nil && err != sql.ErrNoRows {
 		log.Printf("Failed to get system setup: %v", err)
@@ -1155,6 +1123,13 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	data["CompletedModels"] = completedModels
 
+	// Add current node icon
+	if nodeIcon.Valid && nodeIcon.String != "" {
+		data["CurrentNodeIcon"] = nodeIcon.String
+	} else {
+		data["CurrentNodeIcon"] = "tree1.png" // Default icon
+	}
+
 	// Render template
 	tmpl, ok := s.templates["settings"]
 	if !ok {
@@ -1190,6 +1165,12 @@ func (s *Server) handleSettingsUpdate(w http.ResponseWriter, r *http.Request) {
 	agentCheckInterval := strings.TrimSpace(r.FormValue("agent_check_interval"))
 	uptimeKumaBaseURL := strings.TrimSpace(r.FormValue("uptime_kuma_base_url"))
 	updateChannel := strings.TrimSpace(r.FormValue("update_channel"))
+	nodeIcon := strings.TrimSpace(r.FormValue("node_icon"))
+
+	// Default icon if none selected
+	if nodeIcon == "" {
+		nodeIcon = "tree1.png"
+	}
 
 	// Validate update channel
 	if updateChannel != "stable" && updateChannel != "beta" {
@@ -1232,20 +1213,20 @@ func (s *Server) handleSettingsUpdate(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Failed to ensure system_setup exists: %v", err)
 	}
 
-	// Update database - try with update_channel first
+	// Update database - try with update_channel and node_icon first
 	_, err = s.db.Exec(`
 		UPDATE system_setup
 		SET public_base_domain = ?, tailscale_auth_key = ?, tailscale_tags = ?,
 		    agent_enabled = ?, agent_check_interval = ?, agent_llm_api_key = ?,
 		    agent_llm_api_url = ?, agent_llm_model = ?,
-		    uptime_kuma_base_url = ?, update_channel = ?
+		    uptime_kuma_base_url = ?, update_channel = ?, node_icon = ?
 		WHERE id = 1
 	`, publicDomain, tailscaleAuthKey, tailscaleTags, agentEnabledInt, agentCheckInterval,
 		agentLLMAPIKey, agentLLMAPIURL, agentLLMModel,
-		uptimeKumaBaseURL, updateChannel)
+		uptimeKumaBaseURL, updateChannel, nodeIcon)
 
-	// If update_channel column doesn't exist, try without it
-	if err != nil && strings.Contains(err.Error(), "no such column: update_channel") {
+	// If update_channel or node_icon columns don't exist, try without them
+	if err != nil && (strings.Contains(err.Error(), "no such column: update_channel") || strings.Contains(err.Error(), "no such column: node_icon")) {
 		_, err = s.db.Exec(`
 			UPDATE system_setup
 			SET public_base_domain = ?, tailscale_auth_key = ?, tailscale_tags = ?,
