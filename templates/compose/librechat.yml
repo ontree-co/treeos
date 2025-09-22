@@ -17,9 +17,9 @@ services:
       - SEARCH=true
       - OLLAMA_BASE_URL=http://host.docker.internal:11434
     volumes:
-      - ./librechat.yaml:/app/librechat.yaml:ro
-      - ./images:/app/client/public/images
-      - ./logs:/app/api/logs
+      - ./shared/config/librechat.yaml:/app/librechat.yaml:ro
+      - librechat_images:/app/client/public/images
+      - librechat_logs:/app/api/logs
     depends_on:
       - mongodb
       - meilisearch
@@ -31,7 +31,7 @@ services:
     container_name: ${COMPOSE_PROJECT_NAME}-mongodb-1
     restart: unless-stopped
     volumes:
-      - ./mongodb_data:/data/db
+      - mongodb_data:/data/db
     command: --noauth
 
   meilisearch:
@@ -42,9 +42,14 @@ services:
       - MEILI_NO_ANALYTICS=true
       - MEILI_KEY=${MEILI_KEY:-changeme}
     volumes:
-      - ./meili_data:/meili_data
+      - meilisearch_data:/meili_data
 
 x-ontree:
   subdomain: ${APP_SUBDOMAIN:-librechat}
   host_port: 3080
   is_exposed: false
+volumes:
+  librechat_images:
+  librechat_logs:
+  mongodb_data:
+  meilisearch_data:

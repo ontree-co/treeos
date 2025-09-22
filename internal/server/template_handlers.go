@@ -173,10 +173,14 @@ func (s *Server) handleCreateFromTemplate(w http.ResponseWriter, r *http.Request
 		// Special handling for LibreChat - copy config file
 		if templateID == "librechat" {
 			appPath := filepath.Join(s.config.AppsDir, appName)
-			configPath := filepath.Join(appPath, "librechat.yaml")
+			configDir := filepath.Join(appPath, "shared", "config")
+			if err := os.MkdirAll(configDir, 0755); err != nil {
+				log.Printf("Warning: Failed to create config directory for %s: %v", appName, err)
+			} else {
+				configPath := filepath.Join(configDir, "librechat.yaml")
 
-			// Create default LibreChat config for Ollama integration
-			librechatConfig := `# LibreChat Configuration for Ollama Integration
+				// Create default LibreChat config for Ollama integration
+				librechatConfig := `# LibreChat Configuration for Ollama Integration
 version: 1.0.0
 
 endpoints:
@@ -203,8 +207,9 @@ endpoints:
       modelDisplayLabel: "Ollama"
       dropParams: ["stop"]`
 
-			if err := os.WriteFile(configPath, []byte(librechatConfig), 0600); err != nil {
+			if err := os.WriteFile(configPath, []byte(librechatConfig), 0644); err != nil {
 				log.Printf("Warning: Failed to create librechat.yaml for %s: %v", appName, err)
+			}
 			}
 		}
 
