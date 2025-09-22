@@ -266,21 +266,8 @@ func (s *Server) loadTemplates() error {
 	}
 	s.templates["app_compose_edit"] = tmpl
 
-	// Load monitoring template
-	monitoringTemplate := filepath.Join("templates", "dashboard", "monitoring.html")
-	tmpl, err = embeds.ParseTemplate(baseTemplate, monitoringTemplate)
-	if err != nil {
-		return fmt.Errorf("failed to parse monitoring template: %w", err)
-	}
-	s.templates["monitoring"] = tmpl
-
-	// Load monitoring detail template
-	monitoringDetailTemplate := filepath.Join("templates", "dashboard", "monitoring_detail.html")
-	tmpl, err = embeds.ParseTemplate(baseTemplate, monitoringDetailTemplate)
-	if err != nil {
-		return fmt.Errorf("failed to parse monitoring detail template: %w", err)
-	}
-	s.templates["monitoring_detail"] = tmpl
+	// Note: monitoring.html and monitoring_detail.html templates have been removed
+	// as monitoring functionality has been integrated into the main dashboard
 
 	// Load monitoring partial templates (loaded separately for HTMX updates)
 	// Note: These partials don't use the base template since they're HTMX fragments
