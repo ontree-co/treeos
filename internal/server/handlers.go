@@ -510,7 +510,12 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
-		log.Printf("Error rendering template: %v", err)
+		// Log the full error for debugging
+		log.Printf("Error rendering app_detail template for app %s: %v", appName, err)
+		// Also check if it's a network error (broken pipe) and log differently
+		if !strings.Contains(err.Error(), "broken pipe") && !strings.Contains(err.Error(), "connection reset") {
+			log.Printf("Template execution error (not network): %v", err)
+		}
 		http.Error(w, "Error rendering template", http.StatusInternalServerError)
 		return
 	}
