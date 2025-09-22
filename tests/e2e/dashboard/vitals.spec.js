@@ -48,7 +48,7 @@ test.describe('Dashboard and System Vitals', () => {
     const cpuCard = page.locator('#cpu-card');
     await expect(cpuCard).toBeVisible();
     
-    // Check CPU title - UI shows 'CPU Usage' not 'CPU Load'
+    // Check CPU title - UI shows 'CPU Usage'
     await expect(cpuCard.locator('.metric-title')).toContainText('CPU Usage');
     // Note: The template doesn't show .bi-cpu icon, it's just text
     
