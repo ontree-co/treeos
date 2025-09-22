@@ -26,57 +26,105 @@ This directory contains Woodpecker CI pipeline configurations for the TreeOS pro
 
 ## Setup Instructions
 
-### 1. Enable Codeberg CI
+### Option A: Using Your Own Woodpecker Instance (Recommended)
 
-1. Request access by filling out the [Codeberg CI form](https://docs.codeberg.org/ci/)
-2. Once approved, add your repository at https://ci.codeberg.org/repos/add
-3. Login with your Codeberg account
+You can host your own Woodpecker instance and connect it directly to Codeberg without any approval process.
 
-### 2. Configure Secrets
+#### 1. Set Up Self-Hosted Woodpecker Server and Agent
 
-Add these secrets in the Woodpecker UI:
+Create a `docker-compose.woodpecker.yml` file for running both server and agent:
+
+```yaml
+version: '3'
+
+services:
+  woodpecker-server:
+    image: woodpeckerci/woodpecker-server:latest
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - WOODPECKER_HOST=https://your-woodpecker-domain.com
+      - WOODPECKER_ADMIN=your-codeberg-username
+      - WOODPECKER_AGENT_SECRET=<GENERATE_RANDOM_SECRET>
+      - WOODPECKER_FORGE=forgejo
+      - WOODPECKER_FORGEJO_URL=https://codeberg.org
+      - WOODPECKER_FORGEJO_CLIENT=<OAUTH_CLIENT_ID>
+      - WOODPECKER_FORGEJO_SECRET=<OAUTH_CLIENT_SECRET>
+      - WOODPECKER_DATABASE_DRIVER=sqlite3
+      - WOODPECKER_DATABASE_DATASOURCE=/var/lib/woodpecker/woodpecker.db
+      - WOODPECKER_LOG_LEVEL=info
+    volumes:
+      - woodpecker-server-data:/var/lib/woodpecker
+    networks:
+      - woodpecker
+
+  woodpecker-agent:
+    image: woodpeckerci/woodpecker-agent:latest
+    restart: unless-stopped
+    environment:
+      - WOODPECKER_SERVER=woodpecker-server:9000
+      - WOODPECKER_AGENT_SECRET=<SAME_SECRET_AS_ABOVE>
+      - WOODPECKER_FILTER_LABELS=platform=linux/amd64,type=docker
+      - WOODPECKER_MAX_WORKFLOWS=4
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /tmp/woodpecker:/tmp
+    depends_on:
+      - woodpecker-server
+    networks:
+      - woodpecker
+
+volumes:
+  woodpecker-server-data:
+
+networks:
+  woodpecker:
+    driver: bridge
+```
+
+#### 2. Configure OAuth Application on Codeberg
+
+1. Go to https://codeberg.org/user/settings/applications
+2. Create a new OAuth2 Application with:
+   - Application Name: `Woodpecker CI`
+   - Homepage URL: `https://your-woodpecker-domain.com`
+   - Redirect URI: `https://your-woodpecker-domain.com/authorize`
+3. Save the Client ID and Client Secret for the docker-compose file
+
+#### 3. Start Your Woodpecker Instance
+
+```bash
+# Generate a secure agent secret
+export AGENT_SECRET=$(openssl rand -hex 32)
+
+# Update docker-compose with your values
+# Then start the services
+docker-compose -f docker-compose.woodpecker.yml up -d
+```
+
+#### 4. Add Your Repository
+
+1. Visit your Woodpecker instance at `https://your-woodpecker-domain.com`
+2. Login with your Codeberg account
+3. Enable your repository in the Woodpecker UI
+
+#### 5. Configure Secrets
+
+Add these secrets in your Woodpecker UI:
 
 - `github_token` - GitHub Personal Access Token for releases
 - `public_releases_token` - Token for publishing to public repository
 - `codecov_token` - Codecov token for coverage reports
 
-### 3. Set Up Self-Hosted Runner
+### Option B: Using Codeberg's Shared CI (Requires Approval)
 
-Since Codeberg CI only provides linux/amd64 runners, you'll need to set up a self-hosted runner for:
-- ARM64 builds
-- Resource-intensive E2E tests
-- Better caching and performance
+If you prefer to use Codeberg's shared infrastructure:
 
-#### Docker-based Runner Setup
-
-```bash
-# Create docker-compose.yml for Woodpecker agent
-cat > docker-compose.woodpecker.yml << 'EOF'
-version: '3'
-
-services:
-  woodpecker-agent:
-    image: woodpeckerci/woodpecker-agent:latest
-    restart: unless-stopped
-    environment:
-      - WOODPECKER_SERVER=https://ci.codeberg.org
-      - WOODPECKER_AGENT_SECRET=<YOUR_AGENT_SECRET>
-      - WOODPECKER_FILTER_LABELS=platform=linux/amd64,type=docker
-      - WOODPECKER_MAX_WORKFLOWS=2
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - /tmp/woodpecker:/tmp
-    networks:
-      - woodpecker
-
-networks:
-  woodpecker:
-    driver: bridge
-EOF
-
-# Start the agent
-docker-compose -f docker-compose.woodpecker.yml up -d
-```
+1. Request access by filling out the [Codeberg CI form](https://docs.codeberg.org/ci/)
+2. Once approved, add your repository at https://ci.codeberg.org/repos/add
+3. Login with your Codeberg account
+4. Configure secrets in the Woodpecker UI
 
 ### 4. Pipeline Triggers
 
