@@ -23,6 +23,108 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+type appDetailView struct {
+	Name           string
+	Emoji          string
+	Status         string
+	StatusLabel    string
+	StatusClass    string
+	Services       []serviceView
+	ServiceOptions []string
+	HasServices    bool
+	TailscaleDNS   string
+	ComposeContent string
+	EnvContent     string
+	AppYmlContent  string
+	ComposePath    string
+	EnvPath        string
+	AppYmlPath     string
+	AppPath        string
+	Metadata       metadataView
+	PublicAccess   publicAccessView
+	Tailscale      tailscaleView
+	Security       securityView
+	Actions        actionsView
+	Warnings       []string
+}
+
+type serviceView struct {
+	Name        string
+	Image       string
+	Status      string
+	StatusLabel string
+	StatusClass string
+	State       string
+	Ports       []string
+}
+
+type metadataView struct {
+	HasMetadata       bool
+	Subdomain         string
+	HostPort          int
+	IsExposed         bool
+	PublicURL         string
+	TailscaleExposed  bool
+	TailscaleHostname string
+	TailscaleURL      string
+}
+
+type publicAccessView struct {
+	FormEnabled bool
+	Exposed     bool
+	Subdomain   string
+	PublicURL   string
+	BaseDomain  string
+	Alert       *alertView
+}
+
+type tailscaleView struct {
+	FormEnabled bool
+	Exposed     bool
+	Hostname    string
+	URL         string
+	Alert       *alertView
+}
+
+type securityView struct {
+	BypassEnabled bool
+}
+
+type actionsView struct {
+	CanStart bool
+	CanStop  bool
+}
+
+type alertView struct {
+	Type    string
+	Message string
+}
+
+func capitalizeFirst(s string) string {
+	if s == "" {
+		return "Unknown"
+	}
+	if len(s) == 1 {
+		return strings.ToUpper(s)
+	}
+	return strings.ToUpper(string(s[0])) + s[1:]
+}
+
+func statusBadgeClass(status string) string {
+	switch status {
+	case "running":
+		return "bg-success"
+	case "partial":
+		return "bg-warning"
+	case "stopped", "exited", "not_created":
+		return "bg-secondary"
+	case "error":
+		return "bg-danger"
+	default:
+		return "bg-secondary"
+	}
+}
+
 // handleSetup handles the initial setup page
 func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 	// Check if setup is already complete
@@ -296,12 +398,15 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	warnings := make([]string, 0)
+
 	// Read docker-compose.yml content
 	composePath := filepath.Join(app.Path, "docker-compose.yml")
 	composeContent, err := os.ReadFile(composePath)
 	if err != nil {
 		log.Printf("Failed to read docker-compose.yml: %v", err)
 		composeContent = []byte("Failed to read docker-compose.yml")
+		warnings = append(warnings, "Unable to read docker-compose.yml; displaying placeholder content.")
 	}
 
 	// Read .env content
@@ -310,6 +415,7 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("Failed to read .env: %v", err)
 		envContent = []byte("# No .env file found")
+		warnings = append(warnings, ".env file not found.")
 	}
 
 	// Read app.yml content
@@ -318,12 +424,7 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("Failed to read app.yml: %v", err)
 		appYmlContent = []byte("# No app.yml file found")
-	}
-
-	// Get container details if it exists
-	var containerInfo map[string]interface{}
-	if app.Status != "not_created" && app.Status != "error" {
-		containerInfo = s.getContainerInfo(appName)
+		warnings = append(warnings, "app.yml file not found.")
 	}
 
 	// Fetch app status from compose service directly
@@ -428,79 +529,133 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 	// Fetch app metadata from docker-compose.yml using yamlutil
 	metadata, err := yamlutil.ReadComposeMetadata(app.Path)
 	hasMetadata := err == nil && metadata != nil
-
-	// Create a DeployedApp-like structure for template compatibility
-	deployedApp := struct {
-		ID                string
-		Name              string
-		Subdomain         string
-		HostPort          int
-		IsExposed         bool
-		TailscaleHostname string
-		TailscaleExposed  bool
-	}{}
-	if hasMetadata {
-		deployedApp.Name = appName
-		deployedApp.Subdomain = metadata.Subdomain
-		deployedApp.HostPort = metadata.HostPort
-		deployedApp.IsExposed = metadata.IsExposed
-		deployedApp.TailscaleHostname = metadata.TailscaleHostname
-		deployedApp.TailscaleExposed = metadata.TailscaleExposed
-		// Use lowercase app name as ID
-		deployedApp.ID = strings.ToLower(appName)
+	if err != nil {
+		log.Printf("Failed to read compose metadata for app %s: %v", appName, err)
+		warnings = append(warnings, "Unable to read x-ontree metadata; using defaults.")
 	}
+
+	view := appDetailView{
+		Name:           app.Name,
+		Emoji:          app.Emoji,
+		Status:         app.Status,
+		StatusLabel:    capitalizeFirst(app.Status),
+		StatusClass:    statusBadgeClass(app.Status),
+		ComposeContent: string(composeContent),
+		EnvContent:     string(envContent),
+		AppYmlContent:  string(appYmlContent),
+		ComposePath:    composePath,
+		EnvPath:        envPath,
+		AppYmlPath:     appYmlPath,
+		AppPath:        app.Path,
+		TailscaleDNS:   strings.TrimSuffix(getTailscaleDNS(), "."),
+		Security:       securityView{BypassEnabled: app.BypassSecurity},
+	}
+
+	if view.Emoji == "" && hasMetadata && metadata != nil && metadata.Emoji != "" {
+		view.Emoji = metadata.Emoji
+	}
+
+	// Populate service information
+	if appStatus != nil {
+		serviceOptions := make([]string, 0, len(appStatus.Services))
+		for _, svc := range appStatus.Services {
+			service := serviceView{
+				Name:        svc.Name,
+				Image:       svc.Image,
+				Status:      svc.Status,
+				StatusLabel: capitalizeFirst(svc.Status),
+				StatusClass: statusBadgeClass(svc.Status),
+				State:       svc.State,
+				Ports:       svc.Ports,
+			}
+			view.Services = append(view.Services, service)
+			if svc.Name != "" {
+				serviceOptions = append(serviceOptions, svc.Name)
+			}
+		}
+		view.ServiceOptions = serviceOptions
+		view.HasServices = len(view.Services) > 0
+	}
+
+	// Determine available actions
+	actions := actionsView{}
+	switch app.Status {
+	case "running", "partial":
+		actions.CanStop = true
+	default:
+		actions.CanStart = true
+	}
+	view.Actions = actions
+
+	// Metadata details
+	metadataSummary := metadataView{}
+	if hasMetadata && metadata != nil {
+		metadataSummary.HasMetadata = true
+		metadataSummary.Subdomain = metadata.Subdomain
+		metadataSummary.HostPort = metadata.HostPort
+		metadataSummary.IsExposed = metadata.IsExposed
+		metadataSummary.TailscaleExposed = metadata.TailscaleExposed
+		metadataSummary.TailscaleHostname = metadata.TailscaleHostname
+		if metadata.TailscaleExposed && metadata.TailscaleHostname != "" {
+			metadataSummary.TailscaleURL = fmt.Sprintf("https://%s", metadata.TailscaleHostname)
+		}
+		if metadata.IsExposed && metadata.Subdomain != "" && s.config.PublicBaseDomain != "" {
+			metadataSummary.PublicURL = fmt.Sprintf("https://%s.%s", metadata.Subdomain, s.config.PublicBaseDomain)
+		}
+	}
+	view.Metadata = metadataSummary
+
+	// Public access state
+	defaultSubdomain := metadataSummary.Subdomain
+	if defaultSubdomain == "" {
+		defaultSubdomain = strings.ToLower(app.Name)
+	}
+	publicAccess := publicAccessView{
+		FormEnabled: runtime.GOOS == "linux" && s.caddyClient != nil && s.config.PublicBaseDomain != "",
+		Exposed:     metadataSummary.IsExposed,
+		Subdomain:   defaultSubdomain,
+		PublicURL:   metadataSummary.PublicURL,
+		BaseDomain:  s.config.PublicBaseDomain,
+	}
+	if !publicAccess.FormEnabled {
+		var alertMsg, alertType string
+		switch {
+		case runtime.GOOS != "linux":
+			alertMsg = "Domain exposure is only available on Linux servers."
+			alertType = "info"
+		case s.caddyClient == nil:
+			alertMsg = "Caddy service not available. Configure Caddy to enable public exposure."
+			alertType = "warning"
+		case s.config.PublicBaseDomain == "":
+			alertMsg = "No public base domain configured. Add one in Settings to expose apps."
+			alertType = "info"
+		}
+		if alertMsg != "" {
+			publicAccess.Alert = &alertView{Type: alertType, Message: alertMsg}
+		}
+	}
+	view.PublicAccess = publicAccess
+
+	// Tailscale state
+	tailscale := tailscaleView{
+		FormEnabled: s.config.TailscaleAuthKey != "",
+		Exposed:     metadataSummary.TailscaleExposed,
+		Hostname:    metadataSummary.TailscaleHostname,
+		URL:         metadataSummary.TailscaleURL,
+	}
+	if !tailscale.FormEnabled {
+		tailscale.Alert = &alertView{Type: "info", Message: "Tailscale not configured. Add an auth key in Settings to enable this feature."}
+	}
+	view.Tailscale = tailscale
+
+	// Attach warnings collected during processing
+	view.Warnings = warnings
 
 	// Prepare template data
 	data := s.baseTemplateData(user)
-	data["App"] = app
-	data["ComposeContent"] = string(composeContent)
-	data["EnvContent"] = string(envContent)
-	data["AppYmlContent"] = string(appYmlContent)
-	data["ContainerInfo"] = containerInfo
+	data["View"] = view
 	data["Messages"] = messages
 	data["CSRFToken"] = ""
-	data["AppStatus"] = appStatus
-
-	// Add deployed app information if available
-	if hasMetadata {
-		data["DeployedApp"] = deployedApp
-		data["HasDeployedApp"] = true
-		data["AppEmoji"] = metadata.Emoji // Pass emoji to template
-
-		// Construct full URLs for display
-		var urls []string
-		if deployedApp.IsExposed && deployedApp.Subdomain != "" {
-			if s.config.PublicBaseDomain != "" {
-				urls = append(urls, fmt.Sprintf("https://%s.%s", deployedApp.Subdomain, s.config.PublicBaseDomain))
-			}
-		}
-		data["ExposedURLs"] = urls
-
-		// Add Tailscale info if exposed
-		if deployedApp.TailscaleExposed && deployedApp.TailscaleHostname != "" {
-			data["TailscaleURL"] = fmt.Sprintf("https://%s", deployedApp.TailscaleHostname)
-		}
-	} else {
-		data["HasDeployedApp"] = false
-		data["AppEmoji"] = "" // Empty emoji if no metadata
-	}
-
-	// Add domain configuration for UI display
-	data["HasDomainsConfigured"] = s.config.PublicBaseDomain != ""
-	data["PublicBaseDomain"] = s.config.PublicBaseDomain
-	data["TailscaleAuthKey"] = s.config.TailscaleAuthKey != "" // Don't expose the actual key
-
-	// Add Caddy availability check
-	data["CaddyAvailable"] = s.caddyClient != nil
-	data["PlatformSupportsCaddy"] = runtime.GOOS == "linux"
-
-	// Add Tailscale DNS name for Visit in Browser functionality
-	tailscaleDNS := getTailscaleDNS()
-	if tailscaleDNS != "" {
-		// Remove trailing dot if present
-		tailscaleDNS = strings.TrimSuffix(tailscaleDNS, ".")
-		data["TailscaleDNS"] = tailscaleDNS
-	}
 
 	// Render template
 	tmpl, ok := s.templates["app_detail"]
