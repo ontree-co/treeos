@@ -259,8 +259,8 @@
                 </div>
             </div>
             <div class="card-body">
-                <div id="models-container" 
-                     hx-get="/api/models" 
+                <div id="models-container"
+                     hx-get="/api/models?installed=true"
                      hx-trigger="load"
                      hx-target="this"
                      hx-swap="innerHTML">
@@ -695,17 +695,8 @@ function cancelDownload(modelName) {
 }
 
 function showModelLibrary() {
-    // Scroll to models section and highlight it
-    const modelsContainer = document.getElementById('models-container');
-    if (modelsContainer) {
-        modelsContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        // Add a highlight effect
-        modelsContainer.style.transition = 'background-color 0.5s';
-        modelsContainer.style.backgroundColor = '#fffbf0';
-        setTimeout(() => {
-            modelsContainer.style.backgroundColor = '';
-        }, 2000);
-    }
+    // Navigate to the models library page
+    window.location.href = '/models';
 }
 
 // Function to navigate to model detail page

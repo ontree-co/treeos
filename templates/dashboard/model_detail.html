@@ -1,188 +1,209 @@
 {{define "title"}}{{.Model.DisplayName}} - Model Details{{end}}
 
 {{define "content"}}
-<div class="container-fluid py-4">
-    <nav aria-label="breadcrumb" class="mb-4">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="/">Dashboard</a></li>
-            <li class="breadcrumb-item active" aria-current="page">{{.Model.DisplayName}}</li>
-        </ol>
-    </nav>
+<div class="row">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="/models">Models</a></li>
+                <li class="breadcrumb-item active">{{.Model.DisplayName}}</li>
+            </ol>
+        </nav>
 
-    <div class="row">
-        <div class="col-lg-8">
-            <!-- Model Information Card -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="bi bi-info-circle"></i> Model Information
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="row mb-3">
-                        <div class="col-md-3">
-                            <strong>Name:</strong>
-                        </div>
-                        <div class="col-md-9">
-                            {{.Model.DisplayName}}
-                        </div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-md-3">
-                            <strong>Technical ID:</strong>
-                        </div>
-                        <div class="col-md-9">
-                            <code>{{.Model.Name}}</code>
-                        </div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-md-3">
-                            <strong>Category:</strong>
-                        </div>
-                        <div class="col-md-9">
-                            <span class="badge bg-secondary">
-                                {{if eq .Model.Category "chat"}}
-                                    <i class="bi bi-chat-dots"></i> Chat
-                                {{else if eq .Model.Category "code"}}
-                                    <i class="bi bi-code-slash"></i> Code
-                                {{else if eq .Model.Category "vision"}}
-                                    <i class="bi bi-eye"></i> Vision
-                                {{else}}
-                                    {{.Model.Category}}
-                                {{end}}
-                            </span>
-                        </div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-md-3">
-                            <strong>Size:</strong>
-                        </div>
-                        <div class="col-md-9">
-                            {{.Model.SizeEstimate}}
-                        </div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-md-3">
-                            <strong>Description:</strong>
-                        </div>
-                        <div class="col-md-9">
-                            {{.Model.Description}}
-                        </div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-md-3">
-                            <strong>Status:</strong>
-                        </div>
-                        <div class="col-md-9">
-                            {{if eq .Model.Status "not_downloaded"}}
-                                <span class="badge bg-secondary">Not Downloaded</span>
-                            {{else if eq .Model.Status "queued"}}
-                                <span class="badge bg-info">Queued</span>
-                            {{else if eq .Model.Status "downloading"}}
-                                <span class="badge bg-primary">Downloading ({{.Model.Progress}}%)</span>
-                            {{else if eq .Model.Status "completed"}}
-                                <span class="badge bg-success">Installed</span>
-                            {{else if eq .Model.Status "failed"}}
-                                <span class="badge bg-danger">Failed</span>
-                            {{else}}
-                                <span class="badge bg-secondary">{{.Model.Status}}</span>
-                            {{end}}
-                        </div>
-                    </div>
-                    {{if and .Model.LastError.Valid (eq .Model.Status "failed")}}
-                    <div class="row mb-3">
-                        <div class="col-md-3">
-                            <strong>Error:</strong>
-                        </div>
-                        <div class="col-md-9">
-                            <div class="alert alert-danger mb-0">
-                                {{.Model.LastError.String}}
-                            </div>
-                        </div>
-                    </div>
-                    {{end}}
-                </div>
-            </div>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>
+                {{if eq .Model.Category "chat"}}
+                    <i class="bi bi-chat-dots"></i>
+                {{else if eq .Model.Category "code"}}
+                    <i class="bi bi-code-slash"></i>
+                {{else if eq .Model.Category "vision"}}
+                    <i class="bi bi-eye"></i>
+                {{else}}
+                    <i class="bi bi-cpu"></i>
+                {{end}}
+                {{.Model.DisplayName}}
+            </h1>
+
+            <a href="/models" class="btn btn-outline-secondary">
+                ← Back to Models
+            </a>
         </div>
+    </div>
+</div>
 
-        <div class="col-lg-4">
-            <!-- Actions Card -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="bi bi-gear"></i> Actions
-                    </h5>
-                </div>
-                <div class="card-body">
+<!-- Model Information -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-info-circle"></i> Model Information
+                </h5>
+                <div>
                     {{if .HasOllama}}
                         {{if eq .Model.Status "not_downloaded"}}
-                            <button class="btn btn-primary w-100 mb-2" onclick="downloadModel('{{.Model.Name}}')">
+                            <button class="btn btn-primary" onclick="downloadModel('{{.Model.Name}}')">
                                 <i class="bi bi-download"></i> Download Model
                             </button>
                         {{else if eq .Model.Status "queued"}}
-                            <button class="btn btn-info w-100 mb-2" disabled>
+                            <button class="btn btn-info" disabled>
                                 <i class="bi bi-hourglass-split"></i> Queued for Download
                             </button>
                         {{else if eq .Model.Status "downloading"}}
-                            <div class="d-flex align-items-center gap-2 mb-2">
-                                <button class="btn btn-danger" onclick="cancelDownload('{{.Model.Name}}');" title="Cancel Download">
-                                    <i class="bi bi-x-lg"></i> Cancel
-                                </button>
-                                <div class="progress flex-grow-1" style="height: 30px;">
-                                    <div class="progress-bar progress-bar-striped progress-bar-animated"
-                                         role="progressbar"
-                                         style="width: {{.Model.Progress}}%"
-                                         aria-valuenow="{{.Model.Progress}}"
-                                         aria-valuemin="0"
-                                         aria-valuemax="100">{{.Model.Progress}}%</div>
-                                </div>
-                            </div>
-                            <button class="btn btn-primary w-100 mb-2" disabled>
-                                <i class="bi bi-arrow-repeat spin"></i> Downloading...
+                            <button class="btn btn-danger me-2" onclick="cancelDownload('{{.Model.Name}}');">
+                                <i class="bi bi-x-lg"></i> Cancel Download
+                            </button>
+                            <button class="btn btn-primary" disabled>
+                                <i class="bi bi-arrow-repeat spin"></i> Downloading ({{.Model.Progress}}%)
                             </button>
                         {{else if eq .Model.Status "completed"}}
                             {{if .IsInstalled}}
-                                <button class="btn btn-success w-100 mb-2" disabled>
-                                    <i class="bi bi-check-circle-fill"></i> Model Installed
-                                </button>
-                                <!-- Delete button only for installed models -->
-                                <button class="btn btn-danger w-100"
+                                <button class="btn btn-danger"
                                         data-bs-toggle="modal"
                                         data-bs-target="#deleteModelModal">
                                     <i class="bi bi-trash"></i> Delete Model
                                 </button>
                             {{else}}
-                                <button class="btn btn-warning w-100 mb-2" onclick="downloadModel('{{.Model.Name}}')">
-                                    <i class="bi bi-exclamation-triangle"></i> Model Missing - Re-download
+                                <button class="btn btn-warning" onclick="downloadModel('{{.Model.Name}}')">
+                                    <i class="bi bi-exclamation-triangle"></i> Re-download
                                 </button>
                             {{end}}
                         {{else if eq .Model.Status "failed"}}
-                            <button class="btn btn-warning w-100 mb-2" onclick="retryModel('{{.Model.Name}}')">
+                            <button class="btn btn-warning" onclick="retryModel('{{.Model.Name}}')">
                                 <i class="bi bi-arrow-clockwise"></i> Retry Download
                             </button>
                         {{end}}
-                    {{else}}
-                        <div class="alert alert-info mb-0">
-                            <i class="bi bi-info-circle"></i> Ollama container is not running
-                        </div>
                     {{end}}
                 </div>
             </div>
+            <div class="card-body">
+                {{if eq .Model.Status "downloading"}}
+                <div class="progress mb-3" style="height: 30px;">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated"
+                         role="progressbar"
+                         style="width: {{.Model.Progress}}%"
+                         aria-valuenow="{{.Model.Progress}}"
+                         aria-valuemin="0"
+                         aria-valuemax="100">{{.Model.Progress}}%</div>
+                </div>
+                {{end}}
 
-            <!-- Usage Tips Card -->
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="bi bi-lightbulb"></i> Usage Tips
-                    </h5>
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <strong>Name:</strong>
+                    </div>
+                    <div class="col-md-9">
+                        {{.Model.DisplayName}}
+                    </div>
                 </div>
-                <div class="card-body">
-                    <p class="mb-2">To use this model with Ollama:</p>
-                    <pre class="bg-light p-2 rounded"><code>ollama run {{.Model.Name}}</code></pre>
-                    <p class="mb-0 text-muted small">
-                        Run this command in a terminal with Docker access.
-                    </p>
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <strong>Technical ID:</strong>
+                    </div>
+                    <div class="col-md-9">
+                        <code>{{.Model.Name}}</code>
+                    </div>
                 </div>
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <strong>Category:</strong>
+                    </div>
+                    <div class="col-md-9">
+                        <span class="badge bg-secondary">
+                            {{if eq .Model.Category "chat"}}
+                                <i class="bi bi-chat-dots"></i> Chat
+                            {{else if eq .Model.Category "code"}}
+                                <i class="bi bi-code-slash"></i> Code
+                            {{else if eq .Model.Category "vision"}}
+                                <i class="bi bi-eye"></i> Vision
+                            {{else}}
+                                {{.Model.Category}}
+                            {{end}}
+                        </span>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <strong>Description:</strong>
+                    </div>
+                    <div class="col-md-9">
+                        {{.Model.Description}}
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <strong>Status:</strong>
+                    </div>
+                    <div class="col-md-9">
+                        {{if eq .Model.Status "not_downloaded"}}
+                            <span class="badge bg-secondary">Not Downloaded</span>
+                        {{else if eq .Model.Status "queued"}}
+                            <span class="badge bg-info">Queued</span>
+                        {{else if eq .Model.Status "downloading"}}
+                            <span class="badge bg-primary">Downloading</span>
+                        {{else if eq .Model.Status "completed"}}
+                            <span class="badge bg-success">Installed</span>
+                        {{else if eq .Model.Status "failed"}}
+                            <span class="badge bg-danger">Failed</span>
+                        {{else}}
+                            <span class="badge bg-secondary">{{.Model.Status}}</span>
+                        {{end}}
+                    </div>
+                </div>
+                {{if and .IsInstalled .RegistryPath}}
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <strong>Registry Location:</strong>
+                    </div>
+                    <div class="col-md-9">
+                        <code class="d-block p-2 bg-light rounded">{{.RegistryPath}}</code>
+                        <small class="text-muted mt-1 d-block">
+                            <i class="bi bi-info-circle"></i> Model manifest file containing metadata and references
+                        </small>
+                    </div>
+                </div>
+                {{end}}
+                {{if and .IsInstalled .BlobPath}}
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <strong>Blob Location:</strong>
+                    </div>
+                    <div class="col-md-9">
+                        <code class="d-block p-2 bg-light rounded">{{.BlobPath}}</code>
+                        <small class="text-muted mt-1 d-block">
+                            <i class="bi bi-info-circle"></i> Actual model weights stored as content-addressed blob
+                        </small>
+                    </div>
+                </div>
+                {{end}}
+                {{if .IsInstalled}}
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <strong>Blob Size:</strong>
+                    </div>
+                    <div class="col-md-9">
+                        {{.Model.SizeEstimate}}
+                    </div>
+                </div>
+                {{end}}
+                {{if and .Model.LastError.Valid (eq .Model.Status "failed")}}
+                <div class="row">
+                    <div class="col-md-3">
+                        <strong>Error:</strong>
+                    </div>
+                    <div class="col-md-9">
+                        <div class="alert alert-danger mb-0">
+                            {{.Model.LastError.String}}
+                        </div>
+                    </div>
+                </div>
+                {{end}}
+                {{if not .HasOllama}}
+                <div class="alert alert-info mt-3 mb-0">
+                    <i class="bi bi-info-circle"></i> Ollama container is not running. Please install an Ollama container to manage models.
+                </div>
+                {{end}}
             </div>
         </div>
     </div>
@@ -220,8 +241,8 @@ function downloadModel(modelName) {
     })
     .then(response => {
         if (response.ok) {
-            // Redirect to dashboard after starting download
-            window.location.href = '/#models-container';
+            // Redirect to dashboard/start page
+            window.location.href = '/';
         } else {
             return response.text().then(text => {
                 throw new Error(text);
@@ -243,8 +264,8 @@ function retryModel(modelName) {
     })
     .then(response => {
         if (response.ok) {
-            // Redirect to dashboard after retrying
-            window.location.href = '/#models-container';
+            // Redirect to dashboard/start page
+            window.location.href = '/';
         } else {
             return response.text().then(text => {
                 throw new Error(text);
@@ -270,8 +291,8 @@ function cancelDownload(modelName) {
     })
     .then(response => {
         if (response.ok) {
-            // Redirect to dashboard after cancelling
-            window.location.href = '/#models-container';
+            // Reload the page
+            window.location.reload();
         } else {
             response.text().then(text => {
                 alert('Failed to cancel download: ' + text);
@@ -289,12 +310,6 @@ function deleteModel(modelName) {
     const modal = bootstrap.Modal.getInstance(document.getElementById('deleteModelModal'));
     modal.hide();
 
-    // Show loading state
-    const actionCard = document.querySelector('.card-body');
-    if (actionCard) {
-        actionCard.innerHTML = '<div class="text-center"><div class="spinner-border" role="status"><span class="visually-hidden">Deleting...</span></div><p class="mt-2">Deleting model...</p></div>';
-    }
-
     fetch(`/api/models/${modelName}/delete`, {
         method: 'POST',
         headers: {
@@ -303,8 +318,8 @@ function deleteModel(modelName) {
     })
     .then(response => {
         if (response.ok) {
-            // Redirect to dashboard after deletion
-            window.location.href = '/#models-container';
+            // Redirect to dashboard/start page
+            window.location.href = '/';
         } else {
             return response.text().then(text => {
                 throw new Error(text);
@@ -314,8 +329,6 @@ function deleteModel(modelName) {
     .catch(error => {
         console.error('Error deleting model:', error);
         alert('Failed to delete model: ' + error.message);
-        // Reload page on error to restore UI
-        window.location.reload();
     });
 }
 
@@ -335,5 +348,18 @@ if (!document.querySelector('#spin-style')) {
     `;
     document.head.appendChild(style);
 }
+
+// Set up SSE for real-time updates if model is downloading
+{{if eq .Model.Status "downloading"}}
+const eventSource = new EventSource('/api/models/events');
+eventSource.onmessage = function(event) {
+    // Reload the page to show updated status
+    window.location.reload();
+};
+
+eventSource.onerror = function(error) {
+    console.error('SSE error:', error);
+};
+{{end}}
 </script>
 {{end}}

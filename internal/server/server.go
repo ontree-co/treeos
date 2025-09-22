@@ -242,6 +242,14 @@ func (s *Server) loadTemplates() error {
 	}
 	s.templates["app_templates"] = tmpl
 
+	// Load model templates list template
+	modelTemplatesTemplate := filepath.Join("templates", "dashboard", "model_templates.html")
+	tmpl, err = embeds.ParseTemplate(baseTemplate, modelTemplatesTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse model templates template: %w", err)
+	}
+	s.templates["model_templates"] = tmpl
+
 	// Load app create from template template with emoji picker component
 	appCreateFromTemplate := filepath.Join("templates", "dashboard", "app_create_from_template.html")
 	tmpl, err = embeds.ParseTemplate(baseTemplate, appCreateFromTemplate, emojiPickerTemplate)
@@ -475,6 +483,7 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/api/v1/status/", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeAPIStatus))))
 	mux.HandleFunc("/api/models", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeAPIModels))))
 	mux.HandleFunc("/api/models/", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeAPIModels))))
+	mux.HandleFunc("/models", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleModelTemplates))))
 	mux.HandleFunc("/models/", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleModelDetail))))
 
 	// Test endpoint for triggering agent runs (for testing purposes)

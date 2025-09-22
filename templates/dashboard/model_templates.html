@@ -1,0 +1,398 @@
+{{define "title"}}Model Library - OnTree{{end}}
+
+{{define "content"}}
+<div class="row">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/">Dashboard</a></li>
+                <li class="breadcrumb-item active">Model Library</li>
+            </ol>
+        </nav>
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="bi bi-cpu"></i> Model Library</h1>
+            <div>
+                <a href="/" class="btn btn-outline-secondary">
+                    ← Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="alert alert-info">
+            <h5><i class="bi bi-lightbulb"></i> AI Model Library</h5>
+            <p class="mb-0">
+                Browse and download AI models for chat, code generation, and vision tasks.
+                Models are stored locally and can be used with compatible applications.
+            </p>
+        </div>
+    </div>
+</div>
+
+<div id="models-container">
+    {{if .HasOllama}}
+        {{if .Models}}
+            {{$chatModels := .ChatModels}}
+            {{$codeModels := .CodeModels}}
+            {{$visionModels := .VisionModels}}
+
+            {{if $chatModels}}
+            <h4 class="mb-3"><i class="bi bi-chat-dots"></i> Chat Models</h4>
+            <div class="row mb-4">
+                {{range $chatModels}}
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card h-100 model-card" data-model="{{.Name}}" onclick="navigateToModel(event, '{{.Name}}')">
+                        <div class="card-body d-flex flex-column">
+                            <div class="d-flex align-items-center mb-3">
+                                <i class="bi bi-chat-dots fs-2 text-primary me-3"></i>
+                                <div>
+                                    <h5 class="card-title mb-0">{{.DisplayName}}</h5>
+                                    <small class="text-muted">Chat Model</small>
+                                </div>
+                            </div>
+
+                            <p class="card-text flex-grow-1">{{.Description}}</p>
+
+                            <p class="text-muted small mb-3">
+                                <i class="bi bi-hdd"></i> Size: {{.SizeEstimate}}
+                            </p>
+
+                            <div class="d-flex gap-2 align-items-center">
+                                {{if eq .Status "not_downloaded"}}
+                                    <button class="btn btn-primary model-action-btn" onclick="downloadModel('{{.Name}}')">
+                                        <i class="bi bi-download"></i> Download
+                                    </button>
+                                    <span class="badge bg-secondary">Not Downloaded</span>
+                                {{else if eq .Status "queued"}}
+                                    <button class="btn btn-info model-action-btn" disabled>
+                                        <i class="bi bi-hourglass-split"></i> Queued
+                                    </button>
+                                    <span class="badge bg-info">Queued</span>
+                                {{else if eq .Status "downloading"}}
+                                    <div class="d-flex align-items-center gap-2 w-100">
+                                        <button class="btn btn-sm btn-danger" onclick="cancelDownload('{{.Name}}');">
+                                            <i class="bi bi-x-lg"></i>
+                                        </button>
+                                        <div class="progress flex-grow-1" style="height: 25px;">
+                                            <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                                 role="progressbar"
+                                                 style="width: {{.Progress}}%"
+                                                 aria-valuenow="{{.Progress}}"
+                                                 aria-valuemin="0"
+                                                 aria-valuemax="100">{{.Progress}}%</div>
+                                        </div>
+                                    </div>
+                                {{else if eq .Status "completed"}}
+                                    <button class="btn btn-success model-action-btn" disabled>
+                                        <i class="bi bi-check-circle-fill"></i> Installed
+                                    </button>
+                                    <span class="badge bg-success">Ready</span>
+                                {{else if eq .Status "failed"}}
+                                    <button class="btn btn-warning model-action-btn" onclick="retryModel('{{.Name}}')">
+                                        <i class="bi bi-arrow-clockwise"></i> Retry
+                                    </button>
+                                    <span class="badge bg-danger">Failed</span>
+                                {{end}}
+                            </div>
+
+                            {{if and .LastError.Valid (eq .Status "failed")}}
+                            <div class="alert alert-danger mt-2 small">{{.LastError.String}}</div>
+                            {{end}}
+                        </div>
+                    </div>
+                </div>
+                {{end}}
+            </div>
+            {{end}}
+
+            {{if $codeModels}}
+            <h4 class="mb-3"><i class="bi bi-code-slash"></i> Code Models</h4>
+            <div class="row mb-4">
+                {{range $codeModels}}
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card h-100 model-card" data-model="{{.Name}}" onclick="navigateToModel(event, '{{.Name}}')">
+                        <div class="card-body d-flex flex-column">
+                            <div class="d-flex align-items-center mb-3">
+                                <i class="bi bi-code-slash fs-2 text-success me-3"></i>
+                                <div>
+                                    <h5 class="card-title mb-0">{{.DisplayName}}</h5>
+                                    <small class="text-muted">Code Model</small>
+                                </div>
+                            </div>
+
+                            <p class="card-text flex-grow-1">{{.Description}}</p>
+
+                            <p class="text-muted small mb-3">
+                                <i class="bi bi-hdd"></i> Size: {{.SizeEstimate}}
+                            </p>
+
+                            <div class="d-flex gap-2 align-items-center">
+                                {{if eq .Status "not_downloaded"}}
+                                    <button class="btn btn-primary model-action-btn" onclick="downloadModel('{{.Name}}')">
+                                        <i class="bi bi-download"></i> Download
+                                    </button>
+                                    <span class="badge bg-secondary">Not Downloaded</span>
+                                {{else if eq .Status "queued"}}
+                                    <button class="btn btn-info model-action-btn" disabled>
+                                        <i class="bi bi-hourglass-split"></i> Queued
+                                    </button>
+                                    <span class="badge bg-info">Queued</span>
+                                {{else if eq .Status "downloading"}}
+                                    <div class="d-flex align-items-center gap-2 w-100">
+                                        <button class="btn btn-sm btn-danger" onclick="cancelDownload('{{.Name}}');">
+                                            <i class="bi bi-x-lg"></i>
+                                        </button>
+                                        <div class="progress flex-grow-1" style="height: 25px;">
+                                            <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                                 role="progressbar"
+                                                 style="width: {{.Progress}}%"
+                                                 aria-valuenow="{{.Progress}}"
+                                                 aria-valuemin="0"
+                                                 aria-valuemax="100">{{.Progress}}%</div>
+                                        </div>
+                                    </div>
+                                {{else if eq .Status "completed"}}
+                                    <button class="btn btn-success model-action-btn" disabled>
+                                        <i class="bi bi-check-circle-fill"></i> Installed
+                                    </button>
+                                    <span class="badge bg-success">Ready</span>
+                                {{else if eq .Status "failed"}}
+                                    <button class="btn btn-warning model-action-btn" onclick="retryModel('{{.Name}}')">
+                                        <i class="bi bi-arrow-clockwise"></i> Retry
+                                    </button>
+                                    <span class="badge bg-danger">Failed</span>
+                                {{end}}
+                            </div>
+
+                            {{if and .LastError.Valid (eq .Status "failed")}}
+                            <div class="alert alert-danger mt-2 small">{{.LastError.String}}</div>
+                            {{end}}
+                        </div>
+                    </div>
+                </div>
+                {{end}}
+            </div>
+            {{end}}
+
+            {{if $visionModels}}
+            <h4 class="mb-3"><i class="bi bi-eye"></i> Vision Models</h4>
+            <div class="row mb-4">
+                {{range $visionModels}}
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card h-100 model-card" data-model="{{.Name}}" onclick="navigateToModel(event, '{{.Name}}')">
+                        <div class="card-body d-flex flex-column">
+                            <div class="d-flex align-items-center mb-3">
+                                <i class="bi bi-eye fs-2 text-info me-3"></i>
+                                <div>
+                                    <h5 class="card-title mb-0">{{.DisplayName}}</h5>
+                                    <small class="text-muted">Vision Model</small>
+                                </div>
+                            </div>
+
+                            <p class="card-text flex-grow-1">{{.Description}}</p>
+
+                            <p class="text-muted small mb-3">
+                                <i class="bi bi-hdd"></i> Size: {{.SizeEstimate}}
+                            </p>
+
+                            <div class="d-flex gap-2 align-items-center">
+                                {{if eq .Status "not_downloaded"}}
+                                    <button class="btn btn-primary model-action-btn" onclick="downloadModel('{{.Name}}')">
+                                        <i class="bi bi-download"></i> Download
+                                    </button>
+                                    <span class="badge bg-secondary">Not Downloaded</span>
+                                {{else if eq .Status "queued"}}
+                                    <button class="btn btn-info model-action-btn" disabled>
+                                        <i class="bi bi-hourglass-split"></i> Queued
+                                    </button>
+                                    <span class="badge bg-info">Queued</span>
+                                {{else if eq .Status "downloading"}}
+                                    <div class="d-flex align-items-center gap-2 w-100">
+                                        <button class="btn btn-sm btn-danger" onclick="cancelDownload('{{.Name}}');">
+                                            <i class="bi bi-x-lg"></i>
+                                        </button>
+                                        <div class="progress flex-grow-1" style="height: 25px;">
+                                            <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                                 role="progressbar"
+                                                 style="width: {{.Progress}}%"
+                                                 aria-valuenow="{{.Progress}}"
+                                                 aria-valuemin="0"
+                                                 aria-valuemax="100">{{.Progress}}%</div>
+                                        </div>
+                                    </div>
+                                {{else if eq .Status "completed"}}
+                                    <button class="btn btn-success model-action-btn" disabled>
+                                        <i class="bi bi-check-circle-fill"></i> Installed
+                                    </button>
+                                    <span class="badge bg-success">Ready</span>
+                                {{else if eq .Status "failed"}}
+                                    <button class="btn btn-warning model-action-btn" onclick="retryModel('{{.Name}}')">
+                                        <i class="bi bi-arrow-clockwise"></i> Retry
+                                    </button>
+                                    <span class="badge bg-danger">Failed</span>
+                                {{end}}
+                            </div>
+
+                            {{if and .LastError.Valid (eq .Status "failed")}}
+                            <div class="alert alert-danger mt-2 small">{{.LastError.String}}</div>
+                            {{end}}
+                        </div>
+                    </div>
+                </div>
+                {{end}}
+            </div>
+            {{end}}
+        {{else}}
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body text-center py-5">
+                            <i class="bi bi-cpu fs-1 text-muted mb-3"></i>
+                            <h4>No Models Available</h4>
+                            <p class="text-muted">No models have been discovered in the models directory.</p>
+                            <p class="text-muted">Models will appear here once they are available.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {{end}}
+    {{else}}
+        <div class="row">
+            <div class="col-12">
+                <div class="alert alert-warning">
+                    <h5><i class="bi bi-exclamation-triangle"></i> Ollama Not Available</h5>
+                    <p class="mb-0">
+                        No Ollama container is running. Please install an Ollama container to manage AI models.
+                        If you are unsure, choose <code>ollama-cpu</code> for now.
+                    </p>
+                </div>
+            </div>
+        </div>
+    {{end}}
+</div>
+
+<style>
+.model-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+}
+
+.model-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.model-card .card-body {
+    min-height: 280px;
+}
+
+.model-action-btn {
+    min-width: 120px;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.spin {
+    animation: spin 1s linear infinite;
+}
+</style>
+
+<script>
+function navigateToModel(event, modelName) {
+    // Don't navigate if clicking on a button
+    if (event.target.closest('button')) {
+        return;
+    }
+    window.location.href = '/models/' + encodeURIComponent(modelName);
+}
+
+function downloadModel(modelName) {
+    fetch(`/api/models/${modelName}/pull`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => {
+        if (response.ok) {
+            location.reload();
+        } else {
+            response.text().then(text => {
+                alert('Failed to start download: ' + text);
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Error starting download:', error);
+        alert('Failed to start download: ' + error.message);
+    });
+}
+
+function retryModel(modelName) {
+    fetch(`/api/models/${modelName}/retry`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => {
+        if (response.ok) {
+            location.reload();
+        } else {
+            response.text().then(text => {
+                alert('Failed to retry download: ' + text);
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Error retrying download:', error);
+        alert('Failed to retry download: ' + error.message);
+    });
+}
+
+function cancelDownload(modelName) {
+    if (!confirm(`Cancel download of ${modelName}?`)) {
+        return;
+    }
+
+    fetch(`/api/models/${modelName}/cancel`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => {
+        if (response.ok) {
+            console.log(`Cancelled download of ${modelName}`);
+            location.reload();
+        } else {
+            response.text().then(text => {
+                alert('Failed to cancel download: ' + text);
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Error cancelling download:', error);
+        alert('Failed to cancel download: ' + error.message);
+    });
+}
+
+// Set up SSE for real-time updates
+const eventSource = new EventSource('/api/models/events');
+eventSource.onmessage = function(event) {
+    // Reload the page to show updated model status
+    location.reload();
+};
+
+eventSource.onerror = function(error) {
+    console.error('SSE error:', error);
+};
+</script>
+{{end}}

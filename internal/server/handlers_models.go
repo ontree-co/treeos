@@ -5,12 +5,90 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
 
+	"treeos/internal/config"
 	"treeos/internal/ollama"
 )
+
+// handleModelTemplates handles the /models page showing all available models
+func (s *Server) handleModelTemplates(w http.ResponseWriter, r *http.Request) {
+	// Get all models from database
+	models, err := ollama.GetAllModels(s.db)
+	if err != nil {
+		log.Printf("Failed to get models: %v", err)
+		http.Error(w, "Failed to retrieve models", http.StatusInternalServerError)
+		return
+	}
+
+	// Check if Ollama container is running
+	hasOllama := s.checkOllamaContainer()
+
+	// If Ollama is available, get actually installed models
+	if hasOllama {
+		installedModels := s.getInstalledModels()
+		// Update status for models that are actually installed
+		for i := range models {
+			if isInstalled(models[i].Name, installedModels) {
+				// Only update to completed if not currently downloading
+				if models[i].Status != ollama.StatusDownloading {
+					models[i].Status = ollama.StatusCompleted
+					models[i].Progress = 100
+				}
+			}
+		}
+	}
+
+	// Group models by category
+	var chatModels, codeModels, visionModels []interface{}
+
+	for _, model := range models {
+		// Add status text and color for template
+		modelData := map[string]interface{}{
+			"Name":         model.Name,
+			"DisplayName":  model.DisplayName,
+			"SizeEstimate": model.SizeEstimate,
+			"Description":  model.Description,
+			"Category":     model.Category,
+			"Status":       model.Status,
+			"Progress":     model.Progress,
+			"LastError":    model.LastError,
+			"StatusText":   formatStatusText(model.Status),
+			"StatusColor":  getStatusColorClass(model.Status),
+		}
+
+		switch model.Category {
+		case "chat":
+			chatModels = append(chatModels, modelData)
+		case "code":
+			codeModels = append(codeModels, modelData)
+		case "vision":
+			visionModels = append(visionModels, modelData)
+		}
+	}
+
+	// Get user from context
+	user := getUserFromContext(r.Context())
+
+	// Prepare template data
+	data := s.baseTemplateData(user)
+	data["HasOllama"] = hasOllama
+	data["Models"] = models
+	data["ChatModels"] = chatModels
+	data["CodeModels"] = codeModels
+	data["VisionModels"] = visionModels
+
+	// Render the template
+	tmpl := s.templates["model_templates"]
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
+		log.Printf("Failed to execute model templates template: %v", err)
+		http.Error(w, "Failed to render page", http.StatusInternalServerError)
+	}
+}
 
 // routeAPIModels handles all /api/models/* routes
 func (s *Server) routeAPIModels(w http.ResponseWriter, r *http.Request) {
@@ -81,6 +159,20 @@ func (s *Server) handleAPIModelsGet(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
+	}
+
+	// Check if we should filter models for dashboard view
+	if r.URL.Query().Get("installed") == "true" {
+		var filteredModels []ollama.OllamaModel
+		for _, model := range models {
+			// Show installed models and models that are currently downloading/queued
+			if model.Status == ollama.StatusCompleted ||
+			   model.Status == ollama.StatusDownloading ||
+			   model.Status == ollama.StatusQueued {
+				filteredModels = append(filteredModels, model)
+			}
+		}
+		models = filteredModels
 	}
 
 	// Check if this is an HTMX request
@@ -682,11 +774,61 @@ func (s *Server) handleModelDetail(w http.ResponseWriter, r *http.Request) {
 		isModelInstalled = isInstalled(modelName, installedModels)
 	}
 
+	// Get model storage paths if installed
+	var registryPath string
+	var blobPath string
+	var mainBlobDigest string
+	if isModelInstalled {
+		// Models are stored in /root/.ollama/models inside the container
+		// which maps to the shared models directory on the host
+		sharedModelsPath := config.GetSharedModelsPath()
+
+		// Parse model name (format: "model:tag" or just "model")
+		// Examples: "gemma:2b", "llama3.2:1b", "dolphin-mistral:7b"
+		modelParts := strings.SplitN(modelName, ":", 2)
+		modelBase := modelParts[0]
+		modelTag := "latest"
+		if len(modelParts) > 1 {
+			modelTag = modelParts[1]
+		}
+
+		// Registry path where the model manifest is stored
+		// Format: .../library/modelbase/tag
+		registryPath = fmt.Sprintf("%s/models/manifests/registry.ollama.ai/library/%s/%s", sharedModelsPath, modelBase, modelTag)
+
+		// Try to read the manifest to get the main model blob digest
+		manifestData, err := os.ReadFile(registryPath)
+		if err == nil {
+			// Parse the manifest JSON to find the main model layer
+			var manifest map[string]interface{}
+			if err := json.Unmarshal(manifestData, &manifest); err == nil {
+				if layers, ok := manifest["layers"].([]interface{}); ok && len(layers) > 0 {
+					// The first layer is usually the main model blob
+					if layer, ok := layers[0].(map[string]interface{}); ok {
+						if digest, ok := layer["digest"].(string); ok {
+							// Extract the hash from the digest (format: sha256:hash)
+							if strings.HasPrefix(digest, "sha256:") {
+								mainBlobDigest = strings.TrimPrefix(digest, "sha256:")
+								// Blob path where the actual model weights are stored
+								blobPath = fmt.Sprintf("%s/models/blobs/sha256-%s", sharedModelsPath, mainBlobDigest)
+							}
+						}
+					}
+				}
+			}
+		} else {
+			// Log the error for debugging
+			log.Printf("Could not read manifest file %s: %v", registryPath, err)
+		}
+	}
+
 	// Prepare template data
 	data := s.baseTemplateData(user)
 	data["Model"] = model
 	data["HasOllama"] = hasOllama
 	data["IsInstalled"] = isModelInstalled
+	data["RegistryPath"] = registryPath
+	data["BlobPath"] = blobPath
 
 	// Render the template
 	tmpl, ok := s.templates["model_detail"]
