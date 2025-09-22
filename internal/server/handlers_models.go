@@ -43,7 +43,7 @@ func (s *Server) handleModelTemplates(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Group models by category
-	var chatModels, codeModels, visionModels []interface{}
+	var chatModels, codeModels, visionModels, customModels []interface{}
 
 	for _, model := range models {
 		// Add status text and color for template
@@ -67,6 +67,8 @@ func (s *Server) handleModelTemplates(w http.ResponseWriter, r *http.Request) {
 			codeModels = append(codeModels, modelData)
 		case "vision":
 			visionModels = append(visionModels, modelData)
+		case "custom":
+			customModels = append(customModels, modelData)
 		}
 	}
 
@@ -80,6 +82,7 @@ func (s *Server) handleModelTemplates(w http.ResponseWriter, r *http.Request) {
 	data["ChatModels"] = chatModels
 	data["CodeModels"] = codeModels
 	data["VisionModels"] = visionModels
+	data["CustomModels"] = customModels
 
 	// Render the template
 	tmpl := s.templates["model_templates"]
@@ -204,20 +207,46 @@ func (s *Server) handleAPIModelPull(w http.ResponseWriter, r *http.Request, mode
 		return
 	}
 
+	// If model is not in our curated list, it's a custom model
 	if model == nil {
-		http.Error(w, "Model not found", http.StatusNotFound)
-		return
-	}
+		// Create a new model entry for custom model
+		customModel := &ollama.OllamaModel{
+			Name:         modelName,
+			DisplayName:  modelName, // Use the model name as display name
+			Category:     "custom",  // Mark as custom model - we don't know its type yet
+			Description:  fmt.Sprintf("Custom model from Ollama Library: %s", modelName),
+			SizeEstimate: "Size varies", // Size will be determined during download
+			Status:       ollama.StatusNotDownloaded,
+			Progress:     0,
+		}
 
-	// Check if already downloading or completed
-	if model.Status == ollama.StatusDownloading {
-		http.Error(w, "Model is already being downloaded", http.StatusConflict)
-		return
-	}
+		// Insert the custom model into database
+		err = ollama.CreateModel(s.db, customModel)
+		if err != nil {
+			log.Printf("Failed to create custom model entry: %v", err)
+			http.Error(w, "Failed to register custom model", http.StatusInternalServerError)
+			return
+		}
 
-	if model.Status == ollama.StatusCompleted {
-		http.Error(w, "Model is already downloaded", http.StatusConflict)
-		return
+		log.Printf("Created entry for custom model: %s", modelName)
+		// Custom models are always new, so we can proceed with download
+	} else {
+		// For existing models, check if already downloading or completed
+		if model.Status == ollama.StatusDownloading {
+			http.Error(w, "Model is already being downloaded", http.StatusConflict)
+			return
+		}
+
+		if model.Status == ollama.StatusCompleted {
+			// Check if model is actually installed
+			installedModels := s.getInstalledModels()
+			if isInstalled(modelName, installedModels) {
+				http.Error(w, "Model is already downloaded", http.StatusConflict)
+				return
+			}
+			// If not actually installed, allow re-download
+			log.Printf("Model %s marked as completed but not found in Ollama, allowing re-download", modelName)
+		}
 	}
 
 	// Create a new download job
@@ -487,7 +516,7 @@ func isInstalled(modelName string, installedModels []string) bool {
 // renderModelsHTML renders the models list as HTML for HTMX requests
 func (s *Server) renderModelsHTML(w http.ResponseWriter, r *http.Request, models []ollama.OllamaModel, hasOllama bool) {
 	// Group models by category
-	var chatModels, codeModels, visionModels []interface{}
+	var chatModels, codeModels, visionModels, customModels []interface{}
 
 	for _, model := range models {
 		// Add status text and color for template
@@ -511,16 +540,19 @@ func (s *Server) renderModelsHTML(w http.ResponseWriter, r *http.Request, models
 			codeModels = append(codeModels, modelData)
 		case "vision":
 			visionModels = append(visionModels, modelData)
+		case "custom":
+			customModels = append(customModels, modelData)
 		}
 	}
 
 	data := map[string]interface{}{
-		"HasOllama":    hasOllama,
-		"Models":       models,
-		"ChatModels":   chatModels,
-		"CodeModels":   codeModels,
-		"VisionModels": visionModels,
-		"TotalCount":   len(models),
+		"HasOllama":     hasOllama,
+		"Models":        models,
+		"ChatModels":    chatModels,
+		"CodeModels":    codeModels,
+		"VisionModels":  visionModels,
+		"CustomModels":  customModels,
+		"TotalCount":    len(models),
 	}
 
 	// Use the pre-loaded template

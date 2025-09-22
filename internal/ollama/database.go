@@ -114,12 +114,32 @@ func UpdateModelError(db *sql.DB, name string, errorMsg string) error {
 // ClearModelError clears a model's error state for retry
 func ClearModelError(db *sql.DB, name string) error {
 	_, err := db.Exec(`
-		UPDATE ollama_models 
-		SET last_error = NULL, status = ?, progress = 0, updated_at = CURRENT_TIMESTAMP 
+		UPDATE ollama_models
+		SET last_error = NULL, status = ?, progress = 0, updated_at = CURRENT_TIMESTAMP
 		WHERE name = ?`,
 		StatusQueued, name)
 	if err != nil {
 		return fmt.Errorf("failed to clear model error: %w", err)
+	}
+	return nil
+}
+
+// CreateModel inserts a new model into the database (used for custom models)
+func CreateModel(db *sql.DB, model *OllamaModel) error {
+	_, err := db.Exec(`
+		INSERT INTO ollama_models (name, display_name, category, description, size_estimate, status, progress, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+		ON CONFLICT(name) DO UPDATE SET
+			display_name = excluded.display_name,
+			category = excluded.category,
+			description = excluded.description,
+			status = excluded.status,
+			progress = excluded.progress,
+			last_error = NULL,
+			updated_at = CURRENT_TIMESTAMP`,
+		model.Name, model.DisplayName, model.Category, model.Description, model.SizeEstimate, model.Status, model.Progress)
+	if err != nil {
+		return fmt.Errorf("failed to create model: %w", err)
 	}
 	return nil
 }
