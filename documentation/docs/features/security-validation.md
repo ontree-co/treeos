@@ -72,10 +72,11 @@ services:
      - /opt/ontree/apps/mount/myapp/service/data:/data  # ✅ Allowed
    ```
 
-3. **Special exception - Shared models directory** (for AI apps):
+3. **Special exception - Shared resources directory** (for AI apps):
    ```yaml
    volumes:
-     - /opt/ontree/sharedmodels:/models  # ✅ Allowed for AI model sharing
+     - /opt/ontree/shared/ollama:/models  # ✅ Allowed for Ollama model sharing
+     - ./shared/ollama:/root/.ollama      # ✅ Allowed (relative path)
    ```
 
 **Blocked bind mounts**:
@@ -172,7 +173,11 @@ TreeOS templates are pre-validated to ensure they meet security requirements. If
 
 ### AI Model Sharing
 
-The `/opt/ontree/sharedmodels` directory is specifically allowed for AI applications that need to share large model files between containers. This prevents duplicating multi-gigabyte model files.
+The `/opt/ontree/shared/` directory structure is specifically allowed for AI applications that need to share resources between containers:
+- `/opt/ontree/shared/ollama` - For Ollama model storage
+- Future: `/opt/ontree/shared/<provider>` - For other inference providers
+
+This prevents duplicating multi-gigabyte model files across containers.
 
 ### Development Mode
 

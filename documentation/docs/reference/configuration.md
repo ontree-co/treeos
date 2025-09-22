@@ -190,12 +190,14 @@ OnTree uses different default paths based on the operating system:
 
 **Linux:**
 - Apps directory: `/opt/ontree/apps`
-- Shared models: `/opt/ontree/sharedmodels`
+- Shared resources: `/opt/ontree/shared`
+  - Ollama models: `/opt/ontree/shared/ollama`
 - Database: `ontree.db` (current directory)
 
 **macOS (Darwin):**
 - Apps directory: `./apps` (relative to binary/repository)
-- Shared models: `./sharedmodels` (relative to binary/repository)
+- Shared resources: `./shared` (relative to binary/repository)
+  - Ollama models: `./shared/ollama`
 - Database: `ontree.db` (current directory)
 
 **Note**: On macOS, paths are relative to allow development without root permissions. In production on Linux, absolute paths under `/opt/ontree` are used for system-wide installation.

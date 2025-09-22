@@ -455,14 +455,16 @@ func extractHostPort(composeContent string) (int, error) {
 
 // usesSharedModels checks if the compose content references the shared models directory
 func usesSharedModels(composeContent string) bool {
-	// Check for both Linux and macOS paths
-	return strings.Contains(composeContent, "/opt/ontree/sharedmodels") ||
-		strings.Contains(composeContent, "./sharedmodels")
+	// Check for shared/ollama structure
+	return strings.Contains(composeContent, "/opt/ontree/shared/ollama") ||
+		strings.Contains(composeContent, "./shared/ollama") ||
+		strings.Contains(composeContent, "/opt/ontree/shared/") ||
+		strings.Contains(composeContent, "./shared/")
 }
 
 // ensureSharedModelsDirectory creates the shared models directory with proper permissions
 func ensureSharedModelsDirectory() error {
-	path := config.GetSharedModelsPath()
+	path := config.GetSharedOllamaPath()
 	// Check if directory exists
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		// Create directory
@@ -475,7 +477,7 @@ func ensureSharedModelsDirectory() error {
 			return fmt.Errorf("failed to set ownership: %v", err)
 		}
 
-		log.Printf("Created shared models directory at %s with root:root ownership", path)
+		log.Printf("Created shared Ollama directory at %s with root:root ownership", path)
 	}
 
 	return nil

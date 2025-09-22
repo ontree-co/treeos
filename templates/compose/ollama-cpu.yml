@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   ollama:
     image: ollama/ollama:latest
@@ -5,7 +7,7 @@ services:
     ports:
       - "11434:11434"
     volumes:
-      - {{SHARED_MODELS_PATH}}:/root/.ollama
+      - {{SHARED_OLLAMA_PATH}}:/root/.ollama
     labels:
       - "ontree.inference=true"
       - "ontree.type=ollama"

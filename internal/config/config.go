@@ -45,17 +45,27 @@ type Config struct {
 	UptimeKumaBaseURL  string `toml:"uptime_kuma_base_url"` // Base URL for Uptime Kuma API
 }
 
-// GetSharedModelsPath returns the path to the shared models directory based on the platform
-func GetSharedModelsPath() string {
+// GetSharedPath returns the base path for shared resources based on the platform
+func GetSharedPath() string {
 	switch runtime.GOOS {
 	case "linux":
-		return "/opt/ontree/sharedmodels"
+		return "/opt/ontree/shared"
 	case "darwin":
 		// On macOS, use a path relative to the current directory/binary
-		return "./sharedmodels"
+		return "./shared"
 	default:
-		return "./sharedmodels"
+		return "./shared"
 	}
+}
+
+// GetSharedOllamaPath returns the path to the shared Ollama models directory
+func GetSharedOllamaPath() string {
+	base := GetSharedPath()
+	// Ensure relative paths maintain the ./ prefix for Docker
+	if strings.HasPrefix(base, "./") {
+		return base + "/ollama"
+	}
+	return filepath.Join(base, "ollama")
 }
 
 // defaultConfig returns the default configuration based on the platform

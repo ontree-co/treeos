@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -33,9 +35,29 @@ func (s *Server) handleTemplates(w http.ResponseWriter, r *http.Request) {
 		log.Printf("DEBUG: Template %d: %s (%s)", i, t.Name, t.Filename)
 	}
 
+	// Group templates by category with proper ordering
+	categorizedTemplates := make(map[string][]interface{})
+	categoryOrder := []string{"LLM Inference", "LLM Web Interfaces", "Others"}
+
+	// Initialize categories in order
+	for _, cat := range categoryOrder {
+		categorizedTemplates[cat] = []interface{}{}
+	}
+
+	// Group templates
+	for _, template := range templates {
+		if _, exists := categorizedTemplates[template.Category]; exists {
+			categorizedTemplates[template.Category] = append(categorizedTemplates[template.Category], template)
+		} else {
+			// If category doesn't exist, add to Others
+			categorizedTemplates["Others"] = append(categorizedTemplates["Others"], template)
+		}
+	}
+
 	// Prepare template data
 	data := s.baseTemplateData(user)
-	data["Templates"] = templates
+	data["CategorizedTemplates"] = categorizedTemplates
+	data["CategoryOrder"] = categoryOrder
 	data["Messages"] = nil
 	data["CSRFToken"] = "" // No CSRF yet
 
@@ -146,6 +168,44 @@ func (s *Server) handleCreateFromTemplate(w http.ResponseWriter, r *http.Request
 			log.Printf("Error creating app from template: %v", err)
 			http.Error(w, fmt.Sprintf("Failed to create application: %v", err), http.StatusInternalServerError)
 			return
+		}
+
+		// Special handling for LibreChat - copy config file
+		if templateID == "librechat" {
+			appPath := filepath.Join(s.config.AppsDir, appName)
+			configPath := filepath.Join(appPath, "librechat.yaml")
+
+			// Create default LibreChat config for Ollama integration
+			librechatConfig := `# LibreChat Configuration for Ollama Integration
+version: 1.0.0
+
+endpoints:
+  custom:
+    - name: "Ollama"
+      apiKey: "ollama"
+      baseURL: "http://host.docker.internal:11434/v1/"
+      models:
+        default: [
+          "llama3.2:latest",
+          "llama3.1:latest",
+          "mistral:latest",
+          "codellama:latest",
+          "phi3:latest",
+          "gemma2:latest",
+          "qwen2.5:latest"
+        ]
+      fetch: true
+      titleConvo: true
+      titleModel: "current_model"
+      summarize: false
+      summaryModel: "current_model"
+      forcePrompt: false
+      modelDisplayLabel: "Ollama"
+      dropParams: ["stop"]`
+
+			if err := os.WriteFile(configPath, []byte(librechatConfig), 0644); err != nil {
+				log.Printf("Warning: Failed to create librechat.yaml for %s: %v", appName, err)
+			}
 		}
 
 		// Trigger agent immediately for initial setup

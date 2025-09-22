@@ -176,8 +176,9 @@ func (c *Client) GetAppDetails(appsDir, appName string) (*App, error) {
 	}
 
 	app := &App{
-		Name: appName,
-		Path: appPath,
+		Name:     appName,
+		Path:     appPath,
+		Services: make(map[string]ComposeService), // Initialize to empty map to prevent nil issues
 	}
 
 	// Parse docker-compose.yml
@@ -185,6 +186,7 @@ func (c *Client) GetAppDetails(appsDir, appName string) (*App, error) {
 	if err != nil {
 		app.Status = "error"
 		app.Error = fmt.Sprintf("Failed to parse docker-compose.yml: %v", err)
+		// Services remains as empty map, not nil
 	} else {
 		app.Services = services
 		app.Emoji = emoji

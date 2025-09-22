@@ -306,7 +306,7 @@ services:
 			errorMsg:   "is not allowed. Use named volumes",
 		},
 		{
-			name:    "shared models relative path (allowed)",
+			name:    "shared ollama relative path (allowed)",
 			appName: "ollama-cpu",
 			yamlContent: `
 version: '3.8'
@@ -314,7 +314,7 @@ services:
   ollama:
     image: ollama/ollama:latest
     volumes:
-      - ./sharedmodels:/root/.ollama
+      - ./shared/ollama:/root/.ollama
 `,
 			shouldFail: false,
 		},

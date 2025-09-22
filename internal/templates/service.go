@@ -106,9 +106,9 @@ func (s *Service) ProcessTemplateContent(content string, appName string) string 
 	// rather than matching the app name
 
 	// Replace platform-specific placeholders
-	// {{SHARED_MODELS_PATH}} - Path to shared models directory (platform-specific)
-	sharedModelsPath := config.GetSharedModelsPath()
-	content = strings.ReplaceAll(content, "{{SHARED_MODELS_PATH}}", sharedModelsPath)
+	// {{SHARED_OLLAMA_PATH}} - Path to shared Ollama models directory (platform-specific)
+	sharedOllamaPath := config.GetSharedOllamaPath()
+	content = strings.ReplaceAll(content, "{{SHARED_OLLAMA_PATH}}", sharedOllamaPath)
 
 	// TODO: In the future, this could support more variable substitution like:
 	// {{.Port}}, {{.AppName}}, {{.RandomString}}, etc.

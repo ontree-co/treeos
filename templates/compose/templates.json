@@ -1,60 +1,10 @@
 {
   "templates": [
     {
-      "id": "openwebui",
-      "name": "Open WebUI (with Ollama)",
-      "description": "A user-friendly web interface for running and managing AI language models locally. Includes Ollama for running LLMs.",
-      "category": "AI Tools",
-      "icon": "bi-robot",
-      "filename": "openwebui.yml",
-      "port": "3000",
-      "documentation_url": "https://github.com/open-webui/open-webui"
-    },
-    {
-      "id": "openwebui-simple",
-      "name": "Open WebUI",
-      "description": "User-friendly WebUI for LLMs (Formerly Ollama WebUI)",
-      "category": "AI & Machine Learning",
-      "icon": "bi-robot",
-      "filename": "openwebui-simple.yml",
-      "port": "8080",
-      "documentation_url": "https://docs.openwebui.com"
-    },
-    {
-      "id": "nginx-test",
-      "name": "Nginx Test",
-      "description": "Simple Nginx web server for testing",
-      "category": "Web Servers",
-      "icon": "bi-server",
-      "filename": "nginx-test.yml",
-      "port": "8080",
-      "documentation_url": "https://nginx.org/en/docs/"
-    },
-    {
-      "id": "openwebui-amd",
-      "name": "OpenWebUI (AMD AI 395+)",
-      "description": "A user-friendly web interface for running AI models with AMD GPU support. Includes Ollama with ROCm optimization for AMD GPUs.",
-      "category": "AI Tools",
-      "icon": "bi-gpu-card",
-      "filename": "openwebui-amd.yml",
-      "port": "4000",
-      "documentation_url": "https://github.com/open-webui/open-webui"
-    },
-    {
-      "id": "uptime-kuma",
-      "name": "Uptime Kuma",
-      "description": "A fancy self-hosted monitoring tool for tracking the uptime and performance of your websites and applications.",
-      "category": "Monitoring",
-      "icon": "bi-heart-pulse",
-      "filename": "uptime-kuma.yml",
-      "port": "4001",
-      "documentation_url": "https://github.com/louislam/uptime-kuma"
-    },
-    {
       "id": "ollama-cpu",
       "name": "Ollama (CPU)",
       "description": "System service for running LLMs on CPU. Manages shared model store for all AI applications.",
-      "category": "AI Infrastructure",
+      "category": "LLM Inference",
       "icon": "bi-cpu",
       "filename": "ollama-cpu.yml",
       "port": "11434",
@@ -65,7 +15,7 @@
       "id": "ollama-nvidia",
       "name": "Ollama (NVIDIA GPU)",
       "description": "System service for running LLMs with NVIDIA GPU acceleration. Manages shared model store.",
-      "category": "AI Infrastructure",
+      "category": "LLM Inference",
       "icon": "bi-gpu-card",
       "filename": "ollama-nvidia.yml",
       "port": "11434",
@@ -76,7 +26,7 @@
       "id": "ollama-amd",
       "name": "Ollama (AMD GPU)",
       "description": "System service for running LLMs with AMD GPU/ROCm support. Manages shared model store.",
-      "category": "AI Infrastructure",
+      "category": "LLM Inference",
       "icon": "bi-gpu-card",
       "filename": "ollama-amd.yml",
       "port": "11434",
@@ -84,24 +34,54 @@
       "is_system_service": true
     },
     {
-      "id": "openwebui-consumer",
-      "name": "Open WebUI (without Ollama)",
-      "description": "Web interface for LLMs. Connects to existing Ollama instance. Requires Ollama to be installed separately.",
-      "category": "AI Tools",
+      "id": "openwebui",
+      "name": "Open WebUI",
+      "description": "User-friendly web interface for LLMs. Connects to existing Ollama instance.",
+      "category": "LLM Web Interfaces",
       "icon": "bi-chat-dots",
-      "filename": "openwebui-consumer.yml",
+      "filename": "openwebui.yml",
       "port": "3000",
       "documentation_url": "https://github.com/open-webui/open-webui"
+    },
+    {
+      "id": "librechat",
+      "name": "LibreChat",
+      "description": "Enhanced ChatGPT clone with multi-model support. Connects to Ollama and other AI providers.",
+      "category": "LLM Web Interfaces",
+      "icon": "bi-chat-square-text",
+      "filename": "librechat.yml",
+      "port": "3080",
+      "documentation_url": "https://www.librechat.ai"
+    },
+    {
+      "id": "uptime-kuma",
+      "name": "Uptime Kuma",
+      "description": "A fancy self-hosted monitoring tool for tracking the uptime and performance of your websites and applications.",
+      "category": "Others",
+      "icon": "bi-heart-pulse",
+      "filename": "uptime-kuma.yml",
+      "port": "4001",
+      "documentation_url": "https://github.com/louislam/uptime-kuma"
     },
     {
       "id": "woodpecker",
       "name": "Woodpecker CI",
       "description": "Simple yet powerful CI/CD engine with great extensibility. Self-hosted alternative to GitHub Actions with Forgejo/Codeberg support.",
-      "category": "Development",
+      "category": "Others",
       "icon": "bi-gear-wide-connected",
       "filename": "woodpecker.yml",
       "port": "8000",
       "documentation_url": "https://woodpecker-ci.org/docs/intro"
+    },
+    {
+      "id": "nginx-test",
+      "name": "Nginx Test",
+      "description": "Simple Nginx web server for testing",
+      "category": "Others",
+      "icon": "bi-server",
+      "filename": "nginx-test.yml",
+      "port": "8080",
+      "documentation_url": "https://nginx.org/en/docs/"
     }
   ]
 }
