@@ -6,7 +6,7 @@ services:
     container_name: ${COMPOSE_PROJECT_NAME}-librechat-1
     restart: unless-stopped
     ports:
-      - "3080:3080"
+      - "${PORT:-3080}:3080"
     environment:
       - HOST=0.0.0.0
       - PORT=3080

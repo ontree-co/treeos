@@ -276,8 +276,9 @@ func (s *Server) replacePortsInYAML(content string, customPort string) (string, 
 			if strings.Contains(portStr, ":") {
 				parts := strings.Split(portStr, ":")
 				if len(parts) >= 2 {
-					// Replace host port, keep container port
-					portsArray[i] = fmt.Sprintf("%s:%s", customPort, parts[1])
+					containerPort := strings.TrimSpace(parts[len(parts)-1])
+					containerPort = strings.Trim(containerPort, "}\"")
+					portsArray[i] = fmt.Sprintf("%s:%s", customPort, containerPort)
 				}
 			} else {
 				// Single port format, replace with explicit mapping
