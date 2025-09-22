@@ -100,8 +100,10 @@ test-e2e: build
 	else \
 		echo "📦 Building application if needed..."; \
 		$(MAKE) build; \
+		echo "📂 Creating test directories..."; \
+		mkdir -p ./test-apps ./logs; \
 		echo "🚀 Starting server on port 3001..."; \
-		LISTEN_ADDR=:3001 nohup ./$(BUILD_DIR)/$(BINARY_NAME) > server.log 2>&1 & \
+		ONTREE_APPS_DIR=./test-apps LISTEN_ADDR=:3001 nohup ./$(BUILD_DIR)/$(BINARY_NAME) > server.log 2>&1 & \
 		SERVER_PID=$$!; \
 		echo "Server started with PID $$SERVER_PID"; \
 		echo "⏳ Waiting for server to be ready..."; \
@@ -112,6 +114,10 @@ test-e2e: build
 			fi; \
 			if [ $$i -eq 30 ]; then \
 				echo "❌ Server failed to start after 30 seconds"; \
+				if [ -f server.log ]; then \
+					echo "📋 Server log output:"; \
+					cat server.log; \
+				fi; \
 				kill $$SERVER_PID 2>/dev/null || true; \
 				exit 1; \
 			fi; \
