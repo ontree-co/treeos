@@ -1,5 +1,8 @@
 # TreeOS
 
+[![Build Status](https://ci.codeberg.org/api/badges/ontree/treeos/status.svg)](https://ci.codeberg.org/ontree/treeos)
+[![GitHub Actions](https://github.com/stefanmunz/treeos/actions/workflows/test.yml/badge.svg)](https://github.com/stefanmunz/treeos/actions)
+
 OnTree is a Docker container management application with a web interface for managing containerized applications. It provides an intuitive UI for creating, managing, and monitoring Docker containers on your local system or server.
 
 ## Features

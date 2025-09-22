@@ -1,0 +1,142 @@
+# Release Pipeline - Triggered on version tags
+when:
+  event: tag
+  tag: v*.*.*
+
+steps:
+  # Run tests before release
+  - name: test
+    image: golang:1.21
+    commands:
+      - make embed-assets
+      - go test ./...
+    environment:
+      GOCACHE: /tmp/go-build-cache
+      GOMODCACHE: /tmp/go-mod-cache
+    volumes:
+      - /tmp:/tmp
+
+  # Install cross-compilation dependencies
+  - name: install-cross-compile
+    image: golang:1.21
+    commands:
+      - apt-get update
+      - apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+    volumes:
+      - /tmp:/tmp
+
+  # Prepare embedded assets
+  - name: prepare-assets
+    image: golang:1.21
+    commands:
+      - make embed-assets
+    environment:
+      GOCACHE: /tmp/go-build-cache
+      GOMODCACHE: /tmp/go-mod-cache
+    volumes:
+      - /tmp:/tmp
+
+  # Run GoReleaser to create releases
+  - name: goreleaser
+    image: goreleaser/goreleaser:latest
+    commands:
+      - goreleaser release --clean
+    environment:
+      GITHUB_TOKEN:
+        from_secret: github_token
+    volumes:
+      - /tmp:/tmp
+    when:
+      event: tag
+
+  # Download release assets from GitHub
+  - name: download-assets
+    image: alpine:latest
+    commands:
+      - apk add --no-cache github-cli
+      - mkdir -p release-assets
+      - export TAG=${CI_COMMIT_TAG}
+      - gh release download $TAG --repo ${CI_REPO} --dir release-assets
+    environment:
+      GH_TOKEN:
+        from_secret: github_token
+    volumes:
+      - ./release-assets:/workspace/release-assets
+    when:
+      event: tag
+
+  # Generate public release notes
+  - name: generate-release-notes
+    image: alpine:latest
+    commands:
+      - export TAG=${CI_COMMIT_TAG}
+      - export VERSION=${TAG#v}
+      - |
+        cat > release-notes.md << EOF
+        # TreeOS $TAG
+
+        TreeOS is a self-hosted application platform that makes it easy to deploy and manage containerized applications.
+
+        ## Installation
+
+        ### Linux (AMD64/x86_64)
+        \`\`\`bash
+        wget https://github.com/ontree-co/treeos/releases/download/$TAG/treeos_${VERSION}_linux_x86_64.tar.gz
+        tar -xzf treeos_${VERSION}_linux_x86_64.tar.gz
+        sudo mv treeos /usr/local/bin/
+        sudo chmod +x /usr/local/bin/treeos
+        \`\`\`
+
+        ### Linux (ARM64)
+        \`\`\`bash
+        wget https://github.com/ontree-co/treeos/releases/download/$TAG/treeos_${VERSION}_linux_arm64.tar.gz
+        tar -xzf treeos_${VERSION}_linux_arm64.tar.gz
+        sudo mv treeos /usr/local/bin/
+        sudo chmod +x /usr/local/bin/treeos
+        \`\`\`
+
+        ## Checksums
+
+        Verify your download with the checksums.txt file included in this release.
+
+        ## Documentation
+
+        For detailed documentation and getting started guides, please visit our [documentation site](https://docs.treeos.com).
+
+        ## Support
+
+        For support and questions, please visit our [community forum](https://github.com/ontree-co/treeos/discussions).
+        EOF
+    volumes:
+      - ./release-notes.md:/workspace/release-notes.md
+    when:
+      event: tag
+
+  # Publish to public repository
+  - name: publish-public
+    image: alpine:latest
+    commands:
+      - apk add --no-cache github-cli
+      - export TAG=${CI_COMMIT_TAG}
+      - |
+        # Check if release already exists
+        if gh release view $TAG --repo ontree-co/treeos &>/dev/null; then
+          echo "Release $TAG already exists in public repo, updating assets..."
+          gh release delete $TAG --repo ontree-co/treeos --yes || true
+        fi
+
+        # Create new release with assets
+        gh release create $TAG \
+          --repo ontree-co/treeos \
+          --title "TreeOS $TAG" \
+          --notes-file release-notes.md \
+          --verify-tag=false \
+          release-assets/*
+    environment:
+      GH_TOKEN:
+        from_secret: public_releases_token
+    volumes:
+      - ./release-assets:/workspace/release-assets
+      - ./release-notes.md:/workspace/release-notes.md
+    when:
+      event: tag
