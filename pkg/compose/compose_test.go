@@ -111,6 +111,7 @@ func TestComposeServiceCreation(t *testing.T) {
 
 	if service == nil {
 		t.Fatal("Expected non-nil service")
+		return // Explicit return to help the linter understand
 	}
 
 	if service.service == nil {

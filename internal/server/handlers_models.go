@@ -813,7 +813,7 @@ func (s *Server) handleModelDetail(w http.ResponseWriter, r *http.Request) {
 	if isModelInstalled {
 		// Models are stored in /root/.ollama/models inside the container
 		// which maps to the shared models directory on the host
-		sharedModelsPath := config.GetSharedModelsPath()
+		sharedModelsPath := config.GetSharedOllamaPath()
 
 		// Parse model name (format: "model:tag" or just "model")
 		// Examples: "gemma:2b", "llama3.2:1b", "dolphin-mistral:7b"
