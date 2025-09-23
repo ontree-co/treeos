@@ -188,8 +188,6 @@ endpoints:
     - name: "Ollama"
       apiKey: "ollama"
       baseURL: "http://host.docker.internal:11434/v1/"
-      models:
-        default: []
       fetch: true
       titleConvo: true
       titleModel: "current_model"
