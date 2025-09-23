@@ -188,7 +188,9 @@ endpoints:
     - name: "Ollama"
       apiKey: "ollama"
       baseURL: "http://host.docker.internal:11434/v1/"
-      fetch: true
+      models:
+        fetch: true
+        default: []
       titleConvo: true
       titleModel: "current_model"
       summarize: false
@@ -197,9 +199,9 @@ endpoints:
       modelDisplayLabel: "Ollama"
       dropParams: ["stop"]`
 
-			if err := os.WriteFile(configPath, []byte(librechatConfig), 0644); err != nil {
-				log.Printf("Warning: Failed to create librechat.yaml for %s: %v", appName, err)
-			}
+				if err := os.WriteFile(configPath, []byte(librechatConfig), 0644); err != nil {
+					log.Printf("Warning: Failed to create librechat.yaml for %s: %v", appName, err)
+				}
 			}
 		}
 
