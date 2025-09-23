@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -8,9 +9,65 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
+
+func getLocalOllamaModels() []string {
+	type tag struct {
+		Name string `json:"name"`
+	}
+
+	type response struct {
+		Models []tag `json:"models"`
+	}
+
+	endpoints := []string{
+		"http://localhost:11434/api/tags",
+		"http://127.0.0.1:11434/api/tags",
+		"http://host.docker.internal:11434/api/tags",
+	}
+
+	client := &http.Client{Timeout: 2 * time.Second}
+
+	for _, endpoint := range endpoints {
+		resp, err := client.Get(endpoint)
+		if err != nil {
+			continue
+		}
+
+		var data response
+
+		func() {
+			defer resp.Body.Close()
+			if resp.StatusCode != http.StatusOK {
+				return
+			}
+			if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+				data.Models = nil
+			}
+		}()
+
+		if len(data.Models) == 0 {
+			continue
+		}
+
+		models := make([]string, 0, len(data.Models))
+		for _, m := range data.Models {
+			name := strings.TrimSpace(m.Name)
+			if name != "" {
+				models = append(models, name)
+			}
+		}
+
+		if len(models) > 0 {
+			return models
+		}
+	}
+
+	return nil
+}
 
 // handleTemplates handles the templates list page
 func (s *Server) handleTemplates(w http.ResponseWriter, r *http.Request) {
@@ -180,7 +237,16 @@ func (s *Server) handleCreateFromTemplate(w http.ResponseWriter, r *http.Request
 				configPath := filepath.Join(configDir, "librechat.yaml")
 
 				// Create default LibreChat config for Ollama integration
-				librechatConfig := `# LibreChat Configuration for Ollama Integration
+				models := getLocalOllamaModels()
+				if len(models) == 0 {
+					models = []string{"llama3.2:latest"}
+				}
+				var modelLines strings.Builder
+				for _, model := range models {
+					modelLines.WriteString(fmt.Sprintf("          - \"%s\"\n", model))
+				}
+
+				librechatConfig := fmt.Sprintf(`# LibreChat Configuration for Ollama Integration
 version: 1.0.0
 
 endpoints:
@@ -190,14 +256,14 @@ endpoints:
       baseURL: "http://host.docker.internal:11434/v1/"
       models:
         fetch: true
-        default: []
-      titleConvo: true
+        default:
+%s      titleConvo: true
       titleModel: "current_model"
       summarize: false
       summaryModel: "current_model"
       forcePrompt: false
       modelDisplayLabel: "Ollama"
-      dropParams: ["stop"]`
+      dropParams: ["stop"]`, modelLines.String())
 
 				if err := os.WriteFile(configPath, []byte(librechatConfig), 0644); err != nil {
 					log.Printf("Warning: Failed to create librechat.yaml for %s: %v", appName, err)
