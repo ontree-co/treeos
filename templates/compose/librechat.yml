@@ -18,6 +18,7 @@ services:
       - OLLAMA_BASE_URL=http://host.docker.internal:11434
       - JWT_SECRET=${JWT_SECRET:-change-me-jwt}
       - SESSION_SECRET=${SESSION_SECRET:-change-me-session}
+      - ALLOW_SIGNUP=${ALLOW_SIGNUP:-true}
     volumes:
       - ./shared/config/librechat.yaml:/app/librechat.yaml:ro
       - librechat_images:/app/client/public/images
