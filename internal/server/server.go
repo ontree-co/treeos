@@ -867,10 +867,12 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Get system information
-	hostname, err := os.Hostname()
-	if err != nil {
-		hostname = "Unknown"
+	// Get node name from database
+	db := database.GetDB()
+	var nodeName string
+	err := db.QueryRow("SELECT node_name FROM system_setup WHERE id = 1").Scan(&nodeName)
+	if err != nil || nodeName == "" {
+		nodeName = "TreeOS" // Default name
 	}
 
 	// Get local IP
@@ -964,7 +966,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	data["AppsDir"] = s.config.AppsDir
 	data["Messages"] = nil
 	data["CSRFToken"] = "" // No CSRF yet
-	data["Hostname"] = hostname
+	data["Hostname"] = nodeName  // Using node name instead of system hostname
 	data["LocalIP"] = localIP
 	data["TailscaleIP"] = tailscaleIP
 	data["MonitoringData"] = monitoringData
