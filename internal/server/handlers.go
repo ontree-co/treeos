@@ -1164,17 +1164,18 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 
 	// Query the database
 	var nodeIcon sql.NullString
+	var nodeName sql.NullString
 	err := s.db.QueryRow(`
 		SELECT id, public_base_domain, tailscale_auth_key, tailscale_tags,
 		       agent_enabled, agent_check_interval, agent_llm_api_key,
 		       agent_llm_api_url, agent_llm_model,
-		       uptime_kuma_base_url, update_channel, node_icon
+		       uptime_kuma_base_url, update_channel, node_icon, node_name
 		FROM system_setup
 		WHERE id = 1
 	`).Scan(&setup.ID, &setup.PublicBaseDomain, &setup.TailscaleAuthKey, &setup.TailscaleTags,
 		&setup.AgentEnabled, &setup.AgentCheckInterval, &setup.AgentLLMAPIKey,
 		&setup.AgentLLMAPIURL, &setup.AgentLLMModel,
-		&setup.UptimeKumaBaseURL, &setup.UpdateChannel, &nodeIcon)
+		&setup.UptimeKumaBaseURL, &setup.UpdateChannel, &nodeIcon, &nodeName)
 
 	if err != nil && err != sql.ErrNoRows {
 		log.Printf("Failed to get system setup: %v", err)
@@ -1279,6 +1280,13 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 		data["CurrentNodeIcon"] = "tree1.png" // Default icon
 	}
 
+	// Add current node name
+	if nodeName.Valid && nodeName.String != "" {
+		data["NodeName"] = nodeName.String
+	} else {
+		data["NodeName"] = "TreeOS" // Default name
+	}
+
 	// Render template
 	tmpl, ok := s.templates["settings"]
 	if !ok {
@@ -1307,6 +1315,95 @@ func (s *Server) handleSettingsUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check which action is being performed
+	action := r.FormValue("action")
+
+	// Ensure system_setup record exists
+	_, err := s.db.Exec(`
+		INSERT OR IGNORE INTO system_setup (id, is_setup_complete)
+		VALUES (1, 1)
+	`)
+	if err != nil {
+		log.Printf("Failed to ensure system_setup exists: %v", err)
+	}
+
+	// Handle different actions
+	if action == "update_node_name" {
+		// Handle node name update
+		nodeName := strings.TrimSpace(r.FormValue("node_name"))
+
+		_, err = s.db.Exec(`
+			UPDATE system_setup SET node_name = ? WHERE id = 1
+		`, nodeName)
+
+		if err != nil {
+			log.Printf("Failed to update node name: %v", err)
+			session, sessionErr := s.sessionStore.Get(r, "ontree-session")
+			if sessionErr != nil {
+				log.Printf("Failed to get session: %v", sessionErr)
+			} else {
+				session.AddFlash("Failed to save node name", "error")
+				if saveErr := session.Save(r, w); saveErr != nil {
+					log.Printf("Failed to save session: %v", saveErr)
+				}
+			}
+		} else {
+			// Success message
+			session, sessionErr := s.sessionStore.Get(r, "ontree-session")
+			if sessionErr != nil {
+				log.Printf("Failed to get session: %v", sessionErr)
+			} else {
+				session.AddFlash("Node name updated successfully", "success")
+				if saveErr := session.Save(r, w); saveErr != nil {
+					log.Printf("Failed to save session: %v", saveErr)
+				}
+			}
+		}
+
+		http.Redirect(w, r, "/settings", http.StatusFound)
+		return
+	} else if action == "update_node_icon" {
+		// Handle node icon update
+		nodeIcon := strings.TrimSpace(r.FormValue("node_icon"))
+
+		// Default icon if none selected
+		if nodeIcon == "" {
+			nodeIcon = "tree1.png"
+		}
+
+		_, err = s.db.Exec(`
+			UPDATE system_setup SET node_icon = ? WHERE id = 1
+		`, nodeIcon)
+
+		if err != nil {
+			log.Printf("Failed to update node icon: %v", err)
+			session, sessionErr := s.sessionStore.Get(r, "ontree-session")
+			if sessionErr != nil {
+				log.Printf("Failed to get session: %v", sessionErr)
+			} else {
+				session.AddFlash("Failed to save node icon", "error")
+				if saveErr := session.Save(r, w); saveErr != nil {
+					log.Printf("Failed to save session: %v", saveErr)
+				}
+			}
+		} else {
+			// Success message
+			session, sessionErr := s.sessionStore.Get(r, "ontree-session")
+			if sessionErr != nil {
+				log.Printf("Failed to get session: %v", sessionErr)
+			} else {
+				session.AddFlash("Node icon updated successfully", "success")
+				if saveErr := session.Save(r, w); saveErr != nil {
+					log.Printf("Failed to save session: %v", saveErr)
+				}
+			}
+		}
+
+		http.Redirect(w, r, "/settings", http.StatusFound)
+		return
+	}
+
+	// Original settings update logic for other forms
 	publicDomain := strings.TrimSpace(r.FormValue("public_base_domain"))
 	tailscaleAuthKey := strings.TrimSpace(r.FormValue("tailscale_auth_key"))
 	tailscaleTags := strings.TrimSpace(r.FormValue("tailscale_tags"))
@@ -1345,14 +1442,6 @@ func (s *Server) handleSettingsUpdate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Ensure system_setup record exists
-	_, err := s.db.Exec(`
-		INSERT OR IGNORE INTO system_setup (id, is_setup_complete) 
-		VALUES (1, 1)
-	`)
-	if err != nil {
-		log.Printf("Failed to ensure system_setup exists: %v", err)
-	}
 
 	// Update database - try with update_channel and node_icon first
 	_, err = s.db.Exec(`
