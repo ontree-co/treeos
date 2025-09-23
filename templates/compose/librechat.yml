@@ -17,6 +17,7 @@ services:
       - SEARCH=true
       - OLLAMA_BASE_URL=http://host.docker.internal:11434
       - JWT_SECRET=${JWT_SECRET:-change-me-jwt}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-change-me-refresh}
       - SESSION_SECRET=${SESSION_SECRET:-change-me-session}
       - ALLOW_SIGNUP=${ALLOW_SIGNUP:-true}
       - ALLOW_REGISTRATION=${ALLOW_REGISTRATION:-true}
