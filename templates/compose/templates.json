@@ -3,7 +3,7 @@
     {
       "id": "ollama-cpu",
       "name": "Ollama (CPU)",
-      "description": "System service for running LLMs on CPU. Manages shared model store for all AI applications.",
+      "description": "System service for running LLMs on CPU. Use this version for Mac machines. Manages shared model store for all AI applications.",
       "category": "LLM Inference",
       "icon": "bi-cpu",
       "filename": "ollama-cpu.yml",
@@ -62,16 +62,6 @@
       "filename": "uptime-kuma.yml",
       "port": "4001",
       "documentation_url": "https://github.com/louislam/uptime-kuma"
-    },
-    {
-      "id": "woodpecker",
-      "name": "Woodpecker CI",
-      "description": "Simple yet powerful CI/CD engine with great extensibility. Self-hosted alternative to GitHub Actions with Forgejo/Codeberg support.",
-      "category": "Others",
-      "icon": "bi-gear-wide-connected",
-      "filename": "woodpecker.yml",
-      "port": "8000",
-      "documentation_url": "https://woodpecker-ci.org/docs/intro"
     },
     {
       "id": "nginx-test",

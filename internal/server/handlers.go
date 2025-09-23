@@ -60,9 +60,9 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 		nodeDescription := r.FormValue("node_description")
 		nodeIcon := r.FormValue("node_icon")
 
-		// Default icon if none selected
+		// Default icon if none selected - use first icon to match frontend
 		if nodeIcon == "" {
-			nodeIcon = "tree1.png"
+			nodeIcon = "tree0.png"
 		}
 
 		// Validate

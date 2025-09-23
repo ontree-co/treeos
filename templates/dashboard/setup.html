@@ -170,24 +170,28 @@ function updateHeaderIcon(iconName) {
     }
 }
 
-// On page load, randomly select a tree
+// On page load, select the first tree icon for both header and selection menu
 document.addEventListener('DOMContentLoaded', function() {
     const treeOptions = document.querySelectorAll('.tree-option');
     if (treeOptions.length > 0) {
         // Check if there's already a selected value
         let selectedValue = document.getElementById('selected-tree').value;
 
-        // If no value, randomly select one
+        // If no value, select the first one (not random)
         if (!selectedValue) {
-            const randomIndex = Math.floor(Math.random() * treeOptions.length);
-            const randomTree = treeOptions[randomIndex];
-            randomTree.classList.add('selected');
-            document.getElementById('selected-tree').value = randomTree.getAttribute('data-tree');
+            const firstTree = treeOptions[0];
+            firstTree.classList.add('selected');
+            const firstTreeIcon = firstTree.getAttribute('data-tree');
+            document.getElementById('selected-tree').value = firstTreeIcon;
+            // Update the header icon to match
+            updateHeaderIcon(firstTreeIcon);
         } else {
             // Mark the pre-selected tree
             const button = document.querySelector(`[data-tree="${selectedValue}"]`);
             if (button) {
                 button.classList.add('selected');
+                // Ensure header matches the selection
+                updateHeaderIcon(selectedValue);
             }
         }
     }
