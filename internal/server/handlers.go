@@ -677,17 +677,6 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// getContainerInfo retrieves detailed container information
-func (s *Server) getContainerInfo(appName string) map[string]interface{} {
-	info := make(map[string]interface{})
-
-	// For now, return basic info
-	// This will be expanded when we implement container management
-	info["name"] = appName
-
-	return info
-}
-
 // handleAppComposeEdit shows the docker-compose.yml edit form
 func (s *Server) handleAppComposeEdit(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {

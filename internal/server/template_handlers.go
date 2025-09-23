@@ -265,6 +265,7 @@ endpoints:
       modelDisplayLabel: "Ollama"
       dropParams: ["stop"]`, modelLines.String())
 
+				// #nosec G306 -- LibreChat needs this config mounted read-only inside the container
 				if err := os.WriteFile(configPath, []byte(librechatConfig), 0644); err != nil {
 					log.Printf("Warning: Failed to create librechat.yaml for %s: %v", appName, err)
 				}
