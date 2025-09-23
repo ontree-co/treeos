@@ -14,7 +14,6 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.28
 	github.com/minio/selfupdate v0.6.0
 	github.com/pressly/goose/v3 v3.24.3
-	github.com/robfig/cron/v3 v3.0.1
 	github.com/shirou/gopsutil/v3 v3.24.5
 	go.opentelemetry.io/otel v1.37.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.37.0

@@ -81,63 +81,6 @@ async function isContainerRunning(page, appName) {
   return statusText.toLowerCase() === 'running';
 }
 
-/**
- * Helper to trigger an agent run via the test API
- */
-async function triggerAgentRun(page) {
-  const response = await page.request.post('/api/test/agent-run', {
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
-  
-  if (!response.ok()) {
-    throw new Error(`Failed to trigger agent run: ${response.status()}`);
-  }
-  
-  const data = await response.json();
-  if (!data.success) {
-    throw new Error(`Agent run trigger failed: ${data.error || 'Unknown error'}`);
-  }
-  
-  // Wait a bit for the agent to process
-  await page.waitForTimeout(3000);
-}
-
-/**
- * Helper to get chat messages for an app
- */
-async function getChatMessages(page, appName, limit = 10) {
-  const response = await page.request.get(`/api/apps/${appName}/chat?limit=${limit}`, {
-    headers: {
-      'Accept': 'application/json',
-    },
-  });
-  
-  if (!response.ok()) {
-    throw new Error(`Failed to get chat messages: ${response.status()}`);
-  }
-  
-  const data = await response.json();
-  return data.messages || [];
-}
-
-/**
- * Helper to wait for a new chat message to appear
- */
-async function waitForNewChatMessage(page, appName, initialCount, maxWaitTime = 15000) {
-  const startTime = Date.now();
-  
-  while (Date.now() - startTime < maxWaitTime) {
-    const messages = await getChatMessages(page, appName);
-    if (messages.length > initialCount) {
-      return messages[0]; // Return the newest message
-    }
-    await page.waitForTimeout(1000);
-  }
-  
-  throw new Error('Timeout waiting for new chat message');
-}
 
 /**
  * Helper to stop a container for testing
@@ -181,9 +124,6 @@ module.exports = {
   createTestApp,
   waitForOperation,
   isContainerRunning,
-  triggerAgentRun,
-  getChatMessages,
-  waitForNewChatMessage,
   stopContainer,
   startContainer,
 };

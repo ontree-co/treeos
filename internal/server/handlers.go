@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"log"
@@ -1117,7 +1118,6 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	data["ConfigPublicDomain"] = s.config.PublicBaseDomain
 	data["ConfigTailscaleAuthKey"] = s.config.TailscaleAuthKey != ""
 	data["ConfigTailscaleTags"] = s.config.TailscaleTags
-	data["ConfigAgentEnabled"] = s.config.AgentEnabled
 	data["ConfigAgentLLMAPIKey"] = s.config.AgentLLMAPIKey != ""
 
 	// Get completed models for dropdown
@@ -1166,8 +1166,6 @@ func (s *Server) handleSettingsUpdate(w http.ResponseWriter, r *http.Request) {
 	publicDomain := strings.TrimSpace(r.FormValue("public_base_domain"))
 	tailscaleAuthKey := strings.TrimSpace(r.FormValue("tailscale_auth_key"))
 	tailscaleTags := strings.TrimSpace(r.FormValue("tailscale_tags"))
-	agentEnabled := r.FormValue("agent_enabled") == "on"
-	agentCheckInterval := strings.TrimSpace(r.FormValue("agent_check_interval"))
 	uptimeKumaBaseURL := strings.TrimSpace(r.FormValue("uptime_kuma_base_url"))
 	updateChannel := strings.TrimSpace(r.FormValue("update_channel"))
 	nodeIcon := strings.TrimSpace(r.FormValue("node_icon"))
@@ -1203,12 +1201,6 @@ func (s *Server) handleSettingsUpdate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Convert bool to int for database
-	agentEnabledInt := 0
-	if agentEnabled {
-		agentEnabledInt = 1
-	}
-
 	// Ensure system_setup record exists
 	_, err := s.db.Exec(`
 		INSERT OR IGNORE INTO system_setup (id, is_setup_complete) 
@@ -1222,11 +1214,11 @@ func (s *Server) handleSettingsUpdate(w http.ResponseWriter, r *http.Request) {
 	_, err = s.db.Exec(`
 		UPDATE system_setup
 		SET public_base_domain = ?, tailscale_auth_key = ?, tailscale_tags = ?,
-		    agent_enabled = ?, agent_check_interval = ?, agent_llm_api_key = ?,
+		    agent_llm_api_key = ?,
 		    agent_llm_api_url = ?, agent_llm_model = ?,
 		    uptime_kuma_base_url = ?, update_channel = ?, node_icon = ?
 		WHERE id = 1
-	`, publicDomain, tailscaleAuthKey, tailscaleTags, agentEnabledInt, agentCheckInterval,
+	`, publicDomain, tailscaleAuthKey, tailscaleTags,
 		agentLLMAPIKey, agentLLMAPIURL, agentLLMModel,
 		uptimeKumaBaseURL, updateChannel, nodeIcon)
 
@@ -1235,11 +1227,11 @@ func (s *Server) handleSettingsUpdate(w http.ResponseWriter, r *http.Request) {
 		_, err = s.db.Exec(`
 			UPDATE system_setup
 			SET public_base_domain = ?, tailscale_auth_key = ?, tailscale_tags = ?,
-			    agent_enabled = ?, agent_check_interval = ?, agent_llm_api_key = ?,
+			    agent_llm_api_key = ?,
 			    agent_llm_api_url = ?, agent_llm_model = ?,
 			    uptime_kuma_base_url = ?
 			WHERE id = 1
-		`, publicDomain, tailscaleAuthKey, tailscaleTags, agentEnabledInt, agentCheckInterval,
+		`, publicDomain, tailscaleAuthKey, tailscaleTags,
 			agentLLMAPIKey, agentLLMAPIURL, agentLLMModel,
 			uptimeKumaBaseURL)
 	}
@@ -1269,12 +1261,6 @@ func (s *Server) handleSettingsUpdate(w http.ResponseWriter, r *http.Request) {
 	if os.Getenv("TAILSCALE_TAGS") == "" {
 		s.config.TailscaleTags = tailscaleTags
 	}
-	if os.Getenv("AGENT_ENABLED") == "" {
-		s.config.AgentEnabled = agentEnabled
-	}
-	if os.Getenv("AGENT_CHECK_INTERVAL") == "" {
-		s.config.AgentCheckInterval = agentCheckInterval
-	}
 	if os.Getenv("AGENT_LLM_API_KEY") == "" {
 		s.config.AgentLLMAPIKey = agentLLMAPIKey
 	}
@@ -1290,11 +1276,6 @@ func (s *Server) handleSettingsUpdate(w http.ResponseWriter, r *http.Request) {
 
 	// Re-check Caddy health since domains may have changed
 	s.checkCaddyHealth()
-
-	// Restart agent if configuration changed
-	if err := s.restartAgent(); err != nil {
-		log.Printf("Failed to restart agent: %v", err)
-	}
 
 	// Success message
 	session, err := s.sessionStore.Get(r, "ontree-session")
@@ -1788,4 +1769,54 @@ func (s *Server) handleAppUnexposeTailscale(w http.ResponseWriter, r *http.Reque
 	}
 
 	http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
+}
+
+
+// handleTestLLMConnection handles POST /api/test-llm requests
+func (s *Server) handleTestLLMConnection(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Parse request body
+	var req struct {
+		APIKey  string `json:"api_key"`
+		APIURL  string `json:"api_url"`
+		Model   string `json:"model"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"error":   "Invalid request format",
+		}); err != nil {
+			log.Printf("Error encoding response: %v", err)
+		}
+		return
+	}
+
+	// Test the connection
+	response, err := s.testLLMConnection(req.APIKey, req.APIURL, req.Model)
+
+	w.Header().Set("Content-Type", "application/json")
+	if err != nil {
+		w.WriteHeader(http.StatusOK) // Return 200 even on error for better UX
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"error":   err.Error(),
+		}); err != nil {
+			log.Printf("Error encoding response: %v", err)
+		}
+		return
+	}
+
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":  true,
+		"response": response,
+	}); err != nil {
+		log.Printf("Error encoding response: %v", err)
+	}
 }

@@ -62,7 +62,7 @@ func TestHandleSettings(t *testing.T) {
 			expectedStatus: http.StatusOK,
 			expectedInBody: []string{
 				"Settings",
-				"AI Agent Configuration",
+				"LLM Configuration",
 				// Note: Domain Configuration and Uptime Kuma Integration are hidden for initial release
 			},
 		},
@@ -154,23 +154,15 @@ func TestHandleSettingsUpdate(t *testing.T) {
 			},
 		},
 		{
-			name: "Update agent settings",
+			name: "Update LLM settings",
 			formData: url.Values{
-				"agent_enabled":        {"on"},
 				"agent_type":           {"cloud"},
-				"agent_check_interval": {"10m"},
 				"agent_llm_api_key":    {"sk-test123"},
 				"agent_llm_api_url":    {"https://api.openai.com/v1/chat/completions"},
 				"agent_llm_model_cloud": {"gpt-4"},
 			},
 			expectedStatus: http.StatusFound,
 			checkConfig: func(t *testing.T, s *Server) {
-				if !s.config.AgentEnabled {
-					t.Error("Expected agent to be enabled")
-				}
-				if s.config.AgentCheckInterval != "10m" {
-					t.Errorf("Expected check interval to be 10m, got %s", s.config.AgentCheckInterval)
-				}
 				if s.config.AgentLLMAPIKey != "sk-test123" {
 					t.Errorf("Expected API key to be sk-test123, got %s", s.config.AgentLLMAPIKey)
 				}
@@ -264,7 +256,7 @@ func TestSettingsWithDatabaseMigration(t *testing.T) {
 	// Check that the page loads with expected sections
 	body := w.Body.String()
 	expectedSections := []string{
-		"AI Agent Configuration",
+		"LLM Configuration",
 		// Note: Domain Configuration and Uptime Kuma Integration are hidden for initial release
 	}
 

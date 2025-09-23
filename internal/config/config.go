@@ -36,13 +36,11 @@ type Config struct {
 	// Monitoring feature flag
 	MonitoringEnabled bool `toml:"monitoring_enabled"`
 
-	// Agent configuration
-	AgentEnabled       bool   `toml:"agent_enabled"`
-	AgentCheckInterval string `toml:"agent_check_interval"` // e.g., "5m", "1h"
-	AgentLLMAPIKey     string `toml:"agent_llm_api_key"`
-	AgentLLMAPIURL     string `toml:"agent_llm_api_url"`
-	AgentLLMModel      string `toml:"agent_llm_model"`
-	UptimeKumaBaseURL  string `toml:"uptime_kuma_base_url"` // Base URL for Uptime Kuma API
+	// LLM configuration (for future features)
+	AgentLLMAPIKey    string `toml:"agent_llm_api_key"`
+	AgentLLMAPIURL    string `toml:"agent_llm_api_url"`
+	AgentLLMModel     string `toml:"agent_llm_model"`
+	UptimeKumaBaseURL string `toml:"uptime_kuma_base_url"` // Base URL for Uptime Kuma API
 }
 
 // GetSharedPath returns the base path for shared resources based on the platform
@@ -74,9 +72,7 @@ func defaultConfig() *Config {
 		DatabasePath:       "ontree.db",
 		ListenAddr:         DefaultPort,
 		PostHogHost:        "https://app.posthog.com",
-		MonitoringEnabled:  true,  // Enabled by default
-		AgentEnabled:       false, // Disabled by default until configured
-		AgentCheckInterval: "5m",  // Default 5 minutes
+		MonitoringEnabled: true, // Enabled by default
 	}
 
 	// Platform-specific defaults for AppsDir
@@ -142,15 +138,7 @@ func Load() (*Config, error) {
 		config.MonitoringEnabled = monitoringEnabled == "true" || monitoringEnabled == "1"
 	}
 
-	// Agent environment variables
-	if agentEnabled := os.Getenv("AGENT_ENABLED"); agentEnabled != "" {
-		config.AgentEnabled = agentEnabled == "true" || agentEnabled == "1"
-	}
-
-	if agentCheckInterval := os.Getenv("AGENT_CHECK_INTERVAL"); agentCheckInterval != "" {
-		config.AgentCheckInterval = agentCheckInterval
-	}
-
+	// LLM environment variables
 	if agentLLMAPIKey := os.Getenv("AGENT_LLM_API_KEY"); agentLLMAPIKey != "" {
 		config.AgentLLMAPIKey = agentLLMAPIKey
 	}

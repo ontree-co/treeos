@@ -77,21 +77,6 @@ type DockerOperationLog struct {
 	Details     sql.NullString
 }
 
-// ChatMessage represents a chat message for an application.
-type ChatMessage struct {
-	ID            int
-	AppID         string
-	Timestamp     time.Time
-	Message       string
-	SenderType    string         // "user", "agent", or "system"
-	SenderName    string         // Display name of sender
-	AgentModel    sql.NullString // AI model used (for agent messages)
-	AgentProvider sql.NullString // Provider: "openai", "anthropic", "local", etc.
-	StatusLevel   sql.NullString // "info", "warning", "error", "critical" (for agent monitoring)
-	Details       sql.NullString // Extended details
-	CreatedAt     time.Time
-}
-
 // UpdateHistory tracks system update attempts
 type UpdateHistory struct {
 	ID           int

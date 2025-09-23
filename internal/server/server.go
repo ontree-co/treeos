@@ -19,8 +19,6 @@ import (
 	"time"
 
 	"github.com/gorilla/sessions"
-	"github.com/robfig/cron/v3"
-	"treeos/internal/agent"
 	"treeos/internal/cache"
 	"treeos/internal/caddy"
 	"treeos/internal/charts"
@@ -53,8 +51,6 @@ type Server struct {
 	sparklineCache        *cache.Cache
 	realtimeMetrics       *realtime.Metrics
 	composeSvc            *compose.Service
-	agentOrchestrator     *agent.Orchestrator
-	agentCron             *cron.Cron
 	sseManager            *SSEManager
 	ollamaWorker          *ollama.Worker
 }
@@ -160,8 +156,6 @@ func New(cfg *config.Config, versionInfo version.Info) (*Server, error) {
 
 // Shutdown gracefully shuts down the server
 func (s *Server) Shutdown() {
-	s.stopAgent()
-
 	if s.dockerSvc != nil {
 		if err := s.dockerSvc.Close(); err != nil {
 			log.Printf("Error closing docker service: %v", err)
@@ -401,35 +395,6 @@ func (s *Server) loadTemplates() error {
 
 // Start starts the HTTP server
 func (s *Server) Start() error {
-	// Set up SSE callback for chat messages
-	database.ChatMessageCallback = func(message database.ChatMessage) {
-		// Convert to API response format
-		apiMessage := ChatMessageResponse{
-			ID:         message.ID,
-			Timestamp:  message.Timestamp.Format(time.RFC3339),
-			Message:    message.Message,
-			SenderType: message.SenderType,
-			SenderName: message.SenderName,
-		}
-
-		// Handle nullable fields
-		if message.AgentModel.Valid {
-			apiMessage.AgentModel = message.AgentModel.String
-		}
-		if message.AgentProvider.Valid {
-			apiMessage.AgentProvider = message.AgentProvider.String
-		}
-		if message.StatusLevel.Valid {
-			apiMessage.StatusLevel = message.StatusLevel.String
-		}
-		if message.Details.Valid {
-			apiMessage.Details = message.Details.String
-		}
-
-		// Broadcast to SSE clients
-		s.sseManager.BroadcastMessage(message.AppID, apiMessage)
-	}
-
 	// Start background jobs
 	go s.startVitalsCleanup()
 	go s.startRealtimeMetricsCollection()
@@ -439,8 +404,6 @@ func (s *Server) Start() error {
 	if s.db != nil {
 		s.startOllamaWorker()
 	}
-
-	// Agent cron jobs are now scheduled in initAgent() with per-app checks
 	// No need to schedule them again here
 
 	// Set up routes
@@ -473,12 +436,8 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/models", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleModelTemplates))))
 	mux.HandleFunc("/models/", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleModelDetail))))
 
-	// Test endpoint for triggering agent runs (for testing purposes)
-	// This endpoint is protected by auth middleware so only authenticated users can trigger it
-	mux.HandleFunc("/api/test/agent-run", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleTestAgentRun))))
-
 	// Test endpoint for checking LLM API connection
-	mux.HandleFunc("/api/test-agent", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleTestAgentConnection))))
+	mux.HandleFunc("/api/test-llm", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleTestLLMConnection))))
 
 	// Dashboard partial routes (for monitoring cards on dashboard)
 	mux.HandleFunc("/partials/cpu", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleMonitoringCPUPartial))))
@@ -523,13 +482,6 @@ func (s *Server) Start() error {
 	if s.config.MonitoringEnabled {
 		mux.HandleFunc("/monitoring", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleMonitoring))))
 		mux.HandleFunc("/monitoring/", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeMonitoring))))
-	}
-
-	// Start agent if configured
-	if s.config.AgentEnabled {
-		if err := s.restartAgent(); err != nil {
-			log.Printf("Failed to start agent: %v", err)
-		}
 	}
 
 	// Start server
@@ -951,13 +903,13 @@ func (s *Server) loadConfigFromDatabase() error {
 	var setup database.SystemSetup
 	err := s.db.QueryRow(`
 		SELECT id, public_base_domain, tailscale_auth_key, tailscale_tags,
-		       agent_enabled, agent_check_interval, agent_llm_api_key,
+		       agent_llm_api_key,
 		       agent_llm_api_url, agent_llm_model,
 		       uptime_kuma_base_url
-		FROM system_setup 
+		FROM system_setup
 		WHERE id = 1
 	`).Scan(&setup.ID, &setup.PublicBaseDomain, &setup.TailscaleAuthKey, &setup.TailscaleTags,
-		&setup.AgentEnabled, &setup.AgentCheckInterval, &setup.AgentLLMAPIKey,
+		&setup.AgentLLMAPIKey,
 		&setup.AgentLLMAPIURL, &setup.AgentLLMModel,
 		&setup.UptimeKumaBaseURL)
 
@@ -980,13 +932,7 @@ func (s *Server) loadConfigFromDatabase() error {
 		s.config.TailscaleTags = setup.TailscaleTags.String
 	}
 
-	// Update agent config if not overridden by environment
-	if os.Getenv("AGENT_ENABLED") == "" && setup.AgentEnabled.Valid {
-		s.config.AgentEnabled = setup.AgentEnabled.Int64 == 1
-	}
-	if os.Getenv("AGENT_CHECK_INTERVAL") == "" && setup.AgentCheckInterval.Valid {
-		s.config.AgentCheckInterval = setup.AgentCheckInterval.String
-	}
+	// Update LLM config if not overridden by environment
 	if os.Getenv("AGENT_LLM_API_KEY") == "" && setup.AgentLLMAPIKey.Valid {
 		s.config.AgentLLMAPIKey = setup.AgentLLMAPIKey.String
 	}
@@ -1000,126 +946,6 @@ func (s *Server) loadConfigFromDatabase() error {
 		s.config.UptimeKumaBaseURL = setup.UptimeKumaBaseURL.String
 	}
 
-	return nil
-}
-
-// stopAgent stops the agent cron scheduler and orchestrator
-func (s *Server) stopAgent() {
-	// Stop agent cron if running
-	if s.agentCron != nil {
-		log.Println("Stopping agent cron scheduler...")
-		ctx := s.agentCron.Stop()
-		<-ctx.Done()
-		s.agentCron = nil
-	}
-
-	// Close agent orchestrator
-	if s.agentOrchestrator != nil {
-		if err := s.agentOrchestrator.Close(); err != nil {
-			log.Printf("Error closing agent orchestrator: %v", err)
-		}
-		s.agentOrchestrator = nil
-	}
-}
-
-// restartAgent restarts the agent with updated configuration
-func (s *Server) restartAgent() error {
-	// Stop existing agent
-	s.stopAgent()
-
-	// Check if agent should be enabled
-	if !s.config.AgentEnabled {
-		log.Println("Agent is disabled")
-		return nil
-	}
-
-	if s.config.AgentLLMAPIKey == "" {
-		log.Printf("Warning: Agent is enabled but AGENT_LLM_API_KEY is not set. Agent will run in fallback mode.")
-	}
-
-	// Parse check interval
-	checkInterval, err := time.ParseDuration(s.config.AgentCheckInterval)
-	if err != nil {
-		log.Printf("Warning: Invalid agent check interval '%s', using default 5m: %v", s.config.AgentCheckInterval, err)
-		checkInterval = 5 * time.Minute
-	}
-
-	orchestratorConfig := agent.OrchestratorConfig{
-		ConfigRootDir:     s.config.AppsDir, // Use the apps directory directly
-		UptimeKumaBaseURL: s.config.UptimeKumaBaseURL,
-		LLMConfig: agent.LLMConfig{
-			APIKey: s.config.AgentLLMAPIKey,
-			APIURL: s.config.AgentLLMAPIURL,
-			Model:  s.config.AgentLLMModel,
-		},
-		CheckInterval: checkInterval,
-	}
-
-	orchestrator, err := agent.NewOrchestrator(orchestratorConfig)
-	if err != nil {
-		return fmt.Errorf("failed to initialize agent orchestrator: %w", err)
-	}
-
-	s.agentOrchestrator = orchestrator
-
-	// Initialize and start cron scheduler
-	s.agentCron = cron.New(cron.WithSeconds())
-
-	// Get all app configurations to schedule individual checks
-	configs, err := orchestrator.GetAllConfigs()
-	if err != nil {
-		log.Printf("ERROR: Failed to get app configs for scheduling: %v", err)
-		// If we can't get configs, we can't schedule checks
-		s.agentOrchestrator.Close()
-		s.agentOrchestrator = nil
-		s.agentCron = nil
-		return fmt.Errorf("failed to get app configurations: %w", err)
-	}
-	
-	// Schedule individual checks for each app
-	for _, config := range configs {
-		// Capture appID in closure properly
-		appID := config.ID
-		_, err = s.agentCron.AddFunc(fmt.Sprintf("@every %s", checkInterval), func(id string) func() {
-			return func() {
-				ctx := context.Background()
-				if err := s.agentOrchestrator.RunCheckForApp(ctx, id); err != nil {
-					log.Printf("ERROR: Agent check failed for app %s: %v", id, err)
-				}
-			}
-		}(appID))
-		if err != nil {
-			log.Printf("Warning: Failed to schedule cron for app %s: %v", appID, err)
-		}
-	}
-	log.Printf("Scheduled individual agent checks for %d apps", len(configs))
-
-	// Start the cron scheduler
-	s.agentCron.Start()
-
-	// Run initial check for each app individually with staggered start
-	go func() {
-		ctx := context.Background()
-		configs, err := orchestrator.GetAllConfigs()
-		if err != nil {
-			log.Printf("ERROR: Failed to get configs for initial checks: %v", err)
-			return
-		}
-
-		for i, config := range configs {
-			// Stagger initial checks by 5 seconds each
-			time.Sleep(time.Duration(i*5) * time.Second)
-
-			appID := config.ID
-			go func(id string) {
-				if err := s.agentOrchestrator.RunCheckForApp(ctx, id); err != nil {
-					log.Printf("ERROR: Initial agent check failed for app %s: %v", id, err)
-				}
-			}(appID)
-		}
-	}()
-
-	log.Printf("Agent orchestrator started with check interval: %v", checkInterval)
 	return nil
 }
 
@@ -1314,12 +1140,6 @@ func (s *Server) routeAPIApps(w http.ResponseWriter, r *http.Request) {
 		s.handleAPIAppStop(w, r)
 	} else if strings.HasSuffix(path, "/logs") {
 		s.handleAPIAppLogs(w, r)
-	} else if strings.HasSuffix(path, "/chat/stream") {
-		// SSE endpoint - must check this before /chat
-		s.handleAPIAppChat(w, r)
-	} else if strings.HasSuffix(path, "/chat") {
-		// Regular chat endpoint
-		s.handleAPIAppChat(w, r)
 	} else if strings.HasSuffix(path, "/security-bypass") {
 		// Toggle security bypass for an app
 		s.handleAPIAppSecurityBypass(w, r)

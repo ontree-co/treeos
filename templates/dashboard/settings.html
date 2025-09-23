@@ -163,59 +163,15 @@
 
         <div class="card mt-4">
             <div class="card-header">
-                <h5 class="mb-0">AI Agent Configuration</h5>
+                <h5 class="mb-0">LLM Configuration</h5>
             </div>
             <div class="card-body">
                 <p class="text-muted mb-4">
-                    Configure the AI SysAdmin Agent that monitors your applications and infrastructure.
+                    Configure the Large Language Model for future AI features.
                 </p>
-                
-                <form method="post" action="/settings">
-                    <div class="form-check mb-4">
-                        <input class="form-check-input" type="checkbox" id="agent_enabled" name="agent_enabled" {{if .AgentEnabled}}checked{{end}}>
-                        <label class="form-check-label" for="agent_enabled">
-                            <strong>Enable AI Agent</strong>
-                        </label>
-                        <small class="form-text text-muted d-block">
-                            When enabled, the agent will periodically check your applications and post status updates to the chat log.
-                        </small>
-                        {{if and .ConfigAgentEnabled (ne .ConfigAgentEnabled .AgentEnabled)}}  
-                            <div class="alert alert-warning mt-2 mb-0">
-                                <small>
-                                    <i>⚠️</i> Currently {{if .ConfigAgentEnabled}}enabled{{else}}disabled{{end}} via environment variable
-                                </small>
-                            </div>
-                        {{end}}
-                    </div>
 
-                    <div id="agentConfigSection" style="display: none;">
-                        <div class="mb-4">
-                            <label class="form-label">Check Interval</label>
-                            <div class="btn-group w-100" role="group" aria-label="Check interval options">
-                                <input type="radio" class="btn-check" name="agent_check_interval" id="interval_1m" value="1m" 
-                                       {{if eq .AgentCheckInterval "1m"}}checked{{end}}>
-                                <label class="btn btn-outline-primary" for="interval_1m">1 minute</label>
-                                
-                                <input type="radio" class="btn-check" name="agent_check_interval" id="interval_5m" value="5m" 
-                                       {{if or (eq .AgentCheckInterval "5m") (eq .AgentCheckInterval "")}}checked{{end}}>
-                                <label class="btn btn-outline-primary" for="interval_5m">5 minutes</label>
-                                
-                                <input type="radio" class="btn-check" name="agent_check_interval" id="interval_15m" value="15m" 
-                                       {{if eq .AgentCheckInterval "15m"}}checked{{end}}>
-                                <label class="btn btn-outline-primary" for="interval_15m">15 minutes</label>
-                                
-                                <input type="radio" class="btn-check" name="agent_check_interval" id="interval_60m" value="1h" 
-                                       {{if or (eq .AgentCheckInterval "60m") (eq .AgentCheckInterval "1h")}}checked{{end}}>
-                                <label class="btn btn-outline-primary" for="interval_60m">60 minutes</label>
-                                
-                                <input type="radio" class="btn-check" name="agent_check_interval" id="interval_3h" value="3h" 
-                                       {{if eq .AgentCheckInterval "3h"}}checked{{end}}>
-                                <label class="btn btn-outline-primary" for="interval_3h">3 hours</label>
-                            </div>
-                            <small class="form-text text-muted">
-                                How often the agent checks your applications and infrastructure
-                            </small>
-                        </div>
+                <form method="post" action="/settings">
+                    <div id="agentConfigSection">
 
                         <h6 class="mt-4 mb-3">Agent Type</h6>
                         
@@ -322,11 +278,11 @@
                     </div>
 
                     <div class="d-flex justify-content-between align-items-center">
-                        <button type="button" class="btn btn-secondary" id="testAgentBtn">
-                            <i>🧪</i> Test Agent Connection
+                        <button type="button" class="btn btn-secondary" id="testLLMBtn">
+                            <i>🧪</i> Test LLM Connection
                         </button>
                         <button type="submit" class="btn btn-primary">
-                            <i>💾</i> Save Agent Settings
+                            <i>💾</i> Save LLM Settings
                         </button>
                     </div>
                 </form>
@@ -531,32 +487,16 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const testBtn = document.getElementById('testAgentBtn');
+    const testBtn = document.getElementById('testLLMBtn');
     const testResult = document.getElementById('testResult');
     const localRadio = document.getElementById('agent_type_local');
     const cloudRadio = document.getElementById('agent_type_cloud');
     const localSettings = document.getElementById('localAgentSettings');
     const cloudSettings = document.getElementById('cloudAgentSettings');
-    const agentEnabledCheckbox = document.getElementById('agent_enabled');
     const agentConfigSection = document.getElementById('agentConfigSection');
-    
-    // Function to toggle main configuration visibility
-    function toggleConfigVisibility() {
-        if (agentEnabledCheckbox.checked) {
-            agentConfigSection.style.display = 'block';
-            // Also trigger the agent type toggle to show the correct settings
-            toggleAgentSettings();
-        } else {
-            agentConfigSection.style.display = 'none';
-        }
-    }
     
     // Function to toggle settings visibility
     function toggleAgentSettings() {
-        if (!agentEnabledCheckbox.checked) {
-            return; // Don't show anything if agent is disabled
-        }
-        
         if (localRadio.checked) {
             localSettings.style.display = 'block';
             cloudSettings.style.display = 'none';
@@ -566,23 +506,13 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Set up checkbox listener for enable/disable
-    if (agentEnabledCheckbox) {
-        agentEnabledCheckbox.addEventListener('change', toggleConfigVisibility);
-        
-        // Initialize visibility on page load
-        toggleConfigVisibility();
-    }
-    
     // Set up radio button listeners
     if (localRadio && cloudRadio) {
         localRadio.addEventListener('change', toggleAgentSettings);
         cloudRadio.addEventListener('change', toggleAgentSettings);
-        
-        // Initialize visibility on page load only if agent is enabled
-        if (agentEnabledCheckbox.checked) {
-            toggleAgentSettings();
-        }
+
+        // Initialize visibility on page load
+        toggleAgentSettings();
     }
     
     if (testBtn) {
@@ -620,7 +550,7 @@ document.addEventListener('DOMContentLoaded', function() {
             testBtn.innerHTML = '<i>⏳</i> Testing...';
             
             // Make test request
-            fetch('/api/test-agent', {
+            fetch('/api/test-llm', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
