@@ -189,15 +189,7 @@ endpoints:
       apiKey: "ollama"
       baseURL: "http://host.docker.internal:11434/v1/"
       models:
-        default: [
-          "llama3.2:latest",
-          "llama3.1:latest",
-          "mistral:latest",
-          "codellama:latest",
-          "phi3:latest",
-          "gemma2:latest",
-          "qwen2.5:latest"
-        ]
+        default: []
       fetch: true
       titleConvo: true
       titleModel: "current_model"
