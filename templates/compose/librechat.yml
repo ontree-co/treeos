@@ -19,6 +19,7 @@ services:
       - JWT_SECRET=${JWT_SECRET:-change-me-jwt}
       - SESSION_SECRET=${SESSION_SECRET:-change-me-session}
       - ALLOW_SIGNUP=${ALLOW_SIGNUP:-true}
+      - ALLOW_REGISTRATION=${ALLOW_REGISTRATION:-true}
     volumes:
       - ./shared/config/librechat.yaml:/app/librechat.yaml:ro
       - librechat_images:/app/client/public/images
