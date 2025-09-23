@@ -1019,14 +1019,22 @@ func (s *Server) baseTemplateData(user *database.User) map[string]interface{} {
 	// Monitoring availability
 	data["MonitoringEnabled"] = s.config.MonitoringEnabled
 
-	// Get node icon from database
+	// Get node icon and name from database
 	db := database.GetDB()
-	var nodeIcon string
-	err := db.QueryRow("SELECT node_icon FROM system_setup WHERE id = 1").Scan(&nodeIcon)
-	if err != nil || nodeIcon == "" {
+	var nodeIcon, nodeName string
+	err := db.QueryRow("SELECT node_icon, node_name FROM system_setup WHERE id = 1").Scan(&nodeIcon, &nodeName)
+	if err != nil {
 		nodeIcon = "tree1.png" // Default icon
+		nodeName = "TreeOS"    // Default name
+	}
+	if nodeIcon == "" {
+		nodeIcon = "tree1.png"
+	}
+	if nodeName == "" {
+		nodeName = "TreeOS"
 	}
 	data["NodeIcon"] = nodeIcon
+	data["NodeName"] = nodeName
 
 	// Update status for header notifications
 	status := GetUpdateStatus()
