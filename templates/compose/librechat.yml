@@ -16,6 +16,8 @@ services:
       - MEILI_KEY=${MEILI_KEY:-changeme}
       - SEARCH=true
       - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - JWT_SECRET=${JWT_SECRET:-change-me-jwt}
+      - SESSION_SECRET=${SESSION_SECRET:-change-me-session}
     volumes:
       - ./shared/config/librechat.yaml:/app/librechat.yaml:ro
       - librechat_images:/app/client/public/images
