@@ -1232,7 +1232,7 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	data["AgentLLMAPIURL"] = ""
 	data["AgentLLMModel"] = ""
 	data["UptimeKumaBaseURL"] = ""
-	data["UpdateChannel"] = "beta" // Default to beta
+	data["UpdateChannel"] = "stable" // Default to stable
 	data["CurrentVersion"] = s.versionInfo.Version
 
 	if setup.PublicBaseDomain.Valid {
@@ -1265,8 +1265,8 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	if setup.UpdateChannel.Valid {
 		data["UpdateChannel"] = setup.UpdateChannel.String
 	} else {
-		// Default to beta if not set
-		data["UpdateChannel"] = "beta"
+		// Default to stable if not set
+		data["UpdateChannel"] = "stable"
 	}
 
 	// Also show current values from config (to show if env vars are overriding)
@@ -1926,7 +1926,6 @@ func (s *Server) handleAppUnexposeTailscale(w http.ResponseWriter, r *http.Reque
 	http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
 }
 
-
 // handleTestLLMConnection handles POST /api/test-llm requests
 func (s *Server) handleTestLLMConnection(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -1936,9 +1935,9 @@ func (s *Server) handleTestLLMConnection(w http.ResponseWriter, r *http.Request)
 
 	// Parse request body
 	var req struct {
-		APIKey  string `json:"api_key"`
-		APIURL  string `json:"api_url"`
-		Model   string `json:"model"`
+		APIKey string `json:"api_key"`
+		APIURL string `json:"api_url"`
+		Model  string `json:"model"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
