@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -170,8 +171,8 @@ func (s *Server) handleAPIModelsGet(w http.ResponseWriter, r *http.Request) {
 		for _, model := range models {
 			// Show installed models and models that are currently downloading/queued
 			if model.Status == ollama.StatusCompleted ||
-			   model.Status == ollama.StatusDownloading ||
-			   model.Status == ollama.StatusQueued {
+				model.Status == ollama.StatusDownloading ||
+				model.Status == ollama.StatusQueued {
 				filteredModels = append(filteredModels, model)
 			}
 		}
@@ -199,52 +200,55 @@ func (s *Server) handleAPIModelsGet(w http.ResponseWriter, r *http.Request) {
 
 // handleAPIModelPull handles model download requests
 func (s *Server) handleAPIModelPull(w http.ResponseWriter, r *http.Request, modelName string) {
-	// Check if model exists in our curated list
-	model, err := ollama.GetModel(s.db, modelName)
+	curatedModel, isCurated := ollama.GetCuratedModel(modelName)
+
+	// Look up existing database record (only present once the model has been downloaded/queued)
+	dbModel, err := ollama.GetModel(s.db, modelName)
 	if err != nil {
 		log.Printf("Failed to get model: %v", err)
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
 	}
 
-	// If model is not in our curated list, it's a custom model
-	if model == nil {
-		// Create a new model entry for custom model
+	switch {
+	case !isCurated && dbModel == nil:
 		customModel := &ollama.OllamaModel{
 			Name:         modelName,
-			DisplayName:  modelName, // Use the model name as display name
-			Category:     "custom",  // Mark as custom model - we don't know its type yet
+			DisplayName:  modelName,
+			Category:     "custom",
 			Description:  fmt.Sprintf("Custom model from Ollama Library: %s", modelName),
-			SizeEstimate: "Size varies", // Size will be determined during download
+			SizeEstimate: "Size varies",
 			Status:       ollama.StatusNotDownloaded,
 			Progress:     0,
 		}
 
-		// Insert the custom model into database
-		err = ollama.CreateModel(s.db, customModel)
-		if err != nil {
+		if err = ollama.CreateModel(s.db, customModel); err != nil {
 			log.Printf("Failed to create custom model entry: %v", err)
 			http.Error(w, "Failed to register custom model", http.StatusInternalServerError)
 			return
 		}
 
 		log.Printf("Created entry for custom model: %s", modelName)
-		// Custom models are always new, so we can proceed with download
-	} else {
-		// For existing models, check if already downloading or completed
-		if model.Status == ollama.StatusDownloading {
+
+	default:
+		status := ollama.StatusNotDownloaded
+		if dbModel != nil {
+			status = dbModel.Status
+		} else if curatedModel != nil {
+			status = curatedModel.Status
+		}
+
+		if status == ollama.StatusDownloading {
 			http.Error(w, "Model is already being downloaded", http.StatusConflict)
 			return
 		}
 
-		if model.Status == ollama.StatusCompleted {
-			// Check if model is actually installed
+		if status == ollama.StatusCompleted {
 			installedModels := s.getInstalledModels()
 			if isInstalled(modelName, installedModels) {
 				http.Error(w, "Model is already downloaded", http.StatusConflict)
 				return
 			}
-			// If not actually installed, allow re-download
 			log.Printf("Model %s marked as completed but not found in Ollama, allowing re-download", modelName)
 		}
 	}
@@ -545,14 +549,20 @@ func (s *Server) renderModelsHTML(w http.ResponseWriter, r *http.Request, models
 		}
 	}
 
+	modelsDir := ollama.SharedModelsDirectory()
+	if modelsDir == "" {
+		modelsDir = filepath.Join(config.GetSharedOllamaPath(), "models")
+	}
+
 	data := map[string]interface{}{
-		"HasOllama":     hasOllama,
-		"Models":        models,
-		"ChatModels":    chatModels,
-		"CodeModels":    codeModels,
-		"VisionModels":  visionModels,
-		"CustomModels":  customModels,
-		"TotalCount":    len(models),
+		"HasOllama":    hasOllama,
+		"Models":       models,
+		"ChatModels":   chatModels,
+		"CodeModels":   codeModels,
+		"VisionModels": visionModels,
+		"CustomModels": customModels,
+		"TotalCount":   len(models),
+		"ModelsDir":    modelsDir,
 	}
 
 	// Use the pre-loaded template
@@ -612,6 +622,10 @@ func (s *Server) startOllamaWorker() {
 	if err != nil {
 		log.Printf("Failed to initialize Ollama models: %v", err)
 		return
+	}
+
+	if err := ollama.SyncDatabaseWithSharedModels(s.db); err != nil {
+		log.Printf("Failed to synchronize Ollama models with shared storage: %v", err)
 	}
 
 	// Log if an Ollama container is available at startup (for debugging)

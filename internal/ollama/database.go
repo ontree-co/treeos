@@ -4,43 +4,75 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 )
 
-// InitializeModels ensures all curated models exist in the database
-func InitializeModels(db *sql.DB) error {
-	for _, model := range CuratedModels {
-		// Check if model exists
-		var exists bool
-		err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM ollama_models WHERE name = ?)", model.Name).Scan(&exists)
-		if err != nil {
-			return fmt.Errorf("failed to check model existence: %w", err)
-		}
-
-		if !exists {
-			// Insert the model
-			_, err = db.Exec(`
-				INSERT INTO ollama_models (name, display_name, size_estimate, description, category, status)
-				VALUES (?, ?, ?, ?, ?, ?)`,
-				model.Name, model.DisplayName, model.SizeEstimate,
-				model.Description, model.Category, StatusNotDownloaded)
-			if err != nil {
-				return fmt.Errorf("failed to insert model %s: %w", model.Name, err)
-			}
-		}
-	}
+// InitializeModels is now a no-op kept for backward compatibility.
+// Curated models are presented from in-memory metadata and persisted
+// only once they are actively downloaded by the user.
+func InitializeModels(_ *sql.DB) error {
 	return nil
 }
 
 // GetAllModels retrieves all models from the database
 func GetAllModels(db *sql.DB) ([]OllamaModel, error) {
+	records, err := fetchAllModelRecords(db)
+	if err != nil {
+		return nil, err
+	}
+
+	curatedState := make(map[string]OllamaModel)
+	var customModels []OllamaModel
+
+	for _, record := range records {
+		if _, ok := GetCuratedModel(record.Name); ok {
+			curatedState[record.Name] = record
+			continue
+		}
+		customModels = append(customModels, record)
+	}
+
+	result := make([]OllamaModel, 0, len(CuratedModels)+len(customModels))
+	for _, curated := range CuratedModels {
+		merged := curated
+		if record, ok := curatedState[curated.Name]; ok {
+			merged.Status = record.Status
+			merged.Progress = record.Progress
+			merged.LastError = record.LastError
+			merged.UpdatedAt = record.UpdatedAt
+			merged.CompletedAt = record.CompletedAt
+		} else {
+			merged.Status = StatusNotDownloaded
+			merged.Progress = 0
+			merged.LastError = sql.NullString{}
+			merged.UpdatedAt = time.Time{}
+			merged.CompletedAt = sql.NullTime{}
+		}
+		result = append(result, merged)
+	}
+
+	sort.Slice(customModels, func(i, j int) bool {
+		left := strings.ToLower(customModels[i].DisplayName)
+		right := strings.ToLower(customModels[j].DisplayName)
+		if left == right {
+			return customModels[i].Name < customModels[j].Name
+		}
+		return left < right
+	})
+
+	result = append(result, customModels...)
+	return result, nil
+}
+
+func fetchAllModelRecords(db *sql.DB) ([]OllamaModel, error) {
 	rows, err := db.Query(`
-		SELECT name, display_name, size_estimate, description, category, 
+		SELECT name, display_name, size_estimate, description, category,
 		       status, progress, last_error, updated_at, completed_at
-		FROM ollama_models
-		ORDER BY category, display_name`)
+		FROM ollama_models`)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query models: %w", err)
 	}
@@ -82,16 +114,22 @@ func UpdateModelStatus(db *sql.DB, name string, status string, progress int) err
 	query := `UPDATE ollama_models 
 		SET status = ?, progress = ?, updated_at = CURRENT_TIMESTAMP 
 		WHERE name = ?`
+	args := []any{status, progress, name}
 
-	// If completed, also set completed_at
-	if status == StatusCompleted {
+	switch status {
+	case StatusCompleted:
 		query = `UPDATE ollama_models 
-			SET status = ?, progress = ?, updated_at = CURRENT_TIMESTAMP, 
+			SET status = ?, progress = ?, last_error = NULL, updated_at = CURRENT_TIMESTAMP, 
 			    completed_at = CURRENT_TIMESTAMP 
+			WHERE name = ?`
+	case StatusNotDownloaded:
+		query = `UPDATE ollama_models 
+			SET status = ?, progress = ?, last_error = NULL, updated_at = CURRENT_TIMESTAMP, 
+			    completed_at = NULL 
 			WHERE name = ?`
 	}
 
-	_, err := db.Exec(query, status, progress, name)
+	_, err := db.Exec(query, args...)
 	if err != nil {
 		return fmt.Errorf("failed to update model status: %w", err)
 	}
@@ -146,6 +184,10 @@ func CreateModel(db *sql.DB, model *OllamaModel) error {
 
 // CreateDownloadJob creates a new download job
 func CreateDownloadJob(db *sql.DB, modelName string) (*DownloadJob, error) {
+	if err := ensureModelRecord(db, modelName); err != nil {
+		return nil, err
+	}
+
 	job := &DownloadJob{
 		ID:        uuid.New().String(),
 		ModelName: modelName,
@@ -168,6 +210,27 @@ func CreateDownloadJob(db *sql.DB, modelName string) (*DownloadJob, error) {
 	}
 
 	return job, nil
+}
+
+func ensureModelRecord(db *sql.DB, modelName string) error {
+	model, err := GetModel(db, modelName)
+	if err != nil {
+		return err
+	}
+	if model != nil {
+		return nil
+	}
+
+	if curated, ok := GetCuratedModel(modelName); ok {
+		curatedCopy := *curated
+		curatedCopy.Status = StatusNotDownloaded
+		curatedCopy.Progress = 0
+		curatedCopy.LastError = sql.NullString{}
+		curatedCopy.CompletedAt = sql.NullTime{}
+		return CreateModel(db, &curatedCopy)
+	}
+
+	return fmt.Errorf("model %s is not registered", modelName)
 }
 
 // UpdateJobStatus updates a download job's status
