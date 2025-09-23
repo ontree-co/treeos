@@ -19,25 +19,7 @@ func (s *Server) handleSystemUpdateCheck(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Get current update channel from database
-	var setup database.SystemSetup
-	err := s.db.QueryRow(`SELECT update_channel FROM system_setup WHERE id = 1`).Scan(&setup.UpdateChannel)
-	if err != nil {
-		// Default to beta if not found or column doesn't exist
-		if err == sql.ErrNoRows || strings.Contains(err.Error(), "no such column") {
-			setup.UpdateChannel.String = "beta"
-			setup.UpdateChannel.Valid = true
-		} else {
-			log.Printf("Failed to get update channel: %v", err)
-			setup.UpdateChannel.String = "beta"
-			setup.UpdateChannel.Valid = true
-		}
-	}
-
-	channel := update.ChannelBeta
-	if setup.UpdateChannel.Valid && setup.UpdateChannel.String == "stable" {
-		channel = update.ChannelStable
-	}
+	channel := s.getUpdateChannel()
 
 	// Create update service
 	updateSvc := update.NewService(channel)
@@ -49,7 +31,7 @@ func (s *Server) handleSystemUpdateCheck(w http.ResponseWriter, r *http.Request)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusServiceUnavailable)
 		if err := json.NewEncoder(w).Encode(map[string]interface{}{
-			"error": "Failed to check for updates",
+			"error":   "Failed to check for updates",
 			"details": err.Error(),
 		}); err != nil {
 			log.Printf("Failed to encode response: %v", err)
@@ -77,25 +59,7 @@ func (s *Server) handleSystemUpdateApply(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Get current update channel from database
-	var setup database.SystemSetup
-	err := s.db.QueryRow(`SELECT update_channel FROM system_setup WHERE id = 1`).Scan(&setup.UpdateChannel)
-	if err != nil {
-		// Default to beta if not found or column doesn't exist
-		if err == sql.ErrNoRows || strings.Contains(err.Error(), "no such column") {
-			setup.UpdateChannel.String = "beta"
-			setup.UpdateChannel.Valid = true
-		} else {
-			log.Printf("Failed to get update channel: %v", err)
-			setup.UpdateChannel.String = "beta"
-			setup.UpdateChannel.Valid = true
-		}
-	}
-
-	channel := update.ChannelBeta
-	if setup.UpdateChannel.Valid && setup.UpdateChannel.String == "stable" {
-		channel = update.ChannelStable
-	}
+	channel := s.getUpdateChannel()
 
 	// Create update service
 	updateSvc := update.NewService(channel)
@@ -121,14 +85,17 @@ func (s *Server) handleSystemUpdateApply(w http.ResponseWriter, r *http.Request)
 
 	// Reset update status and mark as in progress
 	SetUpdateStatus(UpdateStatus{
-		InProgress: true,
-		Message:    "Starting update...",
-		Stage:      "initializing",
-		StartedAt:  time.Now(),
+		InProgress:     true,
+		Message:        "Starting update...",
+		Stage:          "initializing",
+		StartedAt:      time.Now(),
+		CurrentVersion: updateSvc.GetCurrentVersion(),
 	})
 
 	// Start update in background
 	go func() {
+		s.updateMu.Lock()
+		defer s.updateMu.Unlock()
 		// Apply the update
 		err := updateSvc.ApplyUpdate(func(stage string, percentage float64, message string) {
 			// Log progress
@@ -136,11 +103,12 @@ func (s *Server) handleSystemUpdateApply(w http.ResponseWriter, r *http.Request)
 
 			// Update status
 			SetUpdateStatus(UpdateStatus{
-				InProgress: true,
-				Message:    message,
-				Stage:      stage,
-				Percentage: percentage,
-				StartedAt:  GetUpdateStatus().StartedAt,
+				InProgress:     true,
+				Message:        message,
+				Stage:          stage,
+				Percentage:     percentage,
+				StartedAt:      GetUpdateStatus().StartedAt,
+				CurrentVersion: updateSvc.GetCurrentVersion(),
 			})
 
 			// Could send SSE events here if we implement real-time updates
@@ -191,16 +159,17 @@ func (s *Server) handleSystemUpdateApply(w http.ResponseWriter, r *http.Request)
 
 			// Set error status
 			SetUpdateStatus(UpdateStatus{
-				InProgress: false,
-				Failed:     true,
-				Error:      userMessage,
-				Message:    err.Error(), // Technical details in message
-				Stage:      "failed",
+				InProgress:     false,
+				Failed:         true,
+				Error:          userMessage,
+				Message:        err.Error(), // Technical details in message
+				Stage:          "failed",
+				CurrentVersion: updateSvc.GetCurrentVersion(),
 			})
 
 			if s.sseManager != nil {
 				s.sseManager.SendToAll("update-failed", map[string]interface{}{
-					"error": userMessage,
+					"error":   userMessage,
 					"details": err.Error(),
 				})
 			}
@@ -209,10 +178,12 @@ func (s *Server) handleSystemUpdateApply(w http.ResponseWriter, r *http.Request)
 
 		// Set success status
 		SetUpdateStatus(UpdateStatus{
-			InProgress: false,
-			Success:    true,
-			Message:    "Update applied successfully, restarting...",
-			Stage:      "complete",
+			InProgress:       false,
+			Success:          true,
+			Message:          "Update applied successfully, restarting...",
+			Stage:            "complete",
+			CurrentVersion:   updateSvc.GetCurrentVersion(),
+			AvailableVersion: updateSvc.GetCurrentVersion(),
 		})
 
 		log.Println("Update applied successfully, system will restart...")
@@ -234,7 +205,7 @@ func (s *Server) handleSystemUpdateApply(w http.ResponseWriter, r *http.Request)
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(map[string]interface{}{
-		"status": "Update started",
+		"status":  "Update started",
 		"message": "The system will restart automatically after the update is applied",
 	}); err != nil {
 		log.Printf("Failed to encode response: %v", err)
@@ -257,8 +228,8 @@ func (s *Server) handleGetUpdateChannel(w http.ResponseWriter, r *http.Request) 
 	var channel string
 	err := s.db.QueryRow(`SELECT update_channel FROM system_setup WHERE id = 1`).Scan(&channel)
 	if err != nil {
-		// Default to beta if not found or column doesn't exist
-		channel = "beta"
+		// Default to stable if not found or column doesn't exist
+		channel = "stable"
 		if err != sql.ErrNoRows && !strings.Contains(err.Error(), "no such column") {
 			log.Printf("Failed to get update channel: %v", err)
 		}
@@ -318,7 +289,7 @@ func (s *Server) handleSetUpdateChannel(w http.ResponseWriter, r *http.Request) 
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(map[string]string{
-		"status": "success",
+		"status":  "success",
 		"channel": req.Channel,
 	}); err != nil {
 		log.Printf("Failed to encode response: %v", err)
@@ -374,5 +345,52 @@ func (s *Server) handleSystemUpdateHistory(w http.ResponseWriter, r *http.Reques
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(history); err != nil {
 		log.Printf("Failed to encode history: %v", err)
+	}
+}
+
+// handleSystemUpdateRestart triggers a restart if an update has been applied and requires restart
+func (s *Server) handleSystemUpdateRestart(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	user := getUserFromContext(r.Context())
+	if user == nil || !user.IsStaff {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	status := GetUpdateStatus()
+	if !status.RestartRequired {
+		http.Error(w, "No pending update restart", http.StatusBadRequest)
+		return
+	}
+
+	SetUpdateStatus(UpdateStatus{
+		InProgress:       true,
+		Stage:            "restarting",
+		Message:          "Restarting to finish update...",
+		CurrentVersion:   status.CurrentVersion,
+		AvailableVersion: status.AvailableVersion,
+	})
+
+	if s.sseManager != nil {
+		s.sseManager.SendToAll("update-restarting", map[string]interface{}{
+			"version": status.AvailableVersion,
+		})
+	}
+
+	go func() {
+		time.Sleep(2 * time.Second)
+		s.Shutdown()
+	}()
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(map[string]string{
+		"status":  "restarting",
+		"message": "Restarting to complete update...",
+	}); err != nil {
+		log.Printf("Failed to encode restart response: %v", err)
 	}
 }

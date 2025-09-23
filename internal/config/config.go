@@ -36,6 +36,9 @@ type Config struct {
 	// Monitoring feature flag
 	MonitoringEnabled bool `toml:"monitoring_enabled"`
 
+	// Auto-update configuration
+	AutoUpdateEnabled bool `toml:"auto_update_enabled"`
+
 	// LLM configuration (for future features)
 	AgentLLMAPIKey    string `toml:"agent_llm_api_key"`
 	AgentLLMAPIURL    string `toml:"agent_llm_api_url"`
@@ -69,10 +72,11 @@ func GetSharedOllamaPath() string {
 // defaultConfig returns the default configuration based on the platform
 func defaultConfig() *Config {
 	config := &Config{
-		DatabasePath:       "ontree.db",
-		ListenAddr:         DefaultPort,
-		PostHogHost:        "https://app.posthog.com",
+		DatabasePath:      "ontree.db",
+		ListenAddr:        DefaultPort,
+		PostHogHost:       "https://app.posthog.com",
 		MonitoringEnabled: true, // Enabled by default
+		AutoUpdateEnabled: true,
 	}
 
 	// Platform-specific defaults for AppsDir
@@ -136,6 +140,10 @@ func Load() (*Config, error) {
 
 	if monitoringEnabled := os.Getenv("MONITORING_ENABLED"); monitoringEnabled != "" {
 		config.MonitoringEnabled = monitoringEnabled == "true" || monitoringEnabled == "1"
+	}
+
+	if autoUpdateEnabled := os.Getenv("AUTO_UPDATE_ENABLED"); autoUpdateEnabled != "" {
+		config.AutoUpdateEnabled = autoUpdateEnabled == "true" || autoUpdateEnabled == "1"
 	}
 
 	// LLM environment variables

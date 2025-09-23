@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gorilla/sessions"
@@ -30,6 +31,7 @@ import (
 	"treeos/internal/realtime"
 	"treeos/internal/system"
 	"treeos/internal/templates"
+	"treeos/internal/update"
 	"treeos/internal/version"
 	"treeos/internal/yamlutil"
 	"treeos/pkg/compose"
@@ -53,6 +55,9 @@ type Server struct {
 	composeSvc            *compose.Service
 	sseManager            *SSEManager
 	ollamaWorker          *ollama.Worker
+	stopCh                chan struct{}
+	stopOnce              sync.Once
+	updateMu              sync.Mutex
 }
 
 // New creates a new server instance
@@ -69,6 +74,7 @@ func New(cfg *config.Config, versionInfo version.Info) (*Server, error) {
 		platformSupportsCaddy: runtime.GOOS == "linux",
 		sparklineCache:        cache.New(5 * time.Minute), // 5-minute cache for sparklines
 		realtimeMetrics:       realtime.NewMetrics(),
+		stopCh:                make(chan struct{}),
 	}
 
 	// Configure session store
@@ -156,6 +162,11 @@ func New(cfg *config.Config, versionInfo version.Info) (*Server, error) {
 
 // Shutdown gracefully shuts down the server
 func (s *Server) Shutdown() {
+	s.stopOnce.Do(func() {
+		if s.stopCh != nil {
+			close(s.stopCh)
+		}
+	})
 	if s.dockerSvc != nil {
 		if err := s.dockerSvc.Close(); err != nil {
 			log.Printf("Error closing docker service: %v", err)
@@ -393,6 +404,28 @@ func (s *Server) loadTemplates() error {
 	return nil
 }
 
+func (s *Server) getUpdateChannel() update.UpdateChannel {
+	if s.db == nil {
+		return update.ChannelStable
+	}
+
+	var channel string
+	err := s.db.QueryRow(`SELECT update_channel FROM system_setup WHERE id = 1`).Scan(&channel)
+	if err != nil {
+		if err != sql.ErrNoRows && !strings.Contains(err.Error(), "no such column") {
+			log.Printf("Failed to get update channel: %v", err)
+		}
+		return update.ChannelStable
+	}
+
+	switch strings.ToLower(strings.TrimSpace(channel)) {
+	case "beta":
+		return update.ChannelBeta
+	default:
+		return update.ChannelStable
+	}
+}
+
 // Start starts the HTTP server
 func (s *Server) Start() error {
 	// Start background jobs
@@ -405,6 +438,12 @@ func (s *Server) Start() error {
 		s.startOllamaWorker()
 	}
 	// No need to schedule them again here
+
+	// Reset update status on startup
+	ResetUpdateStatus()
+
+	// Automatic update scheduler
+	s.startAutoUpdateScheduler()
 
 	// Set up routes
 	mux := http.NewServeMux()
@@ -461,6 +500,7 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/api/system/update/status", s.TracingMiddleware(s.AuthRequiredMiddleware(s.handleSystemUpdateStatus)))
 	mux.HandleFunc("/api/system/update/channel", s.TracingMiddleware(s.AuthRequiredMiddleware(s.handleSystemUpdateChannel)))
 	mux.HandleFunc("/api/system/update/history", s.TracingMiddleware(s.AuthRequiredMiddleware(s.handleSystemUpdateHistory)))
+	mux.HandleFunc("/api/system/update/restart", s.TracingMiddleware(s.AuthRequiredMiddleware(s.handleSystemUpdateRestart)))
 
 	// Pattern library routes (no auth required - public access)
 	mux.HandleFunc("/patterns", s.TracingMiddleware(s.routePatterns))
@@ -560,6 +600,132 @@ func (s *Server) startVitalsCollection() {
 
 	for range ticker.C {
 		s.storeVitals()
+	}
+}
+
+func (s *Server) startAutoUpdateScheduler() {
+	if !s.config.AutoUpdateEnabled {
+		log.Printf("Automatic updates disabled (AUTO_UPDATE_ENABLED=false)")
+		return
+	}
+
+	go s.autoUpdateLoop()
+}
+
+func (s *Server) autoUpdateLoop() {
+	log.Printf("Automatic update scheduler started")
+
+	s.runAutoUpdate("startup")
+
+	for {
+		next := durationUntilNextUpdate(time.Now())
+		timer := time.NewTimer(next)
+		select {
+		case <-timer.C:
+			s.runAutoUpdate("scheduled")
+		case <-s.stopCh:
+			timer.Stop()
+			log.Printf("Automatic update scheduler stopping")
+			return
+		}
+	}
+}
+
+func durationUntilNextUpdate(now time.Time) time.Duration {
+	next := time.Date(now.Year(), now.Month(), now.Day(), 3, 0, 0, 0, now.Location())
+	if !next.After(now) {
+		next = next.Add(24 * time.Hour)
+	}
+	return next.Sub(now)
+}
+
+func (s *Server) runAutoUpdate(trigger string) {
+	if !s.config.AutoUpdateEnabled {
+		return
+	}
+
+	s.updateMu.Lock()
+	defer s.updateMu.Unlock()
+
+	channel := s.getUpdateChannel()
+	updateSvc := update.NewService(channel)
+
+	info, err := updateSvc.CheckForUpdate()
+	if err != nil {
+		log.Printf("Auto-update check failed: %v", err)
+		return
+	}
+
+	status := UpdateStatus{
+		CurrentVersion:   info.CurrentVersion,
+		AvailableVersion: info.LatestVersion,
+		Message:          fmt.Sprintf("Checked for updates (%s channel)", channel),
+	}
+
+	if !info.UpdateAvailable {
+		SetUpdateStatus(status)
+		return
+	}
+
+	current := GetUpdateStatus()
+	if current.RestartRequired && current.AvailableVersion == info.LatestVersion {
+		log.Printf("Update %s already applied and awaiting restart", info.LatestVersion)
+		return
+	}
+
+	log.Printf("Automatic update found: %s -> %s (trigger=%s)", info.CurrentVersion, info.LatestVersion, trigger)
+
+	started := time.Now()
+	SetUpdateStatus(UpdateStatus{
+		InProgress:       true,
+		Stage:            "downloading",
+		Message:          fmt.Sprintf("Downloading update %s", info.LatestVersion),
+		CurrentVersion:   info.CurrentVersion,
+		AvailableVersion: info.LatestVersion,
+		StartedAt:        started,
+	})
+
+	err = updateSvc.ApplyUpdate(func(stage string, percentage float64, message string) {
+		SetUpdateStatus(UpdateStatus{
+			InProgress:       true,
+			Stage:            stage,
+			Percentage:       percentage,
+			Message:          message,
+			CurrentVersion:   info.CurrentVersion,
+			AvailableVersion: info.LatestVersion,
+			StartedAt:        started,
+		})
+	})
+
+	if err != nil {
+		log.Printf("Automatic update failed: %v", err)
+		SetUpdateStatus(UpdateStatus{
+			Failed:           true,
+			Error:            "Automatic update failed. See logs for details.",
+			Message:          err.Error(),
+			Stage:            "failed",
+			CurrentVersion:   info.CurrentVersion,
+			AvailableVersion: info.LatestVersion,
+		})
+		return
+	}
+
+	log.Printf("Automatic update to %s applied. Restart required.", info.LatestVersion)
+	SetUpdateStatus(UpdateStatus{
+		Success:          true,
+		RestartRequired:  true,
+		Stage:            "complete",
+		Percentage:       100,
+		Message:          fmt.Sprintf("Update %s installed. Restart required to finish.", info.LatestVersion),
+		CurrentVersion:   info.CurrentVersion,
+		AvailableVersion: info.LatestVersion,
+		StartedAt:        started,
+	})
+
+	if s.sseManager != nil {
+		s.sseManager.SendToAll("update-ready", map[string]interface{}{
+			"version": info.LatestVersion,
+		})
 	}
 }
 
@@ -862,6 +1028,11 @@ func (s *Server) baseTemplateData(user *database.User) map[string]interface{} {
 	}
 	data["NodeIcon"] = nodeIcon
 
+	// Update status for header notifications
+	status := GetUpdateStatus()
+	data["UpdateStatus"] = status
+	data["UpdateBadge"] = status.RestartRequired
+
 	// Messages field is required by base template
 	data["Messages"] = nil
 
@@ -1106,9 +1277,9 @@ func (s *Server) routeApps(w http.ResponseWriter, r *http.Request) {
 		}
 	} else if strings.HasSuffix(path, "/containers") {
 		s.handleAppContainers(w, r)
-	// Check-update functionality removed - using Visit in Browser instead
-	// } else if strings.HasSuffix(path, "/check-update") {
-	//	s.handleAppCheckUpdate(w, r)
+		// Check-update functionality removed - using Visit in Browser instead
+		// } else if strings.HasSuffix(path, "/check-update") {
+		//	s.handleAppCheckUpdate(w, r)
 	} else if strings.HasSuffix(path, "/update") {
 		s.handleAppUpdate(w, r)
 	} else {
@@ -1253,12 +1424,12 @@ func getTailscaleDNS() string {
 	if err != nil {
 		return ""
 	}
-	
+
 	dnsName := strings.TrimSpace(string(output))
 	if dnsName == "" || dnsName == "null" {
 		return ""
 	}
-	
+
 	return dnsName
 }
 
@@ -1275,10 +1446,10 @@ func (s *Server) verifyMigrationsComplete() error {
 	// Check for the most recently added columns to ensure all migrations ran
 	// We check these specific columns as they were added in recent updates
 	verifyQueries := map[string]string{
-		"system_setup.update_channel":  "SELECT COUNT(*) FROM pragma_table_info('system_setup') WHERE name='update_channel'",
-		"system_setup.node_icon":       "SELECT COUNT(*) FROM pragma_table_info('system_setup') WHERE name='node_icon'",
-		"update_history.channel":       "SELECT COUNT(*) FROM pragma_table_info('update_history') WHERE name='channel'",
-		"system_vital_logs.gpu_load":   "SELECT COUNT(*) FROM pragma_table_info('system_vital_logs') WHERE name='gpu_load'",
+		"system_setup.update_channel": "SELECT COUNT(*) FROM pragma_table_info('system_setup') WHERE name='update_channel'",
+		"system_setup.node_icon":      "SELECT COUNT(*) FROM pragma_table_info('system_setup') WHERE name='node_icon'",
+		"update_history.channel":      "SELECT COUNT(*) FROM pragma_table_info('update_history') WHERE name='channel'",
+		"system_vital_logs.gpu_load":  "SELECT COUNT(*) FROM pragma_table_info('system_vital_logs') WHERE name='gpu_load'",
 	}
 
 	for description, query := range verifyQueries {

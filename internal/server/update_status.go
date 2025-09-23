@@ -7,20 +7,23 @@ import (
 
 // UpdateStatus tracks the current update operation status
 type UpdateStatus struct {
-	InProgress bool      `json:"in_progress"`
-	Success    bool      `json:"success"`
-	Failed     bool      `json:"failed"`
-	Error      string    `json:"error,omitempty"`
-	Message    string    `json:"message,omitempty"`
-	Stage      string    `json:"stage,omitempty"`
-	Percentage float64   `json:"percentage"`
-	StartedAt  time.Time `json:"started_at,omitempty"`
-	UpdatedAt  time.Time `json:"updated_at"`
+	InProgress       bool      `json:"in_progress"`
+	Success          bool      `json:"success"`
+	Failed           bool      `json:"failed"`
+	Error            string    `json:"error,omitempty"`
+	Message          string    `json:"message,omitempty"`
+	Stage            string    `json:"stage,omitempty"`
+	Percentage       float64   `json:"percentage"`
+	StartedAt        time.Time `json:"started_at,omitempty"`
+	UpdatedAt        time.Time `json:"updated_at"`
+	RestartRequired  bool      `json:"restart_required"`
+	AvailableVersion string    `json:"available_version,omitempty"`
+	CurrentVersion   string    `json:"current_version,omitempty"`
 }
 
 // Global update status with mutex protection
 var (
-	updateStatusMu     sync.RWMutex
+	updateStatusMu      sync.RWMutex
 	currentUpdateStatus = UpdateStatus{}
 )
 
