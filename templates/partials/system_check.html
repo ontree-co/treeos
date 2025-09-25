@@ -1,0 +1,320 @@
+{{define "system-check"}}
+{{ $autoRun := false }}
+{{ with index . "SystemCheckAutoRun" }}{{ $autoRun = . }}{{ end }}
+{{ $visible := true }}
+{{ with index . "SystemCheckVisible" }}{{ $visible = . }}{{ end }}
+{{ $panelID := "system-check-panel" }}
+{{ with index . "SystemCheckPanelID" }}{{ $panelID = . }}{{ end }}
+{{ $detailsVisible := or $autoRun $visible }}
+<div id="{{$panelID}}" class="card" data-system-check data-auto-run="{{if $autoRun}}true{{else}}false{{end}}" data-details-visible="{{if $detailsVisible}}true{{else}}false{{end}}">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center">
+            <i class="bi bi-gear-wide-connected me-2"></i>
+            <strong>System Check</strong>
+        </div>
+        <button type="button" class="btn btn-outline-primary btn-sm" data-action="run-system-check">
+            <i class="bi bi-arrow-repeat me-1"></i><span data-role="run-label">{{if $autoRun}}Run Again{{else}}Run System Check{{end}}</span>
+        </button>
+    </div>
+    <div class="card-body">
+        <p class="mb-3 text-muted" data-role="summary">{{if $autoRun}}Running system checks…{{else}}Click "Run System Check" to begin.{{end}}</p>
+        <div data-role="details-panel" class="{{if not $detailsVisible}}d-none{{end}}">
+            <ul class="list-unstyled mb-3" data-role="check-list">
+        <li class="d-flex align-items-start mb-2" data-check="directories">
+            <div class="me-2 status-icon">
+                <i class="bi bi-question-circle text-secondary"></i>
+            </div>
+            <div>
+                <div class="fw-semibold">Prepare system directories</div>
+                <div class="text-muted small" data-role="message"></div>
+                <div class="text-muted small" data-role="details"></div>
+                <ul class="text-muted small ps-3 mb-0" data-role="remediation"></ul>
+            </div>
+        </li>
+        <li class="d-flex align-items-start mb-2" data-check="podman">
+            <div class="me-2 status-icon">
+                <i class="bi bi-question-circle text-secondary"></i>
+            </div>
+            <div>
+                <div class="fw-semibold">Podman</div>
+                <div class="text-muted small" data-role="message"></div>
+                <div class="text-muted small" data-role="details"></div>
+                <ul class="text-muted small ps-3 mb-0" data-role="remediation"></ul>
+            </div>
+        </li>
+        <li class="d-flex align-items-start mb-2" data-check="podman_compose">
+            <div class="me-2 status-icon">
+                <i class="bi bi-question-circle text-secondary"></i>
+            </div>
+            <div>
+                <div class="fw-semibold">Podman Compose</div>
+                <div class="text-muted small" data-role="message"></div>
+                <div class="text-muted small" data-role="details"></div>
+                <ul class="text-muted small ps-3 mb-0" data-role="remediation"></ul>
+            </div>
+        </li>
+        <li class="d-flex align-items-start mb-2" data-check="caddy">
+            <div class="me-2 status-icon">
+                <i class="bi bi-question-circle text-secondary"></i>
+            </div>
+            <div>
+                <div class="fw-semibold">Caddy</div>
+                <div class="text-muted small" data-role="message"></div>
+                <div class="text-muted small" data-role="details"></div>
+                <ul class="text-muted small ps-3 mb-0" data-role="remediation"></ul>
+            </div>
+        </li>
+    </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    function ready(handler) {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', handler, { once: true });
+        } else {
+            handler();
+        }
+    }
+
+    function setQuestionState(item) {
+        const icon = item.querySelector('.status-icon');
+        if (icon) {
+            icon.innerHTML = '<i class="bi bi-question-circle text-secondary"></i>';
+        }
+        const message = item.querySelector('[data-role="message"]');
+        if (message) message.textContent = '';
+        const details = item.querySelector('[data-role="details"]');
+        if (details) details.textContent = '';
+        const remediation = item.querySelector('[data-role="remediation"]');
+        if (remediation) remediation.innerHTML = '';
+    }
+
+    function setSpinnerState(item) {
+        const icon = item.querySelector('.status-icon');
+        if (icon) {
+            icon.innerHTML = '<div class="spinner-border spinner-border-sm text-primary" role="status"></div>';
+        }
+        const message = item.querySelector('[data-role="message"]');
+        if (message) message.textContent = 'Checking…';
+        const details = item.querySelector('[data-role="details"]');
+        if (details) details.textContent = '';
+        const remediation = item.querySelector('[data-role="remediation"]');
+        if (remediation) remediation.innerHTML = '';
+    }
+
+    function setResultState(item, result) {
+        const icon = item.querySelector('.status-icon');
+        if (!icon) {
+            return;
+        }
+
+        const status = result.status || result.Status || '';
+        const version = result.version || result.Version || '';
+        const messageText = result.message || result.Message || '';
+        const detailsText = result.details || result.Details || '';
+        const remediationList = result.remediation || result.Remediation || [];
+
+        if (status === 'ok') {
+            icon.innerHTML = '<i class="bi bi-check-circle-fill text-success"></i>';
+        } else {
+            icon.innerHTML = '<i class="bi bi-x-circle-fill text-danger"></i>';
+        }
+
+        const message = item.querySelector('[data-role="message"]');
+        if (message) {
+            let text = '';
+            if (status === 'ok') {
+                text = messageText || 'Check passed.';
+                if (version) {
+                    text += ` (found ${version})`;
+                }
+            } else {
+                text = messageText || 'Check failed.';
+                if (version) {
+                    text += ` (found ${version})`;
+                }
+            }
+            message.textContent = text;
+        }
+
+        const details = item.querySelector('[data-role="details"]');
+        if (details) {
+            if (detailsText && status !== 'ok') {
+                details.textContent = detailsText;
+                details.classList.remove('text-muted');
+                details.classList.add('text-danger');
+            } else {
+                details.textContent = '';
+                details.classList.remove('text-danger');
+                details.classList.remove('text-muted');
+            }
+        }
+
+        const remediation = item.querySelector('[data-role="remediation"]');
+        if (remediation) {
+            remediation.innerHTML = '';
+            if (Array.isArray(remediationList) && remediationList.length > 0) {
+                remediationList.forEach(function(line) {
+                    const li = document.createElement('li');
+                    li.textContent = line;
+                    remediation.appendChild(li);
+                });
+                if (status !== 'ok') {
+                    remediation.classList.add('text-danger');
+                } else {
+                    remediation.classList.remove('text-danger');
+                }
+            } else {
+                remediation.classList.remove('text-danger');
+            }
+        }
+    }
+
+    function toggleDetails(panel, visible) {
+        const details = panel.querySelector('[data-role="details-panel"]');
+        if (!details) return;
+        if (visible) {
+            details.classList.remove('d-none');
+        } else {
+            details.classList.add('d-none');
+        }
+    }
+
+    function updateRunButton(panel, hasRun) {
+        const label = panel.querySelector('[data-role="run-label"]');
+        if (!label) return;
+        label.textContent = hasRun ? 'Run Again' : 'Run System Check';
+    }
+
+    function runSystemCheck(panel) {
+        if (!panel) return;
+
+        toggleDetails(panel, true);
+        panel.dataset.detailsVisible = 'true';
+        panel.dataset.hasRun = 'true';
+        updateRunButton(panel, true);
+
+        const summary = panel.querySelector('[data-role="summary"]');
+        if (summary) {
+            summary.textContent = 'Running system checks…';
+            summary.classList.remove('text-danger', 'text-success');
+            summary.classList.add('text-muted');
+        }
+
+        const items = Array.from(panel.querySelectorAll('[data-check]'));
+        items.forEach(setQuestionState);
+        if (items[0]) {
+            setSpinnerState(items[0]);
+        }
+
+        fetch('/api/system/check', { credentials: 'same-origin' })
+            .then(function(response) {
+                if (!response.ok) {
+                    throw new Error('System check failed with status ' + response.status);
+                }
+                return response.json();
+            })
+            .then(function(payload) {
+                const checks = Array.isArray(payload.checks) ? payload.checks : [];
+                const resultMap = {};
+                checks.forEach(function(check) {
+                    resultMap[check.id] = check;
+                });
+
+                function process(index) {
+                    if (index >= items.length) {
+                        if (summary) {
+                            const allGood = payload.success === true;
+                            summary.textContent = allGood ? 'System check complete.' : 'System check complete. Review the results below.';
+                            summary.classList.remove('text-muted');
+                            summary.classList.toggle('text-success', allGood);
+                            summary.classList.toggle('text-danger', !allGood);
+                        }
+                        return;
+                    }
+
+                    const item = items[index];
+                    const checkId = item.getAttribute('data-check');
+                    setSpinnerState(item);
+
+                    const result = resultMap[checkId];
+                    setTimeout(function() {
+                        if (result) {
+                            setResultState(item, result);
+                        } else {
+                            setResultState(item, {
+                                Status: 'error',
+                                Message: 'No result for ' + checkId,
+                                Details: '',
+                                Remediation: [],
+                            });
+                        }
+                        process(index + 1);
+                    }, 250);
+                }
+
+                process(0);
+
+                if (summary) {
+                    summary.textContent = 'Running system checks…';
+                    summary.classList.remove('text-danger', 'text-success');
+                    summary.classList.add('text-muted');
+                }
+            })
+            .catch(function(error) {
+                console.error('System check error:', error);
+                if (summary) {
+                    summary.textContent = 'Unable to run system check: ' + error.message;
+                    summary.classList.remove('text-muted');
+                    summary.classList.add('text-danger');
+                }
+                panel.querySelectorAll('[data-check]').forEach(function(item) {
+                    const icon = item.querySelector('.status-icon');
+                    if (icon) {
+                        icon.innerHTML = '<i class="bi bi-exclamation-triangle-fill text-danger"></i>';
+                    }
+                    const message = item.querySelector('[data-role="message"]');
+                    if (message) {
+                        message.textContent = 'Unable to determine status.';
+                    }
+                });
+            });
+    }
+
+    ready(function() {
+        document.querySelectorAll('[data-system-check]').forEach(function(panel) {
+            if (panel.dataset.autoRun === 'true') {
+                toggleDetails(panel, true);
+                runSystemCheck(panel);
+            } else {
+                toggleDetails(panel, panel.dataset.detailsVisible === 'true');
+                updateRunButton(panel, panel.dataset.detailsVisible === 'true');
+                panel.querySelectorAll('[data-check]').forEach(setQuestionState);
+            }
+        });
+    });
+
+    document.addEventListener('click', function(event) {
+        const trigger = event.target.closest('[data-action="run-system-check"]');
+        if (!trigger) {
+            return;
+        }
+
+        let panel = trigger.closest('[data-system-check]');
+        const targetSelector = trigger.getAttribute('data-target');
+        if (targetSelector) {
+            panel = document.querySelector(targetSelector);
+        }
+
+        if (!panel) {
+            return;
+        }
+
+        runSystemCheck(panel);
+    });
+})();
+</script>
+{{end}}

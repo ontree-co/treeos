@@ -21,6 +21,7 @@ yarn.lock
 *.out
 vendor/
 go.sum
+.gocache/
 
 # IDE
 .idea/
