@@ -5,12 +5,14 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"os/exec"
 	"os/user"
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 	"syscall"
 
 	"github.com/joho/godotenv"
@@ -31,6 +33,62 @@ func main() {
 		if os.Getenv("DEBUG") == "true" {
 			log.Printf("No .env file found or error loading it: %v", err)
 		}
+	}
+
+	// Parse CLI flags before handling subcommands
+	demoMode := false
+	showHelp := false
+	var portOverride string
+
+	filteredArgs := []string{os.Args[0]}
+	args := os.Args[1:]
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if strings.HasPrefix(arg, "-p=") {
+			portOverride = strings.TrimPrefix(arg, "-p=")
+			continue
+		}
+		if strings.HasPrefix(arg, "--port=") {
+			portOverride = strings.TrimPrefix(arg, "--port=")
+			continue
+		}
+		switch arg {
+		case "--demo":
+			demoMode = true
+		case "-p", "--port":
+			if i+1 >= len(args) {
+				fmt.Fprintln(os.Stderr, "Error: -p/--port requires a port value")
+				os.Exit(1)
+			}
+			i++
+			portOverride = args[i]
+		case "--help", "-h":
+			showHelp = true
+		case "--version", "-version", "version":
+			filteredArgs = append(filteredArgs, arg)
+		default:
+			filteredArgs = append(filteredArgs, arg)
+		}
+	}
+	os.Args = filteredArgs
+
+	// Set run mode environment variable based on flag
+	if demoMode {
+		os.Setenv("TREEOS_RUN_MODE", "demo")
+	}
+
+	if portOverride != "" {
+		addr, err := normalizeListenAddr(portOverride)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Invalid port value '%s': %v\n", portOverride, err)
+			os.Exit(1)
+		}
+		os.Setenv("LISTEN_ADDR", addr)
+	}
+
+	if showHelp {
+		printHelp()
+		return
 	}
 
 	// Handle version flag first, before loading configuration
@@ -80,20 +138,21 @@ func main() {
 		}
 	}
 
-	// Initialize file logging ONLY in development mode
+	// Initialize file logging ONLY in development mode or demo mode
 	isDevelopment := os.Getenv("TREEOS_ENV") == "development" || os.Getenv("DEBUG") == "true"
+	isDemo := os.Getenv("TREEOS_RUN_MODE") == "demo"
 
-	if isDevelopment {
-		logDir := "./logs" // Always use local directory in development
+	if isDevelopment || isDemo {
+		logDir := "./logs" // Always use local directory in development/demo
 		if err := logging.Initialize(logDir); err != nil {
 			log.Printf("Warning: Failed to initialize file logging: %v", err)
 			// Continue with standard logging to stdout
 		} else {
 			defer logging.Close()
-			log.Printf("Development logging initialized to %s", logDir)
+			log.Printf("Development/demo logging initialized to %s", logDir)
 		}
 	} else {
-		// In production, just use stdout (captured by systemd/Docker/etc)
+		// In production, just use stdout (captured by systemd/launchd/etc)
 		log.Printf("Running in production mode - logging to stdout only")
 	}
 
@@ -132,10 +191,18 @@ func main() {
 }
 
 func setupDirs() error {
-	// Determine the apps directory path based on platform
+	// Determine the apps directory path based on configuration
 	appsDir := getAppsDir()
 
-	// Platform-specific behavior
+	// Check if we're in demo mode
+	isDemo := os.Getenv("TREEOS_RUN_MODE") == "demo"
+
+	if isDemo {
+		// Demo mode: create directories locally without special permissions
+		return setupDemoDirs(appsDir)
+	}
+
+	// Production mode: platform-specific behavior
 	switch runtime.GOOS {
 	case "linux":
 		return setupLinuxDirs(appsDir)
@@ -150,17 +217,83 @@ func getAppsDir() string {
 	// Load configuration to get the apps directory
 	cfg, err := config.Load()
 	if err != nil {
-		// Fall back to platform defaults if config fails to load
-		switch runtime.GOOS {
-		case "linux":
-			return "/opt/ontree/apps"
-		case "darwin":
-			return "./apps"
-		default:
+		// Fall back to mode-based defaults if config fails to load
+		isDemo := os.Getenv("TREEOS_RUN_MODE") == "demo"
+		if isDemo {
 			return "./apps"
 		}
+		return "/opt/ontree/apps"
 	}
 	return cfg.AppsDir
+}
+
+func setupDemoDirs(appsDir string) error {
+	fmt.Printf("Setting up directories for demo mode (apps_dir=%s)\n", appsDir)
+
+	// Create apps directory
+	if err := os.MkdirAll(appsDir, 0750); err != nil {
+		return fmt.Errorf("failed to create apps directory %s: %w", appsDir, err)
+	}
+
+	// Create shared directory for Ollama models
+	sharedDir := "./shared/ollama"
+	if err := os.MkdirAll(sharedDir, 0750); err != nil {
+		return fmt.Errorf("failed to create shared directory %s: %w", sharedDir, err)
+	}
+
+	fmt.Printf("✓ Successfully created directories for demo mode\n")
+	return nil
+}
+
+func printHelp() {
+	fmt.Println("Usage: treeos [options] [command]")
+	fmt.Println()
+	fmt.Println("Commands:")
+	fmt.Println("  setup-dirs            Prepare required directories on the host")
+	fmt.Println("  migrate-to-compose    Convert existing deployments to Docker Compose")
+	fmt.Println()
+	fmt.Println("Options:")
+	fmt.Println("  --help, -h            Show this help message")
+	fmt.Println("  --version             Show version information")
+	fmt.Println("  --demo                Run using local demo directories")
+	fmt.Println("  -p, --port <port>     Override the HTTP listen port (e.g., 4001 or :4001)")
+}
+
+func normalizeListenAddr(value string) (string, error) {
+	// Allow complete addresses like 127.0.0.1:4000 or [::1]:4000
+	if strings.Contains(value, ":") {
+		host, port, err := net.SplitHostPort(value)
+		if err != nil {
+			return "", fmt.Errorf("expected host:port, :port, or [ipv6]:port: %w", err)
+		}
+		if err := validatePort(port); err != nil {
+			return "", err
+		}
+		if host == "" {
+			return ":" + port, nil
+		}
+		return net.JoinHostPort(host, port), nil
+	}
+
+	// Otherwise treat as bare port number
+	if err := validatePort(value); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf(":%s", value), nil
+}
+
+func validatePort(port string) error {
+	if port == "" {
+		return fmt.Errorf("port is required")
+	}
+	n, err := strconv.Atoi(port)
+	if err != nil {
+		return fmt.Errorf("port must be a number")
+	}
+	if n < 1 || n > 65535 {
+		return fmt.Errorf("port must be between 1 and 65535")
+	}
+	return nil
 }
 
 func setupLinuxDirs(appsDir string) error {

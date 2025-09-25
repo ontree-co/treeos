@@ -58,13 +58,13 @@ embed-assets: check-templates
 build-all: embed-assets
 	@echo "Building for all target platforms..."
 	@mkdir -p $(BUILD_DIR)
-	
+
 	@echo "Building for darwin/arm64 (Apple Silicon)..."
 	GOOS=darwin GOARCH=arm64 $(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 $(MAIN_PATH)
-	
+
 	@echo "Building for linux/amd64..."
 	GOOS=linux GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-linux-amd64 $(MAIN_PATH)
-	
+
 	@echo "Cross-platform builds complete"
 
 # Run unit and integration tests
@@ -103,7 +103,7 @@ test-e2e: build
 		echo "📂 Creating test directories..."; \
 		mkdir -p ./test-apps ./logs; \
 		echo "🚀 Starting server on port 3001..."; \
-		ONTREE_APPS_DIR=./test-apps LISTEN_ADDR=:3001 nohup ./$(BUILD_DIR)/$(BINARY_NAME) > server.log 2>&1 & \
+		ONTREE_APPS_DIR=./test-apps nohup ./$(BUILD_DIR)/$(BINARY_NAME) --demo -p 3001 > server.log 2>&1 & \
 		SERVER_PID=$$!; \
 		echo "Server started with PID $$SERVER_PID"; \
 		echo "⏳ Waiting for server to be ready..."; \
@@ -215,6 +215,34 @@ coverage: test
 	$(GO) tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report generated: coverage.html"
 
+# Package release with setup files
+.PHONY: package
+package: build-all
+	@echo "Packaging releases with setup files..."
+	@mkdir -p $(BUILD_DIR)/releases
+
+	@echo "Packaging darwin/arm64 release..."
+	@mkdir -p $(BUILD_DIR)/treeos-darwin-arm64
+	@cp $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 $(BUILD_DIR)/treeos-darwin-arm64/$(BINARY_NAME)
+	@cp setup-production.sh $(BUILD_DIR)/treeos-darwin-arm64/
+	@cp treeos.service $(BUILD_DIR)/treeos-darwin-arm64/
+	@cp com.ontree.treeos.plist $(BUILD_DIR)/treeos-darwin-arm64/
+	@cp README.setup.md $(BUILD_DIR)/treeos-darwin-arm64/README.md 2>/dev/null || echo "README.setup.md not found, skipping"
+	@cd $(BUILD_DIR) && tar -czf releases/treeos-darwin-arm64.tar.gz treeos-darwin-arm64
+	@rm -rf $(BUILD_DIR)/treeos-darwin-arm64
+
+	@echo "Packaging linux/amd64 release..."
+	@mkdir -p $(BUILD_DIR)/treeos-linux-amd64
+	@cp $(BUILD_DIR)/$(BINARY_NAME)-linux-amd64 $(BUILD_DIR)/treeos-linux-amd64/$(BINARY_NAME)
+	@cp setup-production.sh $(BUILD_DIR)/treeos-linux-amd64/
+	@cp treeos.service $(BUILD_DIR)/treeos-linux-amd64/
+	@cp com.ontree.treeos.plist $(BUILD_DIR)/treeos-linux-amd64/
+	@cp README.setup.md $(BUILD_DIR)/treeos-linux-amd64/README.md 2>/dev/null || echo "README.setup.md not found, skipping"
+	@cd $(BUILD_DIR) && tar -czf releases/treeos-linux-amd64.tar.gz treeos-linux-amd64
+	@rm -rf $(BUILD_DIR)/treeos-linux-amd64
+
+	@echo "Packages created in $(BUILD_DIR)/releases/"
+
 # Install the binary locally
 .PHONY: install
 install: build
@@ -264,6 +292,7 @@ help:
 	@echo "Available targets:"
 	@echo "  build           - Build the application for current platform"
 	@echo "  build-all       - Cross-compile for darwin/arm64 and linux/amd64"
+	@echo "  package         - Build and package releases with setup files"
 	@echo "  test            - Run unit and integration tests"
 	@echo "  test-race       - Run tests with race detector"
 	@echo "  test-coverage   - Run tests and generate coverage report"

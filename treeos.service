@@ -1,0 +1,36 @@
+[Unit]
+Description=TreeOS Application Platform
+Documentation=https://github.com/ontree-co/treeos
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=ontree
+Group=ontree
+WorkingDirectory=/opt/ontree
+ExecStart=/opt/ontree/treeos
+Restart=always
+RestartSec=10
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/ontree
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# Environment
+Environment="TREEOS_RUN_MODE=production"
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=treeos
+
+[Install]
+WantedBy=multi-user.target

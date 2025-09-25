@@ -5,14 +5,26 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 
 	"github.com/BurntSushi/toml"
 )
 
+// RunMode defines whether the application runs in demo or production mode
+type RunMode string
+
+const (
+	// DemoMode runs with local directories and no special permissions
+	DemoMode RunMode = "demo"
+	// ProductionMode runs with /opt/ontree directories and service management
+	ProductionMode RunMode = "production"
+)
+
 // Config holds all configuration settings for the application
 type Config struct {
+	// RunMode determines paths and behavior (demo or production)
+	RunMode RunMode `toml:"run_mode"`
+
 	// AppsDir is the directory where applications are stored
 	AppsDir string `toml:"apps_dir"`
 
@@ -46,17 +58,14 @@ type Config struct {
 	UptimeKumaBaseURL string `toml:"uptime_kuma_base_url"` // Base URL for Uptime Kuma API
 }
 
-// GetSharedPath returns the base path for shared resources based on the platform
+// GetSharedPath returns the base path for shared resources based on the run mode
 func GetSharedPath() string {
-	switch runtime.GOOS {
-	case "linux":
-		return "/opt/ontree/shared"
-	case "darwin":
-		// On macOS, use a path relative to the current directory/binary
-		return "./shared"
-	default:
+	// Check for run mode environment variable
+	if os.Getenv("TREEOS_RUN_MODE") == "demo" {
 		return "./shared"
 	}
+	// Production mode
+	return "/opt/ontree/shared"
 }
 
 // GetSharedOllamaPath returns the path to the shared Ollama models directory
@@ -69,24 +78,30 @@ func GetSharedOllamaPath() string {
 	return filepath.Join(base, "ollama")
 }
 
-// defaultConfig returns the default configuration based on the platform
+// defaultConfig returns the default configuration based on the run mode
 func defaultConfig() *Config {
+	// Determine run mode from environment or default to production
+	runMode := ProductionMode
+	if os.Getenv("TREEOS_RUN_MODE") == "demo" {
+		runMode = DemoMode
+	}
+
 	config := &Config{
-		DatabasePath:      "ontree.db",
+		RunMode:           runMode,
 		ListenAddr:        DefaultPort,
 		PostHogHost:       "https://app.posthog.com",
 		MonitoringEnabled: true, // Enabled by default
 		AutoUpdateEnabled: true,
 	}
 
-	// Platform-specific defaults for AppsDir
-	switch runtime.GOOS {
-	case "linux":
+	// Set paths based on run mode
+	if runMode == DemoMode {
+		config.AppsDir = "./apps"
+		config.DatabasePath = "./ontree.db"
+	} else {
+		// Production mode
 		config.AppsDir = "/opt/ontree/apps"
-	case "darwin":
-		config.AppsDir = "./apps"
-	default:
-		config.AppsDir = "./apps"
+		config.DatabasePath = "/opt/ontree/ontree.db"
 	}
 
 	return config
@@ -98,10 +113,29 @@ func Load() (*Config, error) {
 	config := defaultConfig()
 
 	// Try to load from config.toml if it exists
-	configPath := "config.toml"
+	configPath := os.Getenv("ONTREE_CONFIG_PATH")
+	if configPath == "" {
+		configPath = "config.toml"
+	}
 	if _, err := os.Stat(configPath); err == nil {
 		if _, err := toml.DecodeFile(configPath, config); err != nil {
 			return nil, fmt.Errorf("failed to decode config file: %w", err)
+		}
+	}
+
+	// Override run mode if set via environment
+	if runMode := os.Getenv("TREEOS_RUN_MODE"); runMode != "" {
+		if runMode == "demo" {
+			config.RunMode = DemoMode
+			// Update default paths for demo mode if not already set
+			if config.AppsDir == "/opt/ontree/apps" {
+				config.AppsDir = "./apps"
+			}
+			if config.DatabasePath == "/opt/ontree/ontree.db" {
+				config.DatabasePath = "./ontree.db"
+			}
+		} else {
+			config.RunMode = ProductionMode
 		}
 	}
 
@@ -183,8 +217,19 @@ func (c *Config) GetAppsDir() string {
 // String returns a string representation of the configuration
 func (c *Config) String() string {
 	var parts []string
+	parts = append(parts, fmt.Sprintf("RunMode: %s", c.RunMode))
 	parts = append(parts, fmt.Sprintf("AppsDir: %s", c.AppsDir))
 	parts = append(parts, fmt.Sprintf("DatabasePath: %s", c.DatabasePath))
 	parts = append(parts, fmt.Sprintf("ListenAddr: %s", c.ListenAddr))
 	return strings.Join(parts, ", ")
+}
+
+// IsDemo returns true if running in demo mode
+func (c *Config) IsDemo() bool {
+	return c.RunMode == DemoMode
+}
+
+// IsProduction returns true if running in production mode
+func (c *Config) IsProduction() bool {
+	return c.RunMode == ProductionMode
 }

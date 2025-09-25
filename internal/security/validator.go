@@ -2,6 +2,7 @@ package security
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -133,8 +134,17 @@ func (v *Validator) validateCapabilities(serviceName string, service ServiceConf
 
 // validateBindMounts checks that all bind mounts follow the required path structure
 func (v *Validator) validateBindMounts(serviceName string, service ServiceConfig) error {
-	allowedPrefix := fmt.Sprintf("/opt/ontree/apps/mount/%s/", v.appName)
-	requiredPrefix := fmt.Sprintf("/opt/ontree/apps/mount/%s/%s/", v.appName, serviceName)
+	// In demo mode, allow relative paths
+	isDemo := os.Getenv("TREEOS_RUN_MODE") == "demo"
+
+	var allowedPrefix, requiredPrefix string
+	if isDemo {
+		allowedPrefix = fmt.Sprintf("./apps/mount/%s/", v.appName)
+		requiredPrefix = fmt.Sprintf("./apps/mount/%s/%s/", v.appName, serviceName)
+	} else {
+		allowedPrefix = fmt.Sprintf("/opt/ontree/apps/mount/%s/", v.appName)
+		requiredPrefix = fmt.Sprintf("/opt/ontree/apps/mount/%s/%s/", v.appName, serviceName)
+	}
 	sharedPath := config.GetSharedPath()
 
 	for _, volume := range service.Volumes {
@@ -179,12 +189,31 @@ func (v *Validator) validateBindMounts(serviceName string, service ServiceConfig
 							}
 						}
 					} else if strings.HasPrefix(hostPath, ".") {
-						// For relative paths, only allow ./shared/*
-						if !strings.HasPrefix(hostPath, "./shared/") {
-							return ValidationError{
-								Service: serviceName,
-								Rule:    "bind mount path",
-								Detail:  fmt.Sprintf("bind mount path '%s' is not allowed. Use named volumes, absolute paths within '%s', or './shared/*'", hostPath, allowedPrefix),
+						// For relative paths in demo mode, check against demo allowed paths
+						if isDemo {
+							if !strings.HasPrefix(hostPath, allowedPrefix) && !strings.HasPrefix(hostPath, "./shared/") {
+								return ValidationError{
+									Service: serviceName,
+									Rule:    "bind mount path",
+									Detail:  fmt.Sprintf("bind mount path '%s' is not allowed. Use named volumes, paths within '%s', or './shared/*'", hostPath, allowedPrefix),
+								}
+							}
+							// Check naming scheme for non-shared paths
+							if !strings.HasPrefix(hostPath, "./shared/") && !strings.HasPrefix(hostPath, requiredPrefix) {
+								return ValidationError{
+									Service: serviceName,
+									Rule:    "bind mount naming scheme",
+									Detail:  fmt.Sprintf("bind mount path '%s' must follow the pattern '%s'", hostPath, requiredPrefix),
+								}
+							}
+						} else {
+							// In production mode, only allow ./shared/*
+							if !strings.HasPrefix(hostPath, "./shared/") {
+								return ValidationError{
+									Service: serviceName,
+									Rule:    "bind mount path",
+									Detail:  fmt.Sprintf("bind mount path '%s' is not allowed. Use named volumes, absolute paths within '%s', or './shared/*'", hostPath, allowedPrefix),
+								}
 							}
 						}
 					}
@@ -226,12 +255,31 @@ func (v *Validator) validateBindMounts(serviceName string, service ServiceConfig
 							}
 						}
 					} else if strings.HasPrefix(source, ".") {
-						// For relative paths, only allow ./shared/*
-						if !strings.HasPrefix(source, "./shared/") {
-							return ValidationError{
-								Service: serviceName,
-								Rule:    "bind mount path",
-								Detail:  fmt.Sprintf("bind mount path '%s' is not allowed. Use named volumes, absolute paths within '%s', or './shared/*'", source, allowedPrefix),
+						// For relative paths in demo mode, check against demo allowed paths
+						if isDemo {
+							if !strings.HasPrefix(source, allowedPrefix) && !strings.HasPrefix(source, "./shared/") {
+								return ValidationError{
+									Service: serviceName,
+									Rule:    "bind mount path",
+									Detail:  fmt.Sprintf("bind mount path '%s' is not allowed. Use named volumes, paths within '%s', or './shared/*'", source, allowedPrefix),
+								}
+							}
+							// Check naming scheme for non-shared paths
+							if !strings.HasPrefix(source, "./shared/") && !strings.HasPrefix(source, requiredPrefix) {
+								return ValidationError{
+									Service: serviceName,
+									Rule:    "bind mount naming scheme",
+									Detail:  fmt.Sprintf("bind mount path '%s' must follow the pattern '%s'", source, requiredPrefix),
+								}
+							}
+						} else {
+							// In production mode, only allow ./shared/*
+							if !strings.HasPrefix(source, "./shared/") {
+								return ValidationError{
+									Service: serviceName,
+									Rule:    "bind mount path",
+									Detail:  fmt.Sprintf("bind mount path '%s' is not allowed. Use named volumes, absolute paths within '%s', or './shared/*'", source, allowedPrefix),
+								}
 							}
 						}
 					}

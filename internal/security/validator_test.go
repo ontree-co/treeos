@@ -1,6 +1,7 @@
 package security
 
 import (
+	"os"
 	"strings"
 	"testing"
 )
@@ -478,6 +479,81 @@ services:
 					t.Error("Expected validation to fail but it passed")
 				} else if !strings.Contains(err.Error(), tt.errorMsg) {
 					t.Errorf("Expected error containing '%s', got: %v", tt.errorMsg, err)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Expected validation to pass but got error: %v", err)
+				}
+			}
+		})
+	}
+}
+
+func TestValidateBindMounts_DemoMode(t *testing.T) {
+	// Set demo mode environment variable
+	oldEnv := os.Getenv("TREEOS_RUN_MODE")
+	os.Setenv("TREEOS_RUN_MODE", "demo")
+	defer os.Setenv("TREEOS_RUN_MODE", oldEnv)
+
+	tests := []struct {
+		name        string
+		appName     string
+		yamlContent string
+		shouldFail  bool
+		errorMsg    string
+	}{
+		{
+			name:    "valid bind mount with demo mode relative paths",
+			appName: "test-app",
+			yamlContent: `
+version: "3.8"
+services:
+  web:
+    image: nginx:latest
+    volumes:
+      - ./apps/mount/test-app/web/data:/usr/share/nginx/html
+`,
+			shouldFail: false,
+		},
+		{
+			name:    "invalid bind mount even in demo mode",
+			appName: "test-app",
+			yamlContent: `
+version: "3.8"
+services:
+  web:
+    image: nginx:latest
+    volumes:
+      - /etc/passwd:/etc/passwd:ro
+`,
+			shouldFail: true,
+			errorMsg:   "is not allowed",
+		},
+		{
+			name:    "shared ollama path in demo mode",
+			appName: "test-app",
+			yamlContent: `
+version: "3.8"
+services:
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ./shared/ollama:/root/.ollama
+`,
+			shouldFail: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			validator := NewValidator(tt.appName)
+			err := validator.ValidateCompose([]byte(tt.yamlContent))
+
+			if tt.shouldFail {
+				if err == nil {
+					t.Error("Expected validation to fail but it passed")
+				} else if !strings.Contains(err.Error(), tt.errorMsg) {
+					t.Errorf("Expected error containing \"%s\", got: %v", tt.errorMsg, err)
 				}
 			} else {
 				if err != nil {

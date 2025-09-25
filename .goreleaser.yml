@@ -53,9 +53,18 @@ archives:
       {{- else if eq .Arch "386" }}i386
       {{- else }}{{ .Arch }}{{ end }}
       {{- if .Arm }}v{{ .Arm }}{{ end }}
-    # Only include the binaries, no additional files
+    # Include setup files with the binary
     files:
-      - none*
+      - src: setup-production.sh
+        dst: setup-production.sh
+      - src: treeos.service
+        dst: treeos.service
+      - src: com.ontree.treeos.plist
+        dst: com.ontree.treeos.plist
+      - src: README.setup.md
+        dst: README.md
+        info:
+          mode: 0644
 
 checksum:
   name_template: 'checksums.txt'
@@ -94,19 +103,33 @@ release:
   mode: append
   footer: |
     ## Installation
-    
-    Download the appropriate binary for your platform from the assets below.
-    
-    ### Linux (AMD64)
+
+    Download the appropriate package for your platform from the assets below.
+
+    ### Quick Start (Demo Mode)
     ```bash
-    wget https://github.com/stefanmunz/treeos/releases/download/{{ .Tag }}/treeos_{{ .Version }}_linux_x86_64.tar.gz
-    tar -xzf treeos_{{ .Version }}_linux_x86_64.tar.gz
-    sudo mv treeos /usr/local/bin/
+    # Extract the package
+    tar -xzf treeos_{{ .Version }}_<platform>.tar.gz
+    cd treeos_{{ .Version }}_<platform>
+
+    # Run in demo mode (uses local directories)
+    ./treeos --demo
     ```
-    
-    ### macOS (ARM64 - Apple Silicon)
+
+    ### Production Installation
     ```bash
-    wget https://github.com/stefanmunz/treeos/releases/download/{{ .Tag }}/treeos_{{ .Version }}_darwin_arm64.tar.gz
-    tar -xzf treeos_{{ .Version }}_darwin_arm64.tar.gz
-    sudo mv treeos /usr/local/bin/
+    # Extract the package
+    tar -xzf treeos_{{ .Version }}_<platform>.tar.gz
+    cd treeos_{{ .Version }}_<platform>
+
+    # Run the setup script (requires sudo)
+    sudo ./setup-production.sh
     ```
+
+    The setup script will:
+    - Create the `ontree` user
+    - Set up directories at `/opt/ontree`
+    - Install the binary
+    - Configure automatic startup via systemd (Linux) or launchd (macOS)
+
+    See the included README.md for detailed instructions.

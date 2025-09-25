@@ -160,7 +160,12 @@ func (s *Server) sendLogsFromFiles(w http.ResponseWriter, source string, limit s
 	isDevelopment := os.Getenv("TREEOS_ENV") == "development" || os.Getenv("DEBUG") == "true"
 	logDir := "./logs"
 	if !isDevelopment {
-		logDir = "/opt/ontree/logs" // Keep production path for backward compatibility
+		// Check if we're in demo mode
+		if os.Getenv("TREEOS_RUN_MODE") == "demo" {
+			logDir = "./logs"
+		} else {
+			logDir = "/opt/ontree/logs" // Production path
+		}
 	}
 	var logs []map[string]interface{}
 

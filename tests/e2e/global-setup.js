@@ -63,9 +63,9 @@ module.exports = async () => {
   if (!fs.existsSync(serverPath)) {
     throw new Error(`Server binary not found at ${serverPath}. Please run 'make build' first.`);
   }
-  execSync(`LISTEN_ADDR=:${TEST_PORT} nohup ${serverPath} > server.log 2>&1 &`, { 
+  execSync(`nohup ${serverPath} --demo -p ${TEST_PORT} > server.log 2>&1 &`, {
     cwd: path.join(__dirname, '..', '..'),
-    shell: true 
+    shell: true
   });
   console.log(`🟢 Started server on port ${TEST_PORT}`);
   
