@@ -88,8 +88,8 @@ This is because OnTree automatically converts application identifiers to lowerca
 
 You can control the application from the UI:
 
-- **Stop**: Click the "Stop" button to stop all services. This executes `docker-compose down` which stops and removes containers but preserves volumes.
-- **Start**: Click the "Start" button to start all services again. This executes `docker-compose up -d`.
+- **Stop**: Click the "Stop" button to stop all services. This executes `podman compose down` which stops and removes containers but preserves volumes.
+- **Start**: Click the "Start" button to start all services again. This executes `podman compose up -d`.
 
 The stop/start operations use the `COMPOSE_PROJECT_NAME` from the `.env` file to ensure the correct containers are managed.
 

@@ -90,7 +90,7 @@ Start Caddy:
 sudo systemctl start caddy
 
 # Or Docker
-docker-compose up -d
+podman compose up -d
 ```
 
 Verify the admin API is accessible:

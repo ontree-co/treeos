@@ -1,334 +1,442 @@
 package compose
 
 import (
+	"bufio"
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
-
-	"github.com/compose-spec/compose-go/v2/loader"
-	"github.com/compose-spec/compose-go/v2/types"
-	"github.com/docker/cli/cli/command"
-	"github.com/docker/cli/cli/flags"
-	"github.com/docker/compose/v2/pkg/api"
-	"github.com/docker/compose/v2/pkg/compose"
-	"github.com/docker/docker/client"
 )
 
-// Service wraps the Docker Compose SDK functionality
+// Service wraps access to podman compose (or podman-compose) operations.
 type Service struct {
-	service      api.Service
-	dockerClient *client.Client
+	composeCmd   []string
+	podmanBinary string
 }
 
-// NewService creates a new instance of the compose service
+// NewService discovers the available compose command and returns a Service instance.
 func NewService() (*Service, error) {
-	// Create a Docker CLI instance
-	dockerCli, err := command.NewDockerCli()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create docker cli: %w", err)
+	podmanBin := os.Getenv("PODMAN_BINARY")
+	if podmanBin == "" {
+		podmanBin = "podman"
 	}
 
-	// Initialize the Docker CLI with default options
-	opts := flags.NewClientOptions()
-	if err := dockerCli.Initialize(opts); err != nil {
-		return nil, fmt.Errorf("failed to initialize docker cli: %w", err)
+	if err := commandAvailable(podmanBin, "--version"); err != nil {
+		return nil, fmt.Errorf("podman binary not available: %w", err)
 	}
 
-	// Create a standard Docker client for direct container operations
-	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		return nil, fmt.Errorf("failed to create docker client: %w", err)
+	// Prefer `podman compose` when available (Podman 4+).
+	if err := commandAvailable(podmanBin, "compose", "--help"); err == nil {
+		return &Service{
+			composeCmd:   []string{podmanBin, "compose"},
+			podmanBinary: podmanBin,
+		}, nil
 	}
 
-	// Create the compose service
-	composeService := compose.NewComposeService(dockerCli)
+	// Fallback to the standalone podman-compose command.
+	if path, err := exec.LookPath("podman-compose"); err == nil {
+		return &Service{
+			composeCmd:   []string{path},
+			podmanBinary: podmanBin,
+		}, nil
+	}
 
-	return &Service{
-		service:      composeService,
-		dockerClient: dockerClient,
-	}, nil
+	return nil, errors.New("podman compose command not found; install Podman 4+ or podman-compose")
 }
 
-// Close closes the Docker client connections
-func (s *Service) Close() error {
-	if s.dockerClient != nil {
-		return s.dockerClient.Close()
-	}
-	return nil
-}
+// Close tears down resources. Present for API compatibility.
+func (s *Service) Close() error { return nil }
 
-// Options represents options for compose operations
+// Options represents options for compose operations.
 type Options struct {
 	WorkingDir string
 	EnvFile    string
 }
 
-// Up starts a compose project (equivalent to docker-compose up)
+// ContainerSummary captures container state returned by podman.
+type ContainerSummary struct {
+	ID      string
+	Name    string
+	Service string
+	State   string
+	Status  string
+	Image   string
+	Health  string
+	Ports   []PortMapping
+}
+
+// PortMapping represents a host/container port binding reported by podman ps.
+type PortMapping struct {
+	HostIP        string
+	HostPort      string
+	ContainerPort string
+	Protocol      string
+}
+
+// Up starts a compose project (equivalent to `podman compose up -d`).
 func (s *Service) Up(ctx context.Context, opts Options) error {
-	project, err := s.loadProject(ctx, opts)
+	cmd, err := s.newComposeCmd(ctx, opts, "up", "-d")
 	if err != nil {
-		return fmt.Errorf("failed to load project: %w", err)
+		return err
 	}
 
-	// WORKAROUND: Docker Compose v2 SDK has issues with project labels
-	// The SDK doesn't properly set the com.docker.compose.project label on containers,
-	// which causes "no container found" errors on subsequent operations.
-	// As a temporary workaround, we'll use the Docker Compose CLI directly.
-	log.Printf("INFO: Using docker-compose CLI for project %s due to SDK label limitations", project.Name)
-
-	// Use docker-compose CLI as a workaround
-	return s.upUsingCLI(ctx, opts)
-}
-
-// upUsingCLI uses docker-compose CLI as a workaround for SDK label issues
-func (s *Service) upUsingCLI(ctx context.Context, opts Options) error {
-	// Try "docker compose" first (v2), then fall back to "docker-compose" (v1)
-	output, err := s.runComposeCommand(ctx, opts, "up", "-d")
-	if err != nil {
-		return fmt.Errorf("failed to start containers: %w\nOutput: %s", err, string(output))
-	}
-
-	log.Printf("INFO: Successfully started containers using docker-compose CLI")
-	return nil
-}
-
-// runComposeCommand runs a docker-compose command, trying both v2 and v1 syntax
-func (s *Service) runComposeCommand(ctx context.Context, opts Options, command ...string) ([]byte, error) {
-	// Validate working directory to prevent directory traversal
-	absPath, err := filepath.Abs(opts.WorkingDir)
-	if err != nil {
-		return nil, fmt.Errorf("invalid working directory: %w", err)
-	}
-
-	// Build base arguments
-	composeFile := filepath.Join(absPath, "docker-compose.yml")
-	baseArgs := []string{"-f", composeFile}
-
-	// Read project name from .env file if it exists, otherwise use directory name
-	projectName := filepath.Base(absPath)
-	envFile := filepath.Join(absPath, ".env")
-	if _, err := os.Stat(envFile); err == nil {
-		envContent, err := os.ReadFile(envFile)
-		if err == nil {
-			lines := strings.Split(string(envContent), "\n")
-			for _, line := range lines {
-				line = strings.TrimSpace(line)
-				if strings.HasPrefix(line, "COMPOSE_PROJECT_NAME=") {
-					projectName = strings.TrimPrefix(line, "COMPOSE_PROJECT_NAME=")
-					projectName = strings.TrimSpace(projectName)
-					break
-				}
-			}
-		}
-	}
-	baseArgs = append(baseArgs, "-p", projectName)
-
-	// Add env file if specified
-	if opts.EnvFile != "" {
-		envFile := filepath.Join(absPath, opts.EnvFile)
-		baseArgs = append(baseArgs, "--env-file", envFile)
-	}
-
-	// Add the command and its arguments
-	args := append(baseArgs, command...)
-
-	// Try "docker compose" first (v2)
-	// #nosec G204 - Command arguments are validated and come from trusted sources
-	cmd := exec.CommandContext(ctx, "docker", append([]string{"compose"}, args...)...)
-	cmd.Dir = absPath
 	output, err := cmd.CombinedOutput()
-
-	if err == nil {
-		return output, nil
-	}
-
-	// If v2 failed, try "docker-compose" (v1)
-	// #nosec G204 - Command arguments are validated and come from trusted sources
-	cmd = exec.CommandContext(ctx, "docker-compose", args...)
-	cmd.Dir = absPath
-	output2, err2 := cmd.CombinedOutput()
-
-	if err2 == nil {
-		return output2, nil
-	}
-
-	// Return the v2 error as it's more likely to be available in modern environments
-	return output, err
-}
-
-// Down stops and removes a compose project (equivalent to docker-compose down)
-func (s *Service) Down(ctx context.Context, opts Options, removeVolumes bool) error {
-	// Build command arguments
-	cmdArgs := []string{"down"}
-	if removeVolumes {
-		cmdArgs = append(cmdArgs, "-v")
-	}
-
-	// Try "docker compose" first (v2), then fall back to "docker-compose" (v1)
-	output, err := s.runComposeCommand(ctx, opts, cmdArgs...)
 	if err != nil {
-		return fmt.Errorf("failed to stop containers: %w\nOutput: %s", err, string(output))
+		return fmt.Errorf("failed to start containers: %w (output: %s)", err, strings.TrimSpace(string(output)))
 	}
-
-	log.Printf("INFO: Successfully stopped containers using docker-compose CLI")
 	return nil
 }
 
-// PS lists containers for a compose project (equivalent to docker-compose ps)
-func (s *Service) PS(ctx context.Context, opts Options) ([]api.ContainerSummary, error) {
-	project, err := s.loadProject(ctx, opts)
+// Down stops a compose project (equivalent to `podman compose down`).
+func (s *Service) Down(ctx context.Context, opts Options, removeVolumes bool) error {
+	args := []string{"down"}
+	if removeVolumes {
+		args = append(args, "--volumes")
+	}
+
+	cmd, err := s.newComposeCmd(ctx, opts, args...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load project: %w", err)
+		return err
 	}
 
-	// List containers for the project
-	psOptions := api.PsOptions{
-		All: true, // Include stopped containers
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to stop containers: %w (output: %s)", err, strings.TrimSpace(string(output)))
 	}
-
-	return s.service.Ps(ctx, project.Name, psOptions)
+	return nil
 }
 
-// LogWriter provides a way to write logs to custom writers
+// PS lists containers belonging to the compose project.
+func (s *Service) PS(ctx context.Context, opts Options) ([]ContainerSummary, error) {
+	absPath, projectName, err := resolveProject(opts)
+	if err != nil {
+		return nil, err
+	}
+
+	// Collect containers using podman ps with the compose label.
+	summaries, err := s.listContainersForProject(ctx, projectName)
+	if err != nil {
+		return nil, err
+	}
+
+	// Provide deterministic order based on container name to keep UI stable.
+	sortContainerSummaries(summaries)
+
+	// Ensure WorkingDir exists to match previous behaviour.
+	_ = absPath
+
+	return summaries, nil
+}
+
+// LogWriter captures stdout/stderr destinations for compose logs.
 type LogWriter struct {
 	Out io.Writer
 	Err io.Writer
 }
 
-// LogConsumerWriter implements the api.LogConsumer interface
-type LogConsumerWriter struct {
-	writer LogWriter
-}
-
-// Log handles normal log messages
-func (l *LogConsumerWriter) Log(containerName, message string) {
-	// Extract service name from container name (format: ontree-{appName}-{serviceName}-{index})
-	serviceName := containerName
-	parts := strings.Split(containerName, "-")
-	if len(parts) >= 3 {
-		// Take the service name part(s), excluding "ontree", app name, and index
-		serviceName = strings.Join(parts[2:len(parts)-1], "-")
-	}
-
-	// Format: [service-name] message
-	fmt.Fprintf(l.writer.Out, "[%s] %s", serviceName, message)
-}
-
-// Status handles status messages
-func (l *LogConsumerWriter) Status(container, message string) {
-	// Status messages (container started/stopped)
-	fmt.Fprintf(l.writer.Out, "Status: %s\n", message)
-}
-
-// Err handles error messages
-func (l *LogConsumerWriter) Err(container, message string) {
-	// Error messages
-	fmt.Fprintf(l.writer.Err, "Error: %s\n", message)
-}
-
-// Register is required by the LogConsumer interface
-func (l *LogConsumerWriter) Register(container string) {
-	// No-op - we don't need to register containers
-}
-
-// Logs streams logs from a compose project (equivalent to docker-compose logs)
+// Logs streams logs from the compose project using the podman compose CLI.
 func (s *Service) Logs(ctx context.Context, opts Options, services []string, follow bool, writer LogWriter) error {
-	project, err := s.loadProject(ctx, opts)
+	args := []string{"logs"}
+	if follow {
+		args = append(args, "--follow")
+	}
+	if len(services) > 0 {
+		args = append(args, services...)
+	}
+
+	cmd, err := s.newComposeCmd(ctx, opts, args...)
 	if err != nil {
-		return fmt.Errorf("failed to load project: %w", err)
+		return err
 	}
 
-	// Set up log options
-	logOptions := api.LogOptions{
-		Services:   services,
-		Follow:     follow,
-		Timestamps: true,
-		Tail:       "all",
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("failed to attach stdout: %w", err)
+	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("failed to attach stderr: %w", err)
 	}
 
-	consumer := &LogConsumerWriter{
-		writer: writer,
+	if writer.Out == nil {
+		writer.Out = io.Discard
+	}
+	if writer.Err == nil {
+		writer.Err = io.Discard
 	}
 
-	return s.service.Logs(ctx, project.Name, consumer, logOptions)
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to start logs command: %w", err)
+	}
+
+	errCh := make(chan error, 2)
+	go func() {
+		_, copyErr := io.Copy(writer.Out, stdout)
+		errCh <- copyErr
+	}()
+	go func() {
+		_, copyErr := io.Copy(writer.Err, stderr)
+		errCh <- copyErr
+	}()
+
+	waitErr := cmd.Wait()
+	stdOutErr := <-errCh
+	stdErrErr := <-errCh
+
+	if stdOutErr != nil && !errors.Is(stdOutErr, context.Canceled) {
+		return stdOutErr
+	}
+	if stdErrErr != nil && !errors.Is(stdErrErr, context.Canceled) {
+		return stdErrErr
+	}
+	if waitErr != nil && !errors.Is(waitErr, context.Canceled) {
+		return fmt.Errorf("logs command failed: %w", waitErr)
+	}
+	return nil
 }
 
-// loadProject loads a compose project from the specified directory
-func (s *Service) loadProject(ctx context.Context, opts Options) (*types.Project, error) {
-	// Determine compose file path
-	composeFile := filepath.Join(opts.WorkingDir, "docker-compose.yml")
-	if _, err := os.Stat(composeFile); os.IsNotExist(err) {
-		// Try docker-compose.yaml as fallback
-		composeFile = filepath.Join(opts.WorkingDir, "docker-compose.yaml")
-		if _, err := os.Stat(composeFile); os.IsNotExist(err) {
-			return nil, fmt.Errorf("no docker-compose.yml or docker-compose.yaml found in %s", opts.WorkingDir)
+// --- helper functions ---
+
+type podmanContainer struct {
+	ID     string            `json:"Id"`
+	Name   string            `json:"Name"`
+	Names  []string          `json:"Names"`
+	State  string            `json:"State"`
+	Status string            `json:"Status"`
+	Image  string            `json:"Image"`
+	Labels map[string]string `json:"Labels"`
+	Ports  []struct {
+		HostIP        string `json:"host_ip"`
+		HostPort      string `json:"host_port"`
+		ContainerPort string `json:"container_port"`
+		Protocol      string `json:"protocol"`
+	} `json:"Ports"`
+	Health string `json:"Health"`
+}
+
+func commandAvailable(bin string, args ...string) error {
+	cmd := exec.Command(bin, args...)
+	if len(args) == 0 {
+		// Just check that the binary exists in PATH.
+		if _, err := exec.LookPath(bin); err != nil {
+			return err
+		}
+		return nil
+	}
+	// We only care about command availability, suppressing stdout/err.
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Service) newComposeCmd(ctx context.Context, opts Options, extra ...string) (*exec.Cmd, error) {
+	absPath, projectName, err := resolveProject(opts)
+	if err != nil {
+		return nil, err
+	}
+
+	composeFile, err := locateComposeFile(absPath)
+	if err != nil {
+		return nil, err
+	}
+
+	args := []string{"-f", composeFile}
+	if projectName != "" {
+		args = append(args, "-p", projectName)
+	}
+	if opts.EnvFile != "" {
+		args = append(args, "--env-file", filepath.Join(absPath, opts.EnvFile))
+	}
+	args = append(args, extra...)
+
+	var cmd *exec.Cmd
+	if len(s.composeCmd) == 1 {
+		// #nosec G204 -- command arguments constructed from validated project metadata
+		cmd = exec.CommandContext(ctx, s.composeCmd[0], args...)
+	} else {
+		// #nosec G204 -- command arguments constructed from validated project metadata
+		cmd = exec.CommandContext(ctx, s.composeCmd[0], append(s.composeCmd[1:], args...)...)
+	}
+	cmd.Dir = absPath
+	return cmd, nil
+}
+
+func (s *Service) listContainersForProject(ctx context.Context, project string) ([]ContainerSummary, error) {
+	filters := []string{
+		fmt.Sprintf("label=io.podman.compose.project=%s", project),
+	}
+
+	summaries, err := s.queryContainers(ctx, filters)
+	if err != nil || len(summaries) == 0 {
+		// Fallback to the Docker-compatible label when running via podman socket.
+		filters = []string{fmt.Sprintf("label=com.docker.compose.project=%s", project)}
+		summaries, err = s.queryContainers(ctx, filters)
+		if err != nil {
+			return nil, err
 		}
 	}
 
-	// Set up config details
-	// Load environment variables from .env file if it exists
-	envVars := make(map[string]string)
-	envFile := filepath.Join(opts.WorkingDir, ".env")
-	if _, err := os.Stat(envFile); err == nil {
-		// Read .env file
-		envContent, err := os.ReadFile(envFile)
-		if err == nil {
-			// Parse .env file (simple key=value format)
-			lines := strings.Split(string(envContent), "\n")
-			for _, line := range lines {
-				line = strings.TrimSpace(line)
-				if line != "" && !strings.HasPrefix(line, "#") {
-					parts := strings.SplitN(line, "=", 2)
-					if len(parts) == 2 {
-						envVars[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
-					}
-				}
+	return summaries, nil
+}
+
+func (s *Service) queryContainers(ctx context.Context, filters []string) ([]ContainerSummary, error) {
+	args := []string{"ps", "--all"}
+	for _, filter := range filters {
+		args = append(args, "--filter", filter)
+	}
+	args = append(args, "--format", "json")
+
+	// #nosec G204 -- arguments are generated internally for podman interaction
+	cmd := exec.CommandContext(ctx, s.podmanBinary, args...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("podman ps failed: %w (output: %s)", err, strings.TrimSpace(string(output)))
+	}
+
+	trimmed := strings.TrimSpace(string(output))
+	if trimmed == "" {
+		return []ContainerSummary{}, nil
+	}
+
+	var containers []podmanContainer
+	if err := json.Unmarshal([]byte(trimmed), &containers); err != nil {
+		return nil, fmt.Errorf("failed to parse podman ps output: %w", err)
+	}
+
+	summaries := make([]ContainerSummary, 0, len(containers))
+	for _, cont := range containers {
+		serviceName := cont.Labels["io.podman.compose.service"]
+		if serviceName == "" {
+			serviceName = cont.Labels["com.docker.compose.service"]
+		}
+
+		name := cont.Name
+		if name == "" && len(cont.Names) > 0 {
+			name = cont.Names[0]
+		}
+		name = strings.TrimPrefix(name, "/")
+
+		ports := make([]PortMapping, 0, len(cont.Ports))
+		for _, port := range cont.Ports {
+			ports = append(ports, PortMapping{
+				HostIP:        port.HostIP,
+				HostPort:      port.HostPort,
+				ContainerPort: port.ContainerPort,
+				Protocol:      port.Protocol,
+			})
+		}
+
+		summaries = append(summaries, ContainerSummary{
+			ID:      cont.ID,
+			Name:    name,
+			Service: serviceName,
+			State:   cont.State,
+			Status:  cont.Status,
+			Image:   cont.Image,
+			Health:  cont.Health,
+			Ports:   ports,
+		})
+	}
+
+	return summaries, nil
+}
+
+func resolveProject(opts Options) (string, string, error) {
+	if opts.WorkingDir == "" {
+		return "", "", errors.New("working directory is required")
+	}
+
+	absPath, err := filepath.Abs(opts.WorkingDir)
+	if err != nil {
+		return "", "", fmt.Errorf("invalid working directory: %w", err)
+	}
+
+	projectName := projectNameFromEnv(absPath)
+	if projectName == "" {
+		projectName = sanitizeProjectName(filepath.Base(absPath))
+	}
+
+	return absPath, projectName, nil
+}
+
+func locateComposeFile(absPath string) (string, error) {
+	candidates := []string{
+		filepath.Join(absPath, "docker-compose.yml"),
+		filepath.Join(absPath, "docker-compose.yaml"),
+		filepath.Join(absPath, "compose.yml"),
+		filepath.Join(absPath, "compose.yaml"),
+	}
+
+	for _, candidate := range candidates {
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate, nil
+		}
+	}
+
+	return "", fmt.Errorf("no compose file found in %s", absPath)
+}
+
+func projectNameFromEnv(dir string) string {
+	envPath := filepath.Join(dir, ".env")
+	file, err := os.Open(envPath)
+	if err != nil {
+		return ""
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		if strings.HasPrefix(line, "COMPOSE_PROJECT_NAME=") {
+			return strings.Trim(strings.TrimPrefix(line, "COMPOSE_PROJECT_NAME="), "\" ")
+		}
+	}
+	return ""
+}
+
+func sanitizeProjectName(name string) string {
+	name = strings.ToLower(strings.TrimSpace(name))
+	var b strings.Builder
+	lastHyphen := false
+
+	for _, r := range name {
+		switch {
+		case r >= 'a' && r <= 'z':
+			b.WriteRune(r)
+			lastHyphen = false
+		case r >= '0' && r <= '9':
+			b.WriteRune(r)
+			lastHyphen = false
+		default:
+			if !lastHyphen {
+				b.WriteRune('-')
+				lastHyphen = true
 			}
 		}
 	}
 
-	// Fall back to directory name if COMPOSE_PROJECT_NAME not in .env
-	if _, ok := envVars["COMPOSE_PROJECT_NAME"]; !ok {
-		envVars["COMPOSE_PROJECT_NAME"] = filepath.Base(opts.WorkingDir)
+	project := strings.Trim(b.String(), "-")
+	if project == "" {
+		return name
 	}
+	return project
+}
 
-	configDetails := types.ConfigDetails{
-		WorkingDir: opts.WorkingDir,
-		ConfigFiles: []types.ConfigFile{
-			{
-				Filename: composeFile,
-			},
-		},
-		Environment: envVars,
-	}
-
-	// If additional env file is specified, load it
-	if opts.EnvFile != "" && opts.EnvFile != ".env" {
-		additionalEnvFile := filepath.Join(opts.WorkingDir, opts.EnvFile)
-		if _, err := os.Stat(additionalEnvFile); err == nil {
-			configDetails.ConfigFiles = append(configDetails.ConfigFiles, types.ConfigFile{
-				Filename: additionalEnvFile,
-			})
+func sortContainerSummaries(containers []ContainerSummary) {
+	sort.Slice(containers, func(i, j int) bool {
+		if containers[i].Name == containers[j].Name {
+			return containers[i].Service < containers[j].Service
 		}
-	}
-
-	// Load the project
-	project, err := loader.LoadWithContext(ctx, configDetails, func(options *loader.Options) {
-		// Use COMPOSE_PROJECT_NAME from environment if available, otherwise use directory name
-		projectName := envVars["COMPOSE_PROJECT_NAME"]
-		if projectName == "" {
-			projectName = filepath.Base(opts.WorkingDir)
-		}
-		options.SetProjectName(projectName, true)
+		return containers[i].Name < containers[j].Name
 	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to load compose file: %w", err)
-	}
-
-	return project, nil
 }

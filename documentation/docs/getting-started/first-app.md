@@ -114,7 +114,7 @@ Open WebUI supports multiple model backends:
 
 2. **Configure in Open WebUI**:
    - Go to Settings → Models
-   - Add Ollama URL: `http://host.docker.internal:11434`
+   - Add Ollama URL: `http://host.containers.internal:11434`
    - Your models will appear automatically
 
 ### Features to Explore
@@ -163,7 +163,7 @@ Check the logs for errors:
 
 If using Ollama:
 1. Ensure Ollama is running on the host
-2. Use `http://host.docker.internal:11434` as the Ollama URL
+2. Use `http://host.containers.internal:11434` as the Ollama URL
 3. Check that models are pulled: `ollama list`
 
 ## What's Next?

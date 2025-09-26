@@ -1,5 +1,5 @@
-// Package docker provides Docker client functionality for managing containerized applications
-package docker
+// Package runtime provides container runtime abstractions for managing applications.
+package runtime
 
 // ServiceStatus represents the running status of a service
 type ServiceStatus string

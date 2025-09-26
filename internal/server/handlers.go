@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"log"
@@ -14,9 +15,11 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
 	"treeos/internal/caddy"
 	"treeos/internal/database"
 	"treeos/internal/ollama"
+	containerruntime "treeos/internal/runtime"
 	"treeos/internal/yamlutil"
 	"treeos/pkg/compose"
 
@@ -56,6 +59,23 @@ type serviceView struct {
 	StatusClass string
 	State       string
 	Ports       []string
+}
+
+func (s *Server) getAppDetailsForRequest(w http.ResponseWriter, r *http.Request, appName string) (*containerruntime.App, bool) {
+	app, err := s.getAppDetails(appName)
+	if err != nil {
+		if errors.Is(err, errRuntimeUnavailable) {
+			http.Error(w, "Container runtime not available", http.StatusServiceUnavailable)
+			return nil, false
+		}
+		if strings.Contains(err.Error(), "not found") {
+			http.NotFound(w, r)
+			return nil, false
+		}
+		http.Error(w, fmt.Sprintf("Failed to get app details: %v", err), http.StatusInternalServerError)
+		return nil, false
+	}
+	return app, true
 }
 
 type metadataView struct {
@@ -237,6 +257,9 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 			"node_description": nodeDescription,
 			"node_icon":        nodeIcon,
 		}
+		data["SystemCheckAutoRun"] = true
+		data["SystemCheckVisible"] = true
+		data["SystemCheckPanelID"] = "system-check-setup"
 
 		tmpl := s.templates["setup"]
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -253,6 +276,9 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 	data["FormData"] = map[string]string{
 		"node_name": "OnTree Node",
 	}
+	data["SystemCheckAutoRun"] = true
+	data["SystemCheckVisible"] = true
+	data["SystemCheckPanelID"] = "system-check-setup"
 
 	tmpl := s.templates["setup"]
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -382,19 +408,8 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 	// Get user from context
 	user := getUserFromContext(r.Context())
 
-	// Get app details
-	if s.dockerClient == nil {
-		http.Error(w, "Docker client not available", http.StatusServiceUnavailable)
-		return
-	}
-
-	app, err := s.dockerClient.GetAppDetails(s.config.AppsDir, appName)
-	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
-			http.NotFound(w, r)
-			return
-		}
-		http.Error(w, fmt.Sprintf("Failed to get app details: %v", err), http.StatusInternalServerError)
+	app, ok := s.getAppDetailsForRequest(w, r, appName)
+	if !ok {
 		return
 	}
 
@@ -464,16 +479,14 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 				}
 
 				// Add port information
-				if len(container.Publishers) > 0 {
-					// Use a map to track unique port mappings (ignoring IP version)
-					portMap := make(map[string]bool)
-					for _, pub := range container.Publishers {
-						if pub.PublishedPort > 0 && pub.TargetPort > 0 {
-							portStr := fmt.Sprintf("%d:%d", pub.PublishedPort, pub.TargetPort)
-							portMap[portStr] = true
+				if len(container.Ports) > 0 {
+					portMap := make(map[string]struct{})
+					for _, port := range container.Ports {
+						if port.HostPort != "" && port.ContainerPort != "" {
+							portStr := fmt.Sprintf("%s:%s", port.HostPort, port.ContainerPort)
+							portMap[portStr] = struct{}{}
 						}
 					}
-					// Convert map to sorted slice
 					ports := make([]string, 0, len(portMap))
 					for port := range portMap {
 						ports = append(ports, port)
@@ -526,7 +539,7 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 	// Don't pass messages to the template
 	var messages []interface{}
 
-	// Fetch app metadata from docker-compose.yml using yamlutil
+	// Fetch app metadata from container runtime-compose.yml using yamlutil
 	metadata, err := yamlutil.ReadComposeMetadata(app.Path)
 	hasMetadata := err == nil && metadata != nil
 	if err != nil {
@@ -695,15 +708,8 @@ func (s *Server) handleAppComposeEdit(w http.ResponseWriter, r *http.Request) {
 	appName := parts[2]
 	user := getUserFromContext(r.Context())
 
-	// Get app details
-	if s.dockerClient == nil {
-		http.Error(w, "Docker client not available", http.StatusServiceUnavailable)
-		return
-	}
-
-	appDetails, err := s.dockerClient.GetAppDetails(s.config.AppsDir, appName)
-	if err != nil {
-		http.Error(w, "App not found", http.StatusNotFound)
+	appDetails, ok := s.getAppDetailsForRequest(w, r, appName)
+	if !ok {
 		return
 	}
 
@@ -790,7 +796,14 @@ func (s *Server) handleAppComposeUpdate(w http.ResponseWriter, r *http.Request) 
 	// Validate docker-compose YAML syntax
 	if err := yamlutil.ValidateComposeFile(composeContent); err != nil {
 		// Show error in edit form
-		appDetails, _ := s.dockerClient.GetAppDetails(s.config.AppsDir, appName)
+		appDetails, detailErr := s.getAppDetails(appName)
+		if detailErr != nil {
+			log.Printf("Failed to load app details for %s during compose validation: %v", appName, detailErr)
+			appDetails = &containerruntime.App{
+				Name: appName,
+				Path: filepath.Join(s.config.AppsDir, appName),
+			}
+		}
 		data := s.baseTemplateData(user)
 		data["App"] = appDetails
 		data["ComposeContent"] = composeContent
@@ -812,7 +825,14 @@ func (s *Server) handleAppComposeUpdate(w http.ResponseWriter, r *http.Request) 
 		var appYml map[string]interface{}
 		if err := yaml.Unmarshal([]byte(appYmlContent), &appYml); err != nil {
 			// Show error in edit form
-			appDetails, _ := s.dockerClient.GetAppDetails(s.config.AppsDir, appName)
+			appDetails, detailErr := s.getAppDetails(appName)
+			if detailErr != nil {
+				log.Printf("Failed to load app details for %s during app.yml validation: %v", appName, detailErr)
+				appDetails = &containerruntime.App{
+					Name: appName,
+					Path: filepath.Join(s.config.AppsDir, appName),
+				}
+			}
 			data := s.baseTemplateData(user)
 			data["App"] = appDetails
 			data["ComposeContent"] = composeContent
@@ -831,9 +851,8 @@ func (s *Server) handleAppComposeUpdate(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Get app details
-	appDetails, err := s.dockerClient.GetAppDetails(s.config.AppsDir, appName)
-	if err != nil {
-		http.Error(w, "App not found", http.StatusNotFound)
+	appDetails, ok := s.getAppDetailsForRequest(w, r, appName)
+	if !ok {
 		return
 	}
 
@@ -916,15 +935,19 @@ func (s *Server) handleAppExpose(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get app details from docker
-	appDetails, err := s.dockerClient.GetAppDetails(s.config.AppsDir, appName)
+	// Get app details from container runtime
+	appDetails, err := s.getAppDetails(appName)
 	if err != nil {
 		log.Printf("Failed to get app details: %v", err)
-		session, err := s.sessionStore.Get(r, "ontree-session")
-		if err != nil {
-			log.Printf("Failed to get session: %v", err)
+		session, sessErr := s.sessionStore.Get(r, "ontree-session")
+		if sessErr != nil {
+			log.Printf("Failed to get session: %v", sessErr)
 		}
-		session.AddFlash("Failed to expose app: app not found", "error")
+		message := "Failed to expose app: app not found"
+		if errors.Is(err, errRuntimeUnavailable) {
+			message = "Failed to expose app: container runtime not available"
+		}
+		session.AddFlash(message, "error")
 		if err := session.Save(r, w); err != nil {
 			log.Printf("Failed to save session: %v", err)
 		}
@@ -1068,15 +1091,19 @@ func (s *Server) handleAppUnexpose(w http.ResponseWriter, r *http.Request) {
 
 	appName := parts[2]
 
-	// Get app details from docker
-	appDetails, err := s.dockerClient.GetAppDetails(s.config.AppsDir, appName)
+	// Get app details from container runtime
+	appDetails, err := s.getAppDetails(appName)
 	if err != nil {
 		log.Printf("Failed to get app details: %v", err)
-		session, err := s.sessionStore.Get(r, "ontree-session")
-		if err != nil {
-			log.Printf("Failed to get session: %v", err)
+		session, sessErr := s.sessionStore.Get(r, "ontree-session")
+		if sessErr != nil {
+			log.Printf("Failed to get session: %v", sessErr)
 		}
-		session.AddFlash("Failed to unexpose app: app not found", "error")
+		message := "Failed to unexpose app: app not found"
+		if errors.Is(err, errRuntimeUnavailable) {
+			message = "Failed to unexpose app: container runtime not available"
+		}
+		session.AddFlash(message, "error")
 		if err := session.Save(r, w); err != nil {
 			log.Printf("Failed to save session: %v", err)
 		}
@@ -1279,6 +1306,9 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	} else {
 		data["CurrentNodeIcon"] = "tree1.png" // Default icon
 	}
+	data["SystemCheckAutoRun"] = false
+	data["SystemCheckVisible"] = false
+	data["SystemCheckPanelID"] = "system-check-settings"
 
 	// Add current node name
 	if nodeName.Valid && nodeName.String != "" {
@@ -1442,7 +1472,6 @@ func (s *Server) handleSettingsUpdate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-
 	// Update database - try with update_channel and node_icon first
 	_, err = s.db.Exec(`
 		UPDATE system_setup
@@ -1536,11 +1565,15 @@ func (s *Server) handleAppStatusCheck(w http.ResponseWriter, r *http.Request) {
 
 	appName := parts[3]
 
-	// Get app details from docker
-	appDetails, err := s.dockerClient.GetAppDetails(s.config.AppsDir, appName)
+	// Get app details from container runtime
+	appDetails, err := s.getAppDetails(appName)
 	if err != nil {
 		w.Header().Set("Content-Type", "text/html")
-		_, _ = w.Write([]byte(`<div class="alert alert-warning">App not found</div>`))
+		message := `<div class="alert alert-warning">App not found</div>`
+		if errors.Is(err, errRuntimeUnavailable) {
+			message = `<div class="alert alert-warning">Container runtime not available. Try again once Podman is running.</div>`
+		}
+		_, _ = w.Write([]byte(message))
 		return
 	}
 
@@ -1697,15 +1730,24 @@ func (s *Server) handleAppContainers(w http.ResponseWriter, r *http.Request) {
 	// Use the app name as the project name (Docker Compose will use directory name)
 	projectName := appName
 
-	// Execute docker ps command with filter for the project
-	cmd := fmt.Sprintf(`docker ps --filter "label=com.docker.compose.project=%s" --format "table {{.Names}}\t{{.Status}}\t{{.Image}}"`, projectName)
+	// Execute podman ps command with filter for the project
+	cmd := fmt.Sprintf(`podman ps --filter "label=io.podman.compose.project=%s" --format "table {{.Names}}\t{{.Status}}\t{{.Image}}"`, projectName)
 
 	output, err := s.executeCommand(cmd)
-	if err != nil {
-		// If no containers found, check for single-service container
-		cmd = fmt.Sprintf(`docker ps --filter "name=^%s$" --format "table {{.Names}}\t{{.Status}}\t{{.Image}}"`, projectName)
+	trimmed := strings.TrimSpace(output)
+	if err != nil || trimmed == "" {
+		// Fallback to Docker-compatible label when running via podman socket
+		cmd = fmt.Sprintf(`podman ps --filter "label=com.docker.compose.project=%s" --format "table {{.Names}}\t{{.Status}}\t{{.Image}}"`, projectName)
 		output, err = s.executeCommand(cmd)
-		if err != nil {
+		trimmed = strings.TrimSpace(output)
+	}
+
+	if err != nil || trimmed == "" {
+		// If no containers found, check for single-service container by name
+		cmd = fmt.Sprintf(`podman ps --filter "name=^%s$" --format "table {{.Names}}\t{{.Status}}\t{{.Image}}"`, projectName)
+		output, err = s.executeCommand(cmd)
+		trimmed = strings.TrimSpace(output)
+		if err != nil || trimmed == "" {
 			w.Write([]byte(`<div class="text-muted">No running containers found</div>`))
 			return
 		}
@@ -1759,15 +1801,19 @@ func (s *Server) handleAppExposeTailscale(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Get app details from docker
-	appDetails, err := s.dockerClient.GetAppDetails(s.config.AppsDir, appName)
+	// Get app details from container runtime
+	appDetails, err := s.getAppDetails(appName)
 	if err != nil {
 		log.Printf("Failed to get app details: %v", err)
-		session, err := s.sessionStore.Get(r, "ontree-session")
-		if err != nil {
-			log.Printf("Failed to get session: %v", err)
+		session, sessErr := s.sessionStore.Get(r, "ontree-session")
+		if sessErr != nil {
+			log.Printf("Failed to get session: %v", sessErr)
 		}
-		session.AddFlash("Failed to expose app: app not found", "error")
+		message := "Failed to expose app: app not found"
+		if errors.Is(err, errRuntimeUnavailable) {
+			message = "Failed to expose app: container runtime not available"
+		}
+		session.AddFlash(message, "error")
 		if err := session.Save(r, w); err != nil {
 			log.Printf("Failed to save session: %v", err)
 		}
@@ -1805,7 +1851,7 @@ func (s *Server) handleAppExposeTailscale(w http.ResponseWriter, r *http.Request
 
 	log.Printf("[Tailscale Expose] Exposing app %s with hostname %s", appName, hostname)
 
-	// Modify docker-compose.yml to add Tailscale sidecar
+	// Modify compose file to add Tailscale sidecar
 	err = yamlutil.ModifyComposeForTailscale(appDetails.Path, appName, hostname, s.config.TailscaleAuthKey)
 	if err != nil {
 		log.Printf("[Tailscale Expose] Failed to modify compose file: %v", err)
@@ -1831,7 +1877,7 @@ func (s *Server) handleAppExposeTailscale(w http.ResponseWriter, r *http.Request
 
 	// Restart containers with new configuration
 	log.Printf("[Tailscale Expose] Restarting containers for app %s", appName)
-	cmd := fmt.Sprintf("cd %s && docker-compose down && docker-compose up -d", appDetails.Path)
+	cmd := fmt.Sprintf("cd '%s' && podman compose down && podman compose up -d", appDetails.Path)
 	output, err := s.executeCommand(cmd)
 	if err != nil {
 		log.Printf("[Tailscale Expose] Failed to restart containers: %v, output: %s", err, output)
@@ -1893,15 +1939,19 @@ func (s *Server) handleAppUnexposeTailscale(w http.ResponseWriter, r *http.Reque
 
 	appName := parts[2]
 
-	// Get app details from docker
-	appDetails, err := s.dockerClient.GetAppDetails(s.config.AppsDir, appName)
+	// Get app details from container runtime
+	appDetails, err := s.getAppDetails(appName)
 	if err != nil {
 		log.Printf("Failed to get app details: %v", err)
-		session, err := s.sessionStore.Get(r, "ontree-session")
-		if err != nil {
-			log.Printf("Failed to get session: %v", err)
+		session, sessErr := s.sessionStore.Get(r, "ontree-session")
+		if sessErr != nil {
+			log.Printf("Failed to get session: %v", sessErr)
 		}
-		session.AddFlash("Failed to unexpose app: app not found", "error")
+		message := "Failed to unexpose app: app not found"
+		if errors.Is(err, errRuntimeUnavailable) {
+			message = "Failed to unexpose app: container runtime not available"
+		}
+		session.AddFlash(message, "error")
 		if err := session.Save(r, w); err != nil {
 			log.Printf("Failed to save session: %v", err)
 		}
@@ -1942,13 +1992,13 @@ func (s *Server) handleAppUnexposeTailscale(w http.ResponseWriter, r *http.Reque
 	log.Printf("[Tailscale Unexpose] Removing Tailscale from app %s", appName)
 
 	// Stop containers first
-	cmd := fmt.Sprintf("cd %s && docker-compose down", appDetails.Path)
+	cmd := fmt.Sprintf("cd '%s' && podman compose down", appDetails.Path)
 	output, err := s.executeCommand(cmd)
 	if err != nil {
 		log.Printf("[Tailscale Unexpose] Warning: Failed to stop containers: %v, output: %s", err, output)
 	}
 
-	// Remove Tailscale sidecar from docker-compose.yml
+	// Remove Tailscale sidecar from container runtime-compose.yml
 	err = yamlutil.RestoreComposeFromTailscale(appDetails.Path)
 	if err != nil {
 		log.Printf("[Tailscale Unexpose] Failed to restore compose file: %v", err)
@@ -1974,7 +2024,7 @@ func (s *Server) handleAppUnexposeTailscale(w http.ResponseWriter, r *http.Reque
 
 	// Restart containers with original configuration
 	log.Printf("[Tailscale Unexpose] Restarting containers for app %s", appName)
-	cmd = fmt.Sprintf("cd %s && docker-compose up -d", appDetails.Path)
+	cmd = fmt.Sprintf("cd '%s' && podman compose up -d", appDetails.Path)
 	output, err = s.executeCommand(cmd)
 	if err != nil {
 		log.Printf("[Tailscale Unexpose] Failed to restart containers: %v, output: %s", err, output)

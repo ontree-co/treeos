@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -13,6 +14,7 @@ import (
 	"strings"
 
 	"treeos/internal/security"
+	"treeos/internal/systemcheck"
 	"treeos/internal/yamlutil"
 	"treeos/pkg/compose"
 )
@@ -50,6 +52,11 @@ type ServiceStatusDetail struct {
 	State  string   `json:"state,omitempty"`
 	Ports  []string `json:"ports,omitempty"`
 	Error  string   `json:"error,omitempty"`
+}
+
+type SystemCheckResponse struct {
+	Success bool                      `json:"success"`
+	Checks  []systemcheck.CheckResult `json:"checks"`
 }
 
 // handleCreateApp handles POST /api/apps
@@ -145,8 +152,12 @@ func (s *Server) handleCreateApp(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Automatically create and start containers if compose service is available
-	if s.composeSvc != nil {
+	// Attempt to start containers if compose service is available
+	if composeSvc, composeErr := s.getComposeService(); composeErr != nil {
+		if !errors.Is(composeErr, errComposeUnavailable) {
+			log.Printf("Compose service unavailable for app %s: %v", req.Name, composeErr)
+		}
+	} else {
 		log.Printf("Starting containers for newly created app: %s at path: %s", req.Name, appDir)
 
 		// Check if security bypass is enabled for this app
@@ -172,25 +183,21 @@ func (s *Server) handleCreateApp(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if shouldStart {
-			// Start the app using compose SDK
 			ctx := context.Background()
-			opts := compose.Options{
-				WorkingDir: appDir,
-			}
+			opts := compose.Options{WorkingDir: appDir}
 
-			// Check if .env file exists
-			envFile := filepath.Join(appDir, ".env")
-			if _, err := os.Stat(envFile); err == nil {
-				opts.EnvFile = ".env" // Just the filename, not the full path
+			if _, err := os.Stat(filepath.Join(appDir, ".env")); err == nil {
+				opts.EnvFile = ".env"
 			}
 
 			log.Printf("Calling compose.Up with WorkingDir: %s", opts.WorkingDir)
 
-			// Create and start the compose project
-			if err := s.composeSvc.Up(ctx, opts); err != nil {
+			if err := composeSvc.Up(ctx, opts); err != nil {
 				log.Printf("Failed to start containers for app %s: %v", req.Name, err)
+				if isRuntimeUnavailableError(err) {
+					s.markComposeUnhealthy()
+				}
 				// Don't fail app creation if containers can't be started
-				// User can manually start them later
 			} else {
 				log.Printf("Successfully started containers for app: %s", req.Name)
 			}
@@ -320,15 +327,20 @@ func (s *Server) handleAPIAppStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if compose service is available
-	if s.composeSvc == nil {
-		http.Error(w, "Compose service not available", http.StatusServiceUnavailable)
-		return
-	}
-
 	// Check if app exists
 	appDir := filepath.Join(s.config.AppsDir, appName)
 	composeFile := filepath.Join(appDir, "docker-compose.yml")
+
+	composeSvc, err := s.getComposeService()
+	if err != nil {
+		status := http.StatusServiceUnavailable
+		message := "Compose service not available"
+		if !errors.Is(err, errComposeUnavailable) {
+			message = fmt.Sprintf("Compose service error: %v", err)
+		}
+		http.Error(w, message, status)
+		return
+	}
 
 	// Read docker-compose.yml content
 	yamlContent, err := os.ReadFile(composeFile)
@@ -374,8 +386,11 @@ func (s *Server) handleAPIAppStart(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Start the compose project
-	if err := s.composeSvc.Up(ctx, opts); err != nil {
+	if err := composeSvc.Up(ctx, opts); err != nil {
 		log.Printf("Failed to start app %s: %v", appName, err)
+		if isRuntimeUnavailableError(err) {
+			s.markComposeUnhealthy()
+		}
 		http.Error(w, fmt.Sprintf("Failed to start app: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -412,12 +427,6 @@ func (s *Server) handleAPIAppStop(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if compose service is available
-	if s.composeSvc == nil {
-		http.Error(w, "Compose service not available", http.StatusServiceUnavailable)
-		return
-	}
-
 	// Check if app exists
 	appDir := filepath.Join(s.config.AppsDir, appName)
 	if _, err := os.Stat(appDir); os.IsNotExist(err) {
@@ -426,14 +435,28 @@ func (s *Server) handleAPIAppStop(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Stop the app using compose SDK (without removing volumes)
+	composeSvc, err := s.getComposeService()
+	if err != nil {
+		status := http.StatusServiceUnavailable
+		message := "Compose service not available"
+		if !errors.Is(err, errComposeUnavailable) {
+			message = fmt.Sprintf("Compose service error: %v", err)
+		}
+		http.Error(w, message, status)
+		return
+	}
+
 	ctx := context.Background()
 	opts := compose.Options{
 		WorkingDir: appDir,
 	}
 
 	// Stop the compose project without removing volumes
-	if err := s.composeSvc.Down(ctx, opts, false); err != nil {
+	if err := composeSvc.Down(ctx, opts, false); err != nil {
 		log.Printf("Failed to stop app %s: %v", appName, err)
+		if isRuntimeUnavailableError(err) {
+			s.markComposeUnhealthy()
+		}
 		http.Error(w, fmt.Sprintf("Failed to stop app: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -470,16 +493,21 @@ func (s *Server) handleAPIAppDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if compose service is available
-	if s.composeSvc == nil {
-		http.Error(w, "Compose service not available", http.StatusServiceUnavailable)
-		return
-	}
-
 	// Check if app exists
 	appDir := filepath.Join(s.config.AppsDir, appName)
 	if _, err := os.Stat(appDir); os.IsNotExist(err) {
 		http.Error(w, fmt.Sprintf("App '%s' not found", appName), http.StatusNotFound)
+		return
+	}
+
+	composeSvc, err := s.getComposeService()
+	if err != nil {
+		status := http.StatusServiceUnavailable
+		message := "Compose service not available"
+		if !errors.Is(err, errComposeUnavailable) {
+			message = fmt.Sprintf("Compose service error: %v", err)
+		}
+		http.Error(w, message, status)
 		return
 	}
 
@@ -490,8 +518,11 @@ func (s *Server) handleAPIAppDelete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Stop the compose project and remove volumes
-	if err := s.composeSvc.Down(ctx, opts, true); err != nil {
+	if err := composeSvc.Down(ctx, opts, true); err != nil {
 		log.Printf("Failed to delete app %s: %v", appName, err)
+		if isRuntimeUnavailableError(err) {
+			s.markComposeUnhealthy()
+		}
 		http.Error(w, fmt.Sprintf("Failed to delete app: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -606,16 +637,21 @@ func (s *Server) handleAPIAppStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if compose service is available
-	if s.composeSvc == nil {
-		http.Error(w, "Compose service not available", http.StatusServiceUnavailable)
-		return
-	}
-
 	// Check if app exists
 	appDir := filepath.Join(s.config.AppsDir, appName)
 	if _, err := os.Stat(appDir); os.IsNotExist(err) {
 		http.Error(w, fmt.Sprintf("App '%s' not found", appName), http.StatusNotFound)
+		return
+	}
+
+	composeSvc, err := s.getComposeService()
+	if err != nil {
+		status := http.StatusServiceUnavailable
+		message := "Compose service not available"
+		if !errors.Is(err, errComposeUnavailable) {
+			message = fmt.Sprintf("Compose service error: %v", err)
+		}
+		http.Error(w, message, status)
 		return
 	}
 
@@ -625,9 +661,12 @@ func (s *Server) handleAPIAppStatus(w http.ResponseWriter, r *http.Request) {
 		WorkingDir: appDir,
 	}
 
-	containers, err := s.composeSvc.PS(ctx, opts)
+	containers, err := composeSvc.PS(ctx, opts)
 	if err != nil {
 		log.Printf("Failed to get status for app %s: %v", appName, err)
+		if isRuntimeUnavailableError(err) {
+			s.markComposeUnhealthy()
+		}
 		// Return a response indicating the error
 		response := AppStatusResponse{
 			Success: false,
@@ -666,16 +705,14 @@ func (s *Server) handleAPIAppStatus(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Add port information
-		if len(container.Publishers) > 0 {
-			// Use a map to track unique port mappings (ignoring IP version)
-			portMap := make(map[string]bool)
-			for _, pub := range container.Publishers {
-				if pub.PublishedPort > 0 && pub.TargetPort > 0 {
-					portStr := fmt.Sprintf("%d:%d", pub.PublishedPort, pub.TargetPort)
-					portMap[portStr] = true
+		if len(container.Ports) > 0 {
+			portMap := make(map[string]struct{})
+			for _, port := range container.Ports {
+				if port.HostPort != "" && port.ContainerPort != "" {
+					portStr := fmt.Sprintf("%s:%s", port.HostPort, port.ContainerPort)
+					portMap[portStr] = struct{}{}
 				}
 			}
-			// Convert map to sorted slice
 			ports := make([]string, 0, len(portMap))
 			for port := range portMap {
 				ports = append(ports, port)
@@ -838,16 +875,21 @@ func (s *Server) handleAPIAppLogs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if compose service is available
-	if s.composeSvc == nil {
-		http.Error(w, "Compose service not available", http.StatusServiceUnavailable)
-		return
-	}
-
 	// Check if app exists
 	appDir := filepath.Join(s.config.AppsDir, appName)
 	if _, err := os.Stat(appDir); os.IsNotExist(err) {
 		http.Error(w, fmt.Sprintf("App '%s' not found", appName), http.StatusNotFound)
+		return
+	}
+
+	composeSvc, err := s.getComposeService()
+	if err != nil {
+		status := http.StatusServiceUnavailable
+		message := "Compose service not available"
+		if !errors.Is(err, errComposeUnavailable) {
+			message = fmt.Sprintf("Compose service error: %v", err)
+		}
+		http.Error(w, message, status)
 		return
 	}
 
@@ -891,12 +933,42 @@ func (s *Server) handleAPIAppLogs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Stream logs
-	err := s.composeSvc.Logs(ctx, opts, services, follow, logWriter)
+	err = composeSvc.Logs(ctx, opts, services, follow, logWriter)
 	if err != nil {
+		if isRuntimeUnavailableError(err) {
+			s.markComposeUnhealthy()
+		}
 		// If we haven't written anything yet, we can send an error
 		if !follow {
 			log.Printf("Failed to get logs for app %s: %v", appName, err)
 			fmt.Fprintf(w, "\nError retrieving logs: %v\n", err)
 		}
+	}
+}
+
+func (s *Server) handleSystemCheck(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	runner := systemcheck.NewRunner(s.config)
+	results := runner.Run(r.Context())
+
+	resp := SystemCheckResponse{
+		Success: true,
+		Checks:  results,
+	}
+
+	for _, check := range results {
+		if check.Status != systemcheck.StatusOK {
+			resp.Success = false
+			break
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		log.Printf("Failed to encode system check response: %v", err)
 	}
 }

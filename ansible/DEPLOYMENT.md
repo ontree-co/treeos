@@ -149,7 +149,7 @@ echo "ONTREE_PASSWORD=$(openssl rand -base64 32)" >> .env
 echo "ONTREE_SESSION_KEY=$(openssl rand -base64 32)" >> .env
 
 # Start OnTree
-docker-compose up -d
+podman compose up -d
 ```
 
 ## Production Configuration

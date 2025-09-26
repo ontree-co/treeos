@@ -2,15 +2,11 @@
 
 ## Overview
 
-Due to a dependency on `fsevents` (a macOS-specific file system events library) through Docker Compose, cross-compiling macOS binaries from Linux is not currently supported in our automated release process.
+TreeOS now targets Podman for container management and no longer links against the Docker Compose SDK. As a result, there are no macOS-specific CGO dependencies that block cross compilation. The build steps below remain for reference when building natively on macOS or troubleshooting platform differences.
 
 ## The Issue
 
-The `github.com/fsnotify/fsevents` package:
-- Is macOS-specific and uses CGO
-- Is required by `github.com/docker/compose/v2/pkg/watch`
-- Cannot be cross-compiled from Linux to macOS
-- Has build constraints (`//go:build darwin`) that are not properly handled during cross-compilation
+The previous limitation was caused by the `github.com/fsnotify/fsevents` package, which was pulled in by the Docker Compose SDK. That dependency has been removed.
 
 ## Building for macOS Locally
 
@@ -31,14 +27,6 @@ GOOS=darwin GOARCH=arm64 make build
 sudo cp build/treeos /usr/local/bin/treeos
 ```
 
-## Future Solutions
+## Cross Compilation
 
-Potential solutions being considered:
-1. Use GitHub Actions macOS runners for building macOS releases
-2. Replace Docker Compose dependency with a lighter alternative
-3. Create build tags to exclude watch functionality when not needed
-4. Use a Docker-based cross-compilation solution with proper macOS SDK
-
-## Linux Releases
-
-Linux releases (AMD64 and ARM64) are fully automated and available from the GitHub releases page.
+With the Podman migration the codebase no longer depends on macOS-only CGO packages. Cross-compiling from Linux should work with a recent Go toolchain and the standard macOS SDK headers. Native builds on macOS continue to work using the steps above.

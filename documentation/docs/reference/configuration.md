@@ -240,10 +240,10 @@ OnTree uses Docker Compose for all container operations:
 
 | OnTree Action | Docker Compose Command | Uses From |
 |--------------|------------------------|-----------|
-| Start App | `docker-compose up -d` | COMPOSE_PROJECT_NAME in .env |
-| Stop App | `docker-compose down` | COMPOSE_PROJECT_NAME in .env |
-| View Logs | `docker-compose logs` | COMPOSE_PROJECT_NAME in .env |
-| List Containers | `docker-compose ps` | COMPOSE_PROJECT_NAME in .env |
+| Start App | `podman compose up -d` | COMPOSE_PROJECT_NAME in .env |
+| Stop App | `podman compose down` | COMPOSE_PROJECT_NAME in .env |
+| View Logs | `podman compose logs` | COMPOSE_PROJECT_NAME in .env |
+| List Containers | `podman compose ps` | COMPOSE_PROJECT_NAME in .env |
 
 ### Agent Monitoring
 

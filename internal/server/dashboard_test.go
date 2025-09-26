@@ -5,23 +5,23 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"treeos/internal/config"
-	"treeos/internal/database"
-	"treeos/internal/docker"
-	"treeos/internal/version"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"treeos/internal/config"
+	"treeos/internal/database"
+	"treeos/internal/runtime"
+	"treeos/internal/version"
 )
 
 func TestHandleDashboard_DisplaysApps(t *testing.T) {
-	// Skip if Docker is not available
-	dockerClient, err := docker.NewClient()
+	// Skip if Podman is not available
+	runtimeClient, err := runtime.NewClient()
 	if err != nil {
-		t.Skip("Docker not available, skipping test:", err)
+		t.Skip("Container runtime not available, skipping test:", err)
 	}
-	defer dockerClient.Close()
+	defer runtimeClient.Close()
 
 	// Create a temporary apps directory for testing
 	tempDir := t.TempDir()
@@ -34,7 +34,7 @@ func TestHandleDashboard_DisplaysApps(t *testing.T) {
 		if err := os.MkdirAll(appDir, 0755); err != nil {
 			t.Fatalf("Failed to create app directory %s: %v", appDir, err)
 		}
-		
+
 		// Create a minimal docker-compose.yml
 		composeContent := fmt.Sprintf(`version: '3.8'
 services:
@@ -120,8 +120,8 @@ services:
 		}
 	}
 
-	// Additional debugging: Check if dockerClient is properly scanning apps
-	apps, err := s.dockerClient.ScanApps(cfg.AppsDir)
+	// Additional debugging: Check if runtimeClient is properly scanning apps
+	apps, err := s.runtimeClient.ScanApps(cfg.AppsDir)
 	if err != nil {
 		t.Errorf("Failed to scan apps directly: %v", err)
 	}

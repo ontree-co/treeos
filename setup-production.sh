@@ -61,6 +61,29 @@ check_binary() {
     fi
 }
 
+# Ensure Podman and compose support are available
+check_podman() {
+    if ! command -v podman >/dev/null 2>&1; then
+        print_error "Podman is required but not found in PATH."
+        echo "Install Podman and rerun this script: https://podman.io/docs/installation"
+        exit 1
+    fi
+
+    if podman compose --help >/dev/null 2>&1; then
+        print_success "Podman compose is available"
+        return
+    fi
+
+    if command -v podman-compose >/dev/null 2>&1; then
+        print_info "podman-compose detected; TreeOS will use it as a fallback"
+        return
+    fi
+
+    print_error "Neither 'podman compose' nor 'podman-compose' is available."
+    echo "Install Podman 4+ or the podman-compose package before continuing."
+    exit 1
+}
+
 # Create ontree user if it doesn't exist
 create_user() {
     print_info "Checking for user '$ONTREE_USER'..."
@@ -234,6 +257,7 @@ main() {
     check_root
     check_existing_installation
     check_binary
+    check_podman
 
     echo "This script will:"
     echo "  1. Create user '$ONTREE_USER' (if not exists)"

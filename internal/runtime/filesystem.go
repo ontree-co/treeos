@@ -1,5 +1,5 @@
-// Package docker provides Docker client functionality for managing containerized applications
-package docker
+// Package runtime provides container runtime filesystem helpers used by the service layer.
+package runtime
 
 import (
 	"fmt"
@@ -8,10 +8,10 @@ import (
 )
 
 const (
-	// BaseAppsDir is the base directory for all OnTree apps
-	BaseAppsDir = "/opt/onTree/apps"
-	// BaseMountDir is the base directory for all bind mounts
-	BaseMountDir = "/opt/onTree/apps/mount"
+	// BaseAppsDir is the base directory for all OnTree apps when running in production.
+	BaseAppsDir = "/opt/ontree/apps"
+	// BaseMountDir is the base directory for all bind mounts.
+	BaseMountDir = "/opt/ontree/apps/mount"
 )
 
 // FileSystemManager handles file system operations for OnTree apps

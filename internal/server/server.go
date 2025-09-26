@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"io"
@@ -25,10 +26,10 @@ import (
 	"treeos/internal/charts"
 	"treeos/internal/config"
 	"treeos/internal/database"
-	"treeos/internal/docker"
 	"treeos/internal/embeds"
 	"treeos/internal/ollama"
 	"treeos/internal/realtime"
+	containerruntime "treeos/internal/runtime"
 	"treeos/internal/system"
 	"treeos/internal/templates"
 	"treeos/internal/update"
@@ -42,8 +43,11 @@ type Server struct {
 	config                *config.Config
 	templates             map[string]*template.Template
 	sessionStore          *sessions.CookieStore
-	dockerClient          *docker.Client
-	dockerSvc             *docker.Service
+	runtimeClient         *containerruntime.Client
+	runtimeSvc            *containerruntime.Service
+	runtimeMu             sync.Mutex
+	runtimeClientHealthy  bool
+	runtimeServiceHealthy bool
 	db                    *sql.DB
 	templateSvc           *templates.Service
 	versionInfo           version.Info
@@ -58,7 +62,13 @@ type Server struct {
 	stopCh                chan struct{}
 	stopOnce              sync.Once
 	updateMu              sync.Mutex
+	composeHealthy        bool
 }
+
+var (
+	errRuntimeUnavailable = errors.New("container runtime not available")
+	errComposeUnavailable = errors.New("compose service not available")
+)
 
 // New creates a new server instance
 func New(cfg *config.Config, versionInfo version.Info) (*Server, error) {
@@ -106,22 +116,24 @@ func New(cfg *config.Config, versionInfo version.Info) (*Server, error) {
 	}
 	log.Printf("Database initialized and migrations verified")
 
-	// Initialize Docker client
-	dockerClient, err := docker.NewClient()
+	// Initialize container runtime client
+	runtimeClient, err := containerruntime.NewClient()
 	if err != nil {
-		log.Printf("Warning: Failed to initialize Docker client: %v", err)
-		// Continue without Docker support
+		log.Printf("Warning: Failed to initialize container runtime client: %v", err)
+		// Continue without container runtime support
 	} else {
-		s.dockerClient = dockerClient
+		s.runtimeClient = runtimeClient
+		s.runtimeClientHealthy = true
 	}
 
-	// Initialize Docker service
-	dockerSvc, err := docker.NewService(cfg.AppsDir)
+	// Initialize runtime service
+	runtimeSvc, err := containerruntime.NewService(cfg.AppsDir)
 	if err != nil {
-		log.Printf("Warning: Failed to initialize Docker service: %v", err)
-		// Continue without Docker support
+		log.Printf("Warning: Failed to initialize container runtime service: %v", err)
+		// Continue without container runtime support
 	} else {
-		s.dockerSvc = dockerSvc
+		s.runtimeSvc = runtimeSvc
+		s.runtimeServiceHealthy = true
 	}
 
 	// Initialize Compose service
@@ -131,6 +143,7 @@ func New(cfg *config.Config, versionInfo version.Info) (*Server, error) {
 		// Continue without Compose support
 	} else {
 		s.composeSvc = composeSvc
+		s.composeHealthy = true
 	}
 
 	// Load configuration from database if not set by environment
@@ -167,14 +180,14 @@ func (s *Server) Shutdown() {
 			close(s.stopCh)
 		}
 	})
-	if s.dockerSvc != nil {
-		if err := s.dockerSvc.Close(); err != nil {
-			log.Printf("Error closing docker service: %v", err)
+	if s.runtimeSvc != nil {
+		if err := s.runtimeSvc.Close(); err != nil {
+			log.Printf("Error closing container runtime service: %v", err)
 		}
 	}
-	if s.dockerClient != nil {
-		if err := s.dockerClient.Close(); err != nil {
-			log.Printf("Error closing docker client: %v", err)
+	if s.runtimeClient != nil {
+		if err := s.runtimeClient.Close(); err != nil {
+			log.Printf("Error closing container runtime client: %v", err)
 		}
 	}
 	if s.db != nil {
@@ -200,7 +213,8 @@ func (s *Server) loadTemplates() error {
 
 	// Load setup template
 	setupTemplate := filepath.Join("templates", "dashboard", "setup.html")
-	tmpl, err = embeds.ParseTemplate(baseTemplate, setupTemplate)
+	systemCheckTemplate := filepath.Join("templates", "partials", "system_check.html")
+	tmpl, err = embeds.ParseTemplate(baseTemplate, setupTemplate, systemCheckTemplate)
 	if err != nil {
 		return fmt.Errorf("failed to parse setup template: %w", err)
 	}
@@ -216,7 +230,7 @@ func (s *Server) loadTemplates() error {
 
 	// Load settings template
 	settingsTemplate := filepath.Join("templates", "dashboard", "settings.html")
-	tmpl, err = embeds.ParseTemplate(baseTemplate, settingsTemplate)
+	tmpl, err = embeds.ParseTemplate(baseTemplate, settingsTemplate, systemCheckTemplate)
 	if err != nil {
 		return fmt.Errorf("failed to parse settings template: %w", err)
 	}
@@ -495,6 +509,7 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/api/logs", s.TracingMiddleware(s.AuthRequiredMiddleware(s.handleGetLogs)))
 
 	// System update endpoints
+	mux.HandleFunc("/api/system/check", s.TracingMiddleware(s.AuthRequiredMiddleware(s.handleSystemCheck)))
 	mux.HandleFunc("/api/system/update/check", s.TracingMiddleware(s.AuthRequiredMiddleware(s.handleSystemUpdateCheck)))
 	mux.HandleFunc("/api/system/update/apply", s.TracingMiddleware(s.AuthRequiredMiddleware(s.handleSystemUpdateApply)))
 	mux.HandleFunc("/api/system/update/status", s.TracingMiddleware(s.AuthRequiredMiddleware(s.handleSystemUpdateStatus)))
@@ -781,6 +796,141 @@ func (s *Server) startRealtimeMetricsCollection() {
 	}
 }
 
+func (s *Server) getRuntimeClient() (*containerruntime.Client, error) {
+	s.runtimeMu.Lock()
+	defer s.runtimeMu.Unlock()
+
+	if s.runtimeClient == nil || !s.runtimeClientHealthy {
+		if s.runtimeClient != nil {
+			_ = s.runtimeClient.Close()
+		}
+		client, err := containerruntime.NewClient()
+		if err != nil {
+			s.runtimeClientHealthy = false
+			return nil, fmt.Errorf("%w: %v", errRuntimeUnavailable, err)
+		}
+		s.runtimeClient = client
+		s.runtimeClientHealthy = true
+	}
+
+	return s.runtimeClient, nil
+}
+
+func (s *Server) getRuntimeService() (*containerruntime.Service, error) {
+	s.runtimeMu.Lock()
+	defer s.runtimeMu.Unlock()
+
+	if s.runtimeSvc == nil || !s.runtimeServiceHealthy {
+		if s.runtimeSvc != nil {
+			_ = s.runtimeSvc.Close()
+		}
+		svc, err := containerruntime.NewService(s.config.AppsDir)
+		if err != nil {
+			s.runtimeServiceHealthy = false
+			return nil, fmt.Errorf("%w: %v", errRuntimeUnavailable, err)
+		}
+		s.runtimeSvc = svc
+		s.runtimeServiceHealthy = true
+	}
+
+	return s.runtimeSvc, nil
+}
+
+func (s *Server) getComposeService() (*compose.Service, error) {
+	s.runtimeMu.Lock()
+	defer s.runtimeMu.Unlock()
+
+	if s.composeSvc != nil && !s.composeHealthy {
+		s.composeHealthy = true
+		return s.composeSvc, nil
+	}
+
+	if s.composeSvc == nil || !s.composeHealthy {
+		if s.composeSvc != nil {
+			_ = s.composeSvc.Close()
+		}
+		svc, err := compose.NewService()
+		if err != nil {
+			s.composeHealthy = false
+			return nil, fmt.Errorf("%w: %v", errComposeUnavailable, err)
+		}
+		s.composeSvc = svc
+		s.composeHealthy = true
+	}
+
+	return s.composeSvc, nil
+}
+
+func (s *Server) markRuntimeUnhealthy() {
+	s.runtimeMu.Lock()
+	defer s.runtimeMu.Unlock()
+	s.runtimeClientHealthy = false
+	s.runtimeServiceHealthy = false
+}
+
+func (s *Server) markComposeUnhealthy() {
+	s.runtimeMu.Lock()
+	defer s.runtimeMu.Unlock()
+	if s.composeSvc != nil {
+		_ = s.composeSvc.Close()
+		s.composeSvc = nil
+	}
+	s.composeHealthy = false
+}
+
+func isRuntimeUnavailableError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	if strings.Contains(msg, "podman client not available") {
+		return true
+	}
+	if strings.Contains(msg, "failed to list podman") || strings.Contains(msg, "podman ps failed") {
+		return true
+	}
+	if strings.Contains(msg, "cannot connect") && strings.Contains(msg, "docker") {
+		return true
+	}
+	if strings.Contains(msg, "connection refused") || strings.Contains(msg, "permission denied") || strings.Contains(msg, "no such file") {
+		return true
+	}
+	if strings.Contains(msg, "socket") && strings.Contains(msg, "dial") {
+		return true
+	}
+	return false
+}
+
+func (s *Server) scanApps() ([]*containerruntime.App, error) {
+	client, err := s.getRuntimeClient()
+	if err != nil {
+		return nil, err
+	}
+
+	apps, err := client.ScanApps(s.config.AppsDir)
+	if err != nil {
+		if isRuntimeUnavailableError(err) {
+			s.markRuntimeUnhealthy()
+		}
+		return nil, err
+	}
+
+	return apps, nil
+}
+
+func (s *Server) getAppDetails(appName string) (*containerruntime.App, error) {
+	client, err := s.getRuntimeClient()
+	if err != nil {
+		return nil, err
+	}
+
+	app, detailErr := client.GetAppDetails(s.config.AppsDir, appName)
+	if detailErr != nil && isRuntimeUnavailableError(detailErr) {
+		s.markRuntimeUnhealthy()
+	}
+	return app, detailErr
+}
+
 // handleDashboard handles the dashboard page
 func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	// Only handle exact path match
@@ -794,83 +944,85 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 
 	// Scan for applications
 	var apps []interface{}
-	if s.dockerClient != nil {
-		dockerApps, err := s.dockerClient.ScanApps(s.config.AppsDir)
-		if err != nil {
-			log.Printf("Error scanning apps: %v", err)
+	runtimeApps, err := s.scanApps()
+	if err != nil {
+		if errors.Is(err, errRuntimeUnavailable) {
+			log.Printf("Container runtime not available: %v", err)
 		} else {
-			// For each app, enrich with additional status information
-			for _, app := range dockerApps {
-				// Create container info for each service
-				type ContainerInfo struct {
-					Name   string
-					Status string
-					State  string
-					Uptime string
-				}
+			log.Printf("Error scanning apps: %v", err)
+		}
+	} else {
+		for _, app := range runtimeApps {
+			// Create container info for each service
+			type ContainerInfo struct {
+				Name   string
+				Status string
+				State  string
+				Uptime string
+			}
 
-				// Create an enriched app struct with additional status
-				enrichedApp := struct {
-					*docker.App
-					ServiceCount int
-					Containers   []ContainerInfo
-				}{
-					App: app,
-				}
+			// Create an enriched app struct with additional status
+			enrichedApp := struct {
+				*containerruntime.App
+				ServiceCount int
+				Containers   []ContainerInfo
+			}{
+				App: app,
+			}
 
-				// Get container status for the app
-				if s.composeSvc != nil {
-					// Use internal call to get status
-					appDir := filepath.Join(s.config.AppsDir, app.Name)
-					if _, err := os.Stat(appDir); err == nil {
-						ctx := context.Background()
-						opts := compose.Options{
-							WorkingDir: appDir,
+			composeSvc, composeErr := s.getComposeService()
+			if composeErr != nil {
+				if !errors.Is(composeErr, errComposeUnavailable) {
+					log.Printf("Compose service unavailable: %v", composeErr)
+				}
+			} else {
+				appDir := filepath.Join(s.config.AppsDir, app.Name)
+				if _, statErr := os.Stat(appDir); statErr == nil {
+					ctx := context.Background()
+					opts := compose.Options{WorkingDir: appDir}
+
+					containers, psErr := composeSvc.PS(ctx, opts)
+					if psErr != nil {
+						if isRuntimeUnavailableError(psErr) {
+							s.markComposeUnhealthy()
 						}
+						log.Printf("Failed to get compose status for %s: %v", app.Name, psErr)
+					} else if len(containers) > 0 {
+						containerInfos := make([]ContainerInfo, 0)
+						for _, container := range containers {
+							serviceName := extractServiceName(container.Name, app.Name)
+							status := mapContainerState(container.State)
 
-						containers, err := s.composeSvc.PS(ctx, opts)
-						if err == nil && len(containers) > 0 {
-							// Calculate service count and aggregate status
-							containerInfos := make([]ContainerInfo, 0)
-							for _, container := range containers {
-								serviceName := extractServiceName(container.Name, app.Name)
-								status := mapContainerState(container.State)
-
-								// Extract uptime from Status field
-								uptime := ""
-								if container.State == "running" && container.Status != "" {
-									// Status typically contains "Up 2 hours" or similar
-									uptime = container.Status
-								}
-
-								containerInfos = append(containerInfos, ContainerInfo{
-									Name:   serviceName,
-									Status: status,
-									State:  container.State,
-									Uptime: uptime,
-								})
+							uptime := ""
+							if container.State == "running" && container.Status != "" {
+								uptime = container.Status
 							}
 
-							enrichedApp.ServiceCount = len(containerInfos)
-							enrichedApp.Containers = containerInfos
-							// Status is already in app.Status from docker.ScanApps
-						} else {
-							// No containers or error
-							enrichedApp.ServiceCount = 0
-							enrichedApp.Containers = []ContainerInfo{}
+							containerInfos = append(containerInfos, ContainerInfo{
+								Name:   serviceName,
+								Status: status,
+								State:  container.State,
+								Uptime: uptime,
+							})
 						}
+
+						enrichedApp.ServiceCount = len(containerInfos)
+						enrichedApp.Containers = containerInfos
+					} else {
+						enrichedApp.ServiceCount = 0
+						enrichedApp.Containers = []ContainerInfo{}
 					}
 				}
-
-				apps = append(apps, enrichedApp)
 			}
+
+			apps = append(apps, enrichedApp)
 		}
 	}
 
 	// Get node name from database
 	db := database.GetDB()
 	var nodeName string
-	err := db.QueryRow("SELECT node_name FROM system_setup WHERE id = 1").Scan(&nodeName)
+	err = db.QueryRow("SELECT node_name FROM system_setup WHERE id = 1").Scan(&nodeName)
 	if err != nil || nodeName == "" {
 		nodeName = "TreeOS" // Default name
 	}
@@ -965,8 +1117,8 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	data["Apps"] = apps
 	data["AppsDir"] = s.config.AppsDir
 	data["Messages"] = nil
-	data["CSRFToken"] = "" // No CSRF yet
-	data["Hostname"] = nodeName  // Using node name instead of system hostname
+	data["CSRFToken"] = ""      // No CSRF yet
+	data["Hostname"] = nodeName // Using node name instead of system hostname
 	data["LocalIP"] = localIP
 	data["TailscaleIP"] = tailscaleIP
 	data["MonitoringData"] = monitoringData
@@ -1221,8 +1373,17 @@ func (s *Server) testLLMConnection(apiKey, apiURL, model string) (string, error)
 // syncExposedApps synchronizes exposed apps with Caddy on startup
 func (s *Server) syncExposedApps() {
 	// Read all apps from the apps directory
-	apps, err := s.dockerSvc.ScanApps()
+	runtimeSvc, err := s.getRuntimeService()
 	if err != nil {
+		log.Printf("Container runtime service not available; skipping exposure sync: %v", err)
+		return
+	}
+
+	apps, err := runtimeSvc.ScanApps()
+	if err != nil {
+		if isRuntimeUnavailableError(err) {
+			s.markRuntimeUnhealthy()
+		}
 		log.Printf("Failed to list apps: %v", err)
 		return
 	}

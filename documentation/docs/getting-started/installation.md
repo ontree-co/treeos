@@ -148,7 +148,6 @@ Enable and start the service:
 ```bash
 # Create user and directories
 sudo useradd -r -s /bin/false ontree
-sudo usermod -aG docker ontree
 sudo mkdir -p /var/lib/ontree
 sudo chown ontree:ontree /var/lib/ontree
 
@@ -158,12 +157,12 @@ sudo systemctl start ontree
 sudo systemctl status ontree
 ```
 
-### Docker
+### Podman
 
-You can also run OnTree itself in a Docker container:
+You can also run OnTree itself in a Podman container (using either `podman compose` or `podman-compose`):
 
 ```yaml
-# docker-compose.yml
+# compose.yml
 version: '3.8'
 
 services:
@@ -173,7 +172,7 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /run/podman/podman.sock:/run/podman/podman.sock
       - ./apps:/apps
       - ./data:/data
     restart: unless-stopped
@@ -203,14 +202,16 @@ sudo lsof -i :8080
 
 ### Permission Denied
 
-If you get Docker permission errors:
+If you get Podman permission errors run:
 
 ```bash
-# Add your user to the docker group
-sudo usermod -aG docker $USER
+podman info
+```
 
-# Log out and back in, or run
-newgrp docker
+Review the reported configuration issues. On macOS, ensure the Podman machine is running:
+
+```bash
+podman machine start
 ```
 
 ### Can't Connect to Docker

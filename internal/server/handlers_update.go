@@ -3,12 +3,11 @@ package server
 import (
 	// "context"  // Commented out - used by handleAppCheckUpdate
 	"fmt"
-	// "io"       // Commented out - used by handleAppCheckUpdate  
+	// "io"       // Commented out - used by handleAppCheckUpdate
 	"log"
 	"net/http"
 	"strings"
 	// "time"     // Commented out - used by handleAppCheckUpdate
-
 	// "github.com/docker/docker/api/types/image"  // Commented out - used by checkImageUpdate
 	// "github.com/docker/docker/client"           // Commented out - used by checkImageUpdate
 )
@@ -42,7 +41,7 @@ func (s *Server) handleAppCheckUpdate(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Checking for updates for app: %s, service: %s", appName, serviceName)
 
 	// Get app details
-	app, err := s.dockerSvc.GetAppDetails(appName)
+	app, err := s.runtimeSvc.GetAppDetails(appName)
 	if err != nil {
 		log.Printf("Failed to get app details: %v", err)
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -106,7 +105,7 @@ func (s *Server) handleAppCheckUpdate(w http.ResponseWriter, r *http.Request) {
 					<i>⬆️</i> Update available
 				</span>
 				<span class="text-muted small">%s → newer version</span>
-				<button class="btn btn-sm btn-warning" 
+				<button class="btn btn-sm btn-warning"
 					onclick="recreateService('%s', '%s')">
 					Recreate
 				</button>

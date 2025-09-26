@@ -44,7 +44,7 @@ func (s *Server) handleAppCreate(w http.ResponseWriter, r *http.Request) {
 			errors = append(errors, "App name is required")
 		} else if !isValidAppName(appName) {
 			errors = append(errors, "Invalid app name. Use only letters, numbers, hyphens, and underscores")
-		} else if s.dockerClient != nil {
+		} else {
 			// Check if app already exists
 			appPath := filepath.Join(s.config.AppsDir, appName)
 			if _, err := os.Stat(appPath); err == nil {
@@ -62,7 +62,7 @@ func (s *Server) handleAppCreate(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		if len(errors) == 0 && s.dockerClient != nil {
+		if len(errors) == 0 {
 			// Create the application
 			err := s.createAppScaffold(appName, composeContent, envContent, emoji)
 			if err != nil {
@@ -152,15 +152,11 @@ func (s *Server) createAppScaffold(appName, composeContent, envContent, emoji st
 		// Continue anyway - agent can generate it later
 	}
 
-	// Automatically create and start containers if compose service is available
-	if s.composeSvc != nil {
-		// Start containers after creation
-		err := s.startContainersForNewApp(appName, appPath, composeContent)
-		if err != nil {
-			log.Printf("Warning: Failed to start containers for app %s: %v", appName, err)
-			// Don't fail app creation if containers can't be started
-			// User can manually start them later
-		}
+	// Attempt to start containers after creation (best-effort)
+	if err := s.startContainersForNewApp(appName, appPath, composeContent); err != nil {
+		log.Printf("Warning: Failed to start containers for app %s: %v", appName, err)
+		// Don't fail app creation if containers can't be started
+		// User can manually start them later
 	}
 
 	return nil
@@ -204,7 +200,6 @@ func (s *Server) createAppScaffoldInternal(appPath, appName, composeContent, env
 		}
 		return fmt.Errorf("failed to write docker-compose.yml: %v", err)
 	}
-
 
 	// Always create .env file with Docker Compose naming configuration
 	// First, add the naming configuration
@@ -263,6 +258,11 @@ func (s *Server) createAppScaffoldInternal(appPath, appName, composeContent, env
 func (s *Server) startContainersForNewApp(appName, appPath, composeContent string) error {
 	log.Printf("Starting containers for newly created app: %s at path: %s", appName, appPath)
 
+	composeSvc, err := s.getComposeService()
+	if err != nil {
+		return err
+	}
+
 	// Check if security bypass is enabled for this app
 	metadata, err := yamlutil.ReadComposeMetadata(appPath)
 	if err != nil {
@@ -297,8 +297,11 @@ func (s *Server) startContainersForNewApp(appName, appPath, composeContent strin
 	log.Printf("Calling compose.Up with WorkingDir: %s", opts.WorkingDir)
 
 	// Create and start the compose project
-	if err := s.composeSvc.Up(ctx, opts); err != nil {
+	if err := composeSvc.Up(ctx, opts); err != nil {
 		log.Printf("Failed to start containers for app %s: %v", appName, err)
+		if isRuntimeUnavailableError(err) {
+			s.markComposeUnhealthy()
+		}
 		return fmt.Errorf("failed to start containers: %v", err)
 	}
 
@@ -314,7 +317,6 @@ func (s *Server) createAppScaffoldFromTemplate(appName, composeContent, envConte
 	if err := s.createAppScaffoldInternal(appPath, appName, composeContent, envContent, emoji); err != nil {
 		return err
 	}
-
 
 	// Generate app.yml with initial_setup_required flag
 	if err := s.generateAppYamlWithFlags(appPath, appName, composeContent, true); err != nil {
@@ -482,4 +484,3 @@ func ensureSharedModelsDirectory() error {
 
 	return nil
 }
-

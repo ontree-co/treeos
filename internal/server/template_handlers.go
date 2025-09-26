@@ -26,7 +26,7 @@ func getLocalOllamaModels() []string {
 	endpoints := []string{
 		"http://localhost:11434/api/tags",
 		"http://127.0.0.1:11434/api/tags",
-		"http://host.docker.internal:11434/api/tags",
+		"http://host.containers.internal:11434/api/tags",
 	}
 
 	client := &http.Client{Timeout: 2 * time.Second}
@@ -253,7 +253,7 @@ endpoints:
   custom:
     - name: "Ollama"
       apiKey: "ollama"
-      baseURL: "http://host.docker.internal:11434/v1/"
+      baseURL: "http://host.containers.internal:11434/v1/"
       models:
         fetch: true
         default:

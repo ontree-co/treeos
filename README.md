@@ -3,23 +3,24 @@
 [![Build Status](https://ci.codeberg.org/api/badges/ontree/treeos/status.svg)](https://ci.codeberg.org/ontree/treeos)
 [![GitHub Actions](https://github.com/stefanmunz/treeos/actions/workflows/test.yml/badge.svg)](https://github.com/stefanmunz/treeos/actions)
 
-OnTree is a Docker container management application with a web interface for managing containerized applications. It provides an intuitive UI for creating, managing, and monitoring Docker containers on your local system or server.
+OnTree is a Podman-based container management application with a web interface for managing containerized applications. It provides an intuitive UI for creating, managing, and monitoring rootless containers on your local system or server.
 
 ## Features
 
-- **Web-based Docker Management**: Manage Docker containers through a clean web interface
+- **Web-based Podman Management**: Manage rootless Podman containers through a clean web interface
 - **Real-time Operation Logging**: View detailed logs of all container operations in real-time
 - **Container Templates**: Pre-configured templates for popular applications (PostgreSQL, Redis, etc.)
 - **Dynamic UI Updates**: Real-time status updates using HTMX without page refreshes
 - **Self-contained Binary**: Single executable with all assets embedded
 - **Multi-architecture Support**: Runs on Linux (AMD64) and macOS (ARM64)
 - **System Monitoring Dashboard**: Real-time system metrics with historical sparklines (CPU, Memory, Disk, Network)
+- **Dependency Check**: Built-in system check verifies Podman, Podman Compose, and Caddy availability
 
 ## Quick Start
 
 ### Prerequisites
 
-- Docker installed and running
+- Podman 4+ installed and the runtime initialised (or podman-compose available)
 - Port 3000 available (or configure a different port)
 
 ### Running OnTree
@@ -124,7 +125,7 @@ monitoring_enabled = false
 ### Prerequisites
 
 - Go 1.23 or later
-- Docker
+- Podman (with `podman compose` or `podman-compose` available)
 - Make
 
 ### Building from Source
@@ -189,7 +190,7 @@ The E2E test suite uses Playwright to test the application through real browser 
   - Dashboard functionality and system vitals
   - Simple app lifecycle (create, start, stop, delete)
   - Complex multi-service app lifecycle
-  - Docker container naming conventions
+  - Podman compose project naming conventions
 
 - **Environment Variables**: Configure E2E tests with:
   - `TEST_BASE_URL`: Base URL for tests (default: http://localhost:3001)
@@ -302,7 +303,7 @@ The built binary will be in the `build/` directory.
 - **Backend**: Go with embedded HTTP server
 - **Frontend**: HTMX + Bootstrap for dynamic UI
 - **Database**: SQLite for metadata storage
-- **Container Management**: Direct Docker API integration
+- **Container Management**: Podman CLI integration (rootless by default)
 - **Asset Embedding**: Templates and static files embedded in binary
 
 ## Contributing

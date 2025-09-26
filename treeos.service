@@ -1,8 +1,7 @@
 [Unit]
 Description=TreeOS Application Platform
 Documentation=https://github.com/ontree-co/treeos
-After=network.target docker.service
-Requires=docker.service
+After=network.target
 
 [Service]
 Type=simple

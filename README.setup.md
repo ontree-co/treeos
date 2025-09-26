@@ -4,9 +4,13 @@ TreeOS can run in two modes: **Demo Mode** for quick testing and development, or
 
 ## Requirements
 
-- Docker or Docker Desktop installed and running
+- Podman 4.x installed (on macOS, ensure a Podman machine is running)
 - macOS (Apple Silicon or Intel) or Linux (amd64 or arm64)
 - For production mode: sudo/root access
+
+## System Check
+
+TreeOS automatically performs a system check during setup and from the Settings page. It verifies required directories, Podman/Podman Compose availability, and the Caddy binary. If a dependency is missing, the check displays installation tips tailored to your platform. You can rerun the system check at any time from Settings → System Check.
 
 ## Demo Mode
 
@@ -216,11 +220,15 @@ If port 3000 is already in use, either:
 
 ### Permission Denied
 
-Ensure Docker is running and your user has Docker permissions:
+Ensure Podman is installed and the runtime is ready for your user:
 ```bash
-# Linux: Add user to docker group
-sudo usermod -aG docker $USER
-# Then log out and back in
+podman info
+```
+
+If this command fails on macOS, initialise the Podman machine first:
+```bash
+podman machine init
+podman machine start
 ```
 
 ### Service Won't Start

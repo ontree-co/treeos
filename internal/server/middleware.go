@@ -4,9 +4,9 @@ import (
 	"database/sql"
 	"log"
 	"net/http"
+	"strings"
 	"treeos/internal/database"
 	"treeos/internal/telemetry"
-	"strings"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -21,6 +21,7 @@ func (s *Server) SetupRequiredMiddleware(next http.HandlerFunc) http.HandlerFunc
 			"/setup",
 			"/static/",
 			"/patterns/",
+			"/api/system/check",
 		}
 
 		// Check if current path is allowed
@@ -72,6 +73,7 @@ func (s *Server) AuthRequiredMiddleware(next http.HandlerFunc) http.HandlerFunc 
 			"/static/",
 			"/patterns/",
 			"/favicon.ico",
+			"/api/system/check",
 		}
 
 		// Check if current path is public

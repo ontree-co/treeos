@@ -10,9 +10,9 @@ services:
       - openwebui_data:/app/backend/data
       - {{SHARED_OLLAMA_PATH}}:/models:ro
     extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - "host.containers.internal:host-gateway"
     environment:
-      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - OLLAMA_BASE_URL=http://host.containers.internal:11434
 
 volumes:
   openwebui_data:
