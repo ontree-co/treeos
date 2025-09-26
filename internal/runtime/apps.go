@@ -169,6 +169,7 @@ func (c *Client) getContainerStatus(app *App, containers []podmanContainer) stri
 
 	running := 0
 	other := 0
+	unknown := 0
 
 	for _, cont := range containers {
 		if containerMatchesProject(cont, candidates) {
@@ -177,13 +178,15 @@ func (c *Client) getContainerStatus(app *App, containers []podmanContainer) stri
 				running++
 			case "configured", "created", "stopped", "exited", "paused", "stoppedwitherror":
 				other++
+			case "unknown", "":
+				unknown++
 			default:
 				other++
 			}
 		}
 	}
 
-	if running > 0 && other > 0 {
+	if running > 0 && (other > 0 || unknown > 0) {
 		return "partial"
 	}
 	if running > 0 {
@@ -191,6 +194,9 @@ func (c *Client) getContainerStatus(app *App, containers []podmanContainer) stri
 	}
 	if other > 0 {
 		return "exited"
+	}
+	if unknown > 0 {
+		return "unknown"
 	}
 
 	return "not_created"

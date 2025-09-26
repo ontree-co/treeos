@@ -78,6 +78,32 @@ check_podman() {
     fi
 
     print_success "Podman compose is available"
+
+    # Check and install podman-plugins for DNS support
+    print_step "Checking Podman DNS plugins..."
+    if [[ "$OS" == "Linux" ]]; then
+        if command -v apt-get >/dev/null 2>&1; then
+            # Debian/Ubuntu
+            if ! dpkg -l | grep -q "golang-github-containernetworking-plugin-dnsname"; then
+                print_step "Installing Podman DNS plugins..."
+                sudo apt-get update >/dev/null 2>&1
+                sudo apt-get install -y golang-github-containernetworking-plugin-dnsname containernetworking-plugins >/dev/null 2>&1 || {
+                    print_warning "Could not install DNS plugins. Container DNS resolution might not work properly."
+                    echo "Manual installation: sudo apt-get install golang-github-containernetworking-plugin-dnsname"
+                }
+            fi
+        elif command -v dnf >/dev/null 2>&1; then
+            # Fedora/RHEL/Rocky/AlmaLinux
+            if ! rpm -qa | grep -q "podman-plugins"; then
+                print_step "Installing Podman DNS plugins..."
+                sudo dnf install -y podman-plugins >/dev/null 2>&1 || {
+                    print_warning "Could not install DNS plugins. Container DNS resolution might not work properly."
+                    echo "Manual installation: sudo dnf install podman-plugins"
+                }
+            fi
+        fi
+        print_success "Podman DNS plugins are available"
+    fi
 }
 
 # Create ontree user if it doesn't exist

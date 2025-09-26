@@ -21,6 +21,9 @@ OnTree is a Podman-based container management application with a web interface f
 ### Prerequisites
 
 - Podman 4.0+ installed (with built-in compose support)
+- Podman DNS plugins (for container network DNS resolution)
+  - Ubuntu/Debian: `golang-github-containernetworking-plugin-dnsname`
+  - Fedora/RHEL: `podman-plugins`
 - Port 3000 available (or configure a different port)
 
 ### Running OnTree
