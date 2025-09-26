@@ -119,7 +119,7 @@ func createTables() error {
 			memory_percent REAL NOT NULL,
 			disk_usage_percent REAL NOT NULL
 		)`,
-		`CREATE TABLE IF NOT EXISTS docker_operations (
+		`CREATE TABLE IF NOT EXISTS container_operations (
 			id TEXT PRIMARY KEY,
 			operation_type TEXT NOT NULL,
 			app_name TEXT NOT NULL,
@@ -132,14 +132,14 @@ func createTables() error {
 			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			completed_at DATETIME
 		)`,
-		`CREATE TABLE IF NOT EXISTS docker_operation_logs (
+		`CREATE TABLE IF NOT EXISTS container_operation_logs (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			operation_id TEXT NOT NULL,
 			timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
 			level TEXT NOT NULL,
 			message TEXT NOT NULL,
 			details TEXT,
-			FOREIGN KEY (operation_id) REFERENCES docker_operations(id)
+			FOREIGN KEY (operation_id) REFERENCES container_operations(id)
 		)`,
 		`CREATE TABLE IF NOT EXISTS chat_messages (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -155,9 +155,9 @@ func createTables() error {
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_system_vital_logs_timestamp ON system_vital_logs(timestamp)`,
-		`CREATE INDEX IF NOT EXISTS idx_docker_operations_status_created ON docker_operations(status, created_at)`,
-		`CREATE INDEX IF NOT EXISTS idx_docker_operations_app_created ON docker_operations(app_name, created_at)`,
-		`CREATE INDEX IF NOT EXISTS idx_docker_operation_logs_operation_timestamp ON docker_operation_logs(operation_id, timestamp)`,
+		`CREATE INDEX IF NOT EXISTS idx_container_operations_status_created ON container_operations(status, created_at)`,
+		`CREATE INDEX IF NOT EXISTS idx_container_operations_app_created ON container_operations(app_name, created_at)`,
+		`CREATE INDEX IF NOT EXISTS idx_container_operation_logs_operation_timestamp ON container_operation_logs(operation_id, timestamp)`,
 		`CREATE INDEX IF NOT EXISTS idx_chat_messages_app_timestamp ON chat_messages(app_id, timestamp DESC)`,
 		`CREATE INDEX IF NOT EXISTS idx_chat_messages_sender_type ON chat_messages(sender_type, timestamp DESC)`,
 		`CREATE INDEX IF NOT EXISTS idx_chat_messages_app_sender ON chat_messages(app_id, sender_type)`,

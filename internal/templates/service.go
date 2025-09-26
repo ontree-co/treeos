@@ -1,4 +1,4 @@
-// Package templates provides template management functionality for Docker application templates
+// Package templates provides template management functionality for application templates
 package templates
 
 import (
@@ -12,7 +12,7 @@ import (
 	"treeos/internal/embeds"
 )
 
-// Template represents a Docker application template
+// Template represents an application template
 type Template struct {
 	ID               string `json:"id"`
 	Name             string `json:"name"`
@@ -42,7 +42,7 @@ func NewService(templatesPath string) *Service {
 	}
 }
 
-// GetAvailableTemplates returns all available Docker application templates
+// GetAvailableTemplates returns all available application templates
 func (s *Service) GetAvailableTemplates() ([]Template, error) {
 	templateFS, err := embeds.TemplateFS()
 	if err != nil {

@@ -52,8 +52,8 @@ type SystemVitalLog struct {
 	GPULoad          float64
 }
 
-// DockerOperation tracks Docker operation state and progress.
-type DockerOperation struct {
+// ContainerOperation tracks container operation state and progress.
+type ContainerOperation struct {
 	ID              string
 	OperationType   string
 	AppName         string
@@ -67,8 +67,8 @@ type DockerOperation struct {
 	CompletedAt     sql.NullTime
 }
 
-// DockerOperationLog stores log entries for Docker operations.
-type DockerOperationLog struct {
+// ContainerOperationLog stores log entries for container operations.
+type ContainerOperationLog struct {
 	ID          int
 	OperationID string
 	Timestamp   time.Time
@@ -90,7 +90,7 @@ type UpdateHistory struct {
 }
 
 const (
-	// OpTypePullImage indicates a Docker image pull operation.
+	// OpTypePullImage indicates a container image pull operation.
 	OpTypePullImage = "pull_image"
 	// OpTypeStartContainer indicates a container start operation.
 	OpTypeStartContainer = "start_container"

@@ -8,8 +8,7 @@ import (
 	"net/http"
 	"strings"
 	// "time"     // Commented out - used by handleAppCheckUpdate
-	// "github.com/docker/docker/api/types/image"  // Commented out - used by checkImageUpdate
-	// "github.com/docker/docker/client"           // Commented out - used by checkImageUpdate
+	// Deprecated imports removed - functionality replaced with Podman
 )
 
 // ImageUpdateInfo contains information about available image updates
@@ -21,13 +20,13 @@ type ImageUpdateInfo struct {
 	Error           string `json:"error,omitempty"`
 }
 
-// PullStatus represents the status of a docker pull operation
+// PullStatus represents the status of a container image pull operation
 type PullStatus struct {
 	Status string `json:"status"`
 	ID     string `json:"id,omitempty"`
 }
 
-// handleAppCheckUpdate checks for available updates for a specific service's Docker image
+// handleAppCheckUpdate checks for available updates for a specific service's container image
 // Commented out - replaced with "Visit in Browser" functionality
 /*
 func (s *Server) handleAppCheckUpdate(w http.ResponseWriter, r *http.Request) {
@@ -208,7 +207,7 @@ func (s *Server) checkImageUpdate(imageName string) (*ImageUpdateInfo, error) {
 }
 */
 
-// handleAppUpdate handles the actual update of an app's Docker image
+// handleAppUpdate handles the actual update of an app's container image
 func (s *Server) handleAppUpdate(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)

@@ -101,7 +101,7 @@ func (w *Worker) CancelDownload(modelName string) error {
 	}
 
 	// First, try to kill any ollama pull processes inside the container
-	// This is necessary because killing the docker exec process doesn't propagate to the container
+	// This is necessary because killing the container exec process doesn't propagate to the container
 	// We need to discover the container name in case it changed
 	containerName := w.containerName
 	if containerName == "" {
@@ -121,7 +121,7 @@ func (w *Worker) CancelDownload(modelName string) error {
 		log.Printf("Warning: No container name available to kill ollama process inside container")
 	}
 
-	// Then kill the docker exec process
+	// Then kill the container exec process
 	if cmd.Process != nil {
 		log.Printf("Cancelling download for model %s (PID: %d)", modelName, cmd.Process.Pid)
 		err := cmd.Process.Kill()

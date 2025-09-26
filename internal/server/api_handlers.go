@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"treeos/internal/security"
 	"treeos/internal/systemcheck"
@@ -93,7 +94,7 @@ func (s *Server) handleCreateApp(w http.ResponseWriter, r *http.Request) {
 
 	// Validate YAML content
 	if req.ComposeYAML == "" {
-		http.Error(w, "Docker Compose YAML is required", http.StatusBadRequest)
+		http.Error(w, "Compose YAML is required", http.StatusBadRequest)
 		return
 	}
 
@@ -252,7 +253,7 @@ func (s *Server) handleUpdateApp(w http.ResponseWriter, r *http.Request) {
 
 	// Validate YAML content
 	if req.ComposeYAML == "" {
-		http.Error(w, "Docker Compose YAML is required", http.StatusBadRequest)
+		http.Error(w, "Compose YAML is required", http.StatusBadRequest)
 		return
 	}
 
@@ -373,8 +374,11 @@ func (s *Server) handleAPIAppStart(w http.ResponseWriter, r *http.Request) {
 		log.Printf("SECURITY: Bypassing security validation for app '%s' (user-configured)", appName)
 	}
 
-	// Start the app using compose SDK
-	ctx := context.Background()
+	// Start the app using compose SDK with a reasonable timeout
+	// Use a longer timeout (5 minutes) to allow for image pulls
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
 	opts := compose.Options{
 		WorkingDir: appDir,
 	}
@@ -385,13 +389,41 @@ func (s *Server) handleAPIAppStart(w http.ResponseWriter, r *http.Request) {
 		opts.EnvFile = ".env" // Just the filename, not the full path
 	}
 
-	// Start the compose project
-	if err := composeSvc.Up(ctx, opts); err != nil {
-		log.Printf("Failed to start app %s: %v", appName, err)
-		if isRuntimeUnavailableError(err) {
-			s.markComposeUnhealthy()
+	// Start the compose project in a goroutine to avoid blocking
+	startChan := make(chan error, 1)
+	go func() {
+		startChan <- composeSvc.Up(ctx, opts)
+	}()
+
+	// Wait for either completion or a shorter timeout for the HTTP response
+	select {
+	case err := <-startChan:
+		// Operation completed within time
+		if err != nil {
+			log.Printf("Failed to start app %s: %v", appName, err)
+			if isRuntimeUnavailableError(err) {
+				s.markComposeUnhealthy()
+			}
+			http.Error(w, fmt.Sprintf("Failed to start app: %v", err), http.StatusInternalServerError)
+			return
 		}
-		http.Error(w, fmt.Sprintf("Failed to start app: %v", err), http.StatusInternalServerError)
+	case <-time.After(10 * time.Second):
+		// If it takes more than 10 seconds, assume it's pulling an image
+		// Return success and let it continue in the background
+		log.Printf("App %s is starting (may be pulling images)...", appName)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted) // 202 Accepted for async operation
+		response := map[string]interface{}{
+			"success": true,
+			"message": fmt.Sprintf("App '%s' is starting. This may take several minutes if images need to be downloaded.", appName),
+			"app": map[string]string{
+				"name":        appName,
+				"projectName": appName,
+			},
+		}
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			log.Printf("Failed to encode response: %v", err)
+		}
 		return
 	}
 
@@ -762,7 +794,7 @@ func extractServiceName(containerName, appName string) string {
 	return containerName
 }
 
-// mapContainerState maps Docker container states to our ServiceStatus
+// mapContainerState maps container states to our ServiceStatus
 func mapContainerState(state string) string {
 	switch strings.ToLower(state) {
 	case "running":

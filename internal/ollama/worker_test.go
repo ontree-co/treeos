@@ -14,7 +14,7 @@ import (
 )
 
 // TestCancelDownloadKillsContainerProcess tests that cancelling a download
-// properly kills the process inside the container, not just the docker exec process
+// properly kills the process inside the container, not just the container exec process
 func TestCancelDownloadKillsContainerProcess(t *testing.T) {
 	// Skip if not in CI or if no Podman available
 	if _, err := exec.LookPath("podman"); err != nil {
@@ -100,11 +100,11 @@ func TestCancelDownloadKillsContainerProcess(t *testing.T) {
 		t.Errorf("Ollama pull process still running in container after cancellation:\n%s", remainingProcesses)
 	}
 
-	// Also verify no docker exec processes remain
-	hostPsCmd := exec.Command("sh", "-c", "ps aux | grep 'docker exec' | grep 'ollama pull' | grep -v grep")
+	// Also verify no container exec processes remain
+	hostPsCmd := exec.Command("sh", "-c", "ps aux | grep 'podman exec' | grep 'ollama pull' | grep -v grep")
 	hostOutput, _ := hostPsCmd.Output()
 	if strings.TrimSpace(string(hostOutput)) != "" {
-		t.Errorf("Docker exec process still running on host after cancellation:\n%s", hostOutput)
+		t.Errorf("Container exec process still running on host after cancellation:\n%s", hostOutput)
 	}
 }
 

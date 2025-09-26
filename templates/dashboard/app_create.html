@@ -26,7 +26,7 @@
             <h5>💡 Understanding docker-compose.yml</h5>
             <p class="mb-2">
                 The <code>docker-compose.yml</code> is the heart of your application's configuration on OnTree.
-                It tells Docker what image to use, what ports to open, and what folders to make persistent.
+                It tells Podman what image to use, what ports to open, and what folders to make persistent.
             </p>
             <p class="mb-2">
                 The <strong>App Name</strong> you provide in the form below <strong>must</strong> be identical to the service name
@@ -54,7 +54,7 @@
 # The service name MUST match the 'App Name' field below.
 services:
   open_webui:
-    # The Docker image to pull from a registry.
+    # The container image to pull from a registry.
     image: ghcr.io/open-webui/open-webui:ollama
     
     # Ensures the container restarts automatically if it stops.

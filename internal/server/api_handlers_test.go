@@ -87,7 +87,7 @@ services:
 				ComposeYAML: "",
 			},
 			expectedStatus: http.StatusBadRequest,
-			expectedError:  "Docker Compose YAML is required",
+			expectedError:  "Compose YAML is required",
 		},
 		{
 			name: "Invalid YAML",
@@ -295,7 +295,7 @@ services:
 				ComposeYAML: "",
 			},
 			expectedStatus: http.StatusBadRequest,
-			expectedError:  "Docker Compose YAML is required",
+			expectedError:  "Compose YAML is required",
 		},
 		{
 			name:    "Invalid YAML",

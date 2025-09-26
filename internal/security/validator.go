@@ -9,7 +9,7 @@ import (
 	"treeos/internal/config"
 )
 
-// DangerousCapabilities defines the list of Docker capabilities that are not allowed
+// DangerousCapabilities defines the list of container capabilities that are not allowed
 var DangerousCapabilities = []string{
 	"SYS_ADMIN",
 	"NET_ADMIN",
@@ -113,7 +113,7 @@ func (v *Validator) validatePrivilegedMode(serviceName string, service ServiceCo
 	return nil
 }
 
-// validateCapabilities checks for dangerous Docker capabilities
+// validateCapabilities checks for dangerous container capabilities
 func (v *Validator) validateCapabilities(serviceName string, service ServiceConfig) error {
 	for _, cap := range service.CapAdd {
 		// Normalize capability name (remove CAP_ prefix if present)
