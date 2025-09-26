@@ -325,7 +325,11 @@ func containerMatchesProject(cont podmanContainer, candidates []string) bool {
 		dashCandidate := sanitizeProjectName(candidate)
 		underscoreCandidate := strings.ReplaceAll(dashCandidate, "-", "_")
 
+		// Check both labels since podman-compose sets both
 		if project := labels["io.podman.compose.project"]; project != "" && strings.EqualFold(project, candidate) {
+			return true
+		}
+		if project := labels["com.docker.compose.project"]; project != "" && strings.EqualFold(project, candidate) {
 			return true
 		}
 

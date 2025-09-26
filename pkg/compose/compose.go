@@ -238,12 +238,19 @@ func (s *Service) newComposeCmd(ctx context.Context, opts Options, extra ...stri
 		return nil, err
 	}
 
+	// Always check for .env file in the project directory
+	envFile := filepath.Join(absPath, ".env")
+	if opts.EnvFile != "" {
+		envFile = filepath.Join(absPath, opts.EnvFile)
+	}
+
 	args := []string{"compose", "-f", composeFile}
 	if projectName != "" {
 		args = append(args, "-p", projectName)
 	}
-	if opts.EnvFile != "" {
-		args = append(args, "--env-file", filepath.Join(absPath, opts.EnvFile))
+	// Always pass env file if it exists
+	if _, err := os.Stat(envFile); err == nil {
+		args = append(args, "--env-file", envFile)
 	}
 	args = append(args, extra...)
 
@@ -254,6 +261,7 @@ func (s *Service) newComposeCmd(ctx context.Context, opts Options, extra ...stri
 }
 
 func (s *Service) listContainersForProject(ctx context.Context, project string) ([]ContainerSummary, error) {
+	// Try Podman labels first
 	filters := []string{
 		fmt.Sprintf("label=io.podman.compose.project=%s", project),
 	}
@@ -261,6 +269,17 @@ func (s *Service) listContainersForProject(ctx context.Context, project string) 
 	summaries, err := s.queryContainers(ctx, filters)
 	if err != nil {
 		return nil, err
+	}
+
+	// If no containers found, try Docker labels (podman-compose sets both)
+	if len(summaries) == 0 {
+		filters = []string{
+			fmt.Sprintf("label=com.docker.compose.project=%s", project),
+		}
+		summaries, err = s.queryContainers(ctx, filters)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return summaries, nil
@@ -292,7 +311,11 @@ func (s *Service) queryContainers(ctx context.Context, filters []string) ([]Cont
 
 	summaries := make([]ContainerSummary, 0, len(containers))
 	for _, cont := range containers {
+		// Check both labels as podman-compose sets both
 		serviceName := cont.Labels["io.podman.compose.service"]
+		if serviceName == "" {
+			serviceName = cont.Labels["com.docker.compose.service"]
+		}
 
 		name := cont.Name
 		if name == "" && len(cont.Names) > 0 {
