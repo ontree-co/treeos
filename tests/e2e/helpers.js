@@ -53,8 +53,21 @@ async function loginAsAdmin(page, username = 'admin', password = 'admin1234') {
       await page.click('button[name="action"][value="continue"]');
     }
 
-    // Now we should be on the dashboard
-    await page.waitForURL(url => url.pathname === '/', { timeout: 10000 });
+    // Wait for navigation after systemcheck
+    await page.waitForLoadState('networkidle');
+
+    // Check where we ended up
+    if (page.url().includes('/login')) {
+      // If we're at login page, perform login
+      await page.fill('input[name="username"]', username);
+      await page.fill('input[name="password"]', password);
+      await page.click('button[type="submit"]');
+    }
+
+    // Now wait for dashboard (either we logged in or setup redirected us there)
+    await page.waitForURL(url => {
+      return url.pathname === '/' || url.toString().includes('/?login=success');
+    }, { timeout: 10000 });
   } else {
     // Normal login flow
     await page.fill('input[name="username"]', username);
