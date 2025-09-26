@@ -16,13 +16,13 @@ import (
 // TestCancelDownloadKillsContainerProcess tests that cancelling a download
 // properly kills the process inside the container, not just the docker exec process
 func TestCancelDownloadKillsContainerProcess(t *testing.T) {
-	// Skip if not in CI or if no Docker available
-	if _, err := exec.LookPath("docker"); err != nil {
-		t.Skip("Docker not available, skipping test")
+	// Skip if not in CI or if no Podman available
+	if _, err := exec.LookPath("podman"); err != nil {
+		t.Skip("Podman not available, skipping test")
 	}
 
 	// Check if test container exists
-	checkCmd := exec.Command("docker", "ps", "--filter", "label=ontree.inference=true", "--format", "{{.Names}}")
+	checkCmd := exec.Command("podman", "ps", "--filter", "label=ontree.inference=true", "--format", "{{.Names}}")
 	output, err := checkCmd.Output()
 	if err != nil || strings.TrimSpace(string(output)) == "" {
 		t.Skip("No Ollama container with ontree.inference=true label found, skipping test")
@@ -74,7 +74,7 @@ func TestCancelDownloadKillsContainerProcess(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	// Check if there's a process running in the container (for debugging)
-	psCmd := exec.Command("docker", "exec", containerName, "sh", "-c",
+	psCmd := exec.Command("podman", "exec", containerName, "sh", "-c",
 		"ps aux | grep 'ollama pull' | grep -v grep")
 	psOutput, _ := psCmd.Output()
 	if initialProcesses := strings.TrimSpace(string(psOutput)); initialProcesses != "" {
@@ -91,7 +91,7 @@ func TestCancelDownloadKillsContainerProcess(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	// Check if the ollama pull process is still running in the container
-	psCmd2 := exec.Command("docker", "exec", containerName, "sh", "-c",
+	psCmd2 := exec.Command("podman", "exec", containerName, "sh", "-c",
 		"ps aux | grep 'ollama pull' | grep -v grep")
 	psOutput2, _ := psCmd2.Output()
 	remainingProcesses := strings.TrimSpace(string(psOutput2))
