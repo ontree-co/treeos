@@ -20,7 +20,7 @@ OnTree is a Podman-based container management application with a web interface f
 
 ### Prerequisites
 
-- Podman 4+ installed and the runtime initialised (or podman-compose available)
+- Podman 4.0+ installed (with built-in compose support)
 - Port 3000 available (or configure a different port)
 
 ### Running OnTree
@@ -125,7 +125,7 @@ monitoring_enabled = false
 ### Prerequisites
 
 - Go 1.23 or later
-- Podman (with `podman compose` or `podman-compose` available)
+- Podman 4.0+ (with built-in `podman compose` support)
 - Make
 
 ### Building from Source

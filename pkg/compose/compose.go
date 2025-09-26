@@ -14,40 +14,31 @@ import (
 	"strings"
 )
 
-// Service wraps access to podman compose (or podman-compose) operations.
+// Service wraps access to podman compose operations (Podman 4+ required).
 type Service struct {
-	composeCmd   []string
 	podmanBinary string
 }
 
-// NewService discovers the available compose command and returns a Service instance.
+// NewService creates a new compose service instance (requires Podman 4+ with built-in compose).
 func NewService() (*Service, error) {
 	podmanBin := os.Getenv("PODMAN_BINARY")
 	if podmanBin == "" {
 		podmanBin = "podman"
 	}
 
+	// Check that Podman is installed
 	if err := commandAvailable(podmanBin, "--version"); err != nil {
-		return nil, fmt.Errorf("podman binary not available: %w", err)
+		return nil, fmt.Errorf("podman not found: %w", err)
 	}
 
-	// Prefer `podman compose` when available (Podman 4+).
-	if err := commandAvailable(podmanBin, "compose", "--help"); err == nil {
-		return &Service{
-			composeCmd:   []string{podmanBin, "compose"},
-			podmanBinary: podmanBin,
-		}, nil
+	// Require Podman 4+ with built-in compose support
+	if err := commandAvailable(podmanBin, "compose", "--help"); err != nil {
+		return nil, fmt.Errorf("podman 4+ required (built-in compose not found). Please upgrade to Podman 4.0 or later")
 	}
 
-	// Fallback to the standalone podman-compose command.
-	if path, err := exec.LookPath("podman-compose"); err == nil {
-		return &Service{
-			composeCmd:   []string{path},
-			podmanBinary: podmanBin,
-		}, nil
-	}
-
-	return nil, errors.New("podman compose command not found; install Podman 4+ or podman-compose")
+	return &Service{
+		podmanBinary: podmanBin,
+	}, nil
 }
 
 // Close tears down resources. Present for API compatibility.
@@ -247,7 +238,7 @@ func (s *Service) newComposeCmd(ctx context.Context, opts Options, extra ...stri
 		return nil, err
 	}
 
-	args := []string{"-f", composeFile}
+	args := []string{"compose", "-f", composeFile}
 	if projectName != "" {
 		args = append(args, "-p", projectName)
 	}
@@ -256,14 +247,8 @@ func (s *Service) newComposeCmd(ctx context.Context, opts Options, extra ...stri
 	}
 	args = append(args, extra...)
 
-	var cmd *exec.Cmd
-	if len(s.composeCmd) == 1 {
-		// #nosec G204 -- command arguments constructed from validated project metadata
-		cmd = exec.CommandContext(ctx, s.composeCmd[0], args...)
-	} else {
-		// #nosec G204 -- command arguments constructed from validated project metadata
-		cmd = exec.CommandContext(ctx, s.composeCmd[0], append(s.composeCmd[1:], args...)...)
-	}
+	// #nosec G204 -- command arguments constructed from validated project metadata
+	cmd := exec.CommandContext(ctx, s.podmanBinary, args...)
 	cmd.Dir = absPath
 	return cmd, nil
 }
@@ -274,13 +259,8 @@ func (s *Service) listContainersForProject(ctx context.Context, project string) 
 	}
 
 	summaries, err := s.queryContainers(ctx, filters)
-	if err != nil || len(summaries) == 0 {
-		// Fallback to the Docker-compatible label when running via podman socket.
-		filters = []string{fmt.Sprintf("label=com.docker.compose.project=%s", project)}
-		summaries, err = s.queryContainers(ctx, filters)
-		if err != nil {
-			return nil, err
-		}
+	if err != nil {
+		return nil, err
 	}
 
 	return summaries, nil
@@ -313,9 +293,6 @@ func (s *Service) queryContainers(ctx context.Context, filters []string) ([]Cont
 	summaries := make([]ContainerSummary, 0, len(containers))
 	for _, cont := range containers {
 		serviceName := cont.Labels["io.podman.compose.service"]
-		if serviceName == "" {
-			serviceName = cont.Labels["com.docker.compose.service"]
-		}
 
 		name := cont.Name
 		if name == "" && len(cont.Names) > 0 {

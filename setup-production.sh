@@ -61,27 +61,23 @@ check_binary() {
     fi
 }
 
-# Ensure Podman and compose support are available
+# Ensure Podman 4+ with built-in compose is available
 check_podman() {
     if ! command -v podman >/dev/null 2>&1; then
         print_error "Podman is required but not found in PATH."
-        echo "Install Podman and rerun this script: https://podman.io/docs/installation"
+        echo "Install Podman 4.0 or later: https://podman.io/docs/installation"
         exit 1
     fi
 
-    if podman compose --help >/dev/null 2>&1; then
-        print_success "Podman compose is available"
-        return
+    if ! podman compose --help >/dev/null 2>&1; then
+        print_error "Podman 4+ with built-in compose support is required."
+        echo "TreeOS requires Podman 4.0 or later with built-in compose."
+        echo "Please upgrade your Podman installation."
+        echo "Verify with: podman compose version"
+        exit 1
     fi
 
-    if command -v podman-compose >/dev/null 2>&1; then
-        print_info "podman-compose detected; TreeOS will use it as a fallback"
-        return
-    fi
-
-    print_error "Neither 'podman compose' nor 'podman-compose' is available."
-    echo "Install Podman 4+ or the podman-compose package before continuing."
-    exit 1
+    print_success "Podman compose is available"
 }
 
 # Create ontree user if it doesn't exist

@@ -169,40 +169,32 @@ func (r *Runner) checkPodmanService(ctx context.Context) CheckResult {
 }
 
 func (r *Runner) checkPodmanCompose(ctx context.Context) CheckResult {
-	var errs []string
-
-	if version, err := commandVersion(ctx, "podman", "compose", "version"); err == nil {
+	version, err := commandVersion(ctx, "podman", "compose", "version")
+	if err == nil {
 		return CheckResult{
 			ID:      "podman_compose",
 			Name:    "Podman Compose",
 			Status:  StatusOK,
-			Message: "podman compose detected",
+			Message: "Podman compose ready",
 			Version: version,
 		}
-	} else if err != nil {
-		errs = append(errs, err.Error())
 	}
 
-	if version, err := commandVersion(ctx, "podman-compose", "--version"); err == nil {
-		return CheckResult{
-			ID:      "podman_compose",
-			Name:    "Podman Compose",
-			Status:  StatusOK,
-			Message: "podman-compose detected",
-			Version: version,
-		}
-	} else if err != nil {
-		errs = append(errs, err.Error())
-	}
-
-	details := strings.Join(errs, "; ")
+	// Podman 4+ with built-in compose is required
 	return CheckResult{
 		ID:          "podman_compose",
 		Name:        "Podman Compose",
 		Status:      StatusError,
-		Message:     "Podman compose not available",
-		Details:     details,
-		Remediation: binaryRemediation("podman-compose"),
+		Message:     "Podman 4+ with built-in compose required",
+		Details:     "TreeOS requires Podman 4.0 or later with built-in compose support",
+		Remediation: []string{
+			"Install Podman 4.0 or later:",
+			"  Ubuntu 22.04+: sudo apt install podman (should be 4.0+)",
+			"  Fedora/RHEL: sudo dnf install podman",
+			"  macOS: brew install podman",
+			"Verify with: podman compose version",
+			"See https://podman.io/docs/installation",
+		},
 	}
 }
 
@@ -289,11 +281,6 @@ func binaryRemediation(binary string) []string {
 				"After installation, verify with 'podman info'",
 				"See https://podman.io/docs/installation",
 			}
-		case "podman-compose":
-			return []string{
-				"Install podman-compose: sudo apt install podman-compose",
-				"Alternatively, Podman 4+ includes podman compose",
-			}
 		case "caddy":
 			return []string{
 				"Install Caddy: sudo apt install caddy",
@@ -306,11 +293,6 @@ func binaryRemediation(binary string) []string {
 			return []string{
 				"Install Podman: brew install podman",
 				"Initialize and start: podman machine init && podman machine start",
-			}
-		case "podman-compose":
-			return []string{
-				"Install podman-compose: brew install podman-compose",
-				"Podman 4+ also provides 'podman compose'",
 			}
 		case "caddy":
 			return []string{

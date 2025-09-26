@@ -10,20 +10,19 @@ Getting OnTree up and running takes just a few minutes. This guide will walk you
 
 Before installing OnTree, ensure you have:
 
-- **Docker** installed and running (version 20.10 or later)
-- **Docker Compose** plugin (usually included with Docker Desktop)
+- **Podman** 4.0 or later (with built-in compose support)
 - A **Linux**, **macOS**, or **Windows** system with WSL2
 - At least **2GB of RAM** available
 - Port **8080** available (or configure a different port)
 
-### Verify Docker Installation
+### Verify Podman Installation
 
 ```bash
-docker --version
-# Should output: Docker version 20.10.x or higher
+podman --version
+# Should output: podman version 4.x.x or higher
 
-docker compose version
-# Should output: Docker Compose version v2.x.x or higher
+podman compose version
+# Should output the compose version
 ```
 
 ## Download OnTree
@@ -127,15 +126,15 @@ Create `/etc/systemd/system/ontree.service`:
 ```ini
 [Unit]
 Description=OnTree Container Manager
-After=docker.service
-Requires=docker.service
+After=podman.service
+Requires=podman.service
 
 [Service]
 Type=simple
 ExecStart=/usr/local/bin/treeos
 Restart=always
 User=ontree
-Group=docker
+Group=podman
 Environment="PATH=/usr/bin:/usr/local/bin"
 WorkingDirectory=/var/lib/ontree
 
@@ -159,7 +158,7 @@ sudo systemctl status ontree
 
 ### Podman
 
-You can also run OnTree itself in a Podman container (using either `podman compose` or `podman-compose`):
+You can also run TreeOS itself in a Podman container:
 
 ```yaml
 # compose.yml
@@ -214,16 +213,16 @@ Review the reported configuration issues. On macOS, ensure the Podman machine is
 podman machine start
 ```
 
-### Can't Connect to Docker
+### Can't Connect to Podman
 
-Ensure Docker is running:
+Ensure Podman is running:
 
 ```bash
-# Check Docker status
-systemctl status docker
+# Check Podman status
+systemctl status podman
 
-# Start Docker if needed
-sudo systemctl start docker
+# Start Podman if needed
+sudo systemctl start podman
 ```
 
 ## Getting Help

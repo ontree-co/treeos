@@ -328,9 +328,6 @@ func containerMatchesProject(cont podmanContainer, candidates []string) bool {
 		if project := labels["io.podman.compose.project"]; project != "" && strings.EqualFold(project, candidate) {
 			return true
 		}
-		if project := labels["com.docker.compose.project"]; project != "" && strings.EqualFold(project, candidate) {
-			return true
-		}
 
 		names := cont.Names
 		if len(names) == 0 && cont.Name != "" {
