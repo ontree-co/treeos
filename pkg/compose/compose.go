@@ -203,10 +203,10 @@ type podmanContainer struct {
 	Image  string            `json:"Image"`
 	Labels map[string]string `json:"Labels"`
 	Ports  []struct {
-		HostIP        string `json:"host_ip"`
-		HostPort      string `json:"host_port"`
-		ContainerPort string `json:"container_port"`
-		Protocol      string `json:"protocol"`
+		HostIP        string      `json:"host_ip"`
+		HostPort      interface{} `json:"host_port"`
+		ContainerPort interface{} `json:"container_port"`
+		Protocol      string      `json:"protocol"`
 	} `json:"Ports"`
 	Health string `json:"Health"`
 }
@@ -325,10 +325,13 @@ func (s *Service) queryContainers(ctx context.Context, filters []string) ([]Cont
 
 		ports := make([]PortMapping, 0, len(cont.Ports))
 		for _, port := range cont.Ports {
+			// Convert port numbers to strings
+			hostPort := fmt.Sprintf("%v", port.HostPort)
+			containerPort := fmt.Sprintf("%v", port.ContainerPort)
 			ports = append(ports, PortMapping{
 				HostIP:        port.HostIP,
-				HostPort:      port.HostPort,
-				ContainerPort: port.ContainerPort,
+				HostPort:      hostPort,
+				ContainerPort: containerPort,
 				Protocol:      port.Protocol,
 			})
 		}
