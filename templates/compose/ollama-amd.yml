@@ -16,3 +16,4 @@ services:
       - /dev/dri
     environment:
       - HSA_OVERRIDE_GFX_VERSION=11.0.0
+      - OLLAMA_HOST=0.0.0.0

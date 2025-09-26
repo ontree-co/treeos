@@ -238,9 +238,8 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 			log.Printf("[DEBUG] Setup data stored in session successfully, redirecting to system check")
 			http.Redirect(w, r, "/systemcheck", http.StatusFound)
 			return
-		} else {
-			log.Printf("[DEBUG] Validation failed, re-rendering form with errors")
 		}
+		log.Printf("[DEBUG] Validation failed, re-rendering form with errors")
 
 		// Render with errors
 		data := s.baseTemplateData(nil) // nil for user since not logged in
@@ -308,8 +307,8 @@ func (s *Server) handleSetupSystemCheck(w http.ResponseWriter, r *http.Request) 
 		// Get setup data from session
 		username, usernameOk := session.Values["setup_username"].(string)
 		password, passwordOk := session.Values["setup_password"].(string)
-		nodeName, _ := session.Values["setup_node_name"].(string)
-		nodeIcon, _ := session.Values["setup_node_icon"].(string)
+		nodeName, _ := session.Values["setup_node_name"].(string) //nolint:errcheck
+		nodeIcon, _ := session.Values["setup_node_icon"].(string) //nolint:errcheck
 
 		if !usernameOk || !passwordOk || username == "" || password == "" {
 			log.Printf("Incomplete setup data in session, redirecting to setup")

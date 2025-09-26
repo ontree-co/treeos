@@ -8,6 +8,8 @@ services:
       - "11434:11434"
     volumes:
       - {{SHARED_OLLAMA_PATH}}:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0
     labels:
       - "ontree.inference=true"
       - "ontree.type=ollama"

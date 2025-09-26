@@ -228,7 +228,7 @@ func commandAvailable(bin string, args ...string) error {
 }
 
 func (s *Service) newComposeCmd(ctx context.Context, opts Options, extra ...string) (*exec.Cmd, error) {
-	absPath, projectName, err := resolveProject(opts)
+	absPath, _, err := resolveProject(opts)
 	if err != nil {
 		return nil, err
 	}
@@ -245,10 +245,9 @@ func (s *Service) newComposeCmd(ctx context.Context, opts Options, extra ...stri
 	}
 
 	args := []string{"compose", "-f", composeFile}
-	if projectName != "" {
-		args = append(args, "-p", projectName)
-	}
+
 	// Always pass env file if it exists
+	// The .env file should contain COMPOSE_PROJECT_NAME
 	if _, err := os.Stat(envFile); err == nil {
 		args = append(args, "--env-file", envFile)
 	}
