@@ -40,7 +40,7 @@
       "category": "LLM Web Interfaces",
       "icon": "bi-chat-dots",
       "filename": "openwebui.yml",
-      "port": "3000",
+      "port": "3001",
       "documentation_url": "https://github.com/open-webui/open-webui"
     },
     {
@@ -50,7 +50,7 @@
       "category": "LLM Web Interfaces",
       "icon": "bi-chat-square-text",
       "filename": "librechat.yml",
-      "port": "3080",
+      "port": "3002",
       "documentation_url": "https://www.librechat.ai"
     },
     {

@@ -6,7 +6,7 @@ services:
     container_name: ${COMPOSE_PROJECT_NAME}-librechat-1
     restart: unless-stopped
     ports:
-      - "${PORT:-3080}:3080"
+      - "${PORT:-3002}:3080"
     environment:
       - HOST=0.0.0.0
       - PORT=3080
@@ -51,7 +51,7 @@ services:
 
 x-ontree:
   subdomain: ${APP_SUBDOMAIN:-librechat}
-  host_port: 3080
+  host_port: 3002
   is_exposed: false
 volumes:
   librechat_images:
