@@ -1,5 +1,9 @@
 const { defineConfig, devices } = require('@playwright/test');
 
+// Force headless mode regardless of any environment variables or CLI args
+process.env.HEADED = 'false';
+process.env.DISPLAY = '';
+
 /**
  * @see https://playwright.dev/docs/test-configuration
  */
@@ -18,7 +22,7 @@ module.exports = defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: 'http://localhost:3001',
+    baseURL: process.env.BASE_URL || 'http://localhost:3002',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
@@ -28,13 +32,23 @@ module.exports = defineConfig({
 
     /* Video on failure */
     video: 'retain-on-failure',
+
+    /* Always run in headless mode - required for environments without display */
+    headless: true,
   },
 
   /* Configure projects for major browsers */
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        headless: true,  // Force headless for this project
+        launchOptions: {
+          headless: true,  // Double ensure headless at launch level
+          args: ['--headless=new', '--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu', '--disable-dev-shm-usage']
+        }
+      },
     },
   ],
 

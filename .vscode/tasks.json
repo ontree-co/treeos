@@ -59,6 +59,124 @@
             "args": ["test-all"],
             "group": "test",
             "problemMatcher": ["$go"]
+        },
+        {
+            "label": "Install Playwright",
+            "type": "shell",
+            "command": "npx",
+            "args": ["playwright", "install"],
+            "options": {
+                "cwd": "${workspaceFolder}/tests/e2e"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Run Playwright Tests",
+            "type": "shell",
+            "command": "npm",
+            "args": ["test"],
+            "options": {
+                "cwd": "${workspaceFolder}/tests/e2e"
+            },
+            "group": "test",
+            "problemMatcher": []
+        },
+        {
+            "label": "start-test-server",
+            "type": "shell",
+            "command": "make",
+            "args": ["build"],
+            "group": "build",
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "silent",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": false
+            }
+        },
+        {
+            "label": "Lint - All (make lint)",
+            "type": "shell",
+            "command": "make",
+            "args": ["lint"],
+            "group": "build",
+            "problemMatcher": ["$go"],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": true
+            }
+        },
+        {
+            "label": "Lint - Go (golangci-lint)",
+            "type": "shell",
+            "command": "${env:HOME}/go/bin/golangci-lint",
+            "args": ["run", "./..."],
+            "group": "build",
+            "problemMatcher": {
+                "owner": "golangci-lint",
+                "fileLocation": ["relative", "${workspaceFolder}"],
+                "pattern": {
+                    "regexp": "^(.+?):(\\d+):(\\d+):\\s+(.+)$",
+                    "file": 1,
+                    "line": 2,
+                    "column": 3,
+                    "message": 4
+                }
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": true
+            }
+        },
+        {
+            "label": "Lint - Fix Issues",
+            "type": "shell",
+            "command": "${env:HOME}/go/bin/golangci-lint",
+            "args": ["run", "./...", "--fix"],
+            "group": "build",
+            "problemMatcher": ["$go"],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": true
+            }
+        },
+        {
+            "label": "Format - Go Code",
+            "type": "shell",
+            "command": "go",
+            "args": ["fmt", "./..."],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "silent",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": false
+            }
+        },
+        {
+            "label": "Install Linting Tools",
+            "type": "shell",
+            "command": "make",
+            "args": ["install-tools"],
+            "group": "build",
+            "problemMatcher": []
         }
     ]
 }

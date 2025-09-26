@@ -1,0 +1,33 @@
+// Place your key bindings in this file to override the defaults
+[
+  {
+    "key": "ctrl+shift+l",
+    "command": "workbench.action.tasks.runTask",
+    "args": "Lint - All (make lint)",
+    "when": "!inDebugMode"
+  },
+  {
+    "key": "ctrl+alt+l",
+    "command": "workbench.action.tasks.runTask",
+    "args": "Lint - Fix Issues",
+    "when": "editorTextFocus && resourceExtname == '.go'"
+  },
+  {
+    "key": "ctrl+alt+f",
+    "command": "workbench.action.tasks.runTask",
+    "args": "Format - Go Code",
+    "when": "editorTextFocus && resourceExtname == '.go'"
+  },
+  {
+    "key": "ctrl+shift+t",
+    "command": "workbench.action.tasks.runTask",
+    "args": "test",
+    "when": "!inDebugMode"
+  },
+  {
+    "key": "ctrl+shift+e",
+    "command": "workbench.action.tasks.runTask",
+    "args": "test-e2e",
+    "when": "!inDebugMode"
+  }
+]

@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Environment variable support (matching global-setup.js)
-const TEST_PORT = process.env.TEST_PORT || '3001';
+const TEST_PORT = process.env.TEST_PORT || '3002';
 const KEEP_SERVER_RUNNING = process.env.KEEP_SERVER_RUNNING === 'true';
 const KEEP_TEST_DATA = process.env.KEEP_TEST_DATA === 'true';
 

@@ -18,14 +18,54 @@ async function expectFlashMessage(page, messageType, messageText) {
  */
 async function loginAsAdmin(page, username = 'admin', password = 'admin1234') {
   await page.goto('/login');
-  await page.fill('input[name="username"]', username);
-  await page.fill('input[name="password"]', password);
-  await page.click('button[type="submit"]');
-  
-  // Wait for redirect to dashboard - allow for login=success query parameter
-  await page.waitForURL(url => {
-    return url.pathname === '/' || url.includes('/?login=success');
-  }, { timeout: 10000 });
+
+  // Check if we were redirected to setup page
+  if (page.url().includes('/setup')) {
+    // Complete the setup
+    await page.fill('input[name="username"]', username);
+    await page.fill('input[name="password"]', password);
+    await page.fill('input[name="password2"]', password);
+    await page.fill('input[name="node_name"]', 'Test OnTree Node');
+
+    // Select a tree icon if present
+    const treeIcon = await page.$('input[name="node_icon"]');
+    if (treeIcon) {
+      await page.evaluate(() => {
+        document.querySelector('input[name="node_icon"]').value = 'tree1';
+      });
+    }
+
+    await page.click('button:has-text("Continue to System Check")');
+
+    // Wait for system check page and continue
+    await page.waitForURL('**/systemcheck', { timeout: 10000 });
+
+    // Wait for system check to complete and buttons to be available
+    await page.waitForTimeout(2000);
+
+    // Submit the form with the appropriate action
+    // Try to click Complete Setup if available and enabled
+    const completeButton = await page.$('button[name="action"][value="complete"]:not([disabled])');
+    if (completeButton) {
+      await completeButton.click();
+    } else {
+      // Otherwise click Continue Without Fixing Everything
+      await page.click('button[name="action"][value="continue"]');
+    }
+
+    // Now we should be on the dashboard
+    await page.waitForURL(url => url.pathname === '/', { timeout: 10000 });
+  } else {
+    // Normal login flow
+    await page.fill('input[name="username"]', username);
+    await page.fill('input[name="password"]', password);
+    await page.click('button[type="submit"]');
+
+    // Wait for redirect to dashboard - allow for login=success query parameter
+    await page.waitForURL(url => {
+      return url.pathname === '/' || url.toString().includes('/?login=success');
+    }, { timeout: 10000 });
+  }
 }
 
 /**

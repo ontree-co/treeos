@@ -9,8 +9,9 @@
   "scripts": {
     "test": "playwright test",
     "test:ui": "playwright test --ui",
-    "test:headed": "playwright test --headed",
+    "test:headed": "HEADED=true playwright test --headed",
     "test:debug": "playwright test --debug",
+    "test:vscode": "playwright test --config=playwright.config.vscode.js",
     "test:setup": "playwright test auth/setup.test.js",
     "test:auth": "playwright test auth/",
     "test:dashboard": "playwright test dashboard/",

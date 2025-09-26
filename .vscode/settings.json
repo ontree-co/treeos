@@ -20,5 +20,37 @@
     "uncoveredGutterStyle": "blockred"
   },
   "go.testExplorer.enable": true,
-  "go.testExplorer.showOutput": true
+  "go.testExplorer.showOutput": true,
+  "playwright.reuseBrowser": true,
+  "playwright.showTrace": true,
+  "testing.automaticallyOpenPeekView": "failureInVisibleDocument",
+  "go.lintTool": "golangci-lint",
+  "go.lintFlags": [
+    "--fast"
+  ],
+  "go.lintOnSave": "workspace",
+  "go.formatTool": "goimports",
+  "go.formatFlags": [],
+  "go.vetOnSave": "workspace",
+  "[go]": {
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit"
+    }
+  },
+  "go.toolsManagement.autoUpdate": false,
+  "emeraldwalk.runonsave": {
+    "commands": [
+      {
+        "match": "\\.go$",
+        "cmd": "golangci-lint run ${file} --fix",
+        "isAsync": true,
+        "silent": true
+      }
+    ]
+  },
+  "editor.rulers": [120],
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "files.trimFinalNewlines": true
 }

@@ -35,15 +35,47 @@ test.describe('Authentication Flow', () => {
 
   test('should successfully login with valid credentials', async ({ page }) => {
     await page.goto('/login');
-    
-    await page.fill('input[name="username"]', 'admin');
-    await page.fill('input[name="password"]', 'admin1234');
-    await page.click('button[type="submit"]');
-    
+
+    // Check if we were redirected to setup page
+    if (page.url().includes('/setup')) {
+      // Complete the setup first
+      await page.fill('input[name="username"]', 'admin');
+      await page.fill('input[name="password"]', 'admin1234');
+      await page.fill('input[name="password2"]', 'admin1234');
+      await page.fill('input[name="node_name"]', 'Test OnTree Node');
+
+      // Set tree icon
+      await page.evaluate(() => {
+        const iconInput = document.querySelector('input[name="node_icon"]');
+        if (iconInput) iconInput.value = 'tree1';
+      });
+
+      await page.click('button:has-text("Continue to System Check")');
+      await page.waitForURL('**/systemcheck', { timeout: 10000 });
+
+      // Wait for system check to complete and buttons to be available
+      await page.waitForTimeout(2000);
+
+      // Submit the form with the appropriate action
+      // Try to click Complete Setup if available and enabled
+      const completeButton = await page.$('button[name="action"][value="complete"]:not([disabled])');
+      if (completeButton) {
+        await completeButton.click();
+      } else {
+        // Otherwise click Continue Without Fixing Everything
+        await page.click('button[name="action"][value="continue"]');
+      }
+    } else {
+      // Normal login flow
+      await page.fill('input[name="username"]', 'admin');
+      await page.fill('input[name="password"]', 'admin1234');
+      await page.click('button[type="submit"]');
+    }
+
     await page.waitForURL(url => {
-      return url.pathname === '/' || url.includes('/?login=success');
+      return url.pathname === '/' || url.toString().includes('/?login=success');
     }, { timeout: 10000 });
-    
+
     await expect(page.locator('.settings-icon')).toBeVisible();
   });
 

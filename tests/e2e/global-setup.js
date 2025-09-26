@@ -3,8 +3,8 @@ const fs = require('fs');
 const path = require('path');
 
 // Environment variable support
-const TEST_BASE_URL = process.env.TEST_BASE_URL || 'http://localhost:3001';
-const TEST_PORT = process.env.TEST_PORT || '3001';
+const TEST_BASE_URL = process.env.TEST_BASE_URL || process.env.BASE_URL || 'http://localhost:3002';
+const TEST_PORT = process.env.TEST_PORT || '3002';
 const TEST_DB_PATH = process.env.TEST_DB_PATH || path.join(__dirname, '..', '..', 'ontree.db');
 const TEST_ADMIN_USER = process.env.TEST_ADMIN_USER || 'admin';
 const TEST_ADMIN_PASSWORD = process.env.TEST_ADMIN_PASSWORD || 'admin1234';
@@ -84,10 +84,25 @@ module.exports = async () => {
       // Complete setup using curl with environment variables
       const encodedNodeName = encodeURIComponent(TEST_NODE_NAME).replace(/%20/g, '+');
       const encodedNodeDesc = encodeURIComponent(TEST_NODE_DESCRIPTION).replace(/%20/g, '+');
-      const setupData = `username=${TEST_ADMIN_USER}&password=${TEST_ADMIN_PASSWORD}&password2=${TEST_ADMIN_PASSWORD}&node_name=${encodedNodeName}&node_description=${encodedNodeDesc}`;
-      
-      execSync(`curl -s -X POST -d '${setupData}' -H 'Content-Type: application/x-www-form-urlencoded' ${TEST_BASE_URL}/setup`, { stdio: 'ignore' });
-      console.log('✅ Initial setup completed');
+      const setupData = `username=${TEST_ADMIN_USER}&password=${TEST_ADMIN_PASSWORD}&password2=${TEST_ADMIN_PASSWORD}&node_name=${encodedNodeName}&node_description=${encodedNodeDesc}&node_icon=tree1`;
+
+      const setupResponse = execSync(`curl -s -X POST -d '${setupData}' -H 'Content-Type: application/x-www-form-urlencoded' -w "\\n%{http_code}" ${TEST_BASE_URL}/setup`, { encoding: 'utf8' });
+      const lines = setupResponse.trim().split('\n');
+      const statusCode = lines[lines.length - 1];
+
+      if (statusCode === '302' || statusCode === '303') {
+        console.log('✅ Initial setup completed successfully (redirect received)');
+      } else if (statusCode === '200') {
+        // Check if we got an error message in the response
+        if (setupResponse.includes('alert-danger') || setupResponse.includes('error')) {
+          console.error('❌ Setup failed - error in response');
+          throw new Error('Setup failed with validation errors');
+        }
+        console.log('✅ Initial setup completed');
+      } else {
+        console.error(`❌ Unexpected status code from setup: ${statusCode}`);
+        throw new Error(`Setup failed with status ${statusCode}`);
+      }
       
       // Give it a moment to process
       execSync('sleep 1');

@@ -19,6 +19,28 @@
             },
             "args": [],
             "showLog": true
+        },
+        {
+            "name": "Debug Playwright Test",
+            "type": "node",
+            "request": "launch",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": ["run", "test", "--", "--debug"],
+            "cwd": "${workspaceFolder}/tests/e2e",
+            "console": "integratedTerminal",
+            "env": {
+                "PWDEBUG": "1"
+            }
+        },
+        {
+            "name": "Run E2E Tests (with server)",
+            "type": "node",
+            "request": "launch",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": ["test"],
+            "cwd": "${workspaceFolder}/tests/e2e",
+            "console": "integratedTerminal",
+            "preLaunchTask": "start-test-server"
         }
     ]
 }
