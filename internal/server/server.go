@@ -220,6 +220,14 @@ func (s *Server) loadTemplates() error {
 	}
 	s.templates["setup"] = tmpl
 
+	// Load systemcheck template
+	systemCheckPageTemplate := filepath.Join("templates", "dashboard", "systemcheck.html")
+	tmpl, err = embeds.ParseTemplate(baseTemplate, systemCheckPageTemplate, systemCheckTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse systemcheck template: %w", err)
+	}
+	s.templates["systemcheck"] = tmpl
+
 	// Load login template
 	loginTemplate := filepath.Join("templates", "dashboard", "login.html")
 	tmpl, err = embeds.ParseTemplate(baseTemplate, loginTemplate)
@@ -472,6 +480,7 @@ func (s *Server) Start() error {
 
 	// Public routes (no auth required)
 	mux.HandleFunc("/setup", s.TracingMiddleware(s.SetupRequiredMiddleware(s.handleSetup)))
+	mux.HandleFunc("/systemcheck", s.TracingMiddleware(s.SetupRequiredMiddleware(s.handleSetupSystemCheck)))
 	mux.HandleFunc("/login", s.TracingMiddleware(s.SetupRequiredMiddleware(s.handleLogin)))
 	mux.HandleFunc("/logout", s.TracingMiddleware(s.handleLogout))
 

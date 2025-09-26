@@ -169,9 +169,12 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == "POST" {
+		log.Printf("[DEBUG] Setup POST request received")
+
 		// Parse form
 		err := r.ParseForm()
 		if err != nil {
+			log.Printf("[DEBUG] Failed to parse form: %v", err)
 			http.Error(w, "Failed to parse form", http.StatusBadRequest)
 			return
 		}
@@ -180,8 +183,10 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 		password := r.FormValue("password")
 		password2 := r.FormValue("password2")
 		nodeName := r.FormValue("node_name")
-		nodeDescription := r.FormValue("node_description")
 		nodeIcon := r.FormValue("node_icon")
+
+		log.Printf("[DEBUG] Form values - username: %s, nodeName: %s, nodeIcon: %s, password length: %d",
+			username, nodeName, nodeIcon, len(password))
 
 		// Default icon if none selected - use first icon to match frontend
 		if nodeIcon == "" {
@@ -206,60 +211,45 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 			nodeName = "OnTree Node"
 		}
 
+		log.Printf("[DEBUG] Validation complete. Errors: %v", errors)
+
 		if len(errors) == 0 {
-			// Create the admin user
-			user, err := s.createUser(username, password, "", true, true)
+			log.Printf("[DEBUG] No validation errors, proceeding with session storage")
+			// Store setup data in session and redirect to system check
+			session, err := s.sessionStore.Get(r, "ontree-session")
 			if err != nil {
-				errors = append(errors, fmt.Sprintf("Failed to create user: %v", err))
-			} else {
-				// Update or create system setup
-				if setupComplete {
-					_, err = db.Exec(`
-						UPDATE system_setup
-						SET is_setup_complete = 1, setup_date = ?, node_name = ?, node_description = ?, node_icon = ?
-						WHERE id = 1
-					`, time.Now(), nodeName, nodeDescription, nodeIcon)
-				} else {
-					_, err = db.Exec(`
-						INSERT INTO system_setup (id, is_setup_complete, setup_date, node_name, node_description, node_icon)
-						VALUES (1, 1, ?, ?, ?, ?)
-					`, time.Now(), nodeName, nodeDescription, nodeIcon)
-				}
-
-				if err != nil {
-					log.Printf("Failed to update system setup: %v", err)
-				}
-
-				// Log the user in
-				session, err := s.sessionStore.Get(r, "ontree-session")
-				if err != nil {
-					log.Printf("Failed to get session: %v", err)
-					// Continue anyway - not critical
-				}
-				session.Values["user_id"] = user.ID
-				if err := session.Save(r, w); err != nil {
-					log.Printf("Failed to save session: %v", err)
-				}
-
-				log.Printf("Initial setup completed. Admin user: %s, Node: %s", user.Username, nodeName)
-
-				http.Redirect(w, r, "/", http.StatusFound)
+				log.Printf("Failed to get session: %v", err)
+				http.Error(w, "Session error", http.StatusInternalServerError)
 				return
 			}
+
+			// Store setup data in session as individual values
+			session.Values["setup_username"] = username
+			session.Values["setup_password"] = password
+			session.Values["setup_node_name"] = nodeName
+			session.Values["setup_node_icon"] = nodeIcon
+
+			if err := session.Save(r, w); err != nil {
+				log.Printf("[DEBUG] Failed to save session with setup data: %v", err)
+				http.Error(w, "Session error", http.StatusInternalServerError)
+				return
+			}
+
+			log.Printf("[DEBUG] Setup data stored in session successfully, redirecting to system check")
+			http.Redirect(w, r, "/systemcheck", http.StatusFound)
+			return
+		} else {
+			log.Printf("[DEBUG] Validation failed, re-rendering form with errors")
 		}
 
 		// Render with errors
 		data := s.baseTemplateData(nil) // nil for user since not logged in
 		data["Errors"] = errors
 		data["FormData"] = map[string]string{
-			"username":         username,
-			"node_name":        nodeName,
-			"node_description": nodeDescription,
-			"node_icon":        nodeIcon,
+			"username":  username,
+			"node_name": nodeName,
+			"node_icon": nodeIcon,
 		}
-		data["SystemCheckAutoRun"] = true
-		data["SystemCheckVisible"] = true
-		data["SystemCheckPanelID"] = "system-check-setup"
 
 		tmpl := s.templates["setup"]
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -276,11 +266,122 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 	data["FormData"] = map[string]string{
 		"node_name": "OnTree Node",
 	}
-	data["SystemCheckAutoRun"] = true
-	data["SystemCheckVisible"] = true
-	data["SystemCheckPanelID"] = "system-check-setup"
 
 	tmpl := s.templates["setup"]
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
+		log.Printf("Failed to execute template: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
+// handleSetupSystemCheck handles the system check page during setup
+func (s *Server) handleSetupSystemCheck(w http.ResponseWriter, r *http.Request) {
+	// Check if setup is already complete
+	db := database.GetDB()
+	var userCount int
+	err := db.QueryRow("SELECT COUNT(*) FROM users").Scan(&userCount)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	var setupComplete bool
+	err = db.QueryRow("SELECT is_setup_complete FROM system_setup WHERE id = 1").Scan(&setupComplete)
+	if err != nil && err != sql.ErrNoRows {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	if userCount > 0 && setupComplete {
+		http.Redirect(w, r, "/", http.StatusFound)
+		return
+	}
+
+	// Get session to retrieve setup data
+	session, err := s.sessionStore.Get(r, "ontree-session")
+	if err != nil {
+		log.Printf("Failed to get session: %v", err)
+		http.Redirect(w, r, "/setup", http.StatusFound)
+		return
+	}
+
+	if r.Method == "POST" {
+		// Get setup data from session
+		username, usernameOk := session.Values["setup_username"].(string)
+		password, passwordOk := session.Values["setup_password"].(string)
+		nodeName, _ := session.Values["setup_node_name"].(string)
+		nodeIcon, _ := session.Values["setup_node_icon"].(string)
+
+		if !usernameOk || !passwordOk || username == "" || password == "" {
+			log.Printf("Incomplete setup data in session, redirecting to setup")
+			http.Redirect(w, r, "/setup", http.StatusFound)
+			return
+		}
+
+		// Check which button was pressed
+		action := r.FormValue("action")
+		if action != "complete" && action != "continue" {
+			http.Error(w, "Invalid action", http.StatusBadRequest)
+			return
+		}
+
+		// Default icon if none selected
+		if nodeIcon == "" {
+			nodeIcon = "tree0.png"
+		}
+		if nodeName == "" {
+			nodeName = "OnTree Node"
+		}
+
+		// Complete the setup process
+		user, err := s.createUser(username, password, "", true, true)
+		if err != nil {
+			log.Printf("Failed to create user during system check: %v", err)
+			http.Error(w, "Failed to create user", http.StatusInternalServerError)
+			return
+		}
+
+		// Update or create system setup
+		if setupComplete {
+			_, err = db.Exec(`
+				UPDATE system_setup
+				SET is_setup_complete = 1, setup_date = ?, node_name = ?, node_icon = ?
+				WHERE id = 1
+			`, time.Now(), nodeName, nodeIcon)
+		} else {
+			_, err = db.Exec(`
+				INSERT INTO system_setup (id, is_setup_complete, setup_date, node_name, node_icon)
+				VALUES (1, 1, ?, ?, ?)
+			`, time.Now(), nodeName, nodeIcon)
+		}
+
+		if err != nil {
+			log.Printf("Failed to update system setup: %v", err)
+		}
+
+		// Log the user in
+		session.Values["user_id"] = user.ID
+		// Clear setup data from session
+		delete(session.Values, "setup_username")
+		delete(session.Values, "setup_password")
+		delete(session.Values, "setup_node_name")
+		delete(session.Values, "setup_node_icon")
+		if err := session.Save(r, w); err != nil {
+			log.Printf("Failed to save session: %v", err)
+		}
+
+		log.Printf("Setup completed via system check. Admin user: %s, Node: %s, Action: %s", user.Username, nodeName, action)
+
+		http.Redirect(w, r, "/", http.StatusFound)
+		return
+	}
+
+	// GET request - show system check page
+	data := s.baseTemplateData(nil) // nil for user since not logged in
+	data["SystemCheckAutoRun"] = true
+	data["SystemCheckVisible"] = true
+	data["SystemCheckPanelID"] = "system-check"
+
+	tmpl := s.templates["systemcheck"]
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
 		log.Printf("Failed to execute template: %v", err)

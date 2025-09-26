@@ -19,6 +19,7 @@ func (s *Server) SetupRequiredMiddleware(next http.HandlerFunc) http.HandlerFunc
 		// URLs that should be accessible without setup
 		allowedPaths := []string{
 			"/setup",
+			"/systemcheck",
 			"/static/",
 			"/patterns/",
 			"/api/system/check",

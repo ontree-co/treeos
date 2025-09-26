@@ -1,0 +1,101 @@
+{{define "title"}}System Check - OnTree Node{{end}}
+
+{{define "content"}}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h2 class="card-title text-center mb-4">System Check</h2>
+                <p class="text-muted text-center mb-4">
+                    We're checking if your system has all the required components for TreeOS.
+                </p>
+
+                <div class="mb-4">
+                    {{template "system-check" .}}
+                </div>
+
+                <form method="POST" action="/systemcheck">
+                    <div class="d-flex gap-3">
+                        <div class="flex-grow-1">
+                            <button type="submit" name="action" value="complete" id="complete-setup-btn" class="btn btn-success w-100" disabled>
+                                <i class="bi bi-check-circle me-2"></i>Complete Setup
+                            </button>
+                        </div>
+                        <div>
+                            <button type="submit" name="action" value="continue" class="btn btn-outline-secondary">
+                                Continue Without Fixing Everything
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Monitor system check results to enable/disable Complete Setup button
+function monitorSystemCheckResults() {
+    const completeBtn = document.getElementById('complete-setup-btn');
+    if (!completeBtn) return;
+
+    // Function to check if all system checks are green
+    function updateButtonState() {
+        const systemCheckPanel = document.querySelector('[data-system-check]');
+        if (!systemCheckPanel) return;
+
+        const statusIcons = systemCheckPanel.querySelectorAll('.status-icon i');
+        let allGreen = true;
+        let hasResults = false;
+
+        statusIcons.forEach(icon => {
+            if (icon.classList.contains('bi-check-circle-fill') && icon.classList.contains('text-success')) {
+                hasResults = true;
+            } else if (icon.classList.contains('bi-x-circle-fill') && icon.classList.contains('text-danger')) {
+                hasResults = true;
+                allGreen = false;
+            } else if (icon.classList.contains('bi-exclamation-triangle-fill') && icon.classList.contains('text-danger')) {
+                hasResults = true;
+                allGreen = false;
+            }
+        });
+
+        // Enable button only if we have results and all are green
+        if (hasResults && allGreen) {
+            completeBtn.disabled = false;
+            completeBtn.classList.remove('btn-secondary');
+            completeBtn.classList.add('btn-success');
+        } else {
+            completeBtn.disabled = true;
+            completeBtn.classList.remove('btn-success');
+            completeBtn.classList.add('btn-secondary');
+        }
+    }
+
+    // Monitor for changes in the system check panel
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (mutation.type === 'childList' || mutation.type === 'attributes') {
+                updateButtonState();
+            }
+        });
+    });
+
+    const systemCheckPanel = document.querySelector('[data-system-check]');
+    if (systemCheckPanel) {
+        observer.observe(systemCheckPanel, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['class']
+        });
+    }
+
+    // Initial check
+    setTimeout(updateButtonState, 1000);
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', monitorSystemCheckResults);
+</script>
+{{end}}
