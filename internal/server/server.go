@@ -28,6 +28,7 @@ import (
 	"treeos/internal/database"
 	"treeos/internal/embeds"
 	"treeos/internal/ollama"
+	"treeos/internal/progress"
 	"treeos/internal/realtime"
 	containerruntime "treeos/internal/runtime"
 	"treeos/internal/system"
@@ -59,6 +60,7 @@ type Server struct {
 	composeSvc            *compose.Service
 	sseManager            *SSEManager
 	ollamaWorker          *ollama.Worker
+	progressTracker       *progress.Tracker
 	stopCh                chan struct{}
 	stopOnce              sync.Once
 	updateMu              sync.Mutex
@@ -84,6 +86,7 @@ func New(cfg *config.Config, versionInfo version.Info) (*Server, error) {
 		platformSupportsCaddy: runtime.GOOS == "linux",
 		sparklineCache:        cache.New(5 * time.Minute), // 5-minute cache for sparklines
 		realtimeMetrics:       realtime.NewMetrics(),
+		progressTracker:       progress.NewTracker(),
 		stopCh:                make(chan struct{}),
 	}
 
@@ -454,6 +457,7 @@ func (s *Server) Start() error {
 	go s.startVitalsCleanup()
 	go s.startRealtimeMetricsCollection()
 	go s.startVitalsCollection()
+	go s.startProgressCleanup()
 
 	// Start Ollama worker if database is available
 	if s.db != nil {
@@ -608,6 +612,20 @@ func (s *Server) cleanupOldVitals() {
 
 	if rowsAffected > 0 {
 		log.Printf("Cleaned up %d old vital log records", rowsAffected)
+	}
+}
+
+// startProgressCleanup runs a background job to clean up old progress tracking operations
+func (s *Server) startProgressCleanup() {
+	log.Printf("Progress tracking cleanup job started")
+
+	// Run cleanup every 5 minutes
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		// Remove operations older than 30 minutes
+		s.progressTracker.CleanupOldOperations(30 * time.Minute)
 	}
 }
 
@@ -1491,6 +1509,10 @@ func (s *Server) routeAPIApps(w http.ResponseWriter, r *http.Request) {
 		s.handleAPIAppStop(w, r)
 	} else if strings.HasSuffix(path, "/logs") {
 		s.handleAPIAppLogs(w, r)
+	} else if strings.HasSuffix(path, "/progress/sse") {
+		s.handleAPIAppProgressSSE(w, r)
+	} else if strings.HasSuffix(path, "/progress") {
+		s.handleAPIAppProgress(w, r)
 	} else if strings.HasSuffix(path, "/security-bypass") {
 		// Toggle security bypass for an app
 		s.handleAPIAppSecurityBypass(w, r)

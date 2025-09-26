@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"treeos/internal/progress"
 	"treeos/internal/security"
 	"treeos/internal/systemcheck"
 	"treeos/internal/yamlutil"
@@ -374,8 +375,10 @@ func (s *Server) handleAPIAppStart(w http.ResponseWriter, r *http.Request) {
 		log.Printf("SECURITY: Bypassing security validation for app '%s' (user-configured)", appName)
 	}
 
-	// Start the app using compose SDK with a reasonable timeout
-	// Use a longer timeout (5 minutes) to allow for image pulls
+	// Initialize progress tracking
+	s.progressTracker.StartOperation(appName, progress.OperationPreparing, "Preparing to start containers...")
+
+	// Start the app using compose SDK with progress tracking
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
@@ -389,10 +392,28 @@ func (s *Server) handleAPIAppStart(w http.ResponseWriter, r *http.Request) {
 		opts.EnvFile = ".env" // Just the filename, not the full path
 	}
 
-	// Start the compose project in a goroutine to avoid blocking
+	// Create progress parser to handle Podman output
+	parser := progress.NewPodmanProgressParser(s.progressTracker)
+
+	// Create progress callback function
+	progressCallback := func(line string) {
+		log.Printf("[Progress] %s: %s", appName, line)
+		parser.ParseLine(appName, line)
+
+		// Send SSE update after each progress update
+		if progressInfo, exists := s.progressTracker.GetProgress(appName); exists && s.sseManager != nil {
+			progressData := map[string]interface{}{
+				"type":     "progress",
+				"progress": progressInfo,
+			}
+			s.sseManager.BroadcastMessage("app-progress-"+appName, progressData)
+		}
+	}
+
+	// Start the compose project with progress tracking
 	startChan := make(chan error, 1)
 	go func() {
-		startChan <- composeSvc.Up(ctx, opts)
+		startChan <- composeSvc.UpWithProgress(ctx, opts, progressCallback)
 	}()
 
 	// Wait for either completion or a shorter timeout for the HTTP response
@@ -401,21 +422,78 @@ func (s *Server) handleAPIAppStart(w http.ResponseWriter, r *http.Request) {
 		// Operation completed within time
 		if err != nil {
 			log.Printf("Failed to start app %s: %v", appName, err)
+			s.progressTracker.SetError(appName, err.Error())
+
+			// Send SSE error update
+			if progressInfo, exists := s.progressTracker.GetProgress(appName); exists && s.sseManager != nil {
+				progressData := map[string]interface{}{
+					"type":     "error",
+					"progress": progressInfo,
+				}
+				s.sseManager.BroadcastMessage("app-progress-"+appName, progressData)
+			}
+
 			if isRuntimeUnavailableError(err) {
 				s.markComposeUnhealthy()
 			}
 			http.Error(w, fmt.Sprintf("Failed to start app: %v", err), http.StatusInternalServerError)
 			return
 		}
-	case <-time.After(10 * time.Second):
-		// If it takes more than 10 seconds, assume it's pulling an image
-		// Return success and let it continue in the background
-		log.Printf("App %s is starting (may be pulling images)...", appName)
+		// Mark as complete
+		s.progressTracker.CompleteOperation(appName, fmt.Sprintf("App '%s' started successfully", appName))
+
+		// Send SSE completion update
+		if progressInfo, exists := s.progressTracker.GetProgress(appName); exists && s.sseManager != nil {
+			progressData := map[string]interface{}{
+				"type":     "complete",
+				"progress": progressInfo,
+			}
+			s.sseManager.BroadcastMessage("app-progress-"+appName, progressData)
+		}
+	case <-time.After(3 * time.Second):
+		// If it takes more than 3 seconds, return immediately with progress status
+		// The operation continues in the background
+		log.Printf("App %s is starting in background (pulling images)...", appName)
+
+		// Set up background completion handler
+		go func() {
+			err := <-startChan
+			if err != nil {
+				log.Printf("Background start failed for app %s: %v", appName, err)
+				s.progressTracker.SetError(appName, err.Error())
+
+				// Send SSE error update
+				if progressInfo, exists := s.progressTracker.GetProgress(appName); exists && s.sseManager != nil {
+					progressData := map[string]interface{}{
+						"type":     "error",
+						"progress": progressInfo,
+					}
+					s.sseManager.BroadcastMessage("app-progress-"+appName, progressData)
+				}
+
+				if isRuntimeUnavailableError(err) {
+					s.markComposeUnhealthy()
+				}
+			} else {
+				log.Printf("Background start completed successfully for app %s", appName)
+				s.progressTracker.CompleteOperation(appName, fmt.Sprintf("App '%s' started successfully", appName))
+
+				// Send SSE completion update
+				if progressInfo, exists := s.progressTracker.GetProgress(appName); exists && s.sseManager != nil {
+					progressData := map[string]interface{}{
+						"type":     "complete",
+						"progress": progressInfo,
+					}
+					s.sseManager.BroadcastMessage("app-progress-"+appName, progressData)
+				}
+			}
+		}()
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusAccepted) // 202 Accepted for async operation
 		response := map[string]interface{}{
 			"success": true,
-			"message": fmt.Sprintf("App '%s' is starting. This may take several minutes if images need to be downloaded.", appName),
+			"message": fmt.Sprintf("App '%s' is starting. Check progress at /api/apps/%s/progress", appName, appName),
 			"app": map[string]string{
 				"name":        appName,
 				"projectName": appName,
@@ -427,7 +505,7 @@ func (s *Server) handleAPIAppStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Return success response
+	// Return success response for quick completions
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	response := map[string]interface{}{
@@ -1002,5 +1080,190 @@ func (s *Server) handleSystemCheck(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		log.Printf("Failed to encode system check response: %v", err)
+	}
+}
+
+// handleAPIAppProgress handles GET /api/apps/{appName}/progress
+func (s *Server) handleAPIAppProgress(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Extract app name from URL
+	path := strings.TrimPrefix(r.URL.Path, "/api/apps/")
+	appName := strings.TrimSuffix(path, "/progress")
+
+	if appName == "" {
+		http.Error(w, "App name is required", http.StatusBadRequest)
+		return
+	}
+
+	// Get progress from tracker
+	if s.progressTracker == nil {
+		http.Error(w, "Progress tracking not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	// Check if container is already running - if so, clear stale progress data
+	appDir := filepath.Join(s.config.AppsDir, appName)
+	if composeSvc, err := s.getComposeService(); err == nil {
+		opts := compose.Options{WorkingDir: appDir}
+		if containers, err := composeSvc.PS(context.Background(), opts); err == nil {
+			// If any container is running, clear stale progress
+			isRunning := false
+			for _, container := range containers {
+				if container.State == "running" {
+					isRunning = true
+					break
+				}
+			}
+			if isRunning {
+				s.progressTracker.RemoveOperation(appName)
+			}
+		}
+	}
+
+	progressInfo, exists := s.progressTracker.GetProgress(appName)
+	if !exists {
+		// No active operation, return default state
+		response := map[string]interface{}{
+			"app_name":         appName,
+			"operation":        "idle",
+			"overall_progress": 0,
+			"message":          "No active operation",
+		}
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			log.Printf("Failed to encode progress response: %v", err)
+		}
+		return
+	}
+
+	// Return current progress
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(progressInfo); err != nil {
+		log.Printf("Failed to encode progress response: %v", err)
+	}
+}
+
+// handleAPIAppProgressSSE handles SSE connection for app progress updates
+func (s *Server) handleAPIAppProgressSSE(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Extract app name from URL
+	path := strings.TrimPrefix(r.URL.Path, "/api/apps/")
+	appName := strings.TrimSuffix(path, "/progress/sse")
+
+	if appName == "" {
+		http.Error(w, "App name is required", http.StatusBadRequest)
+		return
+	}
+
+	// Set SSE headers
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("X-Accel-Buffering", "no")
+
+	// Create SSE client with larger buffer for better reliability
+	client := &SSEClient{
+		AppID:    "app-progress-" + appName,
+		Messages: make(chan string, 256), // Increased buffer size
+		Close:    make(chan bool, 1),     // Buffered close channel
+	}
+
+	// Register client with SSE manager
+	if s.sseManager != nil {
+		s.sseManager.RegisterClient("app-progress-"+appName, client)
+		log.Printf("SSE client registered for app %s progress updates", appName)
+		defer func() {
+			s.sseManager.UnregisterClient("app-progress-"+appName, client)
+			log.Printf("SSE client disconnected for app %s", appName)
+		}()
+	} else {
+		http.Error(w, "SSE not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	// Create a flusher for immediate sending
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "Streaming unsupported", http.StatusInternalServerError)
+		return
+	}
+
+	// Check if container is already running - if so, don't send stale progress data
+	appDir := filepath.Join(s.config.AppsDir, appName)
+	if composeSvc, err := s.getComposeService(); err == nil {
+		opts := compose.Options{WorkingDir: appDir}
+		if containers, err := composeSvc.PS(context.Background(), opts); err == nil {
+			// If any container is running, clear stale progress and don't send initial data
+			isRunning := false
+			for _, container := range containers {
+				if container.State == "running" {
+					isRunning = true
+					break
+				}
+			}
+			if isRunning {
+				// Clear any stale progress data
+				s.progressTracker.RemoveOperation(appName)
+				log.Printf("Cleared stale progress data for running app: %s", appName)
+			}
+		}
+	}
+
+	// Send initial progress state only if operation is active
+	if progressInfo, exists := s.progressTracker.GetProgress(appName); exists {
+		// Only send if operation is not complete or error
+		if progressInfo.Operation != progress.OperationComplete && progressInfo.Operation != progress.OperationError {
+			initialData := map[string]interface{}{
+				"type":     "progress",
+				"progress": progressInfo,
+			}
+			if jsonData, err := json.Marshal(initialData); err == nil {
+				fmt.Fprintf(w, "event: progress\ndata: %s\n\n", string(jsonData))
+				flusher.Flush()
+			}
+		} else {
+			// Clear completed/error operations that are stale
+			s.progressTracker.RemoveOperation(appName)
+		}
+	}
+
+	// Handle client disconnect
+	ctx := r.Context()
+
+	// Keep connection alive and send progress updates
+	pingTicker := time.NewTicker(30 * time.Second)
+	defer pingTicker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			log.Printf("SSE client context cancelled for app %s", appName)
+			return
+		case <-client.Close:
+			log.Printf("SSE client closed for app %s", appName)
+			return
+		case message := <-client.Messages:
+			if _, err := fmt.Fprint(w, message); err != nil {
+				log.Printf("Failed to write SSE message to client for app %s: %v", appName, err)
+				return
+			}
+			flusher.Flush()
+		case <-pingTicker.C:
+			// Send keepalive with error handling
+			if _, err := fmt.Fprint(w, ": keepalive\n\n"); err != nil {
+				log.Printf("Failed to send keepalive to SSE client for app %s: %v", appName, err)
+				return
+			}
+			flusher.Flush()
+		}
 	}
 }

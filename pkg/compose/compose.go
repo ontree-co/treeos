@@ -70,17 +70,106 @@ type PortMapping struct {
 	Protocol      string
 }
 
+// ProgressCallback is called for each line of output during container operations
+type ProgressCallback func(line string)
+
 // Up starts a compose project (equivalent to `podman compose up -d`).
 func (s *Service) Up(ctx context.Context, opts Options) error {
+	return s.UpWithProgress(ctx, opts, nil)
+}
+
+// UpWithProgress starts a compose project with progress monitoring.
+func (s *Service) UpWithProgress(ctx context.Context, opts Options, progressCallback ProgressCallback) error {
 	cmd, err := s.newComposeCmd(ctx, opts, "up", "-d")
 	if err != nil {
 		return err
 	}
 
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("failed to start containers: %w (output: %s)", err, strings.TrimSpace(string(output)))
+	if progressCallback == nil {
+		// Fallback to simple execution if no progress callback
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("failed to start containers: %w (output: %s)", err, strings.TrimSpace(string(output)))
+		}
+		return nil
 	}
+
+	// Set up pipes to capture stdout and stderr
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("failed to create stdout pipe: %w", err)
+	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("failed to create stderr pipe: %w", err)
+	}
+
+	// Start the command
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to start command: %w", err)
+	}
+
+	// Process output streams concurrently
+	outputChan := make(chan string, 100)
+	errorChan := make(chan error, 2)
+
+	// Read stdout
+	go func() {
+		scanner := bufio.NewScanner(stdout)
+		for scanner.Scan() {
+			outputChan <- scanner.Text()
+		}
+		if err := scanner.Err(); err != nil {
+			errorChan <- fmt.Errorf("stdout scan error: %w", err)
+		} else {
+			errorChan <- nil
+		}
+	}()
+
+	// Read stderr
+	go func() {
+		scanner := bufio.NewScanner(stderr)
+		for scanner.Scan() {
+			outputChan <- scanner.Text()
+		}
+		if err := scanner.Err(); err != nil {
+			errorChan <- fmt.Errorf("stderr scan error: %w", err)
+		} else {
+			errorChan <- nil
+		}
+	}()
+
+	// Process output lines and call progress callback
+	go func() {
+		for line := range outputChan {
+			progressCallback(line)
+		}
+	}()
+
+	// Wait for both readers to finish
+	var readErrors []error
+	for i := 0; i < 2; i++ {
+		if err := <-errorChan; err != nil {
+			readErrors = append(readErrors, err)
+		}
+	}
+
+	// Close output channel
+	close(outputChan)
+
+	// Wait for command to complete
+	cmdErr := cmd.Wait()
+
+	// Check for read errors first
+	if len(readErrors) > 0 {
+		return fmt.Errorf("failed to read command output: %v", readErrors)
+	}
+
+	// Check command execution error
+	if cmdErr != nil {
+		return fmt.Errorf("failed to start containers: %w", cmdErr)
+	}
+
 	return nil
 }
 

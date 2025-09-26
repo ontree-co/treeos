@@ -55,7 +55,10 @@ func (m *SSEManager) UnregisterClient(appID string, client *SSEClient) {
 // BroadcastMessage sends a message to all clients for an app
 func (m *SSEManager) BroadcastMessage(appID string, messageData interface{}) {
 	m.mu.RLock()
-	clients := m.clients[appID]
+	clients := make(map[*SSEClient]bool)
+	for client := range m.clients[appID] {
+		clients[client] = true
+	}
 	m.mu.RUnlock()
 
 	if len(clients) == 0 {
@@ -63,9 +66,16 @@ func (m *SSEManager) BroadcastMessage(appID string, messageData interface{}) {
 	}
 
 	// Extract event type if present in messageData
-	eventType := "new-message" // Default event type
+	eventType := "message" // Default event type
 	if msgMap, ok := messageData.(map[string]interface{}); ok {
-		if event, exists := msgMap["event"]; exists {
+		// Check for "type" field first (used by progress updates)
+		if typeField, exists := msgMap["type"]; exists {
+			if typeStr, isString := typeField.(string); isString {
+				eventType = typeStr
+				// Don't remove the type field - keep it in the data
+			}
+		} else if event, exists := msgMap["event"]; exists {
+			// Fallback to "event" field for backwards compatibility
 			if eventStr, isString := event.(string); isString {
 				eventType = eventStr
 				// Remove the event field from the data since it's now in the SSE event type
@@ -84,15 +94,39 @@ func (m *SSEManager) BroadcastMessage(appID string, messageData interface{}) {
 	// Format as SSE event with the correct event type
 	sseMessage := fmt.Sprintf("event: %s\ndata: %s\n\n", eventType, string(jsonData))
 
-	// Send to all clients
+	// Track clients to clean up after sending
+	clientsToRemove := []*SSEClient{}
+
+	// Send to all clients with improved error handling
 	for client := range clients {
 		select {
 		case client.Messages <- sseMessage:
 			// Message sent successfully
-		case <-time.After(100 * time.Millisecond):
+		case <-time.After(500 * time.Millisecond): // Increased timeout for better reliability
 			// Client is not receiving, likely disconnected
-			log.Printf("SSE client for app %s is not receiving, will be cleaned up", appID)
+			log.Printf("SSE client for app %s is not receiving messages, marking for cleanup", appID)
+			clientsToRemove = append(clientsToRemove, client)
 		}
+	}
+
+	// Clean up unresponsive clients
+	if len(clientsToRemove) > 0 {
+		m.mu.Lock()
+		for _, client := range clientsToRemove {
+			if clientMap, exists := m.clients[appID]; exists {
+				delete(clientMap, client)
+				if len(clientMap) == 0 {
+					delete(m.clients, appID)
+				}
+			}
+			// Close client channels to signal disconnection
+			select {
+			case client.Close <- true:
+			default:
+			}
+		}
+		m.mu.Unlock()
+		log.Printf("Cleaned up %d unresponsive SSE clients for app %s", len(clientsToRemove), appID)
 	}
 }
 

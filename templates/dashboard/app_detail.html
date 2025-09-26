@@ -1,5 +1,88 @@
 {{define "content"}}
 <style>
+    /* Progress bar styles */
+    .progress-container {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+
+    .progress-text {
+        font-weight: 500;
+        font-size: 0.875rem;
+        color: #fff;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    }
+
+    .progress-bar {
+        transition: width 0.3s ease;
+        background: linear-gradient(45deg, #0d6efd, #0b5ed7);
+    }
+
+    .progress-bar.downloading {
+        background: linear-gradient(45deg, #198754, #157347);
+    }
+
+    .progress-bar.extracting {
+        background: linear-gradient(45deg, #fd7e14, #e55d00);
+    }
+
+    .progress-bar.error {
+        background: linear-gradient(45deg, #dc3545, #b02a37);
+    }
+
+    #progress-details {
+        display: block;
+        margin-top: 4px;
+        font-size: 0.8rem;
+    }
+
+    #progress-eta {
+        font-size: 0.75rem;
+        font-style: italic;
+    }
+
+    /* Multi-image progress styles */
+    .image-progress-list {
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    .image-progress-item {
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 4px;
+        padding: 8px 12px;
+        margin-bottom: 6px;
+        font-size: 0.875rem;
+    }
+
+    .image-progress-item .image-name {
+        font-weight: 500;
+        color: #495057;
+        font-size: 0.8rem;
+    }
+
+    .image-progress-item .progress {
+        height: 16px;
+        margin: 4px 0;
+    }
+
+    .image-progress-item .image-details {
+        font-size: 0.75rem;
+        color: #6c757d;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .image-status-icon {
+        margin-left: 8px;
+        font-size: 0.9rem;
+    }
+
     /* Chat message styles */
     .chat-message {
         padding: 12px 16px;
@@ -417,7 +500,36 @@
                 </div>
             </div>
             <div class="card-body">
-                <div id="app-action-status" class="mb-3"></div>
+                <div id="app-action-status" class="mb-3">
+                    <!-- Multi-image progress component (initially hidden) -->
+                    <div id="download-progress" class="progress-container" style="display: none;">
+                        <!-- Overall Progress -->
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="mb-0" id="overall-status">Downloading images...</h6>
+                                <small id="progress-eta" class="text-muted"></small>
+                            </div>
+                            <div class="progress" style="height: 8px;">
+                                <div id="overall-progress-bar" class="progress-bar bg-primary"
+                                     role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                                </div>
+                            </div>
+                            <small id="overall-details" class="text-muted mt-1 d-block">Initializing...</small>
+                        </div>
+
+                        <!-- Individual Image Progress Bars -->
+                        <div id="image-progress-list" class="image-progress-list">
+                            <!-- Dynamic image progress bars will be inserted here -->
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="d-flex justify-content-end mt-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="cancel-operation" style="display: none;">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
                 {{if $view.HasServices}}
                 <div class="table-responsive">
                     <table class="table table-striped">
@@ -472,7 +584,7 @@
                     </table>
                 </div>
                 {{else}}
-                <p class="text-muted mb-0">No services reported yet.</p>
+                <p class="text-muted mb-0" id="no-services-message">No services reported yet.</p>
                 {{end}}
             </div>
         </div>
@@ -809,17 +921,27 @@
 
 {{define "extra_js"}}
 <script>
-// Handle app API calls
+let progressSSE = null;
+let currentOperation = null;
+
+// Handle app API calls with progress tracking
 function handleAppAction(form, action) {
     const appName = '{{.View.Name}}';
     const statusDiv = document.getElementById('app-action-status');
     const button = form.querySelector('button[type="submit"]');
     const originalButtonHTML = button.innerHTML;
-    
-    // Disable button and show spinner
+
+    // Store original button HTML and disable button
+    button.setAttribute('data-original-html', originalButtonHTML);
     button.disabled = true;
     button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Processing...';
-    
+
+    // Show progress bar for start actions
+    if (action === 'start') {
+        showProgressBar('Preparing to start containers...');
+        currentOperation = 'start';
+    }
+
     // Make API call
     fetch(form.action, {
         method: 'POST',
@@ -845,7 +967,34 @@ function handleAppAction(form, action) {
     })
     .then(data => {
         if (data.success) {
-            statusDiv.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
+            // For async operations, show progress via SSE
+            if (data.message && data.message.includes('Check progress')) {
+                // Operation is running in background, progress will be shown via SSE
+                // Don't replace innerHTML - that would remove the progress container!
+                // Instead, insert alert before the progress container
+                const progressContainer = document.getElementById('download-progress');
+                const alert = document.createElement('div');
+                alert.className = 'alert alert-info';
+                alert.textContent = data.message;
+                statusDiv.insertBefore(alert, progressContainer);
+
+                // Ensure SSE connection is active for progress updates
+                if (!progressEventSource || progressEventSource.readyState === EventSource.CLOSED) {
+                    resetProgressSSEConnection();
+                }
+            } else {
+                // Quick operation completed
+                // Don't replace innerHTML - preserve the progress container
+                const progressContainer = document.getElementById('download-progress');
+                const alert = document.createElement('div');
+                alert.className = 'alert alert-success';
+                alert.textContent = data.message;
+                statusDiv.insertBefore(alert, progressContainer);
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+            }
+
             {{if .PostHogEnabled}}
             if (typeof posthog !== 'undefined' && action === 'start') {
                 posthog.capture('app_started', {
@@ -854,20 +1003,426 @@ function handleAppAction(form, action) {
                 });
             }
             {{end}}
-            setTimeout(() => {
-                window.location.reload();
-            }, 2000);
         } else {
-            statusDiv.innerHTML = `<div class="alert alert-danger">Error: ${data.error || 'Operation failed'}</div>`;
+            // Don't replace innerHTML - preserve the progress container
+            const progressContainer = document.getElementById('download-progress');
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-danger';
+            alert.textContent = `Error: ${data.error || 'Operation failed'}`;
+            statusDiv.insertBefore(alert, progressContainer);
             button.disabled = false;
             button.innerHTML = originalButtonHTML;
+            hideProgressBar();
         }
     })
     .catch(error => {
-        statusDiv.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+        // Don't replace innerHTML - preserve the progress container
+        const progressContainer = document.getElementById('download-progress');
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-danger';
+        alert.textContent = `Error: ${error.message}`;
+        statusDiv.insertBefore(alert, progressContainer);
         button.disabled = false;
         button.innerHTML = originalButtonHTML;
+        hideProgressBar();
     });
+}
+
+// Show progress bar with initial message
+function showProgressBar(message) {
+    const progressContainer = document.getElementById('download-progress');
+    const progressBar = document.getElementById('overall-progress-bar');
+    const progressText = document.getElementById('overall-status');
+    const progressDetails = document.getElementById('overall-details');
+
+    if (progressContainer) {
+        progressContainer.style.display = 'block';
+
+        if (progressBar) {
+            progressBar.style.width = '0%';
+            progressBar.setAttribute('aria-valuenow', '0');
+            progressBar.className = 'progress-bar bg-primary';
+        }
+
+        if (progressText) {
+            progressText.textContent = message;
+        }
+
+        if (progressDetails) {
+            progressDetails.textContent = 'Initializing...';
+        }
+
+        // Don't hide the entire status div - it contains the progress container!
+        // Just clear any alert messages inside it
+        const statusDiv = document.getElementById('app-action-status');
+        if (statusDiv) {
+            // Remove any alert messages but keep the div visible
+            const alerts = statusDiv.querySelectorAll('.alert');
+            alerts.forEach(alert => alert.remove());
+        }
+
+        // Hide 'No services reported yet' message during download
+        const noServicesMsg = document.getElementById('no-services-message');
+        if (noServicesMsg) {
+            noServicesMsg.style.display = 'none';
+        }
+    }
+}
+
+// Hide progress bar
+function hideProgressBar() {
+    const progressContainer = document.getElementById('download-progress');
+    if (progressContainer) {
+        progressContainer.style.display = 'none';
+    }
+
+    // The status div is always visible - it contains the progress container
+    // No need to show/hide it
+
+    // Show 'No services reported yet' message again if it exists
+    const noServicesMsg = document.getElementById('no-services-message');
+    if (noServicesMsg) {
+        noServicesMsg.style.display = 'block';
+    }
+
+    currentOperation = null;
+}
+
+// Update multi-image progress bars with SSE data
+function updateProgressBar(progressData) {
+    if (!progressData || !progressData.progress) return;
+
+    const progress = progressData.progress;
+
+    // Check if progress container still exists
+    const progressContainer = document.getElementById('download-progress');
+    if (!progressContainer) {
+        // Try to find the card body and re-insert the progress container
+        const cardBody = document.querySelector('.card-body');
+        if (cardBody) {
+            const statusDiv = document.getElementById('app-action-status');
+            if (statusDiv) {
+                // Re-create progress container if it was removed
+                location.reload(); // Force reload if DOM is corrupted
+                return;
+            }
+        }
+        return;
+    }
+
+    // Update overall progress
+    updateOverallProgress(progress);
+
+    // Update individual image progress bars
+    if (progress.images && Object.keys(progress.images).length > 0) {
+        updateImageProgressBars(progress.images);
+    }
+}
+
+// Update overall progress bar and status
+function updateOverallProgress(progress) {
+    const overallBar = document.getElementById('overall-progress-bar');
+    const overallStatus = document.getElementById('overall-status');
+    const overallDetails = document.getElementById('overall-details');
+    const progressETA = document.getElementById('progress-eta');
+
+    if (!overallBar || !overallStatus || !overallDetails) return;
+
+    // Update overall progress percentage
+    const percentage = Math.round(progress.overall_progress || 0);
+    overallBar.style.width = percentage + '%';
+    overallBar.setAttribute('aria-valuenow', percentage);
+
+    // Update overall status message
+    overallStatus.textContent = progress.message || 'Processing...';
+    overallDetails.textContent = progress.details || '';
+
+    // Update ETA
+    if (progressETA) {
+        if (progress.estimated_time_remaining) {
+            progressETA.textContent = `ETA: ${progress.estimated_time_remaining}`;
+        } else {
+            progressETA.textContent = '';
+        }
+    }
+
+    // Update progress bar color based on operation
+    overallBar.className = 'progress-bar';
+    if (progress.operation === 'downloading') {
+        overallBar.classList.add('bg-success');
+    } else if (progress.operation === 'extracting') {
+        overallBar.classList.add('bg-warning');
+    } else if (progress.operation === 'error') {
+        overallBar.classList.add('bg-danger');
+    } else {
+        overallBar.classList.add('bg-primary');
+    }
+}
+
+// Update individual image progress bars
+function updateImageProgressBars(images) {
+    const progressList = document.getElementById('image-progress-list');
+    if (!progressList) return;
+
+    // Clear existing progress bars
+    progressList.innerHTML = '';
+
+    // Create progress bar for each image
+    Object.entries(images).forEach(([imageName, imageData]) => {
+        const progressItem = createImageProgressItem(imageName, imageData);
+        progressList.appendChild(progressItem);
+    });
+}
+
+// Create individual image progress item
+function createImageProgressItem(imageName, imageData) {
+    const item = document.createElement('div');
+    item.className = 'image-progress-item';
+
+    const percentage = Math.round(imageData.progress || 0);
+    const statusIcon = getStatusIcon(imageData.status);
+    const sizeText = formatImageSize(imageData);
+
+    item.innerHTML = `
+        <div class="image-name">${imageName} <span class="image-status-icon">${statusIcon}</span></div>
+        <div class="progress">
+            <div class="progress-bar progress-bar-striped ${getProgressBarClass(imageData.status)}"
+                 role="progressbar" style="width: ${percentage}%"
+                 aria-valuenow="${percentage}" aria-valuemin="0" aria-valuemax="100">
+            </div>
+        </div>
+        <div class="image-details">
+            <span>${sizeText}</span>
+            <span>${percentage}%</span>
+        </div>
+    `;
+
+    return item;
+}
+
+// Get status icon for image
+function getStatusIcon(status) {
+    switch (status) {
+        case 'complete':
+            return '✅';
+        case 'downloading':
+            return '⬇️';
+        case 'extracting':
+            return '📦';
+        case 'pulling':
+            return '🔄';
+        case 'error':
+            return '❌';
+        default:
+            return '⏳';
+    }
+}
+
+// Get progress bar CSS class for status
+function getProgressBarClass(status) {
+    switch (status) {
+        case 'complete':
+            return 'bg-success';
+        case 'downloading':
+            return 'bg-info progress-bar-animated';
+        case 'extracting':
+            return 'bg-warning progress-bar-animated';
+        case 'error':
+            return 'bg-danger';
+        default:
+            return 'bg-primary progress-bar-animated';
+    }
+}
+
+// Format image size text
+function formatImageSize(imageData) {
+    if (imageData.downloaded && imageData.total && imageData.total > 0) {
+        const downloadedMB = (imageData.downloaded / (1024 * 1024)).toFixed(1);
+        const totalMB = (imageData.total / (1024 * 1024)).toFixed(1);
+        return `${downloadedMB}MB / ${totalMB}MB`;
+    } else if (imageData.total > 0) {
+        const totalMB = (imageData.total / (1024 * 1024)).toFixed(1);
+        return `${totalMB}MB`;
+    }
+    return imageData.status || 'Preparing...';
+}
+
+// Native SSE for Progress Updates with automatic reconnection
+let progressEventSource = null;
+let reconnectAttempts = 0;
+let maxReconnectAttempts = 5;
+let reconnectDelay = 1000; // Start with 1 second delay
+
+function connectProgressSSE() {
+    const appName = '{{.View.Name}}';
+
+    if (progressEventSource) {
+        progressEventSource.close();
+    }
+
+    // Connecting to SSE for app
+    progressEventSource = new EventSource(`/api/apps/${appName}/progress/sse`, {
+        withCredentials: true
+    });
+
+    progressEventSource.addEventListener('progress', function(e) {
+
+        // Skip empty or whitespace-only messages
+        if (!e.data || e.data.trim() === '') {
+            return;
+        }
+
+        try {
+            const data = JSON.parse(e.data);
+
+            if (data.type === 'progress') {
+                showProgressBar('Processing...');
+                updateProgressBar(data);
+            } else if (data.type === 'complete') {
+                updateProgressBar(data);
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+            } else if (data.type === 'error') {
+                updateProgressBar(data);
+                const statusDiv = document.getElementById('app-action-status');
+                if (statusDiv && data.progress && data.progress.error) {
+                    // Don't replace innerHTML - preserve the progress container
+                    const progressContainer = document.getElementById('download-progress');
+                    const alert = document.createElement('div');
+                    alert.className = 'alert alert-danger';
+                    alert.textContent = `Error: ${data.progress.error}`;
+                    statusDiv.insertBefore(alert, progressContainer);
+                }
+
+                // Re-enable buttons
+                const buttons = document.querySelectorAll('button[disabled]');
+                buttons.forEach(btn => {
+                    btn.disabled = false;
+                    if (btn.innerHTML.includes('spinner-border')) {
+                        btn.innerHTML = btn.getAttribute('data-original-html') || btn.innerHTML;
+                    }
+                });
+
+                setTimeout(() => {
+                    hideProgressBar();
+                }, 5000);
+            }
+        } catch (err) {
+            // Failed to parse SSE message
+            // Don't show error for heartbeat or keepalive messages
+            if (e.data.includes('keepalive') || e.data.startsWith(':')) {
+                return;
+            }
+        }
+    });
+
+    progressEventSource.addEventListener('complete', function(e) {
+        // Complete SSE event received
+        try {
+            const data = JSON.parse(e.data);
+            updateProgressBar(data);
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        } catch (err) {
+            // Failed to parse complete message
+        }
+    });
+
+    progressEventSource.addEventListener('error', function(e) {
+        // Error SSE event received
+        if (!e.data || e.data.trim() === '') {
+            return;
+        }
+        try {
+            const data = JSON.parse(e.data);
+            updateProgressBar(data);
+            const statusDiv = document.getElementById('app-action-status');
+            if (statusDiv && data.progress && data.progress.error) {
+                // Don't replace innerHTML - preserve the progress container
+                const progressContainer = document.getElementById('download-progress');
+                const alert = document.createElement('div');
+                alert.className = 'alert alert-danger';
+                alert.textContent = `Error: ${data.progress.error}`;
+                statusDiv.insertBefore(alert, progressContainer);
+            }
+        } catch (err) {
+            // Failed to parse error message
+        }
+    });
+
+    progressEventSource.onopen = function(e) {
+        // SSE connection opened successfully
+        // Reset reconnection parameters on successful connection
+        reconnectAttempts = 0;
+        reconnectDelay = 1000;
+    };
+
+    progressEventSource.onerror = function(e) {
+        // SSE connection error
+        if (progressEventSource.readyState === EventSource.CLOSED) {
+            // SSE connection closed
+            attemptReconnection();
+        }
+    };
+}
+
+function attemptReconnection() {
+    if (reconnectAttempts < maxReconnectAttempts) {
+        reconnectAttempts++;
+        // Attempting to reconnect SSE
+
+        setTimeout(() => {
+            connectProgressSSE();
+        }, reconnectDelay);
+
+        // Exponential backoff with jitter
+        reconnectDelay = Math.min(reconnectDelay * 1.5 + Math.random() * 1000, 30000);
+    } else {
+        // Max SSE reconnection attempts reached
+    }
+}
+
+function resetProgressSSEConnection() {
+    reconnectAttempts = 0;
+    reconnectDelay = 1000;
+    connectProgressSSE();
+}
+
+// Initialize SSE connection when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    // Hide progress bar on initial load if container is already running
+    hideProgressBarIfContainerRunning();
+    connectProgressSSE();
+
+    // Prevent navigation/reload while progress is active
+    window.addEventListener('beforeunload', function(e) {
+        const progressContainer = document.getElementById('download-progress');
+        if (progressContainer && progressContainer.style.display !== 'none') {
+            // Page trying to reload while progress is active
+            // Log stack trace to see what's causing the reload
+            console.trace('Navigation attempt during progress');
+        }
+    });
+});
+
+// Hide progress bar if container is already running (avoid showing stale progress)
+function hideProgressBarIfContainerRunning() {
+    // Check if any service shows as "running" in the status table
+    const statusBadges = document.querySelectorAll('.badge');
+    let hasRunningService = false;
+
+    statusBadges.forEach(badge => {
+        if (badge.textContent && badge.textContent.toLowerCase().includes('running')) {
+            hasRunningService = true;
+        }
+    });
+
+    // If container is running, hide any stale progress bars
+    if (hasRunningService) {
+        hideProgressBar();
+    }
 }
 
 function loadChatMessages() {
@@ -1145,7 +1700,7 @@ function saveSecurityBypass() {
         }
     })
     .catch(error => {
-        console.error('Error:', error);
+        // Error occurred
         alert('Failed to update security settings: ' + error.message);
         bypassSwitch.checked = !bypassEnabled;
     })
