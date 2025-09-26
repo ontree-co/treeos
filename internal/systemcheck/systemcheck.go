@@ -317,8 +317,11 @@ func podmanServiceRemediation(socketPath string) []string {
 		return steps
 	case "darwin":
 		return []string{
-			"Ensure Podman machine is running: podman machine start",
-			"If needed, restart the machine: podman machine stop && podman machine start",
+			"Initialize Podman machine if needed: podman machine init",
+			"Start Podman machine: podman machine start",
+			"If SSH errors occur, clean known_hosts: rm ~/.ssh/known_hosts",
+			"Verify connection: podman info",
+			"If issues persist: podman machine stop && podman machine rm && podman machine init && podman machine start",
 		}
 	}
 
