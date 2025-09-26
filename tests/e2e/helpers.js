@@ -54,7 +54,8 @@ async function loginAsAdmin(page, username = 'admin', password = 'admin1234') {
     }
 
     // Wait for navigation after systemcheck
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(2000); // Give page time to redirect
 
     // Check where we ended up
     if (page.url().includes('/login')) {
