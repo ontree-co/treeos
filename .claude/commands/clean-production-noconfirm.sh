@@ -16,6 +16,7 @@ echo "==============================="
 echo ""
 echo "Removing production data while preserving shared folders:"
 echo "  REMOVING:"
+echo "  - All containers starting with 'ontree-'"
 echo "  - Application configurations (/opt/ontree/apps/)"
 echo "  - Log files (/opt/ontree/logs/)"
 echo "  - Database (/opt/ontree/ontree.db)"
@@ -37,6 +38,31 @@ elif command -v systemctl &> /dev/null; then
     systemctl stop treeos.service 2>/dev/null || true
     echo "✓ Stopped TreeOS service (systemd)"
 fi
+
+# Check if Podman is available
+if command -v podman &> /dev/null; then
+    echo ""
+    echo "Stopping and removing ontree-* containers..."
+
+    # Stop all containers starting with 'ontree-'
+    CONTAINERS=$(podman ps -a --format "{{.Names}}" | grep "^ontree-" || true)
+    if [ ! -z "$CONTAINERS" ]; then
+        echo "$CONTAINERS" | while read container; do
+            echo "  - Stopping and removing container: $container"
+            podman stop "$container" 2>/dev/null || true
+            podman rm -f "$container" 2>/dev/null || true
+        done
+        echo "✓ Removed all ontree-* containers"
+    else
+        echo "  No ontree-* containers found"
+    fi
+else
+    echo ""
+    echo "ℹ Podman not found - skipping container cleanup"
+fi
+
+echo ""
+echo "Removing production files and directories..."
 
 # Remove applications directory
 [ -d "/opt/ontree/apps" ] && rm -rf /opt/ontree/apps && echo "✓ Removed /opt/ontree/apps/"

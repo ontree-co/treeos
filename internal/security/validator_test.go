@@ -18,14 +18,14 @@ services:
     ports:
       - "8080:80"
     volumes:
-      - /opt/ontree/apps/mount/test-app/web/data:/usr/share/nginx/html
+      - /opt/ontree/apps/test-app/volumes/web_data:/usr/share/nginx/html
       - nginx-config:/etc/nginx
   db:
     image: postgres:15
     environment:
       POSTGRES_PASSWORD: secret
     volumes:
-      - /opt/ontree/apps/mount/test-app/db/data:/var/lib/postgresql/data
+      - /opt/ontree/apps/test-app/volumes/db_data:/var/lib/postgresql/data
       - db-backup:/backup
 volumes:
   nginx-config:
@@ -224,7 +224,7 @@ func TestValidateBindMounts(t *testing.T) {
 		errorMsg    string
 	}{
 		{
-			name:    "valid bind mount following naming scheme",
+			name:    "valid bind mount in volumes directory",
 			appName: "my-app",
 			yamlContent: `
 version: '3.8'
@@ -232,7 +232,33 @@ services:
   web:
     image: nginx:latest
     volumes:
-      - /opt/ontree/apps/mount/my-app/web/data:/usr/share/nginx/html
+      - /opt/ontree/apps/my-app/volumes/web_data:/usr/share/nginx/html
+`,
+			shouldFail: false,
+		},
+		{
+			name:    "valid bind mount in mnt directory",
+			appName: "my-app",
+			yamlContent: `
+version: '3.8'
+services:
+  web:
+    image: nginx:latest
+    volumes:
+      - /opt/ontree/apps/my-app/mnt/config:/etc/nginx/conf.d
+`,
+			shouldFail: false,
+		},
+		{
+			name:    "valid bind mount in shared directory",
+			appName: "my-app",
+			yamlContent: `
+version: '3.8'
+services:
+  web:
+    image: nginx:latest
+    volumes:
+      - /opt/ontree/shared/models:/models:ro
 `,
 			shouldFail: false,
 		},
@@ -248,10 +274,10 @@ services:
       - /etc/passwd:/etc/passwd:ro
 `,
 			shouldFail: true,
-			errorMsg:   "is not allowed. Use named volumes instead",
+			errorMsg:   "is not allowed",
 		},
 		{
-			name:    "bind mount in allowed directory but wrong service path",
+			name:    "bind mount in wrong app directory",
 			appName: "my-app",
 			yamlContent: `
 version: '3.8'
@@ -259,10 +285,10 @@ services:
   web:
     image: nginx:latest
     volumes:
-      - /opt/ontree/apps/mount/my-app/db/data:/data
+      - /opt/ontree/apps/other-app/volumes/data:/data
 `,
 			shouldFail: true,
-			errorMsg:   "must follow the pattern",
+			errorMsg:   "is not allowed",
 		},
 		{
 			name:    "bind mount with trailing slash",
@@ -273,7 +299,7 @@ services:
   web:
     image: nginx:latest
     volumes:
-      - /opt/ontree/apps/mount/my-app/web/data/:/usr/share/nginx/html
+      - /opt/ontree/apps/my-app/volumes/data/:/usr/share/nginx/html
 `,
 			shouldFail: false,
 		},
@@ -293,7 +319,7 @@ volumes:
 			shouldFail: false,
 		},
 		{
-			name:    "relative path bind mount",
+			name:    "relative path bind mount not allowed in production",
 			appName: "my-app",
 			yamlContent: `
 version: '3.8'
@@ -304,10 +330,10 @@ services:
       - ./data:/usr/share/nginx/html
 `,
 			shouldFail: true,
-			errorMsg:   "is not allowed. Use named volumes",
+			errorMsg:   "must be an absolute path in production mode",
 		},
 		{
-			name:    "shared ollama relative path (allowed)",
+			name:    "shared ollama relative path not allowed in production",
 			appName: "ollama-cpu",
 			yamlContent: `
 version: '3.8'
@@ -317,7 +343,8 @@ services:
     volumes:
       - ./shared/ollama:/root/.ollama
 `,
-			shouldFail: false,
+			shouldFail: true,
+			errorMsg:   "must be an absolute path in production mode",
 		},
 		{
 			name:    "long-form volume syntax with bind mount",
@@ -329,7 +356,7 @@ services:
     image: nginx:latest
     volumes:
       - type: bind
-        source: /opt/ontree/apps/mount/my-app/web/config
+        source: /opt/ontree/apps/my-app/mnt/config
         target: /etc/nginx
 `,
 			shouldFail: false,
@@ -348,7 +375,7 @@ services:
         target: /logs
 `,
 			shouldFail: true,
-			errorMsg:   "is not allowed. Use named volumes instead",
+			errorMsg:   "is not allowed",
 		},
 		{
 			name:    "mixed volume types",
@@ -359,7 +386,7 @@ services:
   web:
     image: nginx:latest
     volumes:
-      - /opt/ontree/apps/mount/test-app/web/html:/usr/share/nginx/html
+      - /opt/ontree/apps/test-app/volumes/html:/usr/share/nginx/html
       - nginx-cache:/var/cache/nginx
       - type: volume
         source: nginx-logs
@@ -422,12 +449,12 @@ services:
   web:
     image: nginx:latest
     volumes:
-      - /opt/ontree/apps/mount/complex-app/web/html:/usr/share/nginx/html
+      - /opt/ontree/apps/complex-app/volumes/html:/usr/share/nginx/html
   db:
     image: postgres:15
     privileged: true
     volumes:
-      - /opt/ontree/apps/mount/complex-app/db/data:/var/lib/postgresql/data
+      - /opt/ontree/apps/complex-app/volumes/db_data:/var/lib/postgresql/data
 `,
 			shouldFail: true,
 			errorMsg:   "privileged mode is not allowed",
@@ -503,7 +530,7 @@ func TestValidateBindMounts_DemoMode(t *testing.T) {
 		errorMsg    string
 	}{
 		{
-			name:    "valid bind mount with demo mode relative paths",
+			name:    "valid bind mount in volumes directory (demo)",
 			appName: "test-app",
 			yamlContent: `
 version: "3.8"
@@ -511,12 +538,12 @@ services:
   web:
     image: nginx:latest
     volumes:
-      - ./apps/mount/test-app/web/data:/usr/share/nginx/html
+      - ./apps/test-app/volumes/web_data:/usr/share/nginx/html
 `,
 			shouldFail: false,
 		},
 		{
-			name:    "invalid bind mount even in demo mode",
+			name:    "valid bind mount in mnt directory (demo)",
 			appName: "test-app",
 			yamlContent: `
 version: "3.8"
@@ -524,10 +551,9 @@ services:
   web:
     image: nginx:latest
     volumes:
-      - /etc/passwd:/etc/passwd:ro
+      - ./apps/test-app/mnt/config:/etc/nginx/conf.d
 `,
-			shouldFail: true,
-			errorMsg:   "is not allowed",
+			shouldFail: false,
 		},
 		{
 			name:    "shared ollama path in demo mode",
@@ -541,6 +567,48 @@ services:
       - ./shared/ollama:/root/.ollama
 `,
 			shouldFail: false,
+		},
+		{
+			name:    "absolute path not allowed in demo mode",
+			appName: "test-app",
+			yamlContent: `
+version: "3.8"
+services:
+  web:
+    image: nginx:latest
+    volumes:
+      - /opt/ontree/apps/test-app/volumes/data:/data
+`,
+			shouldFail: true,
+			errorMsg:   "must be a relative path in demo mode",
+		},
+		{
+			name:    "invalid relative path in demo mode",
+			appName: "test-app",
+			yamlContent: `
+version: "3.8"
+services:
+  web:
+    image: nginx:latest
+    volumes:
+      - ./random/path:/data
+`,
+			shouldFail: true,
+			errorMsg:   "is not allowed",
+		},
+		{
+			name:    "old mount pattern not allowed",
+			appName: "test-app",
+			yamlContent: `
+version: "3.8"
+services:
+  web:
+    image: nginx:latest
+    volumes:
+      - ./apps/mount/test-app/web/data:/usr/share/nginx/html
+`,
+			shouldFail: true,
+			errorMsg:   "is not allowed",
 		},
 	}
 

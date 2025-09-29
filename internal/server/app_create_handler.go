@@ -190,6 +190,17 @@ func (s *Server) createAppScaffoldInternal(appPath, appName, composeContent, env
 		return fmt.Errorf("failed to create mnt directory: %v", err)
 	}
 
+	// Create volumes directory for bind-mounted volumes
+	volumesPath := filepath.Join(appPath, "volumes")
+	err = os.MkdirAll(volumesPath, 0750)
+	if err != nil {
+		// Clean up on failure
+		if err := os.RemoveAll(appPath); err != nil {
+			log.Printf("Failed to clean up app directory: %v", err)
+		}
+		return fmt.Errorf("failed to create volumes directory: %v", err)
+	}
+
 	// Write docker-compose.yml
 	composePath := filepath.Join(appPath, "docker-compose.yml")
 	err = os.WriteFile(composePath, []byte(composeContent), 0600)

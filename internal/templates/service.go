@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -110,8 +111,18 @@ func (s *Service) ProcessTemplateContent(content string, appName string) string 
 	sharedOllamaPath := config.GetSharedOllamaPath()
 	content = strings.ReplaceAll(content, "{{SHARED_OLLAMA_PATH}}", sharedOllamaPath)
 
+	// {{ONTREE_APPS_PATH}} - Base path for apps directory (demo vs production)
+	ontreeAppsPath := "."
+	if os.Getenv("TREEOS_RUN_MODE") != "demo" {
+		ontreeAppsPath = "/opt/ontree"
+	}
+	content = strings.ReplaceAll(content, "{{ONTREE_APPS_PATH}}", ontreeAppsPath)
+
+	// {{APP_NAME}} - The name of the app being created
+	content = strings.ReplaceAll(content, "{{APP_NAME}}", appName)
+
 	// TODO: In the future, this could support more variable substitution like:
-	// {{.Port}}, {{.AppName}}, {{.RandomString}}, etc.
+	// {{.Port}}, {{.RandomString}}, etc.
 
 	return content
 }

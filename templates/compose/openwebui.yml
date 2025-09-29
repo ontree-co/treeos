@@ -7,12 +7,9 @@ services:
     ports:
       - "3001:8080"
     volumes:
-      - openwebui_data:/app/backend/data
+      - {{ONTREE_APPS_PATH}}/apps/{{APP_NAME}}/volumes/openwebui_data:/app/backend/data
       - {{SHARED_OLLAMA_PATH}}:/models:ro
     extra_hosts:
       - "host.containers.internal:host-gateway"
     environment:
       - OLLAMA_BASE_URL=http://host.containers.internal:11434
-
-volumes:
-  openwebui_data:
