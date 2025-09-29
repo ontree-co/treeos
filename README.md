@@ -18,6 +18,53 @@ OnTree is a Podman-based container management application with a web interface f
 
 ## Quick Start
 
+### Development Setup (Fresh Linux Machine)
+
+#### 1. Install Dependencies
+
+**Ubuntu/Debian:**
+```bash
+sudo apt update
+sudo apt install -y golang-go make git podman podman-compose golang-github-containernetworking-plugin-dnsname
+# Install Node.js 22 (via nvm or NodeSource)
+```
+
+**Fedora/RHEL:**
+```bash
+sudo dnf install -y golang make git podman podman-compose podman-plugins
+sudo dnf module install -y nodejs:22
+```
+
+#### 2. Build and Run
+
+```bash
+# Clone repository
+git clone https://github.com/stefanmunz/treeos.git
+cd treeos
+
+# Setup environment
+cp .env.example .env
+
+# Install debugging tools
+go install github.com/go-delve/delve/cmd/dlv@latest
+echo 'export PATH=$PATH:$(go env GOPATH)/bin' >> ~/.bashrc
+source ~/.bashrc
+
+# Build
+go mod download
+make build
+
+# Run with debugging
+dlv exec ./build/treeos
+
+# Or run normally
+./build/treeos
+```
+
+Access at `http://localhost:2000` (or port configured in .env)
+
+### Running Pre-built Binary
+
 ### Prerequisites
 
 - Podman 4.0+ installed (with built-in compose support)
@@ -26,7 +73,7 @@ OnTree is a Podman-based container management application with a web interface f
   - Fedora/RHEL: `podman-plugins`
 - Port 3000 available (or configure a different port)
 
-### Running OnTree
+### Steps
 
 1. Download the latest release for your platform from [GitHub Releases](https://github.com/stefanmunz/treeos/releases)
 
