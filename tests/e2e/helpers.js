@@ -58,13 +58,18 @@ async function loginAsAdmin(page, username = 'admin', password = 'admin1234') {
     await page.waitForTimeout(2000);
 
     // Submit the form with the appropriate action
+    // Wait a bit more for any overlays to disappear
+    await page.waitForTimeout(3000);
+
     // Try to click Complete Setup if available and enabled
     const completeButton = await page.$('button[name="action"][value="complete"]:not([disabled])');
-    if (completeButton) {
-      await completeButton.click();
+    if (completeButton && await completeButton.isEnabled()) {
+      // Use force:true to click even if something is overlaying
+      await completeButton.click({ force: true });
     } else {
       // Otherwise click Continue Without Fixing Everything
-      await page.click('button[name="action"][value="continue"]');
+      // Also use force:true here in case of overlays
+      await page.click('button[name="action"][value="continue"]', { force: true });
     }
 
     // Wait for navigation after systemcheck

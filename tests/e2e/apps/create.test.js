@@ -112,20 +112,17 @@ services:
   });
 
   test('should prevent duplicate app names', async ({ page }) => {
-    // Use a unique app name with test worker ID for better isolation
-    const uniqueAppName = `test-dup-${process.pid}-${Date.now()}`;
-    
-    // First create an app
-    await createTestApp(page, uniqueAppName, 'nginx:latest');
-    
-    // Now try to create another app with the same name
+    // Create the first app - createTestApp will add its own unique suffix
+    const actualAppName = await createTestApp(page, 'test-dup', 'nginx:latest');
+
+    // Now try to create another app with the exact same name
     await page.goto('/apps/create');
-    
-    // Try to create app with existing name
-    await page.fill('input[name="app_name"]', uniqueAppName);
+
+    // Try to create app with existing name (use the actual name that was created)
+    await page.fill('input[name="app_name"]', actualAppName);
     await page.fill('textarea[name="compose_content"]', `version: '3'
 services:
-  ${uniqueAppName}:
+  web:
     image: nginx:latest`);
     
     await page.click('button[type="submit"]');

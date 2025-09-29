@@ -37,7 +37,7 @@ test.describe('Dashboard and System Vitals', () => {
     } else {
       // Applications might be shown differently or on a separate page
       // Just verify we're on the dashboard
-      expect(page.url()).toContain('localhost:3001');
+      expect(page.url()).toContain('localhost:3002');
     }
   });
 
