@@ -52,10 +52,10 @@ async function loginAsAdmin(page, username = 'admin', password = 'admin1234') {
     await page.click('button:has-text("Continue to System Check")');
 
     // Wait for system check page and continue
-    await page.waitForURL('**/systemcheck', { timeout: 10000 });
+    await page.waitForURL('**/systemcheck', { timeout: 5000 });
 
     // Wait for system check to complete and buttons to be available
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(1000);
 
     // Submit the form with the appropriate action
     // Try to click Complete Setup if available and enabled
@@ -69,7 +69,7 @@ async function loginAsAdmin(page, username = 'admin', password = 'admin1234') {
 
     // Wait for navigation after systemcheck
     await page.waitForLoadState('domcontentloaded');
-    await page.waitForTimeout(2000); // Give page time to redirect
+    await page.waitForTimeout(500); // Give page time to redirect
 
     // Check where we ended up
     if (page.url().includes('/login')) {
@@ -79,7 +79,7 @@ async function loginAsAdmin(page, username = 'admin', password = 'admin1234') {
       await page.click('button[type="submit"]');
 
       // Wait for navigation to start after clicking submit
-      await page.waitForLoadState('networkidle', { timeout: 15000 });
+      await page.waitForLoadState('networkidle', { timeout: 10000 });
     }
 
     // Now wait for dashboard (either we logged in or setup redirected us there)
@@ -89,7 +89,7 @@ async function loginAsAdmin(page, username = 'admin', password = 'admin1234') {
       const urlObj = typeof url === 'string' ? new URL(url) : url;
       return urlStr.includes('localhost:3002') &&
              (urlObj.pathname === '/' || urlObj.pathname === '' || urlStr.includes('/?login=success'));
-    }, { timeout: 20000 });
+    }, { timeout: 10000 });
   } else {
     // Normal login flow
     await page.fill('input[name="username"]', username);
@@ -97,7 +97,7 @@ async function loginAsAdmin(page, username = 'admin', password = 'admin1234') {
     await page.click('button[type="submit"]');
 
     // Wait for navigation to complete after login
-    await page.waitForLoadState('networkidle', { timeout: 15000 });
+    await page.waitForLoadState('networkidle', { timeout: 10000 });
 
     // Wait for redirect to dashboard - allow for login=success query parameter
     // Increase timeout and make URL check more flexible
@@ -106,7 +106,7 @@ async function loginAsAdmin(page, username = 'admin', password = 'admin1234') {
       const urlObj = typeof url === 'string' ? new URL(url) : url;
       return urlStr.includes('localhost:3002') &&
              (urlObj.pathname === '/' || urlObj.pathname === '' || urlStr.includes('/?login=success'));
-    }, { timeout: 20000 });
+    }, { timeout: 10000 });
   }
 }
 
@@ -140,20 +140,20 @@ services:
 /**
  * Helper to wait for Docker operation to complete
  */
-async function waitForOperation(page, maxWaitTime = 30000) {
+async function waitForOperation(page, maxWaitTime = 15000) {
   // Wait for operation status to appear
-  await page.waitForSelector('#operation-status', { timeout: 5000 });
-  
+  await page.waitForSelector('#operation-status', { timeout: 3000 });
+
   // Poll until operation completes
   const startTime = Date.now();
   while (Date.now() - startTime < maxWaitTime) {
     const statusText = await page.locator('#operation-status').innerText();
-    
+
     if (statusText.includes('completed successfully') || statusText.includes('failed')) {
       return statusText;
     }
-    
-    await page.waitForTimeout(1000);
+
+    await page.waitForTimeout(500);
   }
   
   throw new Error('Operation timed out');
@@ -185,7 +185,7 @@ async function stopContainer(page, appName, containerName) {
   }
   
   // Wait for container to stop
-  await page.waitForTimeout(2000);
+  await page.waitForTimeout(1000);
 }
 
 /**
@@ -203,7 +203,7 @@ async function startContainer(page, appName) {
   }
   
   // Wait for container to start
-  await page.waitForTimeout(3000);
+  await page.waitForTimeout(1500);
 }
 
 module.exports = {

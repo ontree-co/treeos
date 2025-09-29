@@ -10,7 +10,7 @@ const TEST_ADMIN_USER = process.env.TEST_ADMIN_USER || 'admin';
 const TEST_ADMIN_PASSWORD = process.env.TEST_ADMIN_PASSWORD || 'admin1234';
 const TEST_NODE_NAME = process.env.TEST_NODE_NAME || 'Test OnTree Node';
 const TEST_NODE_DESCRIPTION = process.env.TEST_NODE_DESCRIPTION || 'This is a test node for e2e testing';
-const MAX_HEALTH_CHECK_RETRIES = 30;
+const MAX_HEALTH_CHECK_RETRIES = 20;  // Reduced from 30 for faster failure detection
 
 // Helper function for health check with retries
 async function waitForServerHealth(url, maxRetries = MAX_HEALTH_CHECK_RETRIES) {
@@ -26,8 +26,8 @@ async function waitForServerHealth(url, maxRetries = MAX_HEALTH_CHECK_RETRIES) {
         console.error(`❌ Server health check failed after ${maxRetries} attempts`);
         return false;
       }
-      // Wait before retrying (exponential backoff with max 2s)
-      const waitTime = Math.min(1000 * Math.pow(1.5, i), 2000);
+      // Wait before retrying (exponential backoff with max 1s for faster startup)
+      const waitTime = Math.min(500 * Math.pow(1.5, i), 1000);
       execSync(`sleep ${waitTime / 1000}`);
     }
   }
@@ -126,69 +126,23 @@ module.exports = async () => {
     }
   });
   
-  // Enhanced Docker cleanup
-  console.log('🐳 Performing enhanced Docker cleanup...');
-  
-  // Clean up containers
+  // Optimized Docker cleanup - run in parallel for speed
+  console.log('🐳 Performing Docker cleanup...');
+
   try {
-    const containers = execSync('docker ps -a --filter "name=ontree-test-" --format "{{.Names}}"', { encoding: 'utf8' }).trim();
-    if (containers) {
-      const containerList = containers.split('\n').filter(c => c);
-      console.log(`  - Found ${containerList.length} test containers to clean up`);
-      
-      // Force stop and remove containers
-      containerList.forEach(container => {
-        try {
-          execSync(`docker stop ${container} 2>/dev/null || true`, { stdio: 'ignore' });
-          execSync(`docker rm -f ${container} 2>/dev/null || true`, { stdio: 'ignore' });
-          console.log(`    ✓ Removed container: ${container}`);
-        } catch (err) {
-          console.error(`    ✗ Failed to remove container: ${container}`);
-        }
-      });
-    }
+    // Use a single command to clean up all test containers, networks, and volumes
+    // This is much faster than iterating through each one
+    execSync(`
+      # Stop and remove all test containers in one go
+      docker ps -aq --filter "name=ontree-test-" | xargs -r docker rm -f 2>/dev/null || true;
+      # Remove all test networks
+      docker network ls -q --filter "name=ontree-test-" | xargs -r docker network rm 2>/dev/null || true;
+      # Remove all test volumes
+      docker volume ls -q --filter "name=ontree-test-" | xargs -r docker volume rm 2>/dev/null || true;
+    `, { stdio: 'ignore', shell: '/bin/bash' });
+    console.log('  ✓ Docker cleanup completed');
   } catch (err) {
-    console.warn('⚠️  Docker container cleanup warning:', err.message);
-  }
-  
-  // Clean up networks
-  try {
-    const networks = execSync('docker network ls --filter "name=ontree-test-" --format "{{.Name}}"', { encoding: 'utf8' }).trim();
-    if (networks) {
-      const networkList = networks.split('\n').filter(n => n);
-      console.log(`  - Found ${networkList.length} test networks to clean up`);
-      
-      networkList.forEach(network => {
-        try {
-          execSync(`docker network rm ${network} 2>/dev/null || true`, { stdio: 'ignore' });
-          console.log(`    ✓ Removed network: ${network}`);
-        } catch (err) {
-          console.error(`    ✗ Failed to remove network: ${network}`);
-        }
-      });
-    }
-  } catch (err) {
-    console.warn('⚠️  Docker network cleanup warning:', err.message);
-  }
-  
-  // Clean up volumes
-  try {
-    const volumes = execSync('docker volume ls --filter "name=ontree-test-" --format "{{.Name}}"', { encoding: 'utf8' }).trim();
-    if (volumes) {
-      const volumeList = volumes.split('\n').filter(v => v);
-      console.log(`  - Found ${volumeList.length} test volumes to clean up`);
-      
-      volumeList.forEach(volume => {
-        try {
-          execSync(`docker volume rm ${volume} 2>/dev/null || true`, { stdio: 'ignore' });
-          console.log(`    ✓ Removed volume: ${volume}`);
-        } catch (err) {
-          console.error(`    ✗ Failed to remove volume: ${volume}`);
-        }
-      });
-    }
-  } catch (err) {
-    console.warn('⚠️  Docker volume cleanup warning:', err.message);
+    console.warn('⚠️  Docker cleanup warning:', err.message);
   }
   
   console.log('✅ Global setup complete!');

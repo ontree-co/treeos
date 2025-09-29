@@ -9,12 +9,12 @@ process.env.DISPLAY = '';
  */
 module.exports = defineConfig({
   testDir: './',
-  /* Run tests in files in parallel, but tests within a file sequentially */
-  fullyParallel: false,
+  /* Run tests in files in parallel */
+  fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
-  /* Retry on CI only */
-  retries: process.env.CI ? 2 : 0,
+  /* Retry on CI only - reduced from 2 to 1 for faster CI */
+  retries: process.env.CI ? 1 : 0,
   /* Use multiple workers for faster execution - one per file */
   workers: process.env.CI ? 4 : 6,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
@@ -60,8 +60,8 @@ module.exports = defineConfig({
   //   reuseExistingServer: !process.env.CI,
   // },
 
-  /* Test timeout */
-  timeout: 60 * 1000,
+  /* Test timeout - reduced from 60s to 30s for faster failure detection */
+  timeout: 30 * 1000,
 
   /* Global setup/teardown - always run to ensure proper test environment */
   globalSetup: require.resolve('./global-setup.js'),
