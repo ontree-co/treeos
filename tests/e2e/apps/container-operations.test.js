@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { loginAsAdmin } = require('../helpers');
+const { loginAsAdmin, makeAppNameUnique } = require('../helpers');
 
 test.describe('Container Operations UI', () => {
   test.beforeEach(async ({ page }) => {
@@ -11,7 +11,7 @@ test.describe('Container Operations UI', () => {
   });
 
   test.skip('should show "Creating & Starting..." during create operation', async ({ page }) => {
-    const appName = 'test-create-ui';
+    const appName = makeAppNameUnique('test-create-ui');
     
     // First create the app
     await page.goto('/apps/create');
@@ -63,7 +63,7 @@ services:
   });
 
   test.skip('should disable buttons during operations', async ({ page }) => {
-    const appName = 'test-button-disable';
+    const appName = makeAppNameUnique('test-button-disable');
     
     // Create app first
     await page.goto('/apps/create');
@@ -94,7 +94,7 @@ services:
   });
 
   test.skip('should handle operation completion correctly', async ({ page }) => {
-    const appName = 'test-completion';
+    const appName = makeAppNameUnique('test-completion');
     
     // Create app
     await page.goto('/apps/create');
@@ -132,7 +132,7 @@ services:
   });
 
   test.skip('should show appropriate button text based on container status', async ({ page }) => {
-    const appName = 'test-button-states';
+    const appName = makeAppNameUnique('test-button-states');
     
     // Create app
     await page.goto('/apps/create');

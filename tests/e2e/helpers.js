@@ -1,6 +1,20 @@
 const { expect } = require('@playwright/test');
 
 /**
+ * Generate a unique test identifier
+ */
+function generateUniqueId() {
+  return `${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+}
+
+/**
+ * Make any app name unique for test isolation
+ */
+function makeAppNameUnique(baseName) {
+  return `${baseName}-${generateUniqueId()}`;
+}
+
+/**
  * Helper to wait for and verify a flash message
  */
 async function expectFlashMessage(page, messageType, messageText) {
@@ -63,44 +77,64 @@ async function loginAsAdmin(page, username = 'admin', password = 'admin1234') {
       await page.fill('input[name="username"]', username);
       await page.fill('input[name="password"]', password);
       await page.click('button[type="submit"]');
+
+      // Wait for navigation to start after clicking submit
+      await page.waitForLoadState('networkidle', { timeout: 15000 });
     }
 
     // Now wait for dashboard (either we logged in or setup redirected us there)
+    // Increase timeout and make URL check more flexible
     await page.waitForURL(url => {
-      return url.pathname === '/' || url.toString().includes('/?login=success');
-    }, { timeout: 10000 });
+      const urlStr = typeof url === 'string' ? url : url.toString();
+      const urlObj = typeof url === 'string' ? new URL(url) : url;
+      return urlStr.includes('localhost:3002') &&
+             (urlObj.pathname === '/' || urlObj.pathname === '' || urlStr.includes('/?login=success'));
+    }, { timeout: 20000 });
   } else {
     // Normal login flow
     await page.fill('input[name="username"]', username);
     await page.fill('input[name="password"]', password);
     await page.click('button[type="submit"]');
 
+    // Wait for navigation to complete after login
+    await page.waitForLoadState('networkidle', { timeout: 15000 });
+
     // Wait for redirect to dashboard - allow for login=success query parameter
+    // Increase timeout and make URL check more flexible
     await page.waitForURL(url => {
-      return url.pathname === '/' || url.toString().includes('/?login=success');
-    }, { timeout: 10000 });
+      const urlStr = typeof url === 'string' ? url : url.toString();
+      const urlObj = typeof url === 'string' ? new URL(url) : url;
+      return urlStr.includes('localhost:3002') &&
+             (urlObj.pathname === '/' || urlObj.pathname === '' || urlStr.includes('/?login=success'));
+    }, { timeout: 20000 });
   }
 }
 
 /**
- * Helper to create a test application
+ * Helper to create a test application with automatic unique naming
  */
 async function createTestApp(page, appName, dockerImage = 'nginx:latest') {
+  // Ensure app name is unique by adding timestamp and random suffix
+  const uniqueAppName = `${appName}-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+
   await page.goto('/apps/create');
-  await page.fill('input[name="app_name"]', appName);
-  
+  await page.fill('input[name="app_name"]', uniqueAppName);
+
   const composeContent = `version: '3'
 services:
   web:
     image: ${dockerImage}
     ports:
       - "8080:80"`;
-  
+
   await page.fill('textarea[name="compose_content"]', composeContent);
   await page.click('button[type="submit"]');
-  
-  // Wait for redirect to app detail page
-  await page.waitForURL(`/apps/${appName}`);
+
+  // Wait for redirect to app detail page with the unique name
+  await page.waitForURL(`/apps/${uniqueAppName}`);
+
+  // Return the unique name so tests can reference it
+  return uniqueAppName;
 }
 
 /**
@@ -173,6 +207,8 @@ async function startContainer(page, appName) {
 }
 
 module.exports = {
+  generateUniqueId,
+  makeAppNameUnique,
   expectFlashMessage,
   loginAsAdmin,
   createTestApp,

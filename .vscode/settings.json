@@ -3,9 +3,7 @@
   "go.delveConfig": {
     "dlvPath": "/home/ontree/go/bin/dlv"
   },
-  "github-actions.workflows.pinned.workflows": [
-    ".github/workflows/test.yml"
-  ],
+  "github-actions.workflows.pinned.workflows": [".github/workflows/test.yml"],
   "go.testEnvVars": {
     "CGO_ENABLED": "1"
   },
@@ -21,13 +19,11 @@
   },
   "go.testExplorer.enable": true,
   "go.testExplorer.showOutput": true,
-  "playwright.reuseBrowser": true,
-  "playwright.showTrace": true,
+  "playwright.reuseBrowser": false,
+  "playwright.showTrace": false,
   "testing.automaticallyOpenPeekView": "failureInVisibleDocument",
   "go.lintTool": "golangci-lint",
-  "go.lintFlags": [
-    "--fast"
-  ],
+  "go.lintFlags": ["--fast"],
   "go.lintOnSave": "workspace",
   "go.formatTool": "goimports",
   "go.formatFlags": [],

@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { makeAppNameUnique } = require('../helpers');
 const { loginAsAdmin, waitForOperation } = require('../helpers');
 
 test.describe.skip('Template System', () => {
@@ -92,7 +93,7 @@ test.describe.skip('Template System', () => {
   test('should create app from template', async ({ page }) => {
     await page.goto('/templates/openwebui/create');
     
-    const appName = 'template-test';
+    const appName = makeAppNameUnique('template-test');
     
     // Fill in the form
     await page.fill('input[name="name"]', appName);
@@ -120,7 +121,7 @@ test.describe.skip('Template System', () => {
   test('should create and auto-start app from template', async ({ page }) => {
     await page.goto('/templates/openwebui/create');
     
-    const appName = 'template-autostart';
+    const appName = makeAppNameUnique('template-autostart');
     
     // Fill in the form
     await page.fill('input[name="name"]', appName);

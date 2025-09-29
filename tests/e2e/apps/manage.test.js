@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { loginAsAdmin, createTestApp, waitForOperation, isContainerRunning } = require('../helpers');
+const { loginAsAdmin, createTestApp, waitForOperation, isContainerRunning, makeAppNameUnique } = require('../helpers');
 
 test.describe('Application Management', () => {
   test.beforeEach(async ({ page }) => {
@@ -18,7 +18,7 @@ test.describe('Application Management', () => {
     await expect(page.locator('h1')).toContainText('Create New Application');
     
     // Fill in the form
-    const appName = 'test-nginx';
+    const appName = makeAppNameUnique('test-nginx');
     await page.fill('input[name="app_name"]', appName);
     
     const composeContent = `version: '3'
@@ -71,7 +71,7 @@ services:
   });
 
   test.skip('should start an application', async ({ page }) => {
-    const appName = 'test-nginx';
+    const appName = makeAppNameUnique('test-nginx');
     
     // Navigate to app detail page
     await page.goto(`/apps/${appName}`);
@@ -98,7 +98,7 @@ services:
   });
 
   test.skip('should stop a running application', async ({ page }) => {
-    const appName = 'test-nginx';
+    const appName = makeAppNameUnique('test-nginx');
     
     // Navigate to app detail page
     await page.goto(`/apps/${appName}`);
@@ -128,7 +128,7 @@ services:
   });
 
   test.skip('should recreate an application', async ({ page }) => {
-    const appName = 'test-nginx';
+    const appName = makeAppNameUnique('test-nginx');
     
     // Navigate to app detail page
     await page.goto(`/apps/${appName}`);
@@ -154,7 +154,7 @@ services:
   });
 
   test.skip('should delete an application container', async ({ page }) => {
-    const appName = 'test-nginx';
+    const appName = makeAppNameUnique('test-nginx');
     
     // Navigate to app detail page
     await page.goto(`/apps/${appName}`);
@@ -198,7 +198,7 @@ services:
   });
 
   test.skip('should show docker-compose.yml content', async ({ page }) => {
-    const appName = 'test-nginx';
+    const appName = makeAppNameUnique('test-nginx');
     
     // Navigate to app detail page
     await page.goto(`/apps/${appName}`);

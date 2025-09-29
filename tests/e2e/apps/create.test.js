@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { loginAsAdmin, createTestApp } = require('../helpers');
+const { loginAsAdmin, createTestApp, makeAppNameUnique } = require('../helpers');
 
 test.describe('Application Creation', () => {
   test.beforeEach(async ({ page }) => {
@@ -138,7 +138,7 @@ services:
   test.skip('should create app with complex configuration', async ({ page }) => {
     await page.goto('/apps/create');
     
-    const appName = 'test-postgres';
+    const appName = makeAppNameUnique('test-postgres');
     
     // Fill form with PostgreSQL configuration
     await page.fill('input[name="app_name"]', appName);

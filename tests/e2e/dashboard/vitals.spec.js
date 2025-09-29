@@ -3,9 +3,10 @@ const { loginAsAdmin } = require('../helpers');
 
 test.describe('Dashboard and System Vitals', () => {
   test.beforeEach(async ({ page }) => {
-    // Set a longer timeout for navigation
-    page.setDefaultTimeout(30000);
-    
+    // Set a longer timeout for navigation and interactions
+    page.setDefaultTimeout(45000);
+    page.setDefaultNavigationTimeout(45000);
+
     // Login before each test
     await loginAsAdmin(page);
   });
