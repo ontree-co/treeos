@@ -9,14 +9,14 @@ process.env.DISPLAY = '';
  */
 module.exports = defineConfig({
   testDir: './',
-  /* Run tests in files in parallel */
-  fullyParallel: true,
+  /* Run tests in files in parallel, but tests within a file sequentially to avoid session conflicts */
+  fullyParallel: false,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only - reduced from 2 to 1 for faster CI */
   retries: process.env.CI ? 1 : 0,
   /* Use multiple workers for faster execution - one per file */
-  workers: process.env.CI ? 4 : 6,
+  workers: process.env.CI ? 8 : 6,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: 'html',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
