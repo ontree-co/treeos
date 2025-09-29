@@ -129,7 +129,7 @@ services:
     
     // Should show error
     await expect(page.locator('.alert-danger')).toBeVisible();
-    await expect(page.locator('.alert-danger')).toContainText(`An application named '${uniqueAppName}' already exists`);
+    await expect(page.locator('.alert-danger')).toContainText(`An application named '${actualAppName}' already exists`);
   });
 
   test.skip('should create app with complex configuration', async ({ page }) => {
