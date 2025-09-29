@@ -60,8 +60,8 @@ module.exports = defineConfig({
   //   reuseExistingServer: !process.env.CI,
   // },
 
-  /* Test timeout - reduced from 60s to 30s for faster failure detection */
-  timeout: 30 * 1000,
+  /* Test timeout - restored to 60s for sequential execution after parallel revert */
+  timeout: 60 * 1000,
 
   /* Global setup/teardown - always run to ensure proper test environment */
   globalSetup: require.resolve('./global-setup.js'),
