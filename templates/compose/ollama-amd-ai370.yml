@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   ollama:
-    image: ollama/ollama:rocm
+    image: docker.io/ollama/ollama:rocm
     restart: unless-stopped
     ports:
       - "11434:11434"

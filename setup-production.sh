@@ -30,6 +30,134 @@ print_info() {
     echo -e "${YELLOW}ℹ️  $1${NC}"
 }
 
+configure_gpu_permissions() {
+    # Only relevant on Linux systems with AMD GPUs exposed via render/video groups
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        return
+    fi
+
+    local groups_to_check=(render video)
+    local current_groups
+
+    if ! command -v getent >/dev/null 2>&1; then
+        print_info "Skipping GPU group configuration: getent not available"
+        return
+    fi
+
+    current_groups=$(id -nG "$ONTREE_USER" 2>/dev/null || true)
+
+    for group in "${groups_to_check[@]}"; do
+        if getent group "$group" >/dev/null 2>&1; then
+            if echo "$current_groups" | tr ' ' '\n' | grep -Fxq "$group"; then
+                print_success "User '$ONTREE_USER' already in '$group' group"
+            else
+                print_info "Adding user '$ONTREE_USER' to '$group' group for GPU access..."
+                usermod -aG "$group" "$ONTREE_USER"
+                print_success "Added user '$ONTREE_USER' to '$group' group"
+            fi
+        else
+            print_info "GPU group '$group' not found on this system; skipping"
+        fi
+    done
+}
+
+# Install AMD ROCm 7.0.1 for GPU support (optional)
+install_rocm() {
+    # Only for Linux systems with AMD GPUs
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        return
+    fi
+
+    # Check if AMD GPU is present
+    if ! lspci 2>/dev/null | grep -qE "VGA|Display|3D.*AMD|Advanced Micro Devices"; then
+        print_info "No AMD GPU detected, skipping ROCm installation"
+        return
+    fi
+
+    # Check if ROCm is already installed
+    if command -v rocm-smi >/dev/null 2>&1; then
+        print_success "ROCm is already installed"
+        return
+    fi
+
+    print_info "AMD GPU detected. Would you like to install ROCm 7.0.1 for GPU acceleration?"
+    read -p "Install ROCm? (y/n): " -n 1 -r
+    echo ""
+
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        print_info "Skipping ROCm installation"
+        return
+    fi
+
+    print_info "Installing ROCm 7.0.1..."
+
+    # Detect Ubuntu/Debian
+    if command -v apt-get >/dev/null 2>&1; then
+        # Download amdgpu-install package
+        print_info "Downloading AMD GPU installer..."
+        wget -q https://repo.radeon.com/amdgpu-install/7.0.1/ubuntu/noble/amdgpu-install_7.0.1.70001-1_all.deb -O /tmp/amdgpu-install.deb || {
+            # Fallback to jammy if noble fails
+            wget -q https://repo.radeon.com/amdgpu-install/7.0.1/ubuntu/jammy/amdgpu-install_7.0.1.70001-1_all.deb -O /tmp/amdgpu-install.deb || {
+                print_error "Failed to download ROCm installer"
+                return 1
+            }
+        }
+
+        # Install the installer package
+        print_info "Installing AMD GPU repository..."
+        apt install -y /tmp/amdgpu-install.deb
+
+        # Add GPG key and fix repository
+        print_info "Configuring ROCm repository..."
+        wget -q -O - https://repo.radeon.com/rocm/rocm.gpg.key | gpg --dearmor | tee /etc/apt/keyrings/rocm.gpg > /dev/null
+
+        # Configure repositories with proper signing
+        echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/rocm.gpg] https://repo.radeon.com/amdgpu/7.0.1/ubuntu $(lsb_release -cs 2>/dev/null || echo 'noble') main" > /etc/apt/sources.list.d/amdgpu.list
+        echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/rocm.gpg] https://repo.radeon.com/rocm/apt/7.0.1 $(lsb_release -cs 2>/dev/null || echo 'noble') main" > /etc/apt/sources.list.d/rocm.list
+        echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/rocm.gpg] https://repo.radeon.com/amdgpu/7.0.1/ubuntu $(lsb_release -cs 2>/dev/null || echo 'noble') proprietary" >> /etc/apt/sources.list.d/amdgpu.list
+
+        # Update package lists
+        apt update
+
+        # Install ROCm
+        print_info "Installing ROCm runtime and libraries..."
+        amdgpu-install --usecase=rocm --accept-eula -y || {
+            print_error "ROCm installation failed"
+            return 1
+        }
+
+        # Clean up
+        rm -f /tmp/amdgpu-install.deb
+
+        print_success "ROCm 7.0.1 installed successfully"
+        print_info "Note: A reboot may be required for full GPU support"
+
+    elif command -v dnf >/dev/null 2>&1 || command -v yum >/dev/null 2>&1; then
+        # Fedora/RHEL/Rocky/AlmaLinux
+        print_info "Installing ROCm for RPM-based system..."
+
+        # Download and install amdgpu-install
+        wget -q https://repo.radeon.com/amdgpu-install/7.0.1/rhel/9.4/amdgpu-install-7.0.70001-1.el9.noarch.rpm -O /tmp/amdgpu-install.rpm || {
+            print_error "Failed to download ROCm installer for RPM system"
+            return 1
+        }
+
+        if command -v dnf >/dev/null 2>&1; then
+            dnf install -y /tmp/amdgpu-install.rpm
+            amdgpu-install --usecase=rocm --accept-eula -y
+        else
+            yum install -y /tmp/amdgpu-install.rpm
+            amdgpu-install --usecase=rocm --accept-eula -y
+        fi
+
+        rm -f /tmp/amdgpu-install.rpm
+        print_success "ROCm 7.0.1 installed successfully"
+    else
+        print_info "Unsupported distribution for automatic ROCm installation"
+        print_info "Please install ROCm 7.0.1 manually from: https://rocm.docs.amd.com/"
+    fi
+}
+
 # Check if running with root privileges
 check_root() {
     if [ "$EUID" -ne 0 ]; then
@@ -299,6 +427,8 @@ main() {
 
     # Execute installation steps
     create_user
+    install_rocm
+    configure_gpu_permissions
     create_directories
     install_binary
     install_service

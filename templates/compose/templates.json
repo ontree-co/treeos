@@ -23,12 +23,23 @@
       "is_system_service": true
     },
     {
-      "id": "ollama-amd",
-      "name": "Ollama (AMD GPU)",
-      "description": "System service for running LLMs with AMD GPU/ROCm support. Manages shared model store.",
+      "id": "ollama-amd-ai370",
+      "name": "Ollama (AMD AI 370)",
+      "description": "System service for running LLMs with AMD AI 370-class ROCm support. Manages shared model store.",
       "category": "LLM Inference",
       "icon": "bi-gpu-card",
-      "filename": "ollama-amd.yml",
+      "filename": "ollama-amd-ai370.yml",
+      "port": "11434",
+      "documentation_url": "https://ollama.ai",
+      "is_system_service": true
+    },
+    {
+      "id": "ollama-amd-ryzen-ai-395",
+      "name": "Ollama (AMD Ryzen AI 395+)",
+      "description": "System service for running LLMs with AMD Ryzen AI 395+ ROCm support. Manages shared model store.",
+      "category": "LLM Inference",
+      "icon": "bi-gpu-card",
+      "filename": "ollama-amd-ryzen-ai-395.yml",
       "port": "11434",
       "documentation_url": "https://ollama.ai",
       "is_system_service": true

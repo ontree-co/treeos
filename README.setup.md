@@ -28,6 +28,62 @@ This will:
 - Use local database: `./ontree.db`
 - Run on default port 3000
 
+### AMD GPU Support (Linux)
+
+For AMD GPU acceleration with Ollama and other AI workloads, you need:
+
+#### 1. ROCm 7.0.1 Installation
+
+Install the latest ROCm drivers for optimal GPU performance:
+
+```bash
+# Download the installer
+wget https://repo.radeon.com/amdgpu-install/7.0.1/ubuntu/noble/amdgpu-install_7.0.1.70001-1_all.deb
+
+# For Ubuntu 22.04 (jammy), use:
+# wget https://repo.radeon.com/amdgpu-install/7.0.1/ubuntu/jammy/amdgpu-install_7.0.1.70001-1_all.deb
+
+# Install the installer package
+sudo apt install ./amdgpu-install_7.0.1.70001-1_all.deb
+
+# Add AMD GPG key and configure repositories
+wget -q -O - https://repo.radeon.com/rocm/rocm.gpg.key | gpg --dearmor | sudo tee /etc/apt/keyrings/rocm.gpg > /dev/null
+
+# Configure signed repositories (replace 'noble' with your Ubuntu version if needed)
+echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/rocm.gpg] https://repo.radeon.com/amdgpu/7.0.1/ubuntu noble main" | sudo tee /etc/apt/sources.list.d/amdgpu.list
+echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/rocm.gpg] https://repo.radeon.com/rocm/apt/7.0.1 noble main" | sudo tee /etc/apt/sources.list.d/rocm.list
+echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/rocm.gpg] https://repo.radeon.com/amdgpu/7.0.1/ubuntu noble proprietary" | sudo tee -a /etc/apt/sources.list.d/amdgpu.list
+
+# Update and install ROCm
+sudo apt update
+sudo amdgpu-install --usecase=rocm --accept-eula -y
+
+# Verify installation
+rocm-smi
+```
+
+#### 2. User Group Membership
+
+Add your user to the GPU access groups:
+
+```bash
+sudo usermod -aG render,video "$USER"
+# Apply the new groups to your current shell or log out and back in
+newgrp render
+newgrp video
+```
+
+Confirm the groups with `id`. Without these memberships, Podman containers cannot access `/dev/kfd` or `/dev/dri` devices.
+
+#### 3. Supported Templates
+
+TreeOS includes optimized templates for various AMD GPUs:
+- `ollama-amd-ai370` - For AMD Radeon AI 370
+- `ollama-amd-ryzen-ai-395` - For AMD Ryzen AI MAX+ 395 with Radeon 8060S
+- `ollama-amd` - Generic AMD GPU support
+
+These templates include the necessary environment variables (like `HSA_OVERRIDE_GFX_VERSION`) for optimal performance.
+
 ### Stopping Demo Mode
 
 Simply press `Ctrl+C` to stop the server.
@@ -54,14 +110,19 @@ The setup script will:
    - Create `ontree` system user (or use existing)
    - This user will run the TreeOS service
 
-3. **Set Up Directories**
+3. **AMD GPU Support (Optional)**
+   - Detect AMD GPUs and offer ROCm 7.0.1 installation
+   - Configure GPU access permissions for the `ontree` user
+   - Add user to `render` and `video` groups
+
+4. **Set Up Directories**
    - Create `/opt/ontree` directory structure
    - Set proper ownership and permissions
 
-4. **Install Binary**
+5. **Install Binary**
    - Copy TreeOS binary to `/opt/ontree/treeos`
 
-5. **Configure Service**
+6. **Configure Service**
    - **Linux**: Install systemd service
    - **macOS**: Install launchd service
    - Enable automatic startup
