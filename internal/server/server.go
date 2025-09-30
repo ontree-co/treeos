@@ -239,9 +239,10 @@ func (s *Server) loadTemplates() error {
 	}
 	s.templates["login"] = tmpl
 
-	// Load settings template
+	// Load settings template with system-check partial
 	settingsTemplate := filepath.Join("templates", "dashboard", "settings.html")
-	tmpl, err = embeds.ParseTemplate(baseTemplate, settingsTemplate, systemCheckTemplate)
+	systemCheckPartial := filepath.Join("templates", "partials", "system_check.html")
+	tmpl, err = embeds.ParseTemplate(baseTemplate, settingsTemplate, systemCheckPartial)
 	if err != nil {
 		return fmt.Errorf("failed to parse settings template: %w", err)
 	}
@@ -1399,14 +1400,14 @@ func (s *Server) testLLMConnection(apiKey, apiURL, model string) (string, error)
 
 // syncExposedApps synchronizes exposed apps with Caddy on startup
 func (s *Server) syncExposedApps() {
-	// Read all apps from the apps directory
-	runtimeSvc, err := s.getRuntimeService()
-	if err != nil {
-		log.Printf("Container runtime service not available; skipping exposure sync: %v", err)
+	// Skip if Docker service is not available
+	if s.runtimeSvc == nil {
+		log.Printf("Docker service not available, skipping app sync")
 		return
 	}
 
-	apps, err := runtimeSvc.ScanApps()
+	// Read all apps from the apps directory
+	apps, err := s.runtimeSvc.ScanApps()
 	if err != nil {
 		if isRuntimeUnavailableError(err) {
 			s.markRuntimeUnhealthy()
