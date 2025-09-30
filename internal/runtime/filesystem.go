@@ -1,4 +1,4 @@
-// Package runtime provides container runtime filesystem helpers used by the service layer.
+// Package runtime provides Docker-based application management.
 package runtime
 
 import (

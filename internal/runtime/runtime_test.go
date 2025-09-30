@@ -35,11 +35,11 @@ func TestContainerMatchesProject(t *testing.T) {
 	app := &App{Name: "OpenWebUI", Path: "/opt/ontree/apps/OpenWebUI"}
 	candidates := projectNameCandidates(app)
 	project := naming.GetComposeProjectName(naming.GetAppIdentifier(app.Path))
-	cont := podmanContainer{
-		Name: "ontree-openwebui-app-1",
+	cont := dockerContainer{
+		Names: []string{"ontree-openwebui-app-1"},
 		Labels: map[string]string{
-			"io.podman.compose.project": project,
-			"io.podman.compose.service": "app",
+			"com.docker.compose.project": project,
+			"com.docker.compose.service": "app",
 		},
 	}
 
@@ -47,7 +47,7 @@ func TestContainerMatchesProject(t *testing.T) {
 		t.Fatalf("expected container to match project")
 	}
 
-	cont = podmanContainer{
+	cont = dockerContainer{
 		Names:  []string{"/ontree-openwebui-app-1"},
 		Labels: map[string]string{},
 	}
@@ -55,7 +55,7 @@ func TestContainerMatchesProject(t *testing.T) {
 		t.Fatalf("expected container with prefixed name to match")
 	}
 
-	cont = podmanContainer{
+	cont = dockerContainer{
 		Names:  []string{"/other-app-1"},
 		Labels: map[string]string{},
 	}
@@ -68,20 +68,20 @@ func TestGetContainerStatus(t *testing.T) {
 	app := &App{Name: "Demo", Path: "/opt/ontree/apps/Demo"}
 	candidates := projectNameCandidates(app)
 
-	running := podmanContainer{Name: "ontree-demo-web-1", State: "running", Labels: map[string]string{"io.podman.compose.project": candidates[0]}}
-	exited := podmanContainer{Name: "ontree-demo-worker-1", State: "exited", Labels: map[string]string{"io.podman.compose.project": candidates[0]}}
+	running := dockerContainer{Names: []string{"ontree-demo-web-1"}, State: "running", Labels: map[string]string{"com.docker.compose.project": candidates[0]}}
+	exited := dockerContainer{Names: []string{"ontree-demo-worker-1"}, State: "exited", Labels: map[string]string{"com.docker.compose.project": candidates[0]}}
 
-	status := (&Client{}).getContainerStatus(app, []podmanContainer{running})
+	status := (&Client{}).getContainerStatus(app, []dockerContainer{running})
 	if status != "running" {
 		t.Fatalf("expected running status, got %s", status)
 	}
 
-	status = (&Client{}).getContainerStatus(app, []podmanContainer{running, exited})
+	status = (&Client{}).getContainerStatus(app, []dockerContainer{running, exited})
 	if status != "partial" {
 		t.Fatalf("expected partial status, got %s", status)
 	}
 
-	status = (&Client{}).getContainerStatus(app, []podmanContainer{exited})
+	status = (&Client{}).getContainerStatus(app, []dockerContainer{exited})
 	if status != "exited" {
 		t.Fatalf("expected exited status, got %s", status)
 	}

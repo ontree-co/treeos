@@ -30,7 +30,7 @@ import (
 	"treeos/internal/ollama"
 	"treeos/internal/progress"
 	"treeos/internal/realtime"
-	containerruntime "treeos/internal/runtime"
+	dockerruntime "treeos/internal/runtime"
 	"treeos/internal/system"
 	"treeos/internal/templates"
 	"treeos/internal/update"
@@ -44,8 +44,8 @@ type Server struct {
 	config                *config.Config
 	templates             map[string]*template.Template
 	sessionStore          *sessions.CookieStore
-	runtimeClient         *containerruntime.Client
-	runtimeSvc            *containerruntime.Service
+	runtimeClient         *dockerruntime.Client
+	runtimeSvc            *dockerruntime.Service
 	runtimeMu             sync.Mutex
 	runtimeClientHealthy  bool
 	runtimeServiceHealthy bool
@@ -120,7 +120,7 @@ func New(cfg *config.Config, versionInfo version.Info) (*Server, error) {
 	log.Printf("Database initialized and migrations verified")
 
 	// Initialize container runtime client
-	runtimeClient, err := containerruntime.NewClient()
+	runtimeClient, err := dockerruntime.NewClient()
 	if err != nil {
 		log.Printf("Warning: Failed to initialize container runtime client: %v", err)
 		// Continue without container runtime support
@@ -130,7 +130,7 @@ func New(cfg *config.Config, versionInfo version.Info) (*Server, error) {
 	}
 
 	// Initialize runtime service
-	runtimeSvc, err := containerruntime.NewService(cfg.AppsDir)
+	runtimeSvc, err := dockerruntime.NewService(cfg.AppsDir)
 	if err != nil {
 		log.Printf("Warning: Failed to initialize container runtime service: %v", err)
 		// Continue without container runtime support
@@ -823,7 +823,7 @@ func (s *Server) startRealtimeMetricsCollection() {
 	}
 }
 
-func (s *Server) getRuntimeClient() (*containerruntime.Client, error) {
+func (s *Server) getRuntimeClient() (*dockerruntime.Client, error) {
 	s.runtimeMu.Lock()
 	defer s.runtimeMu.Unlock()
 
@@ -831,7 +831,7 @@ func (s *Server) getRuntimeClient() (*containerruntime.Client, error) {
 		if s.runtimeClient != nil {
 			_ = s.runtimeClient.Close()
 		}
-		client, err := containerruntime.NewClient()
+		client, err := dockerruntime.NewClient()
 		if err != nil {
 			s.runtimeClientHealthy = false
 			return nil, fmt.Errorf("%w: %v", errRuntimeUnavailable, err)
@@ -843,7 +843,7 @@ func (s *Server) getRuntimeClient() (*containerruntime.Client, error) {
 	return s.runtimeClient, nil
 }
 
-func (s *Server) getRuntimeService() (*containerruntime.Service, error) {
+func (s *Server) getRuntimeService() (*dockerruntime.Service, error) {
 	s.runtimeMu.Lock()
 	defer s.runtimeMu.Unlock()
 
@@ -851,7 +851,7 @@ func (s *Server) getRuntimeService() (*containerruntime.Service, error) {
 		if s.runtimeSvc != nil {
 			_ = s.runtimeSvc.Close()
 		}
-		svc, err := containerruntime.NewService(s.config.AppsDir)
+		svc, err := dockerruntime.NewService(s.config.AppsDir)
 		if err != nil {
 			s.runtimeServiceHealthy = false
 			return nil, fmt.Errorf("%w: %v", errRuntimeUnavailable, err)
@@ -928,7 +928,7 @@ func isRuntimeUnavailableError(err error) bool {
 	return false
 }
 
-func (s *Server) scanApps() ([]*containerruntime.App, error) {
+func (s *Server) scanApps() ([]*dockerruntime.App, error) {
 	client, err := s.getRuntimeClient()
 	if err != nil {
 		return nil, err
@@ -945,7 +945,7 @@ func (s *Server) scanApps() ([]*containerruntime.App, error) {
 	return apps, nil
 }
 
-func (s *Server) getAppDetails(appName string) (*containerruntime.App, error) {
+func (s *Server) getAppDetails(appName string) (*dockerruntime.App, error) {
 	client, err := s.getRuntimeClient()
 	if err != nil {
 		return nil, err
@@ -990,7 +990,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 
 			// Create an enriched app struct with additional status
 			enrichedApp := struct {
-				*containerruntime.App
+				*dockerruntime.App
 				ServiceCount int
 				Containers   []ContainerInfo
 			}{

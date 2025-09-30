@@ -1,4 +1,4 @@
-// Package runtime provides container runtime abstractions for managing applications.
+// Package runtime provides Docker-based application management.
 package runtime
 
 // ServiceStatus represents the running status of a service

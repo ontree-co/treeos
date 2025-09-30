@@ -16,7 +16,7 @@ import (
 )
 
 func TestHandleDashboard_DisplaysApps(t *testing.T) {
-	// Skip if Podman is not available
+	// Skip if Docker is not available
 	runtimeClient, err := runtime.NewClient()
 	if err != nil {
 		t.Skip("Container runtime not available, skipping test:", err)
