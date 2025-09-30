@@ -137,15 +137,15 @@ func (v *Validator) validateBindMounts(serviceName string, service ServiceConfig
 	isDemo := os.Getenv("TREEOS_RUN_MODE") == "demo"
 
 	// Define allowed paths for volumes and mounts
-	var volumesPath, mntPath, sharedPath string
+	var volumesPath, mntPath string
 	if isDemo {
-		volumesPath = fmt.Sprintf("./apps/%s/volumes/", v.appName)
-		mntPath = fmt.Sprintf("./apps/%s/mnt/", v.appName)
-		sharedPath = "./shared/"
+		// In demo mode, paths are relative to the docker-compose.yml location
+		volumesPath = "./volumes/"
+		mntPath = "./mnt/"
 	} else {
+		// In production mode, we still use absolute paths
 		volumesPath = fmt.Sprintf("/opt/ontree/apps/%s/volumes/", v.appName)
 		mntPath = fmt.Sprintf("/opt/ontree/apps/%s/mnt/", v.appName)
-		sharedPath = "/opt/ontree/shared/"
 	}
 
 	for _, volume := range service.Volumes {
@@ -178,14 +178,16 @@ func (v *Validator) validateBindMounts(serviceName string, service ServiceConfig
 						}
 
 						// Check if path is in one of the allowed directories
+						// Allow ./volumes/, ./mnt/, and ../../shared/ (relative parent path for shared)
 						if !strings.HasPrefix(hostPath, volumesPath) &&
 						   !strings.HasPrefix(hostPath, mntPath) &&
-						   !strings.HasPrefix(hostPath, sharedPath) {
+						   !strings.HasPrefix(hostPath, "../../shared/") &&
+						   !strings.HasPrefix(hostPath, "./shared/") {
 							return ValidationError{
 								Service: serviceName,
 								Rule:    "bind mount path",
-								Detail:  fmt.Sprintf("bind mount path '%s' is not allowed. Use paths within '%s', '%s', or '%s'",
-									hostPath, volumesPath, mntPath, sharedPath),
+								Detail:  fmt.Sprintf("bind mount path '%s' is not allowed. Use paths within '%s', '%s', or '../../shared/'",
+									hostPath, volumesPath, mntPath),
 							}
 						}
 					} else {
@@ -201,12 +203,12 @@ func (v *Validator) validateBindMounts(serviceName string, service ServiceConfig
 						// Check if path is in one of the allowed directories
 						if !strings.HasPrefix(hostPath, volumesPath) &&
 						   !strings.HasPrefix(hostPath, mntPath) &&
-						   !strings.HasPrefix(hostPath, sharedPath) {
+						   !strings.HasPrefix(hostPath, "/opt/ontree/shared/") {
 							return ValidationError{
 								Service: serviceName,
 								Rule:    "bind mount path",
-								Detail:  fmt.Sprintf("bind mount path '%s' is not allowed. Use paths within '%s', '%s', or '%s'",
-									hostPath, volumesPath, mntPath, sharedPath),
+								Detail:  fmt.Sprintf("bind mount path '%s' is not allowed. Use paths within '%s', '%s', or '/opt/ontree/shared/'",
+									hostPath, volumesPath, mntPath),
 							}
 						}
 					}
@@ -236,14 +238,16 @@ func (v *Validator) validateBindMounts(serviceName string, service ServiceConfig
 						}
 
 						// Check if path is in one of the allowed directories
+						// Allow ./volumes/, ./mnt/, and ../../shared/ (relative parent path for shared)
 						if !strings.HasPrefix(source, volumesPath) &&
 						   !strings.HasPrefix(source, mntPath) &&
-						   !strings.HasPrefix(source, sharedPath) {
+						   !strings.HasPrefix(source, "../../shared/") &&
+						   !strings.HasPrefix(source, "./shared/") {
 							return ValidationError{
 								Service: serviceName,
 								Rule:    "bind mount path",
-								Detail:  fmt.Sprintf("bind mount path '%s' is not allowed. Use paths within '%s', '%s', or '%s'",
-									source, volumesPath, mntPath, sharedPath),
+								Detail:  fmt.Sprintf("bind mount path '%s' is not allowed. Use paths within '%s', '%s', or '../../shared/'",
+									source, volumesPath, mntPath),
 							}
 						}
 					} else {
@@ -259,12 +263,12 @@ func (v *Validator) validateBindMounts(serviceName string, service ServiceConfig
 						// Check if path is in one of the allowed directories
 						if !strings.HasPrefix(source, volumesPath) &&
 						   !strings.HasPrefix(source, mntPath) &&
-						   !strings.HasPrefix(source, sharedPath) {
+						   !strings.HasPrefix(source, "/opt/ontree/shared/") {
 							return ValidationError{
 								Service: serviceName,
 								Rule:    "bind mount path",
-								Detail:  fmt.Sprintf("bind mount path '%s' is not allowed. Use paths within '%s', '%s', or '%s'",
-									source, volumesPath, mntPath, sharedPath),
+								Detail:  fmt.Sprintf("bind mount path '%s' is not allowed. Use paths within '%s', '%s', or '/opt/ontree/shared/'",
+									source, volumesPath, mntPath),
 							}
 						}
 					}

@@ -538,7 +538,7 @@ services:
   web:
     image: nginx:latest
     volumes:
-      - ./apps/test-app/volumes/web_data:/usr/share/nginx/html
+      - ./volumes/web_data:/usr/share/nginx/html
 `,
 			shouldFail: false,
 		},
@@ -551,7 +551,7 @@ services:
   web:
     image: nginx:latest
     volumes:
-      - ./apps/test-app/mnt/config:/etc/nginx/conf.d
+      - ./mnt/config:/etc/nginx/conf.d
 `,
 			shouldFail: false,
 		},
@@ -597,7 +597,7 @@ services:
 			errorMsg:   "is not allowed",
 		},
 		{
-			name:    "old mount pattern not allowed",
+			name:    "nested path not allowed",
 			appName: "test-app",
 			yamlContent: `
 version: "3.8"
@@ -605,7 +605,7 @@ services:
   web:
     image: nginx:latest
     volumes:
-      - ./apps/mount/test-app/web/data:/usr/share/nginx/html
+      - ./apps/test-app/volumes/data:/usr/share/nginx/html
 `,
 			shouldFail: true,
 			errorMsg:   "is not allowed",

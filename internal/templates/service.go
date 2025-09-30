@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"treeos/internal/config"
 	"treeos/internal/embeds"
 )
 
@@ -107,16 +106,43 @@ func (s *Service) ProcessTemplateContent(content string, appName string) string 
 	// rather than matching the app name
 
 	// Replace platform-specific placeholders
-	// {{SHARED_OLLAMA_PATH}} - Path to shared Ollama models directory (platform-specific)
-	sharedOllamaPath := config.GetSharedOllamaPath()
+	isDemo := os.Getenv("TREEOS_RUN_MODE") == "demo"
+
+	// {{APP_VOLUMES_PATH}} - Context-aware path to app volumes directory
+	// In demo: ./volumes (relative to docker-compose.yml location)
+	// In production: /opt/ontree/apps/{appName}/volumes (absolute path)
+	appVolumesPath := "./volumes"
+	if !isDemo {
+		appVolumesPath = fmt.Sprintf("/opt/ontree/apps/%s/volumes", appName)
+	}
+	content = strings.ReplaceAll(content, "{{APP_VOLUMES_PATH}}", appVolumesPath)
+
+	// {{APP_MNT_PATH}} - Context-aware path to app mnt directory
+	// In demo: ./mnt (relative to docker-compose.yml location)
+	// In production: /opt/ontree/apps/{appName}/mnt (absolute path)
+	appMntPath := "./mnt"
+	if !isDemo {
+		appMntPath = fmt.Sprintf("/opt/ontree/apps/%s/mnt", appName)
+	}
+	content = strings.ReplaceAll(content, "{{APP_MNT_PATH}}", appMntPath)
+
+	// {{SHARED_OLLAMA_PATH}} - Context-aware path to shared Ollama models
+	// In demo: ../../shared/ollama (relative, go up 2 levels from app dir)
+	// In production: /opt/ontree/shared/ollama (absolute path)
+	sharedOllamaPath := "../../shared/ollama"
+	if !isDemo {
+		sharedOllamaPath = "/opt/ontree/shared/ollama"
+	}
 	content = strings.ReplaceAll(content, "{{SHARED_OLLAMA_PATH}}", sharedOllamaPath)
 
-	// {{ONTREE_APPS_PATH}} - Base path for apps directory (demo vs production)
-	ontreeAppsPath := "."
-	if os.Getenv("TREEOS_RUN_MODE") != "demo" {
-		ontreeAppsPath = "/opt/ontree"
+	// {{SHARED_PATH}} - Context-aware path to shared directory
+	// In demo: ../../shared (relative, go up 2 levels from app dir)
+	// In production: /opt/ontree/shared (absolute path)
+	sharedPath := "../../shared"
+	if !isDemo {
+		sharedPath = "/opt/ontree/shared"
 	}
-	content = strings.ReplaceAll(content, "{{ONTREE_APPS_PATH}}", ontreeAppsPath)
+	content = strings.ReplaceAll(content, "{{SHARED_PATH}}", sharedPath)
 
 	// {{APP_NAME}} - The name of the app being created
 	content = strings.ReplaceAll(content, "{{APP_NAME}}", appName)

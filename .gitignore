@@ -69,5 +69,8 @@ __debug_bin*
 # Apps directory (runtime data)
 apps/
 
+# Shared directory (runtime data)
+shared/
+
 # Authentication
 cookies.txt
