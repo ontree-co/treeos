@@ -56,7 +56,7 @@ TreeOS uses a simple dual-mode logging system optimized for development and prod
 
 ### Development Mode
 
-When `TREEOS_ENV=development` or `DEBUG=true`:
+When `DEBUG=true`:
 
 - All logs (server and browser) are written to `./logs/treeos.log`
 - Browser JavaScript errors are automatically captured and logged
@@ -67,10 +67,10 @@ To enable development logging:
 
 ```bash
 # Set in .env file
-TREEOS_ENV=development
+DEBUG=true
 
 # Or via environment variable
-export TREEOS_ENV=development
+export DEBUG=true
 ```
 
 ### Production Mode

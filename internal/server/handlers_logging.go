@@ -44,10 +44,10 @@ func (s *Server) handleBrowserLog(w http.ResponseWriter, r *http.Request) {
 		entry.Source = "browser"
 	}
 
-	// Check if we're in development mode
-	isDevelopment := os.Getenv("TREEOS_ENV") == "development" || os.Getenv("DEBUG") == "true"
+	// Check if we're in debug mode
+	isDebug := os.Getenv("DEBUG") == "true"
 
-	if !isDevelopment {
+	if !isDebug {
 		// In production, just log to stdout (for PostHog/monitoring)
 		log.Printf("[BROWSER] [%s] %s", strings.ToUpper(entry.Level), entry.Message)
 		w.Header().Set("Content-Type", "application/json")
@@ -56,7 +56,7 @@ func (s *Server) handleBrowserLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// In development, write to unified log file
+	// In debug mode, write to unified log file
 	logDir := "./logs"
 	if err := os.MkdirAll(logDir, 0755); err != nil {
 		log.Printf("Failed to create log directory: %v", err)
@@ -88,7 +88,7 @@ func (s *Server) handleBrowserLog(w http.ResponseWriter, r *http.Request) {
 		}
 		_, _ = file.WriteString(logLine)
 
-		// Also log to stdout in development for immediate visibility
+		// Also log to stdout in debug mode for immediate visibility
 		log.Printf("[BROWSER] [%s] %s", strings.ToUpper(entry.Level), entry.Message)
 	}
 
@@ -157,9 +157,9 @@ func (s *Server) checkLokiAvailability() bool {
 // sendLogsFromFiles reads logs directly from files when Loki is not available
 func (s *Server) sendLogsFromFiles(w http.ResponseWriter, source string, limit string) {
 	// Use appropriate log directory based on environment
-	isDevelopment := os.Getenv("TREEOS_ENV") == "development" || os.Getenv("DEBUG") == "true"
+	isDebug := os.Getenv("DEBUG") == "true"
 	logDir := "./logs"
-	if !isDevelopment {
+	if !isDebug {
 		// Check if we're in demo mode
 		if os.Getenv("TREEOS_RUN_MODE") == "demo" {
 			logDir = "./logs"
@@ -201,9 +201,9 @@ func (s *Server) sendLogsFromFiles(w http.ResponseWriter, source string, limit s
 	maxLines := 100
 	_, _ = fmt.Sscanf(limit, "%d", &maxLines)
 
-	// In development, all logs are in treeos.log
+	// In debug mode, all logs are in treeos.log
 	// In production, they might be separate (if file logging is enabled)
-	if isDevelopment {
+	if isDebug {
 		// All logs are in the unified file
 		unifiedLogPath := filepath.Join(logDir, "treeos.log")
 		logLines := readLastLines(unifiedLogPath, maxLines)

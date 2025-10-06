@@ -11,9 +11,9 @@ TreeOS provides a simple logging system optimized for development and production
 In development, TreeOS writes all logs to a single file for easy debugging:
 
 ```bash
-# Enable development mode
-export TREEOS_ENV=development
-# Or add to .env file: TREEOS_ENV=development
+# Enable debug mode
+export DEBUG=true
+# Or add to .env file: DEBUG=true
 
 # Start the server
 go run cmd/treeos/main.go
@@ -74,8 +74,7 @@ curl http://localhost:8080/api/logs?source=browser
 
 ### Environment Variables
 ```bash
-TREEOS_ENV=development  # Enable file logging
-DEBUG=true              # Enable debug logs
+DEBUG=true  # Enable file logging and debug logs
 ```
 
 ### Browser Settings
@@ -106,7 +105,7 @@ localStorage.setItem('debug', 'true');
 ## Troubleshooting
 
 ### Logs not appearing?
-- Check `TREEOS_ENV=development` is set
+- Check `DEBUG=true` is set
 - Verify `./logs/` directory exists
 - Ensure server has write permissions
 

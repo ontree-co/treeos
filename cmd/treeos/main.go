@@ -138,18 +138,18 @@ func main() {
 		}
 	}
 
-	// Initialize file logging ONLY in development mode or demo mode
-	isDevelopment := os.Getenv("TREEOS_ENV") == "development" || os.Getenv("DEBUG") == "true"
+	// Initialize file logging ONLY in debug mode or demo mode
+	isDebug := os.Getenv("DEBUG") == "true"
 	isDemo := os.Getenv("TREEOS_RUN_MODE") == "demo"
 
-	if isDevelopment || isDemo {
-		logDir := "./logs" // Always use local directory in development/demo
+	if isDebug || isDemo {
+		logDir := "./logs" // Always use local directory in debug/demo
 		if err := logging.Initialize(logDir); err != nil {
 			log.Printf("Warning: Failed to initialize file logging: %v", err)
 			// Continue with standard logging to stdout
 		} else {
 			defer logging.Close()
-			log.Printf("Development/demo logging initialized to %s", logDir)
+			log.Printf("Debug/demo logging initialized to %s", logDir)
 		}
 	} else {
 		// In production, just use stdout (captured by systemd/launchd/etc)
