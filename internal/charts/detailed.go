@@ -1,3 +1,4 @@
+// Package charts provides SVG chart generation utilities for the monitoring dashboard.
 package charts
 
 import (
@@ -27,6 +28,7 @@ type DataPoint struct {
 // GenerateDetailedChart creates a detailed SVG chart with axes, labels, and grid lines
 func GenerateDetailedChart(data DetailedChartData, width, height int) template.HTML {
 	if len(data.Points) == 0 {
+		//nolint:gosec // SVG generation, not user input
 		return template.HTML(fmt.Sprintf(`<svg width="%d" height="%d" viewBox="0 0 %d %d" xmlns="http://www.w3.org/2000/svg">
 			<text x="%d" y="%d" text-anchor="middle" fill="#6c757d">No data available</text>
 		</svg>`, width, height, width, height, width/2, height/2))
@@ -96,6 +98,7 @@ func GenerateDetailedChart(data DetailedChartData, width, height int) template.H
 
 	svg += `</svg>`
 
+	//nolint:gosec // SVG generation, not user input
 	return template.HTML(svg)
 }
 

@@ -40,7 +40,7 @@ func getLocalOllamaModels() []string {
 		var data response
 
 		func() {
-			defer resp.Body.Close()
+			defer resp.Body.Close() //nolint:errcheck // Cleanup, error not critical
 			if resp.StatusCode != http.StatusOK {
 				return
 			}
@@ -231,7 +231,7 @@ func (s *Server) handleCreateFromTemplate(w http.ResponseWriter, r *http.Request
 		if templateID == "librechat" {
 			appPath := filepath.Join(s.config.AppsDir, appName)
 			configDir := filepath.Join(appPath, "shared", "config")
-			if err := os.MkdirAll(configDir, 0755); err != nil {
+			if err := os.MkdirAll(configDir, 0755); err != nil { //nolint:gosec // Config directory needs group read access
 				log.Printf("Warning: Failed to create config directory for %s: %v", appName, err)
 			} else {
 				configPath := filepath.Join(configDir, "librechat.yaml")

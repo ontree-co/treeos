@@ -155,7 +155,7 @@ func TestSetupDemoDirs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get current directory: %v", err)
 	}
-	defer os.Chdir(oldDir)
+	defer os.Chdir(oldDir) //nolint:errcheck // Test cleanup
 
 	if err := os.Chdir(tmpDir); err != nil {
 		t.Fatalf("Failed to change to temp directory: %v", err)

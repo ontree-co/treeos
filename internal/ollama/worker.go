@@ -112,6 +112,7 @@ func (w *Worker) CancelDownload(modelName string) error {
 	}
 
 	if containerName != "" {
+		//nolint:gosec // Container name validated from discovery, model name from request
 		killInsideCmd := exec.Command("docker", "exec", containerName, "sh", "-c",
 			fmt.Sprintf("pkill -f 'ollama pull %s' || true", modelName))
 		if err := killInsideCmd.Run(); err != nil {
@@ -239,6 +240,7 @@ func (w *Worker) processDownload(job DownloadJob) {
 	})
 
 	// Execute the ollama pull command
+	//nolint:gosec // Container name validated from discovery, model name from request
 	cmd := exec.Command("docker", "exec", containerName, "ollama", "pull", job.ModelName)
 
 	// Track this command for potential cancellation

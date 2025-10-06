@@ -101,7 +101,7 @@ type ComposeFile struct {
 
 // ReadComposeWithMetadata reads a docker-compose.yml file preserving formatting and comments
 func ReadComposeWithMetadata(path string) (*ComposeFile, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // Path from app directory
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file: %w", err)
 	}
@@ -137,7 +137,7 @@ func WriteComposeWithMetadata(path string, compose *ComposeFile) error {
 
 	if _, err := os.Stat(path); err == nil {
 		// File exists, read it to preserve structure
-		data, err := os.ReadFile(path)
+		data, err := os.ReadFile(path) //nolint:gosec // Path from app directory
 		if err != nil {
 			return fmt.Errorf("failed to read existing file: %w", err)
 		}
@@ -165,14 +165,14 @@ func WriteComposeWithMetadata(path string, compose *ComposeFile) error {
 
 	// Create directory if it doesn't exist
 	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0755); err != nil { //nolint:gosec // Directory permissions appropriate
 		return fmt.Errorf("failed to create directory: %w", err)
 	}
 
 	// Write to file atomically
 	tempFile := path + ".tmp"
 	// Use 0644 for docker-compose.yml files as they need to be readable by docker daemon
-	if err := os.WriteFile(tempFile, output, 0644); err != nil { // #nosec G306 - compose files need to be world-readable
+	if err := os.WriteFile(tempFile, output, 0644); err != nil { //nolint:gosec // Compose files need to be world-readable
 		return fmt.Errorf("failed to write file: %w", err)
 	}
 
@@ -216,14 +216,15 @@ func updateYAMLNode(node *yaml.Node, compose *ComposeFile) error {
 	servicesUpdated := false
 	for i := 0; i < len(node.Content); i += 2 {
 		keyNode := node.Content[i]
-		if keyNode.Value == "services" {
+		switch keyNode.Value {
+		case "services":
 			// Update existing services
 			valueNode := node.Content[i+1]
 			if err := valueNode.Encode(compose.Services); err != nil {
 				return fmt.Errorf("failed to encode services: %w", err)
 			}
 			servicesUpdated = true
-		} else if keyNode.Value == "x-ontree" {
+		case "x-ontree":
 			// Update existing x-ontree
 			valueNode := node.Content[i+1]
 			if err := valueNode.Encode(compose.XOnTree); err != nil {

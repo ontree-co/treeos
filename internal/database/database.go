@@ -23,7 +23,7 @@ func Initialize(dbPath string) error {
 
 	// Close any existing connection first
 	if db != nil {
-		db.Close()
+		db.Close() //nolint:errcheck,gosec // Cleanup, error not critical
 		db = nil
 	}
 
@@ -242,6 +242,7 @@ func migrateColumnsIfNeeded() error {
 	for _, m := range migrations {
 		// Check if column exists
 		var colCount int
+		//nolint:gosec // Table and column names are from trusted migration definitions
 		query := fmt.Sprintf(`SELECT COUNT(*) FROM pragma_table_info('%s') WHERE name='%s'`, m.table, m.column)
 		row := db.QueryRow(query)
 		if err := row.Scan(&colCount); err != nil {

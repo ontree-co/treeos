@@ -1,3 +1,4 @@
+// Package update provides self-update functionality for TreeOS.
 package update
 
 import (
@@ -158,7 +159,7 @@ func (s *Service) downloadAndExtractBinary(asset *Asset, progressCallback func(d
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to download from %s: %w", asset.URL, err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck // Cleanup, error not critical
 
 	// Check HTTP status
 	if resp.StatusCode == http.StatusNotFound {
@@ -213,7 +214,7 @@ func (s *Service) extractBinaryFromTarGz(data io.Reader) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gzip reader: %w", err)
 	}
-	defer gzReader.Close()
+	defer gzReader.Close() //nolint:errcheck // Cleanup, error not critical
 
 	tarReader := tar.NewReader(gzReader)
 
@@ -285,7 +286,7 @@ func (s *Service) BackupCurrentBinary() (string, error) {
 	backupPath := execPath + ".backup"
 
 	// Read current binary
-	data, err := os.ReadFile(execPath)
+	data, err := os.ReadFile(execPath) //nolint:gosec // Path from executable location
 	if err != nil {
 		return "", fmt.Errorf("failed to read current binary: %w", err)
 	}
@@ -308,7 +309,7 @@ func (s *Service) RestoreBackup(backupPath string) error {
 	}
 
 	// Read backup
-	data, err := os.ReadFile(backupPath)
+	data, err := os.ReadFile(backupPath) //nolint:gosec // Path from backup location
 	if err != nil {
 		return fmt.Errorf("failed to read backup: %w", err)
 	}

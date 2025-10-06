@@ -1,3 +1,4 @@
+// Package naming provides utilities for Docker container naming conventions in TreeOS.
 package naming
 
 import (
@@ -71,7 +72,7 @@ func EnsureEnvFile(appPath string) error {
 	// Check if .env already exists
 	if _, err := os.Stat(envPath); err == nil {
 		// File exists, check if it has the correct content
-		content, err := os.ReadFile(envPath)
+		content, err := os.ReadFile(envPath) //nolint:gosec // File path from app directory
 		if err != nil {
 			return fmt.Errorf("failed to read existing .env: %w", err)
 		}

@@ -34,6 +34,7 @@ func GenerateSparklineSVG(dataPoints []float64, width, height int) template.HTML
 		width, height, width, height, points,
 	)
 
+	//nolint:gosec // SVG generation, not user input
 	return template.HTML(svg)
 }
 
@@ -62,6 +63,7 @@ func GenerateSparklineSVGWithStyle(dataPoints []float64, width, height int, stro
 		width, height, width, height, strokeColor, strokeWidth, points,
 	)
 
+	//nolint:gosec // SVG generation, not user input
 	return template.HTML(svg)
 }
 
@@ -139,5 +141,6 @@ func GeneratePercentageSparkline(dataPoints []float64, width, height int) templa
 	svg.WriteString(points)
 	svg.WriteString(`"/></svg>`)
 
+	//nolint:gosec // SVG generation, not user input
 	return template.HTML(svg.String())
 }

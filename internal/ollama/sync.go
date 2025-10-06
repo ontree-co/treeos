@@ -208,7 +208,7 @@ func discoverModelsOnDisk(sharedBase string) (map[string]struct{}, string, error
 }
 
 func extractModelNameFromManifest(path, manifestsRoot string) string {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // File path from Ollama manifests directory
 	if err != nil {
 		log.Printf("Failed to read manifest %s: %v", path, err)
 		return fallbackModelNameFromPath(path, manifestsRoot)

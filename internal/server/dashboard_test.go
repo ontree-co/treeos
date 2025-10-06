@@ -21,7 +21,7 @@ func TestHandleDashboard_DisplaysApps(t *testing.T) {
 	if err != nil {
 		t.Skip("Container runtime not available, skipping test:", err)
 	}
-	defer runtimeClient.Close()
+	defer runtimeClient.Close() //nolint:errcheck,gosec // Test cleanup
 
 	// Create a temporary apps directory for testing
 	tempDir := t.TempDir()
@@ -31,7 +31,7 @@ func TestHandleDashboard_DisplaysApps(t *testing.T) {
 	testApps := []string{"openwebui-amd", "uptime-kuma"}
 	for _, appName := range testApps {
 		appDir := filepath.Join(appsDir, appName)
-		if err := os.MkdirAll(appDir, 0755); err != nil {
+		if err := os.MkdirAll(appDir, 0755); err != nil { //nolint:gosec // Test directory permissions
 			t.Fatalf("Failed to create app directory %s: %v", appDir, err)
 		}
 
@@ -44,7 +44,7 @@ services:
       - "8080:80"
 `, appName)
 		composeFile := filepath.Join(appDir, "docker-compose.yml")
-		if err := os.WriteFile(composeFile, []byte(composeContent), 0644); err != nil {
+		if err := os.WriteFile(composeFile, []byte(composeContent), 0644); err != nil { //nolint:gosec // Test file permissions
 			t.Fatalf("Failed to create docker-compose.yml for %s: %v", appName, err)
 		}
 	}

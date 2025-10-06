@@ -67,7 +67,7 @@ func TestHandleAPIAppLogs(t *testing.T) {
 			// Set up app if needed
 			if tt.setupApp && tt.appName != "" {
 				appDir := filepath.Join(tmpDir, tt.appName)
-				if err := os.MkdirAll(appDir, 0755); err != nil {
+				if err := os.MkdirAll(appDir, 0755); err != nil { //nolint:gosec // Test directory permissions
 					t.Fatal(err)
 				}
 
@@ -78,7 +78,7 @@ services:
     image: nginx:latest
 `
 				composeFile := filepath.Join(appDir, "docker-compose.yml")
-				if err := os.WriteFile(composeFile, []byte(composeContent), 0644); err != nil {
+				if err := os.WriteFile(composeFile, []byte(composeContent), 0644); err != nil { //nolint:gosec // Test file permissions
 					t.Fatal(err)
 				}
 			}

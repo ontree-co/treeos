@@ -16,8 +16,8 @@ func (s *Server) routeComponents(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 
 	// Route based on the path pattern
-	switch {
-	case path == "/components/emoji-picker/shuffle":
+	switch path {
+	case "/components/emoji-picker/shuffle":
 		s.handleEmojiPickerShuffle(w, r)
 	default:
 		http.NotFound(w, r)

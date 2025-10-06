@@ -43,7 +43,7 @@ func TestDefaultConfig(t *testing.T) {
 
 			// Set test environment variables
 			for k, v := range tt.envVars {
-				os.Setenv(k, v)
+				os.Setenv(k, v) //nolint:errcheck,gosec // Test setup
 			}
 
 			// Get default config
@@ -131,18 +131,18 @@ func TestLoad(t *testing.T) {
 				for _, e := range origEnv {
 					pair := strings.SplitN(e, "=", 2)
 					if len(pair) == 2 {
-						os.Setenv(pair[0], pair[1])
+						os.Setenv(pair[0], pair[1]) //nolint:errcheck,gosec // Test setup
 					}
 				}
 			}()
 
 			// Set test environment variables
 			for k, v := range tt.envVars {
-				os.Setenv(k, v)
+				os.Setenv(k, v) //nolint:errcheck,gosec // Test setup
 			}
 
 			// Set a non-existent config path to avoid loading local .env
-			os.Setenv("ONTREE_CONFIG_PATH", "/nonexistent/config.toml")
+			os.Setenv("ONTREE_CONFIG_PATH", "/nonexistent/config.toml") //nolint:errcheck,gosec // Test setup
 
 			// Load config
 			cfg, err := Load()
@@ -201,7 +201,7 @@ func TestGetSharedPath(t *testing.T) {
 
 			// Set test environment variables
 			for k, v := range tt.envVars {
-				os.Setenv(k, v)
+				os.Setenv(k, v) //nolint:errcheck,gosec // Test setup
 			}
 
 			// Get shared path
@@ -240,7 +240,7 @@ func TestGetSharedOllamaPath(t *testing.T) {
 
 			// Set test environment variables
 			for k, v := range tt.envVars {
-				os.Setenv(k, v)
+				os.Setenv(k, v) //nolint:errcheck,gosec // Test setup
 			}
 
 			// Get shared ollama path
@@ -316,7 +316,7 @@ func TestLoadWithConfigFile(t *testing.T) {
 		for _, e := range origEnv {
 			pair := strings.SplitN(e, "=", 2)
 			if len(pair) == 2 {
-				os.Setenv(pair[0], pair[1])
+				os.Setenv(pair[0], pair[1]) //nolint:errcheck,gosec // Test setup
 			}
 		}
 	}()
@@ -331,13 +331,13 @@ database_path = "/config/ontree.db"
 listen_addr = ":5000"
 `
 
-	if err := os.WriteFile(configFile, []byte(configContent), 0644); err != nil {
+	if err := os.WriteFile(configFile, []byte(configContent), 0644); err != nil { //nolint:gosec // Test file permissions //nolint:gosec // Test file permissions
 		t.Fatalf("Failed to write test config file: %v", err)
 	}
 
 	// Set config path environment variable
 	os.Clearenv()
-	os.Setenv("ONTREE_CONFIG_PATH", configFile)
+	os.Setenv("ONTREE_CONFIG_PATH", configFile) //nolint:errcheck,gosec // Test setup
 
 	// Load config
 	cfg, err := Load()

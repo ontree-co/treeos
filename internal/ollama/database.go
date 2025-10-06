@@ -1,3 +1,4 @@
+// Package ollama provides utilities for managing Ollama models and downloads in TreeOS.
 package ollama
 
 import (
@@ -76,7 +77,7 @@ func fetchAllModelRecords(db *sql.DB) ([]OllamaModel, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to query models: %w", err)
 	}
-	defer rows.Close()
+	defer rows.Close() //nolint:errcheck // Cleanup, error not critical
 
 	var models []OllamaModel
 	for rows.Next() {
@@ -259,7 +260,7 @@ func GetPendingJobs(db *sql.DB) ([]DownloadJob, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to query pending jobs: %w", err)
 	}
-	defer rows.Close()
+	defer rows.Close() //nolint:errcheck // Cleanup, error not critical
 
 	var jobs []DownloadJob
 	for rows.Next() {
@@ -305,7 +306,7 @@ func GetCompletedModels(db *sql.DB) ([]OllamaModel, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to query completed models: %w", err)
 	}
-	defer rows.Close()
+	defer rows.Close() //nolint:errcheck // Cleanup, error not critical
 
 	var models []OllamaModel
 	for rows.Next() {

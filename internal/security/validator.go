@@ -1,3 +1,4 @@
+// Package security provides security validation for docker-compose.yml files.
 package security
 
 import (

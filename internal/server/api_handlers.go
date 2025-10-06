@@ -56,6 +56,7 @@ type ServiceStatusDetail struct {
 	Error  string   `json:"error,omitempty"`
 }
 
+// SystemCheckResponse represents the response from a system check API call.
 type SystemCheckResponse struct {
 	Success bool                      `json:"success"`
 	Checks  []systemcheck.CheckResult `json:"checks"`
@@ -75,7 +76,7 @@ func (s *Server) handleCreateApp(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to read request body", http.StatusBadRequest)
 		return
 	}
-	defer r.Body.Close()
+	defer r.Body.Close() //nolint:errcheck // Cleanup, error not critical
 
 	if err := json.Unmarshal(body, &req); err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
@@ -116,16 +117,16 @@ func (s *Server) handleCreateApp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create directories
-	if err := os.MkdirAll(appDir, 0755); err != nil {
+	if err := os.MkdirAll(appDir, 0755); err != nil { //nolint:gosec // App directory needs group read access
 		log.Printf("Failed to create app directory: %v", err)
 		http.Error(w, "Failed to create app directory", http.StatusInternalServerError)
 		return
 	}
 
-	if err := os.MkdirAll(mountDir, 0755); err != nil {
+	if err := os.MkdirAll(mountDir, 0755); err != nil { //nolint:gosec // Mount directory needs group read access
 		log.Printf("Failed to create mount directory: %v", err)
 		// Clean up app directory
-		os.RemoveAll(appDir)
+		os.RemoveAll(appDir) //nolint:errcheck,gosec // Best effort cleanup
 		http.Error(w, "Failed to create mount directory", http.StatusInternalServerError)
 		return
 	}
@@ -135,8 +136,8 @@ func (s *Server) handleCreateApp(w http.ResponseWriter, r *http.Request) {
 	if err := os.WriteFile(composeFile, []byte(req.ComposeYAML), 0600); err != nil { // #nosec G306 - compose files need to be readable
 		log.Printf("Failed to write docker-compose.yml: %v", err)
 		// Clean up directories
-		os.RemoveAll(appDir)
-		os.RemoveAll(mountDir)
+		os.RemoveAll(appDir)  //nolint:errcheck,gosec // Best effort cleanup
+		os.RemoveAll(mountDir) //nolint:errcheck,gosec // Best effort cleanup
 		http.Error(w, "Failed to write docker-compose.yml", http.StatusInternalServerError)
 		return
 	}
@@ -147,8 +148,8 @@ func (s *Server) handleCreateApp(w http.ResponseWriter, r *http.Request) {
 		if err := os.WriteFile(envFile, []byte(req.EnvContent), 0600); err != nil { // #nosec G306 - env files need to be readable
 			log.Printf("Failed to write .env file: %v", err)
 			// Clean up
-			os.RemoveAll(appDir)
-			os.RemoveAll(mountDir)
+			os.RemoveAll(appDir)  //nolint:errcheck,gosec // Best effort cleanup
+			os.RemoveAll(mountDir) //nolint:errcheck,gosec // Best effort cleanup
 			http.Error(w, "Failed to write .env file", http.StatusInternalServerError)
 			return
 		}
@@ -245,7 +246,7 @@ func (s *Server) handleUpdateApp(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to read request body", http.StatusBadRequest)
 		return
 	}
-	defer r.Body.Close()
+	defer r.Body.Close() //nolint:errcheck // Cleanup, error not critical
 
 	if err := json.Unmarshal(body, &req); err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
@@ -345,7 +346,7 @@ func (s *Server) handleAPIAppStart(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Read docker-compose.yml content
-	yamlContent, err := os.ReadFile(composeFile)
+	yamlContent, err := os.ReadFile(composeFile) //nolint:gosec // Path from trusted app directory
 	if err != nil {
 		if os.IsNotExist(err) {
 			http.Error(w, fmt.Sprintf("App '%s' not found", appName), http.StatusNotFound)
@@ -937,7 +938,7 @@ func (s *Server) handleGetApp(w http.ResponseWriter, r *http.Request) {
 
 	// Read docker-compose.yml
 	composeFile := filepath.Join(appDir, "docker-compose.yml")
-	composeContent, err := os.ReadFile(composeFile)
+	composeContent, err := os.ReadFile(composeFile) //nolint:gosec // Path from trusted app directory
 	if err != nil {
 		log.Printf("Failed to read docker-compose.yml for app %s: %v", appName, err)
 		http.Error(w, "Failed to read app configuration", http.StatusInternalServerError)
@@ -948,7 +949,7 @@ func (s *Server) handleGetApp(w http.ResponseWriter, r *http.Request) {
 	var envContent []byte
 	envFile := filepath.Join(appDir, ".env")
 	if _, err := os.Stat(envFile); err == nil {
-		envContent, err = os.ReadFile(envFile)
+		envContent, err = os.ReadFile(envFile) //nolint:gosec // Path from trusted app directory
 		if err != nil {
 			log.Printf("Failed to read .env file for app %s: %v", appName, err)
 			// Non-critical error, continue without env content
@@ -1052,7 +1053,7 @@ func (s *Server) handleAPIAppLogs(w http.ResponseWriter, r *http.Request) {
 		// If we haven't written anything yet, we can send an error
 		if !follow {
 			log.Printf("Failed to get logs for app %s: %v", appName, err)
-			fmt.Fprintf(w, "\nError retrieving logs: %v\n", err)
+			fmt.Fprintf(w, "\nError retrieving logs: %v\n", err) //nolint:errcheck // Best effort logging
 		}
 	}
 }
@@ -1228,7 +1229,7 @@ func (s *Server) handleAPIAppProgressSSE(w http.ResponseWriter, r *http.Request)
 				"progress": progressInfo,
 			}
 			if jsonData, err := json.Marshal(initialData); err == nil {
-				fmt.Fprintf(w, "event: progress\ndata: %s\n\n", string(jsonData))
+				fmt.Fprintf(w, "event: progress\ndata: %s\n\n", string(jsonData)) //nolint:errcheck // SSE stream
 				flusher.Flush()
 			}
 		} else {

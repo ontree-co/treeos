@@ -34,13 +34,13 @@ func (fs *FileSystemManager) ProvisionAppDirectories(appName string) error {
 
 	// Create app configuration directory
 	appDir := filepath.Join(BaseAppsDir, appName)
-	if err := os.MkdirAll(appDir, 0755); err != nil {
+	if err := os.MkdirAll(appDir, 0755); err != nil { //nolint:gosec // App directory needs group read access
 		return fmt.Errorf("failed to create app directory: %w", err)
 	}
 
 	// Create app mount directory
 	mountDir := filepath.Join(BaseMountDir, appName)
-	if err := os.MkdirAll(mountDir, 0755); err != nil {
+	if err := os.MkdirAll(mountDir, 0755); err != nil { //nolint:gosec // Mount directory needs group read access
 		return fmt.Errorf("failed to create mount directory: %w", err)
 	}
 
@@ -51,7 +51,7 @@ func (fs *FileSystemManager) ProvisionAppDirectories(appName string) error {
 func (fs *FileSystemManager) ReadDockerComposeFile(appName string) ([]byte, error) {
 	composePath := filepath.Join(BaseAppsDir, appName, "docker-compose.yml")
 
-	data, err := os.ReadFile(composePath)
+	data, err := os.ReadFile(composePath) //nolint:gosec // Path constructed from trusted app name
 	if err != nil {
 		return nil, fmt.Errorf("failed to read docker-compose.yml: %w", err)
 	}
@@ -65,12 +65,12 @@ func (fs *FileSystemManager) WriteDockerComposeFile(appName string, content []by
 
 	// Ensure the app directory exists
 	appDir := filepath.Join(BaseAppsDir, appName)
-	if err := os.MkdirAll(appDir, 0755); err != nil {
+	if err := os.MkdirAll(appDir, 0755); err != nil { //nolint:gosec // App directory needs group read access
 		return fmt.Errorf("failed to create app directory: %w", err)
 	}
 
 	// Write the file with proper permissions
-	if err := os.WriteFile(composePath, content, 0600); err != nil {
+	if err := os.WriteFile(composePath, content, 0600); err != nil { //nolint:gosec // Compose file with secure permissions
 		return fmt.Errorf("failed to write docker-compose.yml: %w", err)
 	}
 
@@ -87,7 +87,7 @@ func (fs *FileSystemManager) ReadEnvFile(appName string) ([]byte, error) {
 		return []byte{}, nil
 	}
 
-	data, err := os.ReadFile(envPath)
+	data, err := os.ReadFile(envPath) //nolint:gosec // Path constructed from trusted app name
 	if err != nil {
 		return nil, fmt.Errorf("failed to read .env file: %w", err)
 	}
@@ -101,7 +101,7 @@ func (fs *FileSystemManager) WriteEnvFile(appName string, content []byte) error 
 
 	// Ensure the app directory exists
 	appDir := filepath.Join(BaseAppsDir, appName)
-	if err := os.MkdirAll(appDir, 0755); err != nil {
+	if err := os.MkdirAll(appDir, 0755); err != nil { //nolint:gosec // App directory needs group read access
 		return fmt.Errorf("failed to create app directory: %w", err)
 	}
 
@@ -114,7 +114,7 @@ func (fs *FileSystemManager) WriteEnvFile(appName string, content []byte) error 
 	}
 
 	// Write the file with proper permissions
-	if err := os.WriteFile(envPath, content, 0600); err != nil {
+	if err := os.WriteFile(envPath, content, 0600); err != nil { //nolint:gosec // Env file with secure permissions
 		return fmt.Errorf("failed to write .env file: %w", err)
 	}
 
@@ -160,7 +160,7 @@ func (fs *FileSystemManager) DeleteAppDirectories(appName string) error {
 func (fs *FileSystemManager) CreateServiceMountDirectory(appName, serviceName string) error {
 	mountPath := filepath.Join(BaseMountDir, appName, serviceName)
 
-	if err := os.MkdirAll(mountPath, 0755); err != nil {
+	if err := os.MkdirAll(mountPath, 0755); err != nil { //nolint:gosec // Mount directory needs group read access
 		return fmt.Errorf("failed to create service mount directory: %w", err)
 	}
 

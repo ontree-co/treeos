@@ -5,9 +5,13 @@ package runtime
 type ServiceStatus string
 
 const (
+	// ServiceStatusRunning indicates the service is running
 	ServiceStatusRunning ServiceStatus = "running"
+	// ServiceStatusStopped indicates the service is stopped
 	ServiceStatusStopped ServiceStatus = "stopped"
-	ServiceStatusError   ServiceStatus = "error"
+	// ServiceStatusError indicates the service encountered an error
+	ServiceStatusError ServiceStatus = "error"
+	// ServiceStatusUnknown indicates the service status is unknown
 	ServiceStatusUnknown ServiceStatus = "unknown"
 )
 
@@ -15,11 +19,16 @@ const (
 type AppStatus string
 
 const (
-	AppStatusRunning AppStatus = "running" // All services are running
-	AppStatusPartial AppStatus = "partial" // Some services are running
-	AppStatusStopped AppStatus = "stopped" // All services are stopped
-	AppStatusError   AppStatus = "error"   // One or more services have errors
-	AppStatusUnknown AppStatus = "unknown" // Status cannot be determined
+	// AppStatusRunning indicates all services are running
+	AppStatusRunning AppStatus = "running"
+	// AppStatusPartial indicates some services are running
+	AppStatusPartial AppStatus = "partial"
+	// AppStatusStopped indicates all services are stopped
+	AppStatusStopped AppStatus = "stopped"
+	// AppStatusError indicates one or more services have errors
+	AppStatusError AppStatus = "error"
+	// AppStatusUnknown indicates status cannot be determined
+	AppStatusUnknown AppStatus = "unknown"
 )
 
 // AppService represents a single service's runtime status

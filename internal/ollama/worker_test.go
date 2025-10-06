@@ -22,7 +22,7 @@ func TestCancelDownloadKillsContainerProcess(t *testing.T) {
 	}
 
 	// Check if test container exists
-	checkCmd := exec.Command("docker", "ps", "--filter", "label=ontree.inference=true", "--format", "{{.Names}}")
+	checkCmd := exec.Command("docker", "ps", "--filter", "label=ontree.inference=true", "--format", "{{.Names}}") //nolint:gosec // Test command
 	output, err := checkCmd.Output()
 	if err != nil || strings.TrimSpace(string(output)) == "" {
 		t.Skip("No Ollama container with ontree.inference=true label found, skipping test")
@@ -34,7 +34,7 @@ func TestCancelDownloadKillsContainerProcess(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create test database: %v", err)
 	}
-	defer db.Close()
+	defer db.Close() //nolint:errcheck,gosec // Test cleanup
 
 	// Create the necessary tables
 	_, err = db.Exec(`
@@ -74,7 +74,7 @@ func TestCancelDownloadKillsContainerProcess(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	// Check if there's a process running in the container (for debugging)
-	psCmd := exec.Command("docker", "exec", containerName, "sh", "-c",
+	psCmd := exec.Command("docker", "exec", containerName, "sh", "-c", //nolint:gosec // Test debugging - containerName is controlled
 		"ps aux | grep 'ollama pull' | grep -v grep")
 	psOutput, _ := psCmd.Output()
 	if initialProcesses := strings.TrimSpace(string(psOutput)); initialProcesses != "" {
@@ -91,6 +91,7 @@ func TestCancelDownloadKillsContainerProcess(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	// Check if the ollama pull process is still running in the container
+	//nolint:gosec // Test command
 	psCmd2 := exec.Command("docker", "exec", containerName, "sh", "-c",
 		"ps aux | grep 'ollama pull' | grep -v grep")
 	psOutput2, _ := psCmd2.Output()
@@ -101,7 +102,7 @@ func TestCancelDownloadKillsContainerProcess(t *testing.T) {
 	}
 
 	// Also verify no container exec processes remain
-	hostPsCmd := exec.Command("sh", "-c", "ps aux | grep 'docker exec' | grep 'ollama pull' | grep -v grep")
+	hostPsCmd := exec.Command("sh", "-c", "ps aux | grep 'docker exec' | grep 'ollama pull' | grep -v grep") //nolint:gosec // Test command
 	hostOutput, _ := hostPsCmd.Output()
 	if strings.TrimSpace(string(hostOutput)) != "" {
 		t.Errorf("Container exec process still running on host after cancellation:\n%s", hostOutput)
@@ -124,7 +125,7 @@ func TestCancelNonExistentDownload(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create test database: %v", err)
 	}
-	defer db.Close()
+	defer db.Close() //nolint:errcheck,gosec // Test cleanup
 
 	w := NewWorker(db, "test-container")
 

@@ -18,7 +18,7 @@ func TestMigrationCompletion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to initialize database: %v", err)
 	}
-	defer Close()
+	defer Close() //nolint:errcheck // Test cleanup
 
 	// Verify critical columns exist
 	criticalChecks := []struct {
@@ -34,6 +34,7 @@ func TestMigrationCompletion(t *testing.T) {
 	db := GetDB()
 	for _, check := range criticalChecks {
 		var colCount int
+		//nolint:gosec // Test SQL with trusted schema check values
 		query := `SELECT COUNT(*) FROM pragma_table_info('` + check.table + `') WHERE name='` + check.column + `'`
 		row := db.QueryRow(query)
 		if err := row.Scan(&colCount); err != nil {
@@ -69,14 +70,14 @@ func TestMigrationIdempotency(t *testing.T) {
 	if err != nil {
 		t.Fatalf("First initialization failed: %v", err)
 	}
-	Close()
+	Close() //nolint:errcheck,gosec // Test cleanup
 
 	// Initialize again - should not fail
 	err = Initialize(dbPath)
 	if err != nil {
 		t.Fatalf("Second initialization failed: %v", err)
 	}
-	defer Close()
+	defer Close() //nolint:errcheck // Test cleanup
 
 	// Verify database is still functional
 	db := GetDB()
@@ -108,14 +109,14 @@ func TestMigrationAfterRestart(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create basic table: %v", err)
 	}
-	db.Close()
+	db.Close() //nolint:errcheck,gosec // Test cleanup
 
 	// Now initialize with our current code - should add missing columns
 	err = Initialize(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to initialize after simulated restart: %v", err)
 	}
-	defer Close()
+	defer Close() //nolint:errcheck // Test cleanup
 
 	// Verify the new columns were added
 	currentDB := GetDB()
@@ -123,6 +124,7 @@ func TestMigrationAfterRestart(t *testing.T) {
 
 	for _, col := range columnsToCheck {
 		var colCount int
+		//nolint:gosec // Test SQL with trusted column names
 		query := `SELECT COUNT(*) FROM pragma_table_info('system_setup') WHERE name='` + col + `'`
 		row := currentDB.QueryRow(query)
 		if err := row.Scan(&colCount); err != nil {

@@ -1,3 +1,4 @@
+// Package main provides a CLI tool to migrate the TreeOS database schema.
 package main
 
 import (
@@ -31,7 +32,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to open database: %v", err)
 	}
-	defer db.Close()
+	defer db.Close() //nolint:errcheck // Cleanup, error not critical
 
 	// Check chat_messages table
 	fmt.Printf("Checking chat_messages table...\n")
@@ -49,7 +50,7 @@ func main() {
 		}
 		appIDs = append(appIDs, appID)
 	}
-	rows.Close()
+	rows.Close() //nolint:errcheck,gosec // Cleanup, error not critical
 
 	migrated := 0
 	for _, oldID := range appIDs {

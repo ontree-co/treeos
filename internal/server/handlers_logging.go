@@ -58,20 +58,20 @@ func (s *Server) handleBrowserLog(w http.ResponseWriter, r *http.Request) {
 
 	// In debug mode, write to unified log file
 	logDir := "./logs"
-	if err := os.MkdirAll(logDir, 0755); err != nil {
+	if err := os.MkdirAll(logDir, 0755); err != nil { //nolint:gosec // Log directory needs group read access
 		log.Printf("Failed to create log directory: %v", err)
 		// Don't fail the request, just log to server logs
 	}
 
 	// Write to the SAME file as server logs (treeos.log)
 	logPath := filepath.Join(logDir, "treeos.log")
-	file, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	file, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644) //nolint:gosec // Log file path from config
 	if err != nil {
 		log.Printf("Failed to open log file: %v", err)
 		// Log to stdout as fallback
 		log.Printf("[BROWSER] [%s] %s", strings.ToUpper(entry.Level), entry.Message)
 	} else {
-		defer file.Close()
+		defer file.Close() //nolint:errcheck // Cleanup, error not critical
 
 		// Format log entry to match server log format
 		var logLine string
@@ -95,7 +95,7 @@ func (s *Server) handleBrowserLog(w http.ResponseWriter, r *http.Request) {
 	// Return success response
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	json.NewEncoder(w).Encode(map[string]string{"status": "ok"}) //nolint:errcheck,gosec // HTTP response
 }
 
 // handleGetLogs queries Loki for recent logs or falls back to reading log files directly
@@ -133,7 +133,7 @@ func (s *Server) handleGetLogs(w http.ResponseWriter, r *http.Request) {
 			s.sendLogsFromFiles(w, source, limit)
 			return
 		}
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck // Cleanup, error not critical //nolint:errcheck // Cleanup, error not critical
 
 		// Forward response
 		w.Header().Set("Content-Type", "application/json")
@@ -150,7 +150,7 @@ func (s *Server) checkLokiAvailability() bool {
 	if err != nil {
 		return false
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck // Cleanup, error not critical
 	return resp.StatusCode == http.StatusOK
 }
 
@@ -171,11 +171,11 @@ func (s *Server) sendLogsFromFiles(w http.ResponseWriter, source string, limit s
 
 	// Helper function to read last N lines from a file
 	readLastLines := func(filepath string, n int) []string {
-		file, err := os.Open(filepath)
+		file, err := os.Open(filepath) //nolint:gosec // Log file path from config
 		if err != nil {
 			return []string{}
 		}
-		defer file.Close()
+		defer file.Close() //nolint:errcheck // Cleanup, error not critical
 
 		// This is a simple implementation - for production, use a more efficient approach
 		var lines []string

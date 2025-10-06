@@ -481,7 +481,7 @@ func ensureSharedModelsDirectory() error {
 	// Check if directory exists
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		// Create directory
-		if err := os.MkdirAll(path, 0755); err != nil {
+		if err := os.MkdirAll(path, 0755); err != nil { //nolint:gosec // App directory needs group read access
 			return fmt.Errorf("failed to create directory: %v", err)
 		}
 

@@ -31,7 +31,7 @@ func TestProjectNameFromEnv(t *testing.T) {
 	dir := t.TempDir()
 	envPath := filepath.Join(dir, ".env")
 	content := "# sample file\nCOMPOSE_PROJECT_NAME=my-compose\nOTHER=value\n"
-	if err := os.WriteFile(envPath, []byte(content), 0o644); err != nil {
+	if err := os.WriteFile(envPath, []byte(content), 0o644); err != nil { //nolint:gosec // Test file permissions
 		t.Fatalf("failed to write env file: %v", err)
 	}
 
@@ -43,7 +43,7 @@ func TestProjectNameFromEnv(t *testing.T) {
 
 func TestResolveProject(t *testing.T) {
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "docker-compose.yml"), []byte("version: '3'\nservices:{}"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "docker-compose.yml"), []byte("version: '3'\nservices:{}"), 0o644); err != nil { //nolint:gosec // Test file permissions
 		t.Fatalf("failed to write compose file: %v", err)
 	}
 

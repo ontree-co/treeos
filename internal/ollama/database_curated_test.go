@@ -44,7 +44,7 @@ func setupTestDatabase(t *testing.T) *sql.DB {
 
 	for _, stmt := range statements {
 		if _, err := db.Exec(stmt); err != nil {
-			db.Close()
+			db.Close() //nolint:errcheck,gosec // Test cleanup
 			t.Fatalf("failed to prepare schema: %v", err)
 		}
 	}
@@ -58,7 +58,7 @@ func TestGetAllModelsMergesCuratedAndRecords(t *testing.T) {
 	}
 
 	db := setupTestDatabase(t)
-	defer db.Close()
+	defer db.Close() //nolint:errcheck,gosec // Test cleanup
 
 	curated := CuratedModels[0]
 	curatedCopy := curated
@@ -136,7 +136,7 @@ func TestCreateDownloadJobEnsuresCuratedRecord(t *testing.T) {
 	}
 
 	db := setupTestDatabase(t)
-	defer db.Close()
+	defer db.Close() //nolint:errcheck,gosec // Test cleanup
 
 	curated := CuratedModels[0]
 
@@ -163,7 +163,7 @@ func TestCreateDownloadJobEnsuresCuratedRecord(t *testing.T) {
 
 func TestGetModelReturnsNilWhenNoRecordExists(t *testing.T) {
 	db := setupTestDatabase(t)
-	defer db.Close()
+	defer db.Close() //nolint:errcheck,gosec // Test cleanup
 
 	record, err := GetModel(db, "non-existent-model")
 	if err != nil {

@@ -341,7 +341,7 @@ services:
       - "8080:80"
 `
 	composePath := filepath.Join(appPath, "docker-compose.yml")
-	err := os.WriteFile(composePath, []byte(composeContent), 0644)
+	err := os.WriteFile(composePath, []byte(composeContent), 0644) //nolint:gosec // Test file permissions
 	if err != nil {
 		t.Fatalf("Failed to write compose file: %v", err)
 	}
@@ -359,7 +359,7 @@ services:
 	}
 
 	// Check .env content
-	envContent, err := os.ReadFile(envPath)
+	envContent, err := os.ReadFile(envPath) //nolint:gosec // Test file read
 	if err != nil {
 		t.Fatalf("Failed to read .env file: %v", err)
 	}
@@ -368,7 +368,7 @@ services:
 	}
 
 	// Check that compose file was modified
-	modifiedContent, err := os.ReadFile(composePath)
+	modifiedContent, err := os.ReadFile(composePath) //nolint:gosec // Test file read
 	if err != nil {
 		t.Fatalf("Failed to read modified compose file: %v", err)
 	}
@@ -408,14 +408,14 @@ services:
       - "8080:80"
 `
 	composePath := filepath.Join(appPath, "docker-compose.yml")
-	err := os.WriteFile(composePath, []byte(composeContent), 0644)
+	err := os.WriteFile(composePath, []byte(composeContent), 0644) //nolint:gosec // Test file permissions
 	if err != nil {
 		t.Fatalf("Failed to write compose file: %v", err)
 	}
 
 	// Create .env file
 	envPath := filepath.Join(appPath, ".env")
-	err = os.WriteFile(envPath, []byte("TS_AUTHKEY=test"), 0644)
+	err = os.WriteFile(envPath, []byte("TS_AUTHKEY=test"), 0644) //nolint:gosec // Test file permissions
 	if err != nil {
 		t.Fatalf("Failed to write .env file: %v", err)
 	}
@@ -424,7 +424,7 @@ services:
 	stateFiles := []string{"tailscaled.state", "tailscaled.sock", "tailscaled.log"}
 	for _, file := range stateFiles {
 		filePath := filepath.Join(appPath, file)
-		err = os.WriteFile(filePath, []byte("test"), 0644)
+		err = os.WriteFile(filePath, []byte("test"), 0644) //nolint:gosec // Test file permissions
 		if err != nil {
 			t.Fatalf("Failed to write state file %s: %v", file, err)
 		}
@@ -450,7 +450,7 @@ services:
 	}
 
 	// Check that compose file was restored
-	restoredContent, err := os.ReadFile(composePath)
+	restoredContent, err := os.ReadFile(composePath) //nolint:gosec // Test file read
 	if err != nil {
 		t.Fatalf("Failed to read restored compose file: %v", err)
 	}

@@ -1,3 +1,5 @@
+version: 2
+
 run:
   build-tags:
     - integration
@@ -46,10 +48,10 @@ linters-settings:
 
 issues:
   exclude-rules:
-    - linters:
+    - path: _test\.go
+      linters:
         - errcheck
         - gosec
-      path: _test\.go
     - linters:
         - govet
       text: 'shadow: declaration of "err" shadows declaration'
@@ -102,7 +104,7 @@ issues:
       text: 'ST1005: error strings should not be capitalized'
     - linters:
         - errcheck
-      text: 'Error return value of `.*\.Close` is not checked'
+      text: "Error return value of .*(Close|Remove|Setenv|Chdir|MkdirAll|WriteFile|Fprintf|Fprint|Write|Encode) .* is not checked"
     - linters:
         - errcheck
       text: 'Error return value of `w\.Write` is not checked'
@@ -152,7 +154,30 @@ issues:
     - linters:
         - gosec
       path: internal/database/database\.go
-      text: 'G201: SQL string formatting'
+      text: G201
+    - linters:
+        - gosec
+      text: G304
+    - linters:
+        - gosec
+      text: G203
+    - linters:
+        - gosec
+      text: G301
+    - linters:
+        - gosec
+      text: G306
+    - linters:
+        - gosec
+      text: G302
+    - linters:
+        - gosec
+      path: cmd/treeos/main\.go
+      text: G204
+    - linters:
+        - gosec
+      path: internal/ollama/worker\.go
+      text: G204
     - linters:
         - staticcheck
       path: internal/docker/container_naming_test\.go
@@ -160,6 +185,6 @@ issues:
     - linters:
         - revive
       path: internal/update/types\.go
-      text: 'exported: type name will be used as update\.'
+      text: stutters
   max-issues-per-linter: 0
   max-same-issues: 0

@@ -844,26 +844,6 @@ func (s *Server) getRuntimeClient() (*dockerruntime.Client, error) {
 	return s.runtimeClient, nil
 }
 
-func (s *Server) getRuntimeService() (*dockerruntime.Service, error) {
-	s.runtimeMu.Lock()
-	defer s.runtimeMu.Unlock()
-
-	if s.runtimeSvc == nil || !s.runtimeServiceHealthy {
-		if s.runtimeSvc != nil {
-			_ = s.runtimeSvc.Close()
-		}
-		svc, err := dockerruntime.NewService(s.config.AppsDir)
-		if err != nil {
-			s.runtimeServiceHealthy = false
-			return nil, fmt.Errorf("%w: %v", errRuntimeUnavailable, err)
-		}
-		s.runtimeSvc = svc
-		s.runtimeServiceHealthy = true
-	}
-
-	return s.runtimeSvc, nil
-}
-
 func (s *Server) getComposeService() (*compose.Service, error) {
 	s.runtimeMu.Lock()
 	defer s.runtimeMu.Unlock()
@@ -1348,7 +1328,7 @@ func (s *Server) testLLMConnection(apiKey, apiURL, model string) (string, error)
 	if err != nil {
 		return "", fmt.Errorf("API request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck // Cleanup, error not critical
 
 	// Read response body
 	body, err := io.ReadAll(resp.Body)
@@ -1519,12 +1499,13 @@ func (s *Server) routeAPIApps(w http.ResponseWriter, r *http.Request) {
 		s.handleAPIAppSecurityBypass(w, r)
 	} else if strings.HasPrefix(path, "/api/apps/") {
 		// Check if it's a DELETE request for app deletion
-		if r.Method == http.MethodDelete {
+		switch r.Method {
+		case http.MethodDelete:
 			s.handleAPIAppDelete(w, r)
-		} else if r.Method == http.MethodGet {
+		case http.MethodGet:
 			// Handle GET request to fetch app configuration
 			s.handleGetApp(w, r)
-		} else {
+		default:
 			// Handle app updates - extract app name and route
 			s.handleUpdateApp(w, r)
 		}
@@ -1549,7 +1530,7 @@ func (s *Server) routeAPIStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleVersion returns version information as JSON
-func (s *Server) handleVersion(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleVersion(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 

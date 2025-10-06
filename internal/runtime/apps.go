@@ -176,7 +176,7 @@ func (c *Client) getContainerStatus(app *App, containers []dockerContainer) stri
 // listContainers returns Docker containers relevant to TreeOS apps.
 func (c *Client) listContainers(ctx context.Context) ([]dockerContainer, error) {
 	if c.dockerClient == nil {
-		return nil, fmt.Errorf("Docker client not initialized")
+		return nil, fmt.Errorf("docker client not initialized")
 	}
 
 	containers, err := c.dockerClient.ContainerList(ctx, container.ListOptions{All: true})
@@ -252,11 +252,11 @@ func projectNameCandidates(app *App) []string {
 
 // readComposeFile parses a docker-compose.yml file.
 func readComposeFile(path string) (*Compose, error) {
-	file, err := os.Open(path)
+	file, err := os.Open(path) //nolint:gosec // Path from trusted app directory listing
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer file.Close() //nolint:errcheck // Cleanup, error not critical
 
 	// Use bufio for efficient reading
 	reader := bufio.NewReader(file)

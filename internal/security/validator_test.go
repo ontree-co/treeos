@@ -519,8 +519,8 @@ services:
 func TestValidateBindMounts_DemoMode(t *testing.T) {
 	// Set demo mode environment variable
 	oldEnv := os.Getenv("TREEOS_RUN_MODE")
-	os.Setenv("TREEOS_RUN_MODE", "demo")
-	defer os.Setenv("TREEOS_RUN_MODE", oldEnv)
+	os.Setenv("TREEOS_RUN_MODE", "demo")              //nolint:errcheck,gosec // Test setup
+	defer os.Setenv("TREEOS_RUN_MODE", oldEnv) //nolint:errcheck // Test cleanup
 
 	tests := []struct {
 		name        string

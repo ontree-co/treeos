@@ -1,3 +1,4 @@
+// Package migration contains migration tools for OnTree application data and configurations.
 package migration
 
 import (
@@ -133,7 +134,7 @@ func getAllDeployedApps() ([]DeployedApp, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to query deployed_apps: %w", err)
 	}
-	defer rows.Close()
+	defer rows.Close() //nolint:errcheck // Cleanup, error not critical
 
 	var apps []DeployedApp
 	for rows.Next() {
@@ -164,7 +165,7 @@ func getAllDeployedApps() ([]DeployedApp, error) {
 
 // copyFile copies a file from src to dst
 func copyFile(src, dst string) error {
-	input, err := os.ReadFile(src)
+	input, err := os.ReadFile(src) //nolint:gosec // File path from trusted migration source
 	if err != nil {
 		return err
 	}

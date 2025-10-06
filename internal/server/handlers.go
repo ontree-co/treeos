@@ -517,7 +517,7 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 
 	// Read docker-compose.yml content
 	composePath := filepath.Join(app.Path, "docker-compose.yml")
-	composeContent, err := os.ReadFile(composePath)
+	composeContent, err := os.ReadFile(composePath) //nolint:gosec // Path from trusted app directory
 	if err != nil {
 		log.Printf("Failed to read docker-compose.yml: %v", err)
 		composeContent = []byte("Failed to read docker-compose.yml")
@@ -526,7 +526,7 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 
 	// Read .env content
 	envPath := filepath.Join(app.Path, ".env")
-	envContent, err := os.ReadFile(envPath)
+	envContent, err := os.ReadFile(envPath) //nolint:gosec // Path from trusted app directory
 	if err != nil {
 		log.Printf("Failed to read .env: %v", err)
 		envContent = []byte("# No .env file found")
@@ -535,7 +535,7 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 
 	// Read app.yml content
 	appYmlPath := filepath.Join(app.Path, "app.yml")
-	appYmlContent, err := os.ReadFile(appYmlPath)
+	appYmlContent, err := os.ReadFile(appYmlPath) //nolint:gosec // Path from trusted app directory
 	if err != nil {
 		log.Printf("Failed to read app.yml: %v", err)
 		appYmlContent = []byte("# No app.yml file found")
@@ -815,7 +815,7 @@ func (s *Server) handleAppComposeEdit(w http.ResponseWriter, r *http.Request) {
 
 	// Read docker-compose.yml content
 	composePath := filepath.Join(appDetails.Path, "docker-compose.yml")
-	composeContent, err := os.ReadFile(composePath)
+	composeContent, err := os.ReadFile(composePath) //nolint:gosec // Path from trusted app directory
 	if err != nil {
 		http.Error(w, "Failed to read compose file", http.StatusInternalServerError)
 		return
@@ -823,7 +823,7 @@ func (s *Server) handleAppComposeEdit(w http.ResponseWriter, r *http.Request) {
 
 	// Read .env content
 	envPath := filepath.Join(appDetails.Path, ".env")
-	envContent, err := os.ReadFile(envPath)
+	envContent, err := os.ReadFile(envPath) //nolint:gosec // Path from trusted app directory
 	if err != nil {
 		// .env file might not exist, that's ok
 		envContent = []byte("")
@@ -831,7 +831,7 @@ func (s *Server) handleAppComposeEdit(w http.ResponseWriter, r *http.Request) {
 
 	// Read app.yml content
 	appYmlPath := filepath.Join(appDetails.Path, "app.yml")
-	appYmlContent, err := os.ReadFile(appYmlPath)
+	appYmlContent, err := os.ReadFile(appYmlPath) //nolint:gosec // Path from trusted app directory
 	if err != nil {
 		// app.yml file might not exist, that's ok
 		appYmlContent = []byte("")
@@ -959,7 +959,7 @@ func (s *Server) handleAppComposeUpdate(w http.ResponseWriter, r *http.Request) 
 	// Write docker-compose.yml
 	composePath := filepath.Join(appDetails.Path, "docker-compose.yml")
 	// Use 0644 for docker-compose.yml files as they need to be readable by docker daemon
-	if err := os.WriteFile(composePath, []byte(composeContent), 0644); err != nil { // #nosec G306 - compose files need to be world-readable
+	if err := os.WriteFile(composePath, []byte(composeContent), 0644); err != nil { //nolint:gosec // Compose files need to be world-readable
 		log.Printf("Failed to write compose file: %v", err)
 		http.Error(w, "Failed to save docker-compose.yml", http.StatusInternalServerError)
 		return
@@ -967,7 +967,7 @@ func (s *Server) handleAppComposeUpdate(w http.ResponseWriter, r *http.Request) 
 
 	// Write .env file (can be empty)
 	envPath := filepath.Join(appDetails.Path, ".env")
-	if err := os.WriteFile(envPath, []byte(envContent), 0640); err != nil {
+	if err := os.WriteFile(envPath, []byte(envContent), 0640); err != nil { //nolint:gosec // Env file permissions appropriate
 		log.Printf("Failed to write .env file: %v", err)
 		// Don't fail the whole operation if .env fails
 	}
@@ -975,7 +975,7 @@ func (s *Server) handleAppComposeUpdate(w http.ResponseWriter, r *http.Request) 
 	// Write app.yml file (can be empty)
 	if appYmlContent != "" {
 		appYmlPath := filepath.Join(appDetails.Path, "app.yml")
-		if err := os.WriteFile(appYmlPath, []byte(appYmlContent), 0644); err != nil {
+		if err := os.WriteFile(appYmlPath, []byte(appYmlContent), 0644); err != nil { //nolint:gosec // App yml needs to be readable
 			log.Printf("Failed to write app.yml file: %v", err)
 			// Don't fail the whole operation if app.yml fails
 		}
@@ -1458,7 +1458,8 @@ func (s *Server) handleSettingsUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Handle different actions
-	if action == "update_node_name" {
+	switch action {
+	case "update_node_name":
 		// Handle node name update
 		nodeName := strings.TrimSpace(r.FormValue("node_name"))
 
@@ -1492,7 +1493,7 @@ func (s *Server) handleSettingsUpdate(w http.ResponseWriter, r *http.Request) {
 
 		http.Redirect(w, r, "/settings", http.StatusFound)
 		return
-	} else if action == "update_node_icon" {
+	case "update_node_icon":
 		// Handle node icon update
 		nodeIcon := strings.TrimSpace(r.FormValue("node_icon"))
 
@@ -1555,12 +1556,13 @@ func (s *Server) handleSettingsUpdate(w http.ResponseWriter, r *http.Request) {
 	agentType := r.FormValue("agent_type")
 	var agentLLMAPIKey, agentLLMAPIURL, agentLLMModel string
 
-	if agentType == "local" {
+	switch agentType {
+	case "local":
 		// Local agent configuration
 		agentLLMModel = strings.TrimSpace(r.FormValue("agent_llm_model_local"))
 		agentLLMAPIURL = "http://localhost:11434/v1/chat/completions"
 		agentLLMAPIKey = "" // Local doesn't need API key
-	} else if agentType == "cloud" {
+	case "cloud":
 		// Cloud agent configuration
 		agentLLMAPIKey = strings.TrimSpace(r.FormValue("agent_llm_api_key"))
 		agentLLMAPIURL = strings.TrimSpace(r.FormValue("agent_llm_api_url"))
@@ -1709,7 +1711,7 @@ func (s *Server) handleAppStatusCheck(w http.ResponseWriter, r *http.Request) {
 		// Create HTTP client with timeout
 		client := &http.Client{
 			Timeout: 10 * time.Second,
-			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			CheckRedirect: func(_ *http.Request, via []*http.Request) error {
 				// Allow up to 5 redirects
 				if len(via) >= 5 {
 					return fmt.Errorf("too many redirects")
@@ -1738,7 +1740,7 @@ func (s *Server) handleAppStatusCheck(w http.ResponseWriter, r *http.Request) {
 		// Create HTTP client with timeout
 		client := &http.Client{
 			Timeout: 10 * time.Second,
-			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			CheckRedirect: func(_ *http.Request, via []*http.Request) error {
 				// Allow up to 5 redirects
 				if len(via) >= 5 {
 					return fmt.Errorf("too many redirects")
@@ -1848,7 +1850,7 @@ func (s *Server) handleAppContainers(w http.ResponseWriter, r *http.Request) {
 		output, err = s.executeCommand(cmd)
 		trimmed = strings.TrimSpace(output)
 		if err != nil || trimmed == "" {
-			w.Write([]byte(`<div class="text-muted">No running containers found</div>`))
+			w.Write([]byte(`<div class="text-muted">No running containers found</div>`)) //nolint:errcheck,gosec // HTTP response
 			return
 		}
 	}
@@ -1856,7 +1858,7 @@ func (s *Server) handleAppContainers(w http.ResponseWriter, r *http.Request) {
 	// Return the output wrapped in a pre tag for proper formatting
 	html := fmt.Sprintf(`<pre class="mb-0" style="font-size: 0.875rem;">%s</pre>`, template.HTMLEscapeString(output))
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write([]byte(html))
+	w.Write([]byte(html)) //nolint:errcheck,gosec // HTTP response
 }
 
 // executeCommand executes a shell command and returns the output

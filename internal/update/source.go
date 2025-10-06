@@ -37,7 +37,7 @@ func (s *OnTreeUpdateSource) FetchManifest() (*UpdateManifest, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch manifest: %w", err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck // Cleanup, error not critical
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
@@ -84,12 +84,12 @@ func (s *OnTreeUpdateSource) DownloadAsset(asset *Asset, progressCallback func(d
 	}
 
 	if resp.StatusCode == http.StatusNotFound {
-		resp.Body.Close()
+		resp.Body.Close() //nolint:errcheck,gosec // Cleanup before error return
 		return nil, fmt.Errorf("update package not found (404): %s", asset.URL)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		resp.Body.Close()
+		resp.Body.Close() //nolint:errcheck,gosec // Cleanup before error return
 		return nil, fmt.Errorf("failed to download update (HTTP %d): %s", resp.StatusCode, asset.URL)
 	}
 

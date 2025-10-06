@@ -7,8 +7,8 @@ import (
 )
 
 // GetMetricsLast24Hours retrieves system vital logs for the specified metric type from the last 24 hours.
-// metricType can be "cpu", "memory", or "disk"
-func GetMetricsLast24Hours(metricType string) ([]SystemVitalLog, error) {
+// metricType can be "cpu", "memory", or "disk" (currently unused but kept for future extensibility)
+func GetMetricsLast24Hours(_ string) ([]SystemVitalLog, error) {
 	db := GetDB()
 	if db == nil {
 		return nil, fmt.Errorf("database not initialized")
@@ -30,7 +30,7 @@ func GetMetricsLast24Hours(metricType string) ([]SystemVitalLog, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to query metrics: %w", err)
 	}
-	defer rows.Close()
+	defer rows.Close() //nolint:errcheck // Cleanup, error not critical
 
 	var metrics []SystemVitalLog
 	for rows.Next() {
@@ -57,7 +57,8 @@ func GetMetricsLast24Hours(metricType string) ([]SystemVitalLog, error) {
 
 // GetLatestMetric retrieves the most recent system vital log entry.
 // Returns nil if no metrics are found (not an error condition).
-func GetLatestMetric(metricType string) (*SystemVitalLog, error) {
+// metricType is currently unused but kept for future extensibility.
+func GetLatestMetric(_ string) (*SystemVitalLog, error) {
 	db := GetDB()
 	if db == nil {
 		return nil, fmt.Errorf("database not initialized")
@@ -154,7 +155,7 @@ func GetMetricsForTimeRange(start, end time.Time) ([]SystemVitalLog, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to query metrics for time range: %w", err)
 	}
-	defer rows.Close()
+	defer rows.Close() //nolint:errcheck // Cleanup, error not critical
 
 	var metrics []SystemVitalLog
 	for rows.Next() {

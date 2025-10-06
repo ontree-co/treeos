@@ -65,7 +65,7 @@ func (s *Server) routeMonitoring(w http.ResponseWriter, r *http.Request) {
 
 // handleDashboardMonitoringUpdate returns all six monitoring cards data for the dashboard
 // This is called every second via HTMX to update the monitoring cards
-func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, _ *http.Request) {
 	// Track last update times for memory and disk (update every 60 seconds)
 	var memoryValue, diskValue float64
 	var memorySparkline, diskSparkline template.HTML
@@ -101,6 +101,7 @@ func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, r *http.
 			for i, m := range historicalData {
 				points[i] = m.MemoryPercent
 			}
+			//nolint:gosec // SVG generation from trusted metric data
 			memorySparkline = template.HTML(charts.GenerateSparklineSVG(points, 150, 40))
 		}
 		// Cache for 60 seconds
@@ -136,6 +137,7 @@ func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, r *http.
 			for i, m := range historicalData {
 				points[i] = m.DiskUsagePercent
 			}
+			//nolint:gosec // SVG generation from trusted metric data
 			diskSparkline = template.HTML(charts.GenerateSparklineSVG(points, 150, 40))
 		}
 		// Cache for 60 seconds
@@ -163,6 +165,7 @@ func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, r *http.
 		for i, m := range historicalData {
 			points[i] = m.CPUPercent
 		}
+		//nolint:gosec // SVG generation from trusted metric data
 		cpuSparkline = template.HTML(charts.GenerateSparklineSVG(points, 150, 40))
 	}
 
@@ -172,6 +175,7 @@ func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, r *http.
 		for i, m := range historicalData {
 			points[i] = m.GPULoad
 		}
+		//nolint:gosec // SVG generation from trusted metric data
 		gpuSparkline = template.HTML(charts.GenerateSparklineSVG(points, 150, 40))
 	}
 
@@ -186,7 +190,9 @@ func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, r *http.
 		// Normalize for display
 		uploadPoints = normalizeNetworkRates(uploadPoints)
 		downloadPoints = normalizeNetworkRates(downloadPoints)
+		//nolint:gosec // SVG generation from trusted metric data
 		uploadSparkline = template.HTML(charts.GenerateSparklineSVG(uploadPoints, 150, 40))
+		//nolint:gosec // SVG generation from trusted metric data
 		downloadSparkline = template.HTML(charts.GenerateSparklineSVG(downloadPoints, 150, 40))
 	}
 
@@ -303,11 +309,11 @@ func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, r *http.
 
 	// Return the HTML response
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write([]byte(html))
+	w.Write([]byte(html)) //nolint:errcheck,gosec // HTTP response
 }
 
 // handleMonitoringCPUPartial returns the CPU monitoring card partial
-func (s *Server) handleMonitoringCPUPartial(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleMonitoringCPUPartial(w http.ResponseWriter, _ *http.Request) {
 	// Get current CPU usage from real-time metrics
 	var currentCPU float64
 	if latest, ok := s.realtimeMetrics.GetLatestCPU(); ok {
@@ -390,7 +396,7 @@ func (s *Server) handleMonitoringCPUPartial(w http.ResponseWriter, r *http.Reque
 }
 
 // handleMonitoringMemoryPartial returns the memory monitoring card partial
-func (s *Server) handleMonitoringMemoryPartial(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleMonitoringMemoryPartial(w http.ResponseWriter, _ *http.Request) {
 	// Get current memory usage
 	vitals, err := system.GetVitals()
 	if err != nil {
@@ -464,7 +470,7 @@ func (s *Server) handleMonitoringMemoryPartial(w http.ResponseWriter, r *http.Re
 }
 
 // handleMonitoringDiskPartial returns the disk monitoring card partial
-func (s *Server) handleMonitoringDiskPartial(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleMonitoringDiskPartial(w http.ResponseWriter, _ *http.Request) {
 	// Get current disk usage
 	vitals, err := system.GetVitals()
 	if err != nil {
@@ -540,7 +546,7 @@ func (s *Server) handleMonitoringDiskPartial(w http.ResponseWriter, r *http.Requ
 }
 
 // handleMonitoringNetworkPartial returns the network monitoring card partial
-func (s *Server) handleMonitoringNetworkPartial(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleMonitoringNetworkPartial(w http.ResponseWriter, _ *http.Request) {
 	// Get historical network data for rate calculation
 	now := time.Now()
 	startTime := now.Add(-24 * time.Hour)
@@ -976,7 +982,7 @@ func (s *Server) handleMonitoringDetail(w http.ResponseWriter, r *http.Request) 
 
 
 // handleMonitoringGPUPartial returns the GPU monitoring card partial
-func (s *Server) handleMonitoringGPUPartial(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleMonitoringGPUPartial(w http.ResponseWriter, _ *http.Request) {
 	// Get latest metric from database
 	latest, err := database.GetLatestMetric("")
 	if err != nil {
@@ -1034,7 +1040,7 @@ func (s *Server) handleMonitoringGPUPartial(w http.ResponseWriter, r *http.Reque
 }
 
 // handleMonitoringDownloadPartial returns the download monitoring card partial
-func (s *Server) handleMonitoringDownloadPartial(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleMonitoringDownloadPartial(w http.ResponseWriter, _ *http.Request) {
 	// Get latest metric from database
 	latest, err := database.GetLatestMetric("")
 	if err != nil {
@@ -1093,7 +1099,7 @@ func (s *Server) handleMonitoringDownloadPartial(w http.ResponseWriter, r *http.
 }
 
 // handleMonitoringUploadPartial returns the upload monitoring card partial
-func (s *Server) handleMonitoringUploadPartial(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleMonitoringUploadPartial(w http.ResponseWriter, _ *http.Request) {
 	// Get latest metric from database
 	latest, err := database.GetLatestMetric("")
 	if err != nil {

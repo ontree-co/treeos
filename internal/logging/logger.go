@@ -28,14 +28,14 @@ func Initialize(logDir string) error {
 	var initErr error
 	once.Do(func() {
 		// Create logs directory
-		if err := os.MkdirAll(logDir, 0755); err != nil {
+		if err := os.MkdirAll(logDir, 0755); err != nil { //nolint:gosec // Log directory needs group read access
 			initErr = fmt.Errorf("failed to create log directory: %w", err)
 			return
 		}
 
 		// Open log file with rotation-friendly naming
 		logPath := filepath.Join(logDir, "treeos.log")
-		file, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		file, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644) //nolint:gosec // Log path from config, file needs group read access
 		if err != nil {
 			initErr = fmt.Errorf("failed to open log file: %w", err)
 			return
@@ -146,7 +146,7 @@ func RotateLogs(logDir string) error {
 	newPath := filepath.Join(logDir, fmt.Sprintf("treeos-%s.log", time.Now().Format("20060102-150405")))
 	if err := os.Rename(oldPath, newPath); err != nil {
 		// If rename fails, try to reopen the original file
-		file, err := os.OpenFile(oldPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		file, err := os.OpenFile(oldPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644) //nolint:gosec // Log path from config
 		if err == nil {
 			defaultLogger.file = file
 		}
@@ -154,7 +154,7 @@ func RotateLogs(logDir string) error {
 	}
 
 	// Open new log file
-	file, err := os.OpenFile(oldPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	file, err := os.OpenFile(oldPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644) //nolint:gosec // Log path from config
 	if err != nil {
 		return fmt.Errorf("failed to open new log file: %w", err)
 	}
@@ -163,7 +163,7 @@ func RotateLogs(logDir string) error {
 
 	// Update multi-writer
 	multiWriter := io.MultiWriter(os.Stdout, file)
-	defaultLogger.Logger.SetOutput(multiWriter)
+	defaultLogger.SetOutput(multiWriter)
 	log.SetOutput(multiWriter)
 
 	log.Printf("Log rotation completed: %s", newPath)

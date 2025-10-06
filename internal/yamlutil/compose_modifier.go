@@ -1,3 +1,4 @@
+// Package yamlutil provides utilities for modifying docker-compose.yml files.
 package yamlutil
 
 import (
@@ -9,7 +10,7 @@ import (
 
 // AddTailscaleSidecar adds a Tailscale sidecar container to the compose file
 // and modifies the main service to use the Tailscale network
-func AddTailscaleSidecar(compose *ComposeFile, appName, hostname, authKey string) error {
+func AddTailscaleSidecar(compose *ComposeFile, appName, hostname, _ string) error {
 	if compose.Services == nil {
 		compose.Services = make(map[string]interface{})
 	}
@@ -259,11 +260,11 @@ func CreateEnvFile(appPath, authKey string) error {
 
 // writeFileWithPermissions writes a file with specific permissions
 func writeFileWithPermissions(path string, data []byte, perm os.FileMode) error {
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, perm)
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, perm) //nolint:gosec // Path from compose file location
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer file.Close() //nolint:errcheck // Cleanup, error not critical
 
 	_, err = file.Write(data)
 	return err
@@ -319,7 +320,7 @@ func RestoreComposeFromTailscale(appPath string) error {
 
 	// Remove .env file
 	envPath := fmt.Sprintf("%s/.env", strings.TrimSuffix(appPath, "/"))
-	os.Remove(envPath) // Ignore error if file doesn't exist
+	os.Remove(envPath) //nolint:errcheck,gosec // Ignore error if file doesn't exist
 
 	// Clean up Tailscale state files
 	stateFiles := []string{
@@ -329,7 +330,7 @@ func RestoreComposeFromTailscale(appPath string) error {
 	}
 	for _, file := range stateFiles {
 		filePath := fmt.Sprintf("%s/%s", strings.TrimSuffix(appPath, "/"), file)
-		os.Remove(filePath) // Ignore error if file doesn't exist
+		os.Remove(filePath) //nolint:errcheck,gosec // Ignore error if file doesn't exist
 	}
 
 	return nil

@@ -39,7 +39,7 @@ func (s *Server) handleAPIStatusLatest(w http.ResponseWriter, r *http.Request) {
 	// If no data, return empty response
 	if latest == nil {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{"message": "No data available"})
+		json.NewEncoder(w).Encode(map[string]string{"message": "No data available"}) //nolint:errcheck,gosec // HTTP response
 		return
 	}
 

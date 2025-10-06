@@ -224,7 +224,7 @@ func (s *Server) handleSystemUpdateChannel(w http.ResponseWriter, r *http.Reques
 	}
 }
 
-func (s *Server) handleGetUpdateChannel(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleGetUpdateChannel(w http.ResponseWriter, _ *http.Request) {
 	var channel string
 	err := s.db.QueryRow(`SELECT update_channel FROM system_setup WHERE id = 1`).Scan(&channel)
 	if err != nil {
@@ -328,7 +328,7 @@ func (s *Server) handleSystemUpdateHistory(w http.ResponseWriter, r *http.Reques
 		http.Error(w, "Failed to retrieve update history", http.StatusInternalServerError)
 		return
 	}
-	defer rows.Close()
+	defer rows.Close() //nolint:errcheck // Cleanup, error not critical
 
 	var history []database.UpdateHistory
 	for rows.Next() {

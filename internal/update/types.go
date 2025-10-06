@@ -5,14 +5,20 @@ import (
 )
 
 // UpdateChannel represents the update channel (stable or beta)
+//
+//nolint:revive // Name is intentional - clearer than "Channel" in this context
 type UpdateChannel string
 
 const (
+	// ChannelStable represents the stable update channel.
 	ChannelStable UpdateChannel = "stable"
-	ChannelBeta   UpdateChannel = "beta"
+	// ChannelBeta represents the beta update channel.
+	ChannelBeta UpdateChannel = "beta"
 )
 
 // UpdateInfo contains information about an available update
+//
+//nolint:revive // Name is intentional - clearer than "Info" in this context
 type UpdateInfo struct {
 	CurrentVersion string    `json:"current_version"`
 	LatestVersion  string    `json:"latest_version"`
@@ -25,6 +31,8 @@ type UpdateInfo struct {
 }
 
 // UpdateManifest represents the JSON structure from the update server
+//
+//nolint:revive // Name is intentional - clearer than "Manifest" in this context
 type UpdateManifest struct {
 	Version      string    `json:"version"`
 	ReleaseDate  time.Time `json:"release_date"`
@@ -47,6 +55,8 @@ type Asset struct {
 }
 
 // UpdateProgress represents the progress of an update operation
+//
+//nolint:revive // Name is intentional - clearer than "Progress" in this context
 type UpdateProgress struct {
 	Stage      string  `json:"stage"` // "checking", "downloading", "verifying", "applying"
 	Percentage float64 `json:"percentage"`

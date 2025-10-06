@@ -12,8 +12,8 @@ func TestSystemVitalsFunctions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
-	defer os.Remove(tempFile.Name())
-	tempFile.Close()
+	defer os.Remove(tempFile.Name()) //nolint:errcheck // Test cleanup
+	tempFile.Close()                //nolint:errcheck,gosec // Test cleanup
 
 	// Initialize the database
 	err = Initialize(tempFile.Name())
@@ -66,6 +66,7 @@ func TestSystemVitalsFunctions(t *testing.T) {
 	t.Run("GetMetricsLast24Hours", func(t *testing.T) {
 		// Add more test data
 		for i := 0; i < 5; i++ {
+			//nolint:gosec // Test conversion
 			err := StoreSystemVital(float64(35+i), float64(70+i), float64(50+i), float64(10+i), uint64(3000000+i*100000), uint64(1500000+i*50000))
 			if err != nil {
 				t.Fatalf("Failed to store system vital: %v", err)
@@ -126,6 +127,7 @@ func TestSystemVitalsFunctions(t *testing.T) {
 
 		// Add some test data
 		for i := 0; i < 10; i++ {
+			//nolint:gosec // Test conversion
 			err := StoreSystemVital(float64(40+i), float64(75+i), float64(55+i), float64(15+i), uint64(4000000+i*100000), uint64(2000000+i*50000))
 			if err != nil {
 				t.Fatalf("Failed to store system vital: %v", err)
@@ -156,6 +158,7 @@ func TestSystemVitalsFunctions(t *testing.T) {
 		now := time.Now()
 		// Add data with known timestamps
 		for i := 0; i < 5; i++ {
+			//nolint:gosec // Test conversion
 			err := StoreSystemVital(float64(50+i), float64(80+i), float64(60+i), float64(25+i), uint64(5000000+i*100000), uint64(2500000+i*50000))
 			if err != nil {
 				t.Fatalf("Failed to store system vital: %v", err)

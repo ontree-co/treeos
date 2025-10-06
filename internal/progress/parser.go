@@ -1,3 +1,4 @@
+// Package progress provides progress parsing and tracking for Docker operations.
 package progress
 
 import (
@@ -18,8 +19,10 @@ func NewDockerProgressParser(tracker *Tracker) *DockerProgressParser {
 	}
 }
 
-// Keep compatibility alias for existing code
+// PodmanProgressParser is a compatibility alias for DockerProgressParser.
 type PodmanProgressParser = DockerProgressParser
+
+// NewPodmanProgressParser creates a new Docker progress parser (compatibility alias).
 func NewPodmanProgressParser(tracker *Tracker) *DockerProgressParser {
 	return NewDockerProgressParser(tracker)
 }
@@ -213,9 +216,10 @@ func (p *DockerProgressParser) parseDockerLayerProgress(appName, line string) bo
 			}
 
 			status := "downloading"
-			if operation == "extracting" {
+			switch operation {
+			case "extracting":
 				status = "extracting"
-			} else if operation == "pull complete" {
+			case "pull complete":
 				status = "complete"
 				percent = 100
 			}
@@ -417,7 +421,7 @@ func isLikelyFalsePositive(candidate string) bool {
 // isHexString checks if a string contains only hexadecimal characters
 func isHexString(s string) bool {
 	for _, r := range s {
-		if !((r >= '0' && r <= '9') || (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F')) {
+		if (r < '0' || r > '9') && (r < 'a' || r > 'f') && (r < 'A' || r > 'F') {
 			return false
 		}
 	}

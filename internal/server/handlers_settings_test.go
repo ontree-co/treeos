@@ -23,7 +23,7 @@ func TestHandleSettings(t *testing.T) {
 	if err := database.Initialize(dbPath); err != nil {
 		t.Fatalf("Failed to initialize database: %v", err)
 	}
-	defer database.Close()
+	defer database.Close() //nolint:errcheck,gosec // Test cleanup
 
 	// Create test config
 	cfg := &config.Config{
@@ -33,7 +33,7 @@ func TestHandleSettings(t *testing.T) {
 	}
 
 	// Create apps directory
-	os.MkdirAll(cfg.AppsDir, 0755)
+	os.MkdirAll(cfg.AppsDir, 0755) //nolint:errcheck,gosec // Test setup
 
 	// Create server instance
 	s, err := New(cfg, version.Info{Version: "test"})
@@ -100,7 +100,7 @@ func TestHandleSettingsUpdate(t *testing.T) {
 	if err := database.Initialize(dbPath); err != nil {
 		t.Fatalf("Failed to initialize database: %v", err)
 	}
-	defer database.Close()
+	defer database.Close() //nolint:errcheck,gosec // Test cleanup
 
 	// Create test config
 	cfg := &config.Config{
@@ -110,7 +110,7 @@ func TestHandleSettingsUpdate(t *testing.T) {
 	}
 
 	// Create apps directory
-	os.MkdirAll(cfg.AppsDir, 0755)
+	os.MkdirAll(cfg.AppsDir, 0755) //nolint:errcheck,gosec // Test setup
 
 	// Create server instance
 	s, err := New(cfg, version.Info{Version: "test"})
@@ -215,7 +215,7 @@ func TestSettingsWithDatabaseMigration(t *testing.T) {
 	if err := database.Initialize(dbPath); err != nil {
 		t.Fatalf("Failed to initialize database: %v", err)
 	}
-	defer database.Close()
+	defer database.Close() //nolint:errcheck,gosec // Test cleanup
 
 	// Create test config
 	cfg := &config.Config{
@@ -225,7 +225,7 @@ func TestSettingsWithDatabaseMigration(t *testing.T) {
 	}
 
 	// Create apps directory
-	os.MkdirAll(cfg.AppsDir, 0755)
+	os.MkdirAll(cfg.AppsDir, 0755) //nolint:errcheck,gosec // Test setup
 
 	// Setup test server
 	s, err := New(cfg, version.Info{Version: "test"})

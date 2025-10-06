@@ -9,12 +9,18 @@ import (
 type Operation string
 
 const (
-	OperationPreparing   Operation = "preparing"
+	// OperationPreparing indicates the operation is in preparation phase
+	OperationPreparing Operation = "preparing"
+	// OperationDownloading indicates the operation is downloading
 	OperationDownloading Operation = "downloading"
-	OperationExtracting  Operation = "extracting"
-	OperationStarting    Operation = "starting"
-	OperationComplete    Operation = "complete"
-	OperationError       Operation = "error"
+	// OperationExtracting indicates the operation is extracting
+	OperationExtracting Operation = "extracting"
+	// OperationStarting indicates the operation is starting
+	OperationStarting Operation = "starting"
+	// OperationComplete indicates the operation is complete
+	OperationComplete Operation = "complete"
+	// OperationError indicates the operation encountered an error
+	OperationError Operation = "error"
 )
 
 // ImageProgress represents progress for a single container image
@@ -207,14 +213,14 @@ func (t *Tracker) GetProgress(appName string) (*AppProgress, bool) {
 	}
 
 	// Return a copy to avoid race conditions
-	copy := *app
-	copy.Images = make(map[string]*ImageProgress)
+	appCopy := *app
+	appCopy.Images = make(map[string]*ImageProgress)
 	for k, v := range app.Images {
 		imgCopy := *v
-		copy.Images[k] = &imgCopy
+		appCopy.Images[k] = &imgCopy
 	}
 
-	return &copy, true
+	return &appCopy, true
 }
 
 // RemoveOperation removes tracking for an app operation
@@ -245,13 +251,13 @@ func (t *Tracker) ListActiveOperations() map[string]*AppProgress {
 
 	result := make(map[string]*AppProgress)
 	for k, v := range t.apps {
-		copy := *v
-		copy.Images = make(map[string]*ImageProgress)
+		appCopy := *v
+		appCopy.Images = make(map[string]*ImageProgress)
 		for imgK, imgV := range v.Images {
 			imgCopy := *imgV
-			copy.Images[imgK] = &imgCopy
+			appCopy.Images[imgK] = &imgCopy
 		}
-		result[k] = &copy
+		result[k] = &appCopy
 	}
 	return result
 }

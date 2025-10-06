@@ -13,7 +13,7 @@ func TestReadWriteComposeWithMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer os.RemoveAll(tempDir) //nolint:errcheck // Test cleanup
 
 	// Test case 1: Basic compose file with comments
 	testFile := filepath.Join(tempDir, "docker-compose.yml")
@@ -31,7 +31,7 @@ services:
 `
 
 	// Write the original content
-	if err := os.WriteFile(testFile, []byte(originalContent), 0644); err != nil {
+	if err := os.WriteFile(testFile, []byte(originalContent), 0644); err != nil { //nolint:gosec // Test file permissions
 		t.Fatalf("Failed to write test file: %v", err)
 	}
 
@@ -80,7 +80,7 @@ services:
 	}
 
 	// Read the raw content to check if comments were preserved
-	content, err := os.ReadFile(testFile)
+	content, err := os.ReadFile(testFile) //nolint:gosec // Test file read
 	if err != nil {
 		t.Fatalf("Failed to read file content: %v", err)
 	}
@@ -97,7 +97,7 @@ func TestReadComposeMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer os.RemoveAll(tempDir) //nolint:errcheck // Test cleanup
 
 	// Create a compose file with metadata
 	testContent := `version: '3.8'
@@ -111,7 +111,7 @@ services:
 `
 
 	composeFile := filepath.Join(tempDir, "docker-compose.yml")
-	if err := os.WriteFile(composeFile, []byte(testContent), 0644); err != nil {
+	if err := os.WriteFile(composeFile, []byte(testContent), 0644); err != nil { //nolint:gosec // Test file permissions
 		t.Fatalf("Failed to write test file: %v", err)
 	}
 
@@ -138,7 +138,7 @@ func TestUpdateComposeMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer os.RemoveAll(tempDir) //nolint:errcheck // Test cleanup
 
 	// Create a simple compose file
 	testContent := `version: '3'
@@ -148,7 +148,7 @@ services:
 `
 
 	composeFile := filepath.Join(tempDir, "docker-compose.yml")
-	if err := os.WriteFile(composeFile, []byte(testContent), 0644); err != nil {
+	if err := os.WriteFile(composeFile, []byte(testContent), 0644); err != nil { //nolint:gosec // Test file permissions
 		t.Fatalf("Failed to write test file: %v", err)
 	}
 
@@ -186,7 +186,7 @@ func TestEmptyMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer os.RemoveAll(tempDir) //nolint:errcheck // Test cleanup
 
 	// Create a compose file without metadata
 	testContent := `version: '3'
@@ -196,7 +196,7 @@ services:
 `
 
 	composeFile := filepath.Join(tempDir, "docker-compose.yml")
-	if err := os.WriteFile(composeFile, []byte(testContent), 0644); err != nil {
+	if err := os.WriteFile(composeFile, []byte(testContent), 0644); err != nil { //nolint:gosec // Test file permissions
 		t.Fatalf("Failed to write test file: %v", err)
 	}
 
@@ -244,7 +244,7 @@ func TestEmojiFunctionality(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create temp dir: %v", err)
 		}
-		defer os.RemoveAll(tempDir)
+		defer os.RemoveAll(tempDir) //nolint:errcheck // Test cleanup
 
 		// Create a compose file
 		testContent := `version: '3.8'
@@ -253,7 +253,7 @@ services:
     image: nginx:latest
 `
 		composeFile := filepath.Join(tempDir, "docker-compose.yml")
-		if err := os.WriteFile(composeFile, []byte(testContent), 0644); err != nil {
+		if err := os.WriteFile(composeFile, []byte(testContent), 0644); err != nil { //nolint:gosec // Test file permissions
 			t.Fatalf("Failed to write test file: %v", err)
 		}
 
@@ -286,7 +286,7 @@ services:
 		if err != nil {
 			t.Fatalf("Failed to create temp dir: %v", err)
 		}
-		defer os.RemoveAll(tempDir)
+		defer os.RemoveAll(tempDir) //nolint:errcheck // Test cleanup
 
 		// Create initial compose file with emoji
 		testContent := `version: '3.8'
@@ -300,7 +300,7 @@ services:
     image: node:14
 `
 		composeFile := filepath.Join(tempDir, "docker-compose.yml")
-		if err := os.WriteFile(composeFile, []byte(testContent), 0644); err != nil {
+		if err := os.WriteFile(composeFile, []byte(testContent), 0644); err != nil { //nolint:gosec // Test file permissions
 			t.Fatalf("Failed to write test file: %v", err)
 		}
 
@@ -342,7 +342,7 @@ services:
 		if err != nil {
 			t.Fatalf("Failed to create temp dir: %v", err)
 		}
-		defer os.RemoveAll(tempDir)
+		defer os.RemoveAll(tempDir) //nolint:errcheck // Test cleanup
 
 		// Create compose file without emoji
 		testContent := `version: '3.8'
@@ -351,7 +351,7 @@ services:
     image: nginx:latest
 `
 		composeFile := filepath.Join(tempDir, "docker-compose.yml")
-		if err := os.WriteFile(composeFile, []byte(testContent), 0644); err != nil {
+		if err := os.WriteFile(composeFile, []byte(testContent), 0644); err != nil { //nolint:gosec // Test file permissions
 			t.Fatalf("Failed to write test file: %v", err)
 		}
 

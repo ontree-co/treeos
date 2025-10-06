@@ -199,7 +199,7 @@ func (s *Server) handleAPIModelsGet(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleAPIModelPull handles model download requests
-func (s *Server) handleAPIModelPull(w http.ResponseWriter, r *http.Request, modelName string) {
+func (s *Server) handleAPIModelPull(w http.ResponseWriter, _ *http.Request, modelName string) {
 	curatedModel, isCurated := ollama.GetCuratedModel(modelName)
 
 	// Look up existing database record (only present once the model has been downloaded/queued)
@@ -280,7 +280,7 @@ func (s *Server) handleAPIModelPull(w http.ResponseWriter, r *http.Request, mode
 }
 
 // handleAPIModelRetry handles retry requests for failed downloads
-func (s *Server) handleAPIModelRetry(w http.ResponseWriter, r *http.Request, modelName string) {
+func (s *Server) handleAPIModelRetry(w http.ResponseWriter, _ *http.Request, modelName string) {
 	// Check if model exists
 	model, err := ollama.GetModel(s.db, modelName)
 	if err != nil {
@@ -368,7 +368,7 @@ func (s *Server) handleAPIModelsSSE(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Send initial connection message
-	fmt.Fprintf(w, "event: connected\ndata: {\"message\": \"Connected to model updates\"}\n\n")
+	fmt.Fprintf(w, "event: connected\ndata: {\"message\": \"Connected to model updates\"}\n\n") //nolint:errcheck // SSE stream
 	flusher.Flush()
 
 	// Handle client disconnect
@@ -383,12 +383,12 @@ func (s *Server) handleAPIModelsSSE(w http.ResponseWriter, r *http.Request) {
 		select {
 		case message := <-client.Messages:
 			// Send message to client
-			fmt.Fprint(w, message)
+			fmt.Fprint(w, message) //nolint:errcheck // SSE stream
 			flusher.Flush()
 
 		case <-heartbeat.C:
 			// Send heartbeat
-			fmt.Fprintf(w, "event: heartbeat\ndata: ping\n\n")
+			fmt.Fprintf(w, "event: heartbeat\ndata: ping\n\n") //nolint:errcheck // SSE stream
 			flusher.Flush()
 
 		case <-notify:
@@ -518,7 +518,7 @@ func isInstalled(modelName string, installedModels []string) bool {
 }
 
 // renderModelsHTML renders the models list as HTML for HTMX requests
-func (s *Server) renderModelsHTML(w http.ResponseWriter, r *http.Request, models []ollama.OllamaModel, hasOllama bool) {
+func (s *Server) renderModelsHTML(w http.ResponseWriter, _ *http.Request, models []ollama.OllamaModel, hasOllama bool) {
 	// Group models by category
 	var chatModels, codeModels, visionModels, customModels []interface{}
 
@@ -671,7 +671,7 @@ func (s *Server) startOllamaWorker() {
 }
 
 // handleAPIModelDelete handles model deletion requests
-func (s *Server) handleAPIModelDelete(w http.ResponseWriter, r *http.Request, modelName string) {
+func (s *Server) handleAPIModelDelete(w http.ResponseWriter, _ *http.Request, modelName string) {
 	// Check if model exists
 	model, err := ollama.GetModel(s.db, modelName)
 	if err != nil {
@@ -721,7 +721,7 @@ func (s *Server) handleAPIModelDelete(w http.ResponseWriter, r *http.Request, mo
 }
 
 // handleAPIModelCancel handles model download cancellation requests
-func (s *Server) handleAPIModelCancel(w http.ResponseWriter, r *http.Request, modelName string) {
+func (s *Server) handleAPIModelCancel(w http.ResponseWriter, _ *http.Request, modelName string) {
 	// Check if model exists
 	model, err := ollama.GetModel(s.db, modelName)
 	if err != nil {
@@ -843,7 +843,7 @@ func (s *Server) handleModelDetail(w http.ResponseWriter, r *http.Request) {
 		registryPath = fmt.Sprintf("%s/models/manifests/registry.ollama.ai/library/%s/%s", sharedModelsPath, modelBase, modelTag)
 
 		// Try to read the manifest to get the main model blob digest
-		manifestData, err := os.ReadFile(registryPath)
+		manifestData, err := os.ReadFile(registryPath) //nolint:gosec // Path from Ollama directory
 		if err == nil {
 			// Parse the manifest JSON to find the main model layer
 			var manifest map[string]interface{}

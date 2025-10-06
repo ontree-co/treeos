@@ -13,18 +13,18 @@ func TestDeleteAppComplete(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer os.RemoveAll(tmpDir) //nolint:errcheck // Test cleanup
 
 	// Create a test app directory
 	testAppName := "test-app"
 	appDir := filepath.Join(tmpDir, testAppName)
-	if err := os.MkdirAll(appDir, 0755); err != nil {
+	if err := os.MkdirAll(appDir, 0755); err != nil { //nolint:gosec // Test directory permissions
 		t.Fatal(err)
 	}
 
 	// Create a test file in the app directory
 	testFile := filepath.Join(appDir, "docker-compose.yml")
-	if err := os.WriteFile(testFile, []byte("test content"), 0644); err != nil {
+	if err := os.WriteFile(testFile, []byte("test content"), 0644); err != nil { //nolint:gosec // Test file permissions
 		t.Fatal(err)
 	}
 

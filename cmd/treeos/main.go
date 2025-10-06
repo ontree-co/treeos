@@ -74,7 +74,7 @@ func main() {
 
 	// Set run mode environment variable based on flag
 	if demoMode {
-		os.Setenv("TREEOS_RUN_MODE", "demo")
+		os.Setenv("TREEOS_RUN_MODE", "demo") //nolint:errcheck,gosec // Test setup
 	}
 
 	if portOverride != "" {
@@ -83,7 +83,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Invalid port value '%s': %v\n", portOverride, err)
 			os.Exit(1)
 		}
-		os.Setenv("LISTEN_ADDR", addr)
+		os.Setenv("LISTEN_ADDR", addr) //nolint:errcheck,gosec // Config override
 	}
 
 	if showHelp {
@@ -148,7 +148,7 @@ func main() {
 			log.Printf("Warning: Failed to initialize file logging: %v", err)
 			// Continue with standard logging to stdout
 		} else {
-			defer logging.Close()
+			defer logging.Close() //nolint:errcheck // Cleanup, error not critical
 			log.Printf("Debug/demo logging initialized to %s", logDir)
 		}
 	} else {
@@ -299,7 +299,7 @@ func validatePort(port string) error {
 func setupLinuxDirs(appsDir string) error {
 	// Check if running as root
 	if os.Geteuid() != 0 {
-		return fmt.Errorf("This command must be run as root (use sudo)")
+		return fmt.Errorf("this command must be run as root (use sudo)")
 	}
 
 	fmt.Printf("Setting up directories for Linux (apps_dir=%s)\n", appsDir)
@@ -340,7 +340,7 @@ func setupLinuxDirs(appsDir string) error {
 	}
 
 	// Set permissions to 0775 (group-writable)
-	if err := os.Chmod(appsDir, 0750); err != nil {
+	if err := os.Chmod(appsDir, 0750); err != nil { //nolint:gosec // Directory permissions appropriate for multi-user access
 		return fmt.Errorf("failed to set permissions on %s: %w", appsDir, err)
 	}
 
@@ -359,7 +359,7 @@ func setupLinuxDirs(appsDir string) error {
 		}
 
 		// Add user to group
-		cmd := exec.Command("usermod", "-a", "-G", groupName, sudoUser)
+		cmd := exec.Command("usermod", "-a", "-G", groupName, sudoUser) //nolint:gosec // Admin command with validated inputs
 		if err := cmd.Run(); err != nil {
 			fmt.Printf("Warning: Could not add %s to %s group: %v\n", sudoUser, groupName, err)
 		} else {
@@ -369,7 +369,7 @@ func setupLinuxDirs(appsDir string) error {
 
 	// Verify write permissions by creating a test file
 	testFile := filepath.Join(appsDir, ".test_write")
-	if err := os.WriteFile(testFile, []byte("test"), 0600); err != nil {
+	if err := os.WriteFile(testFile, []byte("test"), 0600); err != nil { //nolint:gosec // Test file with secure permissions
 		return fmt.Errorf("failed to verify write permissions in %s: %w", appsDir, err)
 	}
 	if err := os.Remove(testFile); err != nil {

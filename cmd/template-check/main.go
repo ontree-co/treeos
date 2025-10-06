@@ -101,7 +101,6 @@ func main() {
 			fmt.Printf("  • %s\n", err)
 		}
 		os.Exit(1)
-	} else {
-		fmt.Printf("✅ All templates are valid!\n")
 	}
+	fmt.Printf("✅ All templates are valid!\n")
 }

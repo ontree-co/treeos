@@ -159,7 +159,7 @@ services:
 				}
 
 				// Check content matches
-				content, err := os.ReadFile(composeFile)
+				content, err := os.ReadFile(composeFile) //nolint:gosec // Test file read
 				if err != nil {
 					t.Errorf("Failed to read docker-compose.yml: %v", err)
 				}
@@ -174,7 +174,7 @@ services:
 						t.Errorf(".env file was not created")
 					}
 
-					envContent, err := os.ReadFile(envFile)
+					envContent, err := os.ReadFile(envFile) //nolint:gosec // Test file read
 					if err != nil {
 						t.Errorf("Failed to read .env file: %v", err)
 					}
@@ -236,13 +236,13 @@ func TestUpdateApp(t *testing.T) {
 	// Create an existing app for update tests
 	existingAppName := "existing-app"
 	existingAppDir := filepath.Join(tempDir, existingAppName)
-	os.MkdirAll(existingAppDir, 0755)
+	os.MkdirAll(existingAppDir, 0755) //nolint:errcheck,gosec // Test setup
 	originalCompose := `version: '3.8'
 services:
   web:
     image: nginx:1.19`
-	os.WriteFile(filepath.Join(existingAppDir, "docker-compose.yml"), []byte(originalCompose), 0644)
-	os.WriteFile(filepath.Join(existingAppDir, ".env"), []byte("OLD_VAR=old"), 0644)
+	os.WriteFile(filepath.Join(existingAppDir, "docker-compose.yml"), []byte(originalCompose), 0644) //nolint:errcheck,gosec // Test setup
+	os.WriteFile(filepath.Join(existingAppDir, ".env"), []byte("OLD_VAR=old"), 0644)                 //nolint:errcheck,gosec // Test setup
 
 	tests := []struct {
 		name           string
@@ -342,7 +342,7 @@ services:
 				composeFile := filepath.Join(appDir, "docker-compose.yml")
 
 				// Check docker-compose.yml was updated
-				content, err := os.ReadFile(composeFile)
+				content, err := os.ReadFile(composeFile) //nolint:gosec // Test file read
 				if err != nil {
 					t.Errorf("Failed to read docker-compose.yml: %v", err)
 				}
@@ -354,7 +354,7 @@ services:
 				envFile := filepath.Join(appDir, ".env")
 				if tt.request.EnvContent != "" {
 					// Should exist with new content
-					envContent, err := os.ReadFile(envFile)
+					envContent, err := os.ReadFile(envFile) //nolint:gosec // Test file read
 					if err != nil {
 						t.Errorf("Failed to read .env file: %v", err)
 					}
@@ -370,7 +370,7 @@ services:
 	t.Run("Remove env file when empty", func(t *testing.T) {
 		// First ensure .env exists
 		envFile := filepath.Join(existingAppDir, ".env")
-		os.WriteFile(envFile, []byte("TEST=value"), 0644)
+		os.WriteFile(envFile, []byte("TEST=value"), 0644) //nolint:errcheck,gosec // Test setup
 
 		req := UpdateAppRequest{
 			ComposeYAML: `version: '3.8'
@@ -531,13 +531,13 @@ func TestHandleAPIAppStart(t *testing.T) {
 			method:  "POST",
 			setupFiles: func() {
 				appDir := filepath.Join(tmpDir, "privileged-app")
-				os.MkdirAll(appDir, 0755)
+				os.MkdirAll(appDir, 0755) //nolint:errcheck,gosec // Test setup
 				composeContent := `version: '3.8'
 services:
   web:
     image: nginx
     privileged: true`
-				os.WriteFile(filepath.Join(appDir, "docker-compose.yml"), []byte(composeContent), 0644)
+				os.WriteFile(filepath.Join(appDir, "docker-compose.yml"), []byte(composeContent), 0644) //nolint:errcheck,gosec // Test setup
 			},
 			expectedStatus: http.StatusBadRequest,
 			expectedError:  "Security validation failed",
@@ -548,14 +548,14 @@ services:
 			method:  "POST",
 			setupFiles: func() {
 				appDir := filepath.Join(tmpDir, "dangerous-cap-app")
-				os.MkdirAll(appDir, 0755)
+				os.MkdirAll(appDir, 0755) //nolint:errcheck,gosec // Test setup
 				composeContent := `version: '3.8'
 services:
   web:
     image: nginx
     cap_add:
       - SYS_ADMIN`
-				os.WriteFile(filepath.Join(appDir, "docker-compose.yml"), []byte(composeContent), 0644)
+				os.WriteFile(filepath.Join(appDir, "docker-compose.yml"), []byte(composeContent), 0644) //nolint:errcheck,gosec // Test setup
 			},
 			expectedStatus: http.StatusBadRequest,
 			expectedError:  "Security validation failed",
@@ -566,14 +566,14 @@ services:
 			method:  "POST",
 			setupFiles: func() {
 				appDir := filepath.Join(tmpDir, "invalid-mount-app")
-				os.MkdirAll(appDir, 0755)
+				os.MkdirAll(appDir, 0755) //nolint:errcheck,gosec // Test setup
 				composeContent := `version: '3.8'
 services:
   web:
     image: nginx
     volumes:
       - /etc/passwd:/etc/passwd`
-				os.WriteFile(filepath.Join(appDir, "docker-compose.yml"), []byte(composeContent), 0644)
+				os.WriteFile(filepath.Join(appDir, "docker-compose.yml"), []byte(composeContent), 0644) //nolint:errcheck,gosec // Test setup
 			},
 			expectedStatus: http.StatusBadRequest,
 			expectedError:  "Security validation failed",
@@ -995,7 +995,7 @@ func TestAppProjectNaming(t *testing.T) {
 	// Create an app with multiple services
 	appName := "testapp"
 	appDir := filepath.Join(tmpDir, appName)
-	os.MkdirAll(appDir, 0755)
+	os.MkdirAll(appDir, 0755) //nolint:errcheck,gosec // Test setup
 
 	// Compose file with multiple services
 	composeContent := `version: '3.8'
@@ -1009,7 +1009,7 @@ services:
     environment:
       POSTGRES_PASSWORD: secret`
 
-	os.WriteFile(filepath.Join(appDir, "docker-compose.yml"), []byte(composeContent), 0644)
+	os.WriteFile(filepath.Join(appDir, "docker-compose.yml"), []byte(composeContent), 0644) //nolint:errcheck,gosec // Test setup
 
 	// The project name should match the directory name "testapp"
 	expectedProjectName := appName

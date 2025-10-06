@@ -12,7 +12,7 @@ func TestScanApps(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer os.RemoveAll(tmpDir) //nolint:errcheck // Test cleanup
 
 	// Create test app directories with docker-compose.yml files
 	testApps := []struct {
@@ -53,25 +53,25 @@ services:
 	// Create test app directories
 	for _, testApp := range testApps {
 		appDir := filepath.Join(tmpDir, testApp.name)
-		if err := os.MkdirAll(appDir, 0755); err != nil {
+		if err := os.MkdirAll(appDir, 0755); err != nil { //nolint:gosec // Test directory permissions
 			t.Fatal(err)
 		}
 
 		composeFile := filepath.Join(appDir, "docker-compose.yml")
-		if err := os.WriteFile(composeFile, []byte(testApp.compose), 0644); err != nil {
+		if err := os.WriteFile(composeFile, []byte(testApp.compose), 0644); err != nil { //nolint:gosec // Test file permissions
 			t.Fatal(err)
 		}
 	}
 
 	// Also create a directory without docker-compose.yml (should be ignored)
 	noComposeDir := filepath.Join(tmpDir, "no-compose-app")
-	if err := os.MkdirAll(noComposeDir, 0755); err != nil {
+	if err := os.MkdirAll(noComposeDir, 0755); err != nil { //nolint:gosec // Test directory permissions
 		t.Fatal(err)
 	}
 
 	// Create a file (not a directory, should be ignored)
 	regularFile := filepath.Join(tmpDir, "regular-file.txt")
-	if err := os.WriteFile(regularFile, []byte("test"), 0644); err != nil {
+	if err := os.WriteFile(regularFile, []byte("test"), 0644); err != nil { //nolint:gosec // Test file permissions
 		t.Fatal(err)
 	}
 
@@ -80,7 +80,7 @@ services:
 	if err != nil {
 		t.Skip("Docker not available, skipping test:", err)
 	}
-	defer client.Close()
+	defer client.Close() //nolint:errcheck,gosec // Test cleanup
 
 	// Test ScanApps
 	apps, err := client.ScanApps(tmpDir)
@@ -157,7 +157,7 @@ func TestScanApps_RealDirectory(t *testing.T) {
 	if err != nil {
 		t.Skip("Docker not available, skipping test:", err)
 	}
-	defer client.Close()
+	defer client.Close() //nolint:errcheck,gosec // Test cleanup
 
 	// Scan the real apps directory
 	apps, err := client.ScanApps(appsDir)

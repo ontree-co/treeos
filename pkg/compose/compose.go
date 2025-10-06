@@ -1,3 +1,4 @@
+// Package compose provides a client for managing Docker Compose applications.
 package compose
 
 import (
@@ -462,11 +463,11 @@ func locateComposeFile(absPath string) (string, error) {
 
 func projectNameFromEnv(dir string) string {
 	envPath := filepath.Join(dir, ".env")
-	file, err := os.Open(envPath)
+	file, err := os.Open(envPath) //nolint:gosec // Path from compose directory
 	if err != nil {
 		return ""
 	}
-	defer file.Close()
+	defer file.Close() //nolint:errcheck // Cleanup, error not critical
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {

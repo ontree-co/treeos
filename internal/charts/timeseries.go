@@ -109,6 +109,7 @@ func GenerateTimeAwareSparkline(dataPoints []TimeSeriesPoint, startTime, endTime
 	}
 
 	svg.WriteString(`</svg>`)
+	//nolint:gosec // SVG generation, not user input
 	return template.HTML(svg.String())
 }
 
@@ -214,6 +215,7 @@ func findTimeSeriesMinMax(points []TimeSeriesPoint) (float64, float64) {
 func generateNoDataSVG(width, height int, message string) template.HTML {
 	// For small sparklines, just show a flat dashed line
 	if height <= 40 {
+		//nolint:gosec // SVG generation, not user input
 		return template.HTML(fmt.Sprintf(
 			`<svg width="%d" height="%d" viewBox="0 0 %d %d" xmlns="http://www.w3.org/2000/svg">
 				<line x1="0" y1="%d" x2="%d" y2="%d" stroke="#dee2e6" stroke-width="1" stroke-dasharray="4,4"/>
@@ -222,9 +224,10 @@ func generateNoDataSVG(width, height int, message string) template.HTML {
 	}
 
 	// For larger charts, show the message
+	//nolint:gosec // SVG generation, not user input
 	return template.HTML(fmt.Sprintf(
 		`<svg width="%d" height="%d" viewBox="0 0 %d %d" xmlns="http://www.w3.org/2000/svg">
-			<text x="%d" y="%d" text-anchor="middle" dominant-baseline="middle" 
+			<text x="%d" y="%d" text-anchor="middle" dominant-baseline="middle"
 				  font-size="12" fill="#6c757d">%s</text>
 		</svg>`,
 		width, height, width, height, width/2, height/2, message))
@@ -252,6 +255,7 @@ func generateSinglePointSVG(point TimeSeriesPoint, startTime, endTime time.Time,
 
 	y := calculateYPosition(point.Value, minVal, maxVal, opts.Height)
 
+	//nolint:gosec // SVG generation, not user input
 	return template.HTML(fmt.Sprintf(
 		`<svg width="%d" height="%d" viewBox="0 0 %d %d" xmlns="http://www.w3.org/2000/svg">
 			<circle cx="%.1f" cy="%.1f" r="3" fill="%s"/>

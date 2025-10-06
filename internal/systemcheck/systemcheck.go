@@ -1,3 +1,4 @@
+// Package systemcheck provides system health checks for TreeOS dependencies and configuration.
 package systemcheck
 
 import (
@@ -13,13 +14,17 @@ import (
 	"treeos/internal/config"
 )
 
+// Status represents the health status of a system check.
 type Status string
 
 const (
-	StatusOK    Status = "ok"
+	// StatusOK indicates the check passed successfully.
+	StatusOK Status = "ok"
+	// StatusError indicates the check failed.
 	StatusError Status = "error"
 )
 
+// CheckResult represents the result of a single system check.
 type CheckResult struct {
 	ID          string   `json:"id"`
 	Name        string   `json:"name"`
@@ -30,14 +35,17 @@ type CheckResult struct {
 	Remediation []string `json:"remediation,omitempty"`
 }
 
+// Runner executes system health checks.
 type Runner struct {
 	cfg *config.Config
 }
 
+// NewRunner creates a new system check runner with the provided configuration.
 func NewRunner(cfg *config.Config) *Runner {
 	return &Runner{cfg: cfg}
 }
 
+// Run executes all system checks and returns the results.
 func (r *Runner) Run(ctx context.Context) []CheckResult {
 	return []CheckResult{
 		r.checkDirectories(),
@@ -68,7 +76,7 @@ func (r *Runner) checkDirectories() CheckResult {
 			continue
 		}
 
-		if err := os.MkdirAll(p, 0o755); err != nil {
+		if err := os.MkdirAll(p, 0o755); err != nil { //nolint:gosec // Directory permissions appropriate
 			return CheckResult{
 				ID:          "directories",
 				Name:        "Prepare system directories",
@@ -182,7 +190,7 @@ func (r *Runner) checkCaddy(ctx context.Context) CheckResult {
 	}
 }
 
-func sharedPath(cfg *config.Config) string {
+func sharedPath(_ *config.Config) string {
 	return config.GetSharedPath()
 }
 

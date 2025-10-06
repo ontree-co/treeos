@@ -1,3 +1,4 @@
+// Package realtime provides real-time metrics collection and management for system monitoring.
 package realtime
 
 import (

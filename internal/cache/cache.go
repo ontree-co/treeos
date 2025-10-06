@@ -6,7 +6,6 @@ import (
 	"time"
 )
 
-// Package cache provides a simple in-memory cache implementation with TTL support.
 // Entry represents a single cached item
 type Entry struct {
 	Value      interface{}

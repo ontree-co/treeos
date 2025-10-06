@@ -1,3 +1,4 @@
+// Package main provides a CLI tool to migrate Docker containers to the new naming scheme.
 package main
 
 import (
@@ -66,7 +67,7 @@ func main() {
 		hasEnv := false
 		if _, err := os.Stat(envPath); err == nil {
 			// Check if it already has COMPOSE_PROJECT_NAME
-			content, err := os.ReadFile(envPath)
+			content, err := os.ReadFile(envPath) //nolint:gosec // File path from trusted directory listing
 			if err == nil && strings.Contains(string(content), "COMPOSE_PROJECT_NAME=") {
 				fmt.Printf("✓  %s: already has .env with COMPOSE_PROJECT_NAME\n", entry.Name())
 				skipped++

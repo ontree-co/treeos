@@ -119,20 +119,28 @@ const (
 	// LogLevelError indicates an error log level.
 	LogLevelError = "error"
 
-	// Sender types
-	SenderTypeUser   = "user"
-	SenderTypeAgent  = "agent"
+	// SenderTypeUser represents a message sent by a user
+	SenderTypeUser = "user"
+	// SenderTypeAgent represents a message sent by an agent
+	SenderTypeAgent = "agent"
+	// SenderTypeSystem represents a system-generated message
 	SenderTypeSystem = "system"
 
-	// Status levels for agent monitoring messages
-	StatusLevelInfo     = "info"
-	StatusLevelWarning  = "warning"
-	StatusLevelError    = "error"
+	// StatusLevelInfo indicates an informational status message
+	StatusLevelInfo = "info"
+	// StatusLevelWarning indicates a warning status message
+	StatusLevelWarning = "warning"
+	// StatusLevelError indicates an error status message
+	StatusLevelError = "error"
+	// StatusLevelCritical indicates a critical status message
 	StatusLevelCritical = "critical"
 
-	// Agent providers
-	ProviderOpenAI    = "openai"
+	// ProviderOpenAI indicates OpenAI as the LLM provider
+	ProviderOpenAI = "openai"
+	// ProviderAnthropic indicates Anthropic as the LLM provider
 	ProviderAnthropic = "anthropic"
-	ProviderLocal     = "local"
-	ProviderOllama    = "ollama"
+	// ProviderLocal indicates a local LLM provider
+	ProviderLocal = "local"
+	// ProviderOllama indicates Ollama as the LLM provider
+	ProviderOllama = "ollama"
 )
