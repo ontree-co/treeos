@@ -1,5 +1,10 @@
 # GoReleaser configuration for OnTree
 # This file configures the release process for multi-architecture builds
+#
+# NOTE: macOS builds are handled separately in .github/workflows/release-macos.yml
+# due to CGO requirements for SQLite (github.com/mattn/go-sqlite3).
+# Cross-compiling CGO code from Linux to macOS requires the macOS SDK,
+# so we use native macOS runners instead.
 version: 2
 
 project_name: treeos
