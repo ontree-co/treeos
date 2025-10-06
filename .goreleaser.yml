@@ -57,9 +57,9 @@ archives:
     files:
       - src: setup-production.sh
         dst: setup-production.sh
-      - src: treeos.service
+      - src: init/systemd/treeos.service
         dst: treeos.service
-      - src: com.ontree.treeos.plist
+      - src: init/launchd/com.ontree.treeos.plist
         dst: com.ontree.treeos.plist
       - src: README.setup.md
         dst: README.md
