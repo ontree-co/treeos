@@ -379,8 +379,8 @@ func (s *Server) handleAPIAppStart(w http.ResponseWriter, r *http.Request) {
 	s.progressTracker.StartOperation(appName, progress.OperationPreparing, "Preparing to start containers...")
 
 	// Start the app using compose SDK with progress tracking
+	// Use background context with timeout - don't cancel it early
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
 
 	opts := compose.Options{
 		WorkingDir: appDir,
@@ -413,6 +413,7 @@ func (s *Server) handleAPIAppStart(w http.ResponseWriter, r *http.Request) {
 	// Start the compose project with progress tracking
 	startChan := make(chan error, 1)
 	go func() {
+		defer cancel() // Cancel context when operation completes (success or failure)
 		startChan <- composeSvc.UpWithProgress(ctx, opts, progressCallback)
 	}()
 
