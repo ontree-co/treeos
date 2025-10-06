@@ -413,7 +413,7 @@ type OllamaContainer struct {
 // discoverOllamaContainer finds Ollama containers using label-based detection
 func (s *Server) discoverOllamaContainer() *OllamaContainer {
 	// Look for containers with the ontree.inference=true label
-	cmd := exec.Command("podman", "ps", "--filter", "label=ontree.inference=true", "--format", "{{.Names}}\t{{.Ports}}")
+	cmd := exec.Command("docker", "ps", "--filter", "label=ontree.inference=true", "--format", "{{.Names}}\t{{.Ports}}")
 	output, err := cmd.Output()
 	if err != nil {
 		log.Printf("Failed to discover Ollama container: %v", err)
@@ -474,7 +474,7 @@ func (s *Server) getInstalledModels() []string {
 		return nil
 	}
 
-	cmd := exec.Command("podman", "exec", container.Name, "ollama", "list") //nolint:gosec // container.Name is from Podman API
+	cmd := exec.Command("docker", "exec", container.Name, "ollama", "list") //nolint:gosec // container.Name is from Docker API
 	output, err := cmd.Output()
 	if err != nil {
 		log.Printf("Failed to list Ollama models: %v", err)
@@ -693,7 +693,7 @@ func (s *Server) handleAPIModelDelete(w http.ResponseWriter, r *http.Request, mo
 	}
 
 	// Delete the model from Ollama
-	cmd := exec.Command("podman", "exec", container.Name, "ollama", "rm", modelName) //nolint:gosec // container.Name and modelName are validated
+	cmd := exec.Command("docker", "exec", container.Name, "ollama", "rm", modelName) //nolint:gosec // container.Name and modelName are validated
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		// Check if model doesn't exist in Ollama (already deleted)
@@ -755,7 +755,7 @@ func (s *Server) handleAPIModelCancel(w http.ResponseWriter, r *http.Request, mo
 	container := s.discoverOllamaContainer()
 	if container != nil {
 		// Try to remove the partial model - this will fail if model doesn't exist, which is fine
-		cmd := exec.Command("podman", "exec", container.Name, "ollama", "rm", modelName) //nolint:gosec // container.Name and modelName are validated
+		cmd := exec.Command("docker", "exec", container.Name, "ollama", "rm", modelName) //nolint:gosec // container.Name and modelName are validated
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			// Only log if it's not a "model not found" error

@@ -14,30 +14,30 @@ import (
 	"strings"
 )
 
-// Service wraps access to podman compose operations (Podman 4+ required).
+// Service wraps access to docker compose operations.
 type Service struct {
-	podmanBinary string
+	dockerBinary string
 }
 
-// NewService creates a new compose service instance (requires Podman 4+ with built-in compose).
+// NewService creates a new compose service instance.
 func NewService() (*Service, error) {
-	podmanBin := os.Getenv("PODMAN_BINARY")
-	if podmanBin == "" {
-		podmanBin = "podman"
+	dockerBin := os.Getenv("DOCKER_BINARY")
+	if dockerBin == "" {
+		dockerBin = "docker"
 	}
 
-	// Check that Podman is installed
-	if err := commandAvailable(podmanBin, "--version"); err != nil {
-		return nil, fmt.Errorf("podman not found: %w", err)
+	// Check that Docker is installed
+	if err := commandAvailable(dockerBin, "--version"); err != nil {
+		return nil, fmt.Errorf("docker not found: %w", err)
 	}
 
-	// Require Podman 4+ with built-in compose support
-	if err := commandAvailable(podmanBin, "compose", "--help"); err != nil {
-		return nil, fmt.Errorf("podman 4+ required (built-in compose not found). Please upgrade to Podman 4.0 or later")
+	// Check for Docker Compose support
+	if err := commandAvailable(dockerBin, "compose", "--help"); err != nil {
+		return nil, fmt.Errorf("docker compose not found. Please ensure Docker Compose is installed")
 	}
 
 	return &Service{
-		podmanBinary: podmanBin,
+		dockerBinary: dockerBin,
 	}, nil
 }
 
@@ -50,7 +50,7 @@ type Options struct {
 	EnvFile    string
 }
 
-// ContainerSummary captures container state returned by podman.
+// ContainerSummary captures container state returned by docker.
 type ContainerSummary struct {
 	ID      string
 	Name    string
@@ -62,7 +62,7 @@ type ContainerSummary struct {
 	Ports   []PortMapping
 }
 
-// PortMapping represents a host/container port binding reported by podman ps.
+// PortMapping represents a host/container port binding reported by docker ps.
 type PortMapping struct {
 	HostIP        string
 	HostPort      string
@@ -73,7 +73,7 @@ type PortMapping struct {
 // ProgressCallback is called for each line of output during container operations
 type ProgressCallback func(line string)
 
-// Up starts a compose project (equivalent to `podman compose up -d`).
+// Up starts a compose project (equivalent to `docker compose up -d`).
 func (s *Service) Up(ctx context.Context, opts Options) error {
 	return s.UpWithProgress(ctx, opts, nil)
 }
@@ -173,7 +173,7 @@ func (s *Service) UpWithProgress(ctx context.Context, opts Options, progressCall
 	return nil
 }
 
-// Down stops a compose project (equivalent to `podman compose down`).
+// Down stops a compose project (equivalent to `docker compose down`).
 func (s *Service) Down(ctx context.Context, opts Options, removeVolumes bool) error {
 	args := []string{"down"}
 	if removeVolumes {
@@ -199,7 +199,7 @@ func (s *Service) PS(ctx context.Context, opts Options) ([]ContainerSummary, err
 		return nil, err
 	}
 
-	// Collect containers using podman ps with the compose label.
+	// Collect containers using docker ps with the compose label.
 	summaries, err := s.listContainersForProject(ctx, projectName)
 	if err != nil {
 		return nil, err
@@ -220,7 +220,7 @@ type LogWriter struct {
 	Err io.Writer
 }
 
-// Logs streams logs from the compose project using the podman compose CLI.
+// Logs streams logs from the compose project using the docker compose CLI.
 func (s *Service) Logs(ctx context.Context, opts Options, services []string, follow bool, writer LogWriter) error {
 	args := []string{"logs"}
 	if follow {
@@ -283,7 +283,7 @@ func (s *Service) Logs(ctx context.Context, opts Options, services []string, fol
 
 // --- helper functions ---
 
-type podmanContainer struct {
+type dockerContainer struct {
 	ID     string            `json:"Id"`
 	Name   string            `json:"Name"`
 	Names  []string          `json:"Names"`
@@ -343,31 +343,20 @@ func (s *Service) newComposeCmd(ctx context.Context, opts Options, extra ...stri
 	args = append(args, extra...)
 
 	// #nosec G204 -- command arguments constructed from validated project metadata
-	cmd := exec.CommandContext(ctx, s.podmanBinary, args...)
+	cmd := exec.CommandContext(ctx, s.dockerBinary, args...)
 	cmd.Dir = absPath
 	return cmd, nil
 }
 
 func (s *Service) listContainersForProject(ctx context.Context, project string) ([]ContainerSummary, error) {
-	// Try Podman labels first
+	// Use Docker compose labels
 	filters := []string{
-		fmt.Sprintf("label=io.podman.compose.project=%s", project),
+		fmt.Sprintf("label=com.docker.compose.project=%s", project),
 	}
 
 	summaries, err := s.queryContainers(ctx, filters)
 	if err != nil {
 		return nil, err
-	}
-
-	// If no containers found, try Docker labels (podman-compose sets both)
-	if len(summaries) == 0 {
-		filters = []string{
-			fmt.Sprintf("label=com.docker.compose.project=%s", project),
-		}
-		summaries, err = s.queryContainers(ctx, filters)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	return summaries, nil
@@ -380,11 +369,11 @@ func (s *Service) queryContainers(ctx context.Context, filters []string) ([]Cont
 	}
 	args = append(args, "--format", "json")
 
-	// #nosec G204 -- arguments are generated internally for podman interaction
-	cmd := exec.CommandContext(ctx, s.podmanBinary, args...)
+	// #nosec G204 -- arguments are generated internally for docker interaction
+	cmd := exec.CommandContext(ctx, s.dockerBinary, args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("podman ps failed: %w (output: %s)", err, strings.TrimSpace(string(output)))
+		return nil, fmt.Errorf("docker ps failed: %w (output: %s)", err, strings.TrimSpace(string(output)))
 	}
 
 	trimmed := strings.TrimSpace(string(output))
@@ -392,18 +381,15 @@ func (s *Service) queryContainers(ctx context.Context, filters []string) ([]Cont
 		return []ContainerSummary{}, nil
 	}
 
-	var containers []podmanContainer
+	var containers []dockerContainer
 	if err := json.Unmarshal([]byte(trimmed), &containers); err != nil {
-		return nil, fmt.Errorf("failed to parse podman ps output: %w", err)
+		return nil, fmt.Errorf("failed to parse docker ps output: %w", err)
 	}
 
 	summaries := make([]ContainerSummary, 0, len(containers))
 	for _, cont := range containers {
-		// Check both labels as podman-compose sets both
-		serviceName := cont.Labels["io.podman.compose.service"]
-		if serviceName == "" {
-			serviceName = cont.Labels["com.docker.compose.service"]
-		}
+		// Get service name from Docker compose labels
+		serviceName := cont.Labels["com.docker.compose.service"]
 
 		name := cont.Name
 		if name == "" && len(cont.Names) > 0 {

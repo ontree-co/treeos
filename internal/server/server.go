@@ -911,10 +911,10 @@ func isRuntimeUnavailableError(err error) bool {
 		return false
 	}
 	msg := strings.ToLower(err.Error())
-	if strings.Contains(msg, "podman client not available") {
+	if strings.Contains(msg, "docker client not available") {
 		return true
 	}
-	if strings.Contains(msg, "failed to list podman") || strings.Contains(msg, "podman ps failed") {
+	if strings.Contains(msg, "failed to list docker") || strings.Contains(msg, "docker ps failed") {
 		return true
 	}
 	if strings.Contains(msg, "cannot connect") && strings.Contains(msg, "docker") {

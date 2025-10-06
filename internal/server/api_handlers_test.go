@@ -606,14 +606,14 @@ services:
 }
 
 func TestHandleAPIAppStartSuccess(t *testing.T) {
-	// Skip this test if Docker/Podman is not available (e.g., in CI)
+	// Skip this test if Docker is not available (e.g., in CI)
 	if os.Getenv("CI") == "true" {
-		t.Skip("Skipping test that requires Docker/Podman in CI environment")
+		t.Skip("Skipping test that requires Docker in CI environment")
 	}
 
-	// This test requires Docker/Podman to be available
+	// This test requires Docker to be available
 	// It's an integration test that verifies the actual container operations
-	t.Skip("Integration test - requires Docker/Podman runtime")
+	t.Skip("Integration test - requires Docker runtime")
 }
 func TestHandleAPIAppStop(t *testing.T) {
 	tmpDir := t.TempDir()
@@ -686,14 +686,14 @@ func TestHandleAPIAppStop(t *testing.T) {
 }
 
 func TestHandleAPIAppStopSuccess(t *testing.T) {
-	// Skip this test if Docker/Podman is not available (e.g., in CI)
+	// Skip this test if Docker is not available (e.g., in CI)
 	if os.Getenv("CI") == "true" {
-		t.Skip("Skipping test that requires Docker/Podman in CI environment")
+		t.Skip("Skipping test that requires Docker in CI environment")
 	}
 
-	// This test requires Docker/Podman to be available
+	// This test requires Docker to be available
 	// It's an integration test that verifies the actual container operations
-	t.Skip("Integration test - requires Docker/Podman runtime")
+	t.Skip("Integration test - requires Docker runtime")
 }
 
 func TestHandleAPIAppDelete(t *testing.T) {
@@ -768,14 +768,14 @@ func TestHandleAPIAppDelete(t *testing.T) {
 }
 
 func TestHandleAPIAppDeleteSuccess(t *testing.T) {
-	// Skip this test if Docker/Podman is not available (e.g., in CI)
+	// Skip this test if Docker is not available (e.g., in CI)
 	if os.Getenv("CI") == "true" {
-		t.Skip("Skipping test that requires Docker/Podman in CI environment")
+		t.Skip("Skipping test that requires Docker in CI environment")
 	}
 
-	// This test requires Docker/Podman to be available
+	// This test requires Docker to be available
 	// It's an integration test that verifies the actual container operations
-	t.Skip("Integration test - requires Docker/Podman runtime")
+	t.Skip("Integration test - requires Docker runtime")
 }
 
 func TestHandleAPIAppStatus(t *testing.T) {
@@ -850,14 +850,14 @@ func TestHandleAPIAppStatus(t *testing.T) {
 }
 
 func TestHandleAPIAppStatusSuccess(t *testing.T) {
-	// Skip this test if Docker/Podman is not available (e.g., in CI)
+	// Skip this test if Docker is not available (e.g., in CI)
 	if os.Getenv("CI") == "true" {
-		t.Skip("Skipping test that requires Docker/Podman in CI environment")
+		t.Skip("Skipping test that requires Docker in CI environment")
 	}
 
-	// This test requires Docker/Podman to be available
+	// This test requires Docker to be available
 	// It's an integration test that verifies the actual container operations
-	t.Skip("Integration test - requires Docker/Podman runtime")
+	t.Skip("Integration test - requires Docker runtime")
 }
 
 func TestStatusAggregationLogic(t *testing.T) {

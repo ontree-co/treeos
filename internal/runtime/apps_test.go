@@ -75,10 +75,10 @@ services:
 		t.Fatal(err)
 	}
 
-	// Create Podman client (this will require Podman to be available)
+	// Create Docker client (this will require Docker to be available)
 	client, err := NewClient()
 	if err != nil {
-		t.Skip("Podman not available, skipping test:", err)
+		t.Skip("Docker not available, skipping test:", err)
 	}
 	defer client.Close()
 
@@ -152,10 +152,10 @@ func TestScanApps_RealDirectory(t *testing.T) {
 		t.Skip("Apps directory does not exist:", appsDir)
 	}
 
-	// Create Podman client
+	// Create Docker client
 	client, err := NewClient()
 	if err != nil {
-		t.Skip("Podman not available, skipping test:", err)
+		t.Skip("Docker not available, skipping test:", err)
 	}
 	defer client.Close()
 

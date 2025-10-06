@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"strings"
 	// "time"     // Commented out - used by handleAppCheckUpdate
-	// Deprecated imports removed - functionality replaced with Podman
+	// Deprecated imports removed - functionality replaced with Docker
 )
 
 // ImageUpdateInfo contains information about available image updates

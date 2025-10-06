@@ -1671,7 +1671,7 @@ func (s *Server) handleAppStatusCheck(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		message := `<div class="alert alert-warning">App not found</div>`
 		if errors.Is(err, errRuntimeUnavailable) {
-			message = `<div class="alert alert-warning">Container runtime not available. Try again once Podman is running.</div>`
+			message = `<div class="alert alert-warning">Container runtime not available. Try again once Docker is running.</div>`
 		}
 		_, _ = w.Write([]byte(message))
 		return
@@ -1830,21 +1830,21 @@ func (s *Server) handleAppContainers(w http.ResponseWriter, r *http.Request) {
 	// Use the app name as the project name (Docker Compose will use directory name)
 	projectName := appName
 
-	// Execute podman ps command with filter for the project
-	cmd := fmt.Sprintf(`podman ps --filter "label=io.podman.compose.project=%s" --format "table {{.Names}}\t{{.Status}}\t{{.Image}}"`, projectName)
+	// Execute docker ps command with filter for the project
+	cmd := fmt.Sprintf(`docker ps --filter "label=com.docker.compose.project=%s" --format "table {{.Names}}\t{{.Status}}\t{{.Image}}"`, projectName)
 
 	output, err := s.executeCommand(cmd)
 	trimmed := strings.TrimSpace(output)
 	if err != nil || trimmed == "" {
-		// Fallback to Docker-compatible label when running via podman socket
-		cmd = fmt.Sprintf(`podman ps --filter "label=com.docker.compose.project=%s" --format "table {{.Names}}\t{{.Status}}\t{{.Image}}"`, projectName)
+		// Fallback to alternative label format
+		cmd = fmt.Sprintf(`docker ps --filter "name=%s" --format "table {{.Names}}\t{{.Status}}\t{{.Image}}"`, projectName)
 		output, err = s.executeCommand(cmd)
 		trimmed = strings.TrimSpace(output)
 	}
 
 	if err != nil || trimmed == "" {
 		// If no containers found, check for single-service container by name
-		cmd = fmt.Sprintf(`podman ps --filter "name=^%s$" --format "table {{.Names}}\t{{.Status}}\t{{.Image}}"`, projectName)
+		cmd = fmt.Sprintf(`docker ps --filter "name=^%s$" --format "table {{.Names}}\t{{.Status}}\t{{.Image}}"`, projectName)
 		output, err = s.executeCommand(cmd)
 		trimmed = strings.TrimSpace(output)
 		if err != nil || trimmed == "" {
@@ -1977,7 +1977,7 @@ func (s *Server) handleAppExposeTailscale(w http.ResponseWriter, r *http.Request
 
 	// Restart containers with new configuration
 	log.Printf("[Tailscale Expose] Restarting containers for app %s", appName)
-	cmd := fmt.Sprintf("cd '%s' && podman compose down && podman compose up -d", appDetails.Path)
+	cmd := fmt.Sprintf("cd '%s' && docker compose down && docker compose up -d", appDetails.Path)
 	output, err := s.executeCommand(cmd)
 	if err != nil {
 		log.Printf("[Tailscale Expose] Failed to restart containers: %v, output: %s", err, output)
@@ -2092,7 +2092,7 @@ func (s *Server) handleAppUnexposeTailscale(w http.ResponseWriter, r *http.Reque
 	log.Printf("[Tailscale Unexpose] Removing Tailscale from app %s", appName)
 
 	// Stop containers first
-	cmd := fmt.Sprintf("cd '%s' && podman compose down", appDetails.Path)
+	cmd := fmt.Sprintf("cd '%s' && docker compose down", appDetails.Path)
 	output, err := s.executeCommand(cmd)
 	if err != nil {
 		log.Printf("[Tailscale Unexpose] Warning: Failed to stop containers: %v, output: %s", err, output)
@@ -2124,7 +2124,7 @@ func (s *Server) handleAppUnexposeTailscale(w http.ResponseWriter, r *http.Reque
 
 	// Restart containers with original configuration
 	log.Printf("[Tailscale Unexpose] Restarting containers for app %s", appName)
-	cmd = fmt.Sprintf("cd '%s' && podman compose up -d", appDetails.Path)
+	cmd = fmt.Sprintf("cd '%s' && docker compose up -d", appDetails.Path)
 	output, err = s.executeCommand(cmd)
 	if err != nil {
 		log.Printf("[Tailscale Unexpose] Failed to restart containers: %v, output: %s", err, output)
