@@ -285,20 +285,147 @@ func (s *Service) Logs(ctx context.Context, opts Options, services []string, fol
 // --- helper functions ---
 
 type dockerContainer struct {
-	ID     string            `json:"Id"`
-	Name   string            `json:"Name"`
-	Names  []string          `json:"Names"`
-	State  string            `json:"State"`
-	Status string            `json:"Status"`
-	Image  string            `json:"Image"`
-	Labels map[string]string `json:"Labels"`
-	Ports  []struct {
-		HostIP        string      `json:"host_ip"`
-		HostPort      interface{} `json:"host_port"`
-		ContainerPort interface{} `json:"container_port"`
-		Protocol      string      `json:"protocol"`
-	} `json:"Ports"`
-	Health string `json:"Health"`
+	ID         string      `json:"Id"`
+	Name       string      `json:"Name"`
+	Names      interface{} `json:"Names"` // Can be string or []string
+	State      string      `json:"State"`
+	Status     string      `json:"Status"`
+	Image      string      `json:"Image"`
+	LabelsRaw  interface{} `json:"Labels"` // Can be string or map[string]string
+	Ports      interface{} `json:"Ports"`  // Can be string or array
+	Health     string      `json:"Health"`
+}
+
+// parseLabels parses the labels from various Docker formats
+func (dc *dockerContainer) parseLabels() map[string]string {
+	labels := make(map[string]string)
+
+	switch v := dc.LabelsRaw.(type) {
+	case string:
+		// Parse comma-separated key=value pairs
+		if v != "" {
+			pairs := strings.Split(v, ",")
+			for _, pair := range pairs {
+				parts := strings.SplitN(pair, "=", 2)
+				if len(parts) == 2 {
+					labels[parts[0]] = parts[1]
+				}
+			}
+		}
+	case map[string]interface{}:
+		// Convert from map[string]interface{} to map[string]string
+		for k, val := range v {
+			if str, ok := val.(string); ok {
+				labels[k] = str
+			}
+		}
+	}
+
+	return labels
+}
+
+// getNames returns the container names as a slice
+func (dc *dockerContainer) getNames() []string {
+	switch v := dc.Names.(type) {
+	case string:
+		if v != "" {
+			return []string{v}
+		}
+	case []interface{}:
+		names := make([]string, 0, len(v))
+		for _, n := range v {
+			if str, ok := n.(string); ok {
+				names = append(names, str)
+			}
+		}
+		return names
+	case []string:
+		return v
+	}
+	return []string{}
+}
+
+// getPorts parses the ports from various Docker formats
+func (dc *dockerContainer) getPorts() []PortMapping {
+	var ports []PortMapping
+
+	switch v := dc.Ports.(type) {
+	case string:
+		// Parse string format like "0.0.0.0:11434->11434/tcp, [::]:11434->11434/tcp"
+		if v != "" {
+			// Split by comma for multiple port mappings
+			portMappings := strings.Split(v, ", ")
+			for _, mapping := range portMappings {
+				mapping = strings.TrimSpace(mapping)
+				if mapping == "" {
+					continue
+				}
+
+				// Skip IPv6 mappings for now (starting with [::])
+				if strings.HasPrefix(mapping, "[::]:") {
+					continue
+				}
+
+				// Parse format: "0.0.0.0:11434->11434/tcp"
+				var hostIP, hostPort, containerPort, protocol string
+
+				// Split by -> to separate host and container parts
+				parts := strings.Split(mapping, "->")
+				if len(parts) == 2 {
+					// Parse host part (0.0.0.0:11434)
+					hostPart := parts[0]
+					if idx := strings.LastIndex(hostPart, ":"); idx != -1 {
+						hostIP = hostPart[:idx]
+						hostPort = hostPart[idx+1:]
+					}
+
+					// Parse container part (11434/tcp)
+					containerPart := parts[1]
+					if idx := strings.Index(containerPart, "/"); idx != -1 {
+						containerPort = containerPart[:idx]
+						protocol = containerPart[idx+1:]
+					} else {
+						containerPort = containerPart
+						protocol = "tcp"
+					}
+
+					if hostPort != "" && containerPort != "" {
+						ports = append(ports, PortMapping{
+							HostIP:        hostIP,
+							HostPort:      hostPort,
+							ContainerPort: containerPort,
+							Protocol:      protocol,
+						})
+					}
+				}
+			}
+		}
+	case []interface{}:
+		for _, p := range v {
+			if pm, ok := p.(map[string]interface{}); ok {
+				port := PortMapping{}
+				if hostIP, ok := pm["HostIp"].(string); ok {
+					port.HostIP = hostIP
+				}
+				if hostPort, ok := pm["HostPort"].(string); ok {
+					port.HostPort = hostPort
+				} else if hostPort, ok := pm["HostPort"].(float64); ok {
+					port.HostPort = fmt.Sprintf("%v", int(hostPort))
+				}
+				if containerPort, ok := pm["PrivatePort"].(float64); ok {
+					port.ContainerPort = fmt.Sprintf("%v", int(containerPort))
+				} else if containerPort, ok := pm["PrivatePort"].(string); ok {
+					port.ContainerPort = containerPort
+				}
+				if proto, ok := pm["Type"].(string); ok {
+					port.Protocol = proto
+				}
+				ports = append(ports, port)
+			}
+		}
+	}
+
+	return ports
 }
 
 func commandAvailable(bin string, args ...string) error {
@@ -382,34 +509,37 @@ func (s *Service) queryContainers(ctx context.Context, filters []string) ([]Cont
 		return []ContainerSummary{}, nil
 	}
 
+	// Docker outputs JSONL format (one JSON object per line)
 	var containers []dockerContainer
-	if err := json.Unmarshal([]byte(trimmed), &containers); err != nil {
-		return nil, fmt.Errorf("failed to parse docker ps output: %w", err)
+	lines := strings.Split(trimmed, "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		var container dockerContainer
+		if err := json.Unmarshal([]byte(line), &container); err != nil {
+			return nil, fmt.Errorf("failed to parse docker container JSON: %w", err)
+		}
+		containers = append(containers, container)
 	}
 
 	summaries := make([]ContainerSummary, 0, len(containers))
 	for _, cont := range containers {
-		// Get service name from Docker compose labels
-		serviceName := cont.Labels["com.docker.compose.service"]
+		// Parse labels and get service name
+		labels := cont.parseLabels()
+		serviceName := labels["com.docker.compose.service"]
 
+		// Get container name
 		name := cont.Name
-		if name == "" && len(cont.Names) > 0 {
-			name = cont.Names[0]
+		names := cont.getNames()
+		if name == "" && len(names) > 0 {
+			name = names[0]
 		}
 		name = strings.TrimPrefix(name, "/")
 
-		ports := make([]PortMapping, 0, len(cont.Ports))
-		for _, port := range cont.Ports {
-			// Convert port numbers to strings
-			hostPort := fmt.Sprintf("%v", port.HostPort)
-			containerPort := fmt.Sprintf("%v", port.ContainerPort)
-			ports = append(ports, PortMapping{
-				HostIP:        port.HostIP,
-				HostPort:      hostPort,
-				ContainerPort: containerPort,
-				Protocol:      port.Protocol,
-			})
-		}
+		// Get ports
+		ports := cont.getPorts()
 
 		summaries = append(summaries, ContainerSummary{
 			ID:      cont.ID,

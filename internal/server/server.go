@@ -1016,9 +1016,30 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 
 						enrichedApp.ServiceCount = len(containerInfos)
 						enrichedApp.Containers = containerInfos
+
+						// Update app status based on actual container states
+						runningCount := 0
+						exitedCount := 0
+						for _, c := range containerInfos {
+							if c.State == "running" {
+								runningCount++
+							} else if c.State == "exited" {
+								exitedCount++
+							}
+						}
+						if runningCount == len(containerInfos) {
+							enrichedApp.App.Status = "running"
+						} else if exitedCount == len(containerInfos) {
+							enrichedApp.App.Status = "exited"
+						} else if runningCount > 0 {
+							enrichedApp.App.Status = "partial"
+						} else {
+							enrichedApp.App.Status = "unknown"
+						}
 					} else {
 						enrichedApp.ServiceCount = 0
 						enrichedApp.Containers = []ContainerInfo{}
+						enrichedApp.App.Status = "not created"
 					}
 				}
 			}

@@ -1,0 +1,38 @@
+[Unit]
+Description=TreeOS Application Platform (Demo Mode)
+Documentation=https://github.com/ontree-co/treeos
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=ontree
+Group=ontree
+WorkingDirectory=/home/ontree/treeos
+ExecStart=/home/ontree/treeos/treeos
+Restart=always
+RestartSec=10
+
+# Security settings for demo mode - less restrictive
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Allow access to home directory in demo mode
+ProtectSystem=false
+ProtectHome=false
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# Environment
+Environment="TREEOS_RUN_MODE=demo"
+Environment="DEBUG=true"
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=treeos
+
+[Install]
+WantedBy=multi-user.target
