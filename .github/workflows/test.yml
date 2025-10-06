@@ -97,10 +97,15 @@ jobs:
         GOLANGCI_VERSION=$(grep 'golangci-lint' .tool-versions | awk '{print $2}')
         echo "golangci-lint-version=v${GOLANGCI_VERSION}" >> $GITHUB_OUTPUT
         echo "Using golangci-lint version: v${GOLANGCI_VERSION}"
+        echo "=== Debug: .tool-versions content ==="
+        cat .tool-versions
+        echo "=== Debug: Extracted version ==="
+        echo "GOLANGCI_VERSION=${GOLANGCI_VERSION}"
+        echo "Final version string: v${GOLANGCI_VERSION}"
 
     - name: Run golangci-lint
       id: golangci-lint
-      uses: golangci/golangci-lint-action@v7
+      uses: golangci/golangci-lint-action@v8
       with:
         version: ${{ steps.tool-versions.outputs.golangci-lint-version }}
         args: --timeout=5m
