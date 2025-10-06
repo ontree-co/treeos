@@ -3,54 +3,35 @@ package runtime
 import (
 	"context"
 	"fmt"
-	"os"
-	"os/exec"
-	"strings"
-	"time"
+
+	"github.com/docker/docker/client"
 )
 
-// Client represents a connection to the local Podman runtime.
+// Client wraps the Docker client
 type Client struct {
-	podmanBinary string
+	dockerClient *client.Client
 }
 
-// NewClient validates that Podman is available and returns a runtime client.
+// NewClient creates a new Docker client
 func NewClient() (*Client, error) {
-	bin := os.Getenv("PODMAN_BINARY")
-	if bin == "" {
-		bin = "podman"
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Docker client: %w", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	versionCmd := exec.CommandContext(ctx, bin, "--version")
-	if output, err := versionCmd.CombinedOutput(); err != nil {
-		return nil, fmt.Errorf("podman client not available: %w (output: %s)", err, strings.TrimSpace(string(output)))
+	// Test connection
+	ctx := context.Background()
+	_, err = cli.Ping(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to Docker daemon: %w", err)
 	}
 
-	// Ensure we can talk to the Podman service (rootless or system-wide)
-	infoCmd := exec.CommandContext(ctx, bin, "info", "--format", "json")
-	if output, err := infoCmd.CombinedOutput(); err != nil {
-		return nil, fmt.Errorf("podman client not available: %w (output: %s)", err, strings.TrimSpace(string(output)))
-	}
-
-	return &Client{podmanBinary: bin}, nil
+	return &Client{
+		dockerClient: cli,
+	}, nil
 }
 
-// Close closes the client. Present for API compatibility.
+// Close closes the Docker client connection
 func (c *Client) Close() error {
-	return nil
-}
-
-// binary returns the configured Podman binary path.
-func (c *Client) binary() string {
-	return c.podmanBinary
-}
-
-// run executes the Podman CLI with the provided arguments.
-func (c *Client) run(ctx context.Context, args ...string) ([]byte, error) {
-	// #nosec G204 -- arguments originate from trusted configuration/internal inputs
-	cmd := exec.CommandContext(ctx, c.podmanBinary, args...)
-	return cmd.CombinedOutput()
+	return c.dockerClient.Close()
 }

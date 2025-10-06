@@ -18,7 +18,7 @@ func main() {
 	flag.BoolVar(&dryRun, "dry-run", false, "Show what would be done without making changes")
 	flag.Parse()
 
-	fmt.Printf("=== Podman Container Naming Migration Tool ===\n")
+	fmt.Printf("=== Docker Container Naming Migration Tool ===\n")
 	fmt.Printf("Apps directory: %s\n", appsDir)
 	if dryRun {
 		fmt.Printf("Mode: DRY RUN (no changes will be made)\n")
@@ -120,8 +120,8 @@ func main() {
 
 	if !dryRun && migrated > 0 {
 		fmt.Printf("\n⚠️  IMPORTANT: You need to recreate containers for the naming to take effect:\n")
-		fmt.Printf("   1. Stop existing containers: podman compose down\n")
-		fmt.Printf("   2. Start with new names: podman compose up -d\n")
+		fmt.Printf("   1. Stop existing containers: docker compose down\n")
+		fmt.Printf("   2. Start with new names: docker compose up -d\n")
 		fmt.Printf("\n")
 		fmt.Printf("   Or use the OnTree UI to stop and start each app.\n")
 	}

@@ -6,19 +6,25 @@ import (
 	"strings"
 )
 
-// PodmanProgressParser parses progress information from Podman compose output
-type PodmanProgressParser struct {
+// DockerProgressParser parses progress information from Docker compose output
+type DockerProgressParser struct {
 	tracker *Tracker
 }
 
-// NewPodmanProgressParser creates a new parser
-func NewPodmanProgressParser(tracker *Tracker) *PodmanProgressParser {
-	return &PodmanProgressParser{
+// NewDockerProgressParser creates a new parser
+func NewDockerProgressParser(tracker *Tracker) *DockerProgressParser {
+	return &DockerProgressParser{
 		tracker: tracker,
 	}
 }
 
-// Progress patterns that we need to match in Podman output:
+// Keep compatibility alias for existing code
+type PodmanProgressParser = DockerProgressParser
+func NewPodmanProgressParser(tracker *Tracker) *DockerProgressParser {
+	return NewDockerProgressParser(tracker)
+}
+
+// Progress patterns that we need to match in Docker output:
 var (
 	// Downloading patterns - enhanced to capture image names
 	downloadProgressRegex = regexp.MustCompile(`(?i)(.*?)\s*downloading.*?(\d+(?:\.\d+)?)\s*([KMGT]?B)\s*/\s*(\d+(?:\.\d+)?)\s*([KMGT]?B)`)
@@ -31,11 +37,11 @@ var (
 	// General progress bar patterns - with image name capture
 	progressBarRegex = regexp.MustCompile(`(.*?)\s*\[([=>\s]*)\]\s*(\d+(?:\.\d+)?)\s*([KMGT]?B)\s*/\s*(\d+(?:\.\d+)?)\s*([KMGT]?B)`)
 
-	// Docker/Podman specific patterns
+	// Docker specific patterns
 	dockerPullingRegex = regexp.MustCompile(`(?i)(?:pulling\s+from\s+|pull\s+complete\s+for\s+)?([a-zA-Z0-9._/-]+(?::[a-zA-Z0-Z._-]+)?)`)
 	dockerLayerRegex   = regexp.MustCompile(`(?i)([a-f0-9]{12,}):\s*(downloading|extracting|pull complete).*?(\d+(?:\.\d+)?)\s*([KMGT]?B)\s*/\s*(\d+(?:\.\d+)?)\s*([KMGT]?B)`)
 
-	// Updated patterns to match actual Docker/Podman output format
+	// Updated patterns to match actual Docker output format
 	dockerProgressBarRegex = regexp.MustCompile(`([a-f0-9]{12,})\s+(Downloading|Extracting)\s+\[[=>\s]*\]\s+(\d+(?:\.\d+)?)\s*([KMGT]?B)\s*/\s*(\d+(?:\.\d+)?)\s*([KMGT]?B)`)
 	dockerCompleteRegex     = regexp.MustCompile(`([a-f0-9]{12,})\s+(Download complete|Extracting complete|Pull complete)`)
 
@@ -51,8 +57,8 @@ var (
 	}
 )
 
-// ParseLine processes a single line of Podman output
-func (p *PodmanProgressParser) ParseLine(appName, line string) {
+// ParseLine processes a single line of Docker output
+func (p *DockerProgressParser) ParseLine(appName, line string) {
 	line = strings.TrimSpace(line)
 	if line == "" {
 		return
@@ -105,7 +111,7 @@ func (p *PodmanProgressParser) ParseLine(appName, line string) {
 // parseDownloadProgress extracts download progress from lines like:
 // "image:tag Downloading  123.4MB/456.7MB"
 // "image:tag Downloading 45.6%"
-func (p *PodmanProgressParser) parseDownloadProgress(appName, imageName, line string) bool {
+func (p *DockerProgressParser) parseDownloadProgress(appName, imageName, line string) bool {
 	// Try percentage format first
 	if matches := downloadPercentRegex.FindStringSubmatch(line); len(matches) > 2 {
 		imageFromLine := strings.TrimSpace(matches[1])
@@ -157,7 +163,7 @@ func (p *PodmanProgressParser) parseDownloadProgress(appName, imageName, line st
 
 // parseProgressBar extracts progress from progress bar format:
 // "image:tag [====>    ] 123.4MB/456.7MB"
-func (p *PodmanProgressParser) parseProgressBar(appName, imageName, line string) bool {
+func (p *DockerProgressParser) parseProgressBar(appName, imageName, line string) bool {
 	if matches := progressBarRegex.FindStringSubmatch(line); len(matches) > 6 {
 		imageFromLine := strings.TrimSpace(matches[1])
 		if imageFromLine != "" && imageName == "" {
@@ -187,9 +193,9 @@ func (p *PodmanProgressParser) parseProgressBar(appName, imageName, line string)
 	return false
 }
 
-// parseDockerLayerProgress handles Docker/Podman layer-specific progress
+// parseDockerLayerProgress handles Docker layer-specific progress
 // like "abc123456789: downloading  12.3MB/45.6MB" or "abc123456789: extracting"
-func (p *PodmanProgressParser) parseDockerLayerProgress(appName, line string) bool {
+func (p *DockerProgressParser) parseDockerLayerProgress(appName, line string) bool {
 	if matches := dockerLayerRegex.FindStringSubmatch(line); len(matches) > 6 {
 		layerID := matches[1]
 		operation := strings.ToLower(matches[2])
@@ -230,9 +236,9 @@ func (p *PodmanProgressParser) parseDockerLayerProgress(appName, line string) bo
 	return false
 }
 
-// parseDockerProgressBar handles Docker/Podman progress bars in the format:
+// parseDockerProgressBar handles Docker progress bars in the format:
 // "a7629e50b7f5 Downloading [>    ] 7.142MB/2.691GB"
-func (p *PodmanProgressParser) parseDockerProgressBar(appName, line string) bool {
+func (p *DockerProgressParser) parseDockerProgressBar(appName, line string) bool {
 	if matches := dockerProgressBarRegex.FindStringSubmatch(line); len(matches) >= 7 {
 		layerID := matches[1]
 		operation := strings.ToLower(matches[2])
@@ -268,9 +274,9 @@ func (p *PodmanProgressParser) parseDockerProgressBar(appName, line string) bool
 	return false
 }
 
-// parseDockerComplete handles Docker/Podman completion messages like:
+// parseDockerComplete handles Docker completion messages like:
 // "a7629e50b7f5 Download complete"
-func (p *PodmanProgressParser) parseDockerComplete(appName, line string) bool {
+func (p *DockerProgressParser) parseDockerComplete(appName, line string) bool {
 	if matches := dockerCompleteRegex.FindStringSubmatch(line); len(matches) >= 3 {
 		layerID := matches[1]
 		status := strings.ToLower(matches[2])
@@ -293,7 +299,7 @@ func (p *PodmanProgressParser) parseDockerComplete(appName, line string) bool {
 }
 
 // parseImageStatus checks for image-related status updates
-func (p *PodmanProgressParser) parseImageStatus(appName, line string) bool {
+func (p *DockerProgressParser) parseImageStatus(appName, line string) bool {
 	// Check for pulling
 	if matches := pullingImageRegex.FindStringSubmatch(line); len(matches) > 1 {
 		imageName := matches[1]
@@ -314,7 +320,7 @@ func (p *PodmanProgressParser) parseImageStatus(appName, line string) bool {
 }
 
 // parseContainerStatus checks for container-related status updates
-func (p *PodmanProgressParser) parseContainerStatus(appName, line string) bool {
+func (p *DockerProgressParser) parseContainerStatus(appName, line string) bool {
 	// Check for container starting
 	if matches := containerStartingRegex.FindStringSubmatch(line); len(matches) > 1 {
 		containerName := matches[1]
@@ -333,7 +339,7 @@ func (p *PodmanProgressParser) parseContainerStatus(appName, line string) bool {
 }
 
 // updateGenericStatus provides fallback status updates for common patterns
-func (p *PodmanProgressParser) updateGenericStatus(appName, line string) {
+func (p *DockerProgressParser) updateGenericStatus(appName, line string) {
 	lower := strings.ToLower(line)
 
 	if strings.Contains(lower, "pulling") {
@@ -350,7 +356,7 @@ func (p *PodmanProgressParser) updateGenericStatus(appName, line string) {
 }
 
 // extractImageName attempts to extract an image name from the log line
-func (p *PodmanProgressParser) extractImageName(line string) string {
+func (p *DockerProgressParser) extractImageName(line string) string {
 	// Try Docker pulling patterns first
 	if matches := dockerPullingRegex.FindStringSubmatch(line); len(matches) > 1 {
 		return matches[1]

@@ -392,8 +392,8 @@ func (s *Server) handleAPIAppStart(w http.ResponseWriter, r *http.Request) {
 		opts.EnvFile = ".env" // Just the filename, not the full path
 	}
 
-	// Create progress parser to handle Podman output
-	parser := progress.NewPodmanProgressParser(s.progressTracker)
+	// Create progress parser to handle Docker output
+	parser := progress.NewDockerProgressParser(s.progressTracker)
 
 	// Create progress callback function
 	progressCallback := func(line string) {

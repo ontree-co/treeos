@@ -112,7 +112,7 @@ func (w *Worker) CancelDownload(modelName string) error {
 	}
 
 	if containerName != "" {
-		killInsideCmd := exec.Command("podman", "exec", containerName, "sh", "-c",
+		killInsideCmd := exec.Command("docker", "exec", containerName, "sh", "-c",
 			fmt.Sprintf("pkill -f 'ollama pull %s' || true", modelName))
 		if err := killInsideCmd.Run(); err != nil {
 			log.Printf("Warning: Failed to kill ollama process inside container: %v", err)
@@ -141,7 +141,7 @@ func (w *Worker) CancelDownload(modelName string) error {
 
 	// Try to clean up partial download immediately
 	// Note: This cleanup is also done in the handler, but we do it here too for redundancy
-	cleanupCmd := exec.Command("podman", "exec", w.containerName, "ollama", "rm", modelName) //nolint:gosec // containerName and modelName are validated
+	cleanupCmd := exec.Command("docker", "exec", w.containerName, "ollama", "rm", modelName) //nolint:gosec // containerName and modelName are validated
 	cleanupOutput, cleanupErr := cleanupCmd.CombinedOutput()
 	if cleanupErr == nil {
 		log.Printf("Worker cleaned up partial download for model %s", modelName)
@@ -185,7 +185,7 @@ func (w *Worker) processJobs(workerID int) {
 // discoverOllamaContainer finds the running Ollama container using label-based detection
 func (w *Worker) discoverOllamaContainer() (string, error) {
 	// Look for containers with the ontree.inference=true label
-	cmd := exec.Command("podman", "ps", "--filter", "label=ontree.inference=true", "--format", "{{.Names}}")
+	cmd := exec.Command("docker", "ps", "--filter", "label=ontree.inference=true", "--format", "{{.Names}}")
 	output, err := cmd.Output()
 	if err != nil {
 		return "", fmt.Errorf("failed to list containers: %w", err)
@@ -239,7 +239,7 @@ func (w *Worker) processDownload(job DownloadJob) {
 	})
 
 	// Execute the ollama pull command
-	cmd := exec.Command("podman", "exec", containerName, "ollama", "pull", job.ModelName)
+	cmd := exec.Command("docker", "exec", containerName, "ollama", "pull", job.ModelName)
 
 	// Track this command for potential cancellation
 	w.activeMu.Lock()
