@@ -7,11 +7,14 @@ argument-hint:
 
 ## ⚠️ CONFIRMATION REQUIRED
 
-This command will **permanently delete** all TreeOS demo mode data including:
+This command will **permanently delete** TreeOS demo mode data including:
 - `./apps/` directory (application configurations)
-- `./shared/` directory (includes Ollama models)
 - `./logs/` directory (log files)
 - `./ontree.db` and related SQLite files (database)
+- All Docker containers starting with `ontree-`
+
+**Preserved:**
+- `./shared/` directory (includes Ollama models)
 
 **To confirm deletion, please type "yes" when prompted in Claude Code.**
 

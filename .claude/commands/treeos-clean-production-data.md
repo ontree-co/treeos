@@ -14,6 +14,7 @@ This command will **permanently delete** TreeOS production data while **preservi
 - `/opt/ontree/logs/` directory (log files)
 - `/opt/ontree/ontree.db` and related SQLite files (database)
 - `/opt/ontree/treeos` binary
+- All Docker containers starting with `ontree-`
 
 ### Will be PRESERVED:
 - `/opt/ontree/shared/` directory (shared data)

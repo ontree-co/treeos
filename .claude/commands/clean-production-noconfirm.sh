@@ -39,18 +39,18 @@ elif command -v systemctl &> /dev/null; then
     echo "✓ Stopped TreeOS service (systemd)"
 fi
 
-# Check if Podman is available
-if command -v podman &> /dev/null; then
+# Check if Docker is available
+if command -v docker &> /dev/null; then
     echo ""
     echo "Stopping and removing ontree-* containers..."
 
     # Stop all containers starting with 'ontree-'
-    CONTAINERS=$(podman ps -a --format "{{.Names}}" | grep "^ontree-" || true)
+    CONTAINERS=$(docker ps -a --format "{{.Names}}" | grep "^ontree-" || true)
     if [ ! -z "$CONTAINERS" ]; then
         echo "$CONTAINERS" | while read container; do
             echo "  - Stopping and removing container: $container"
-            podman stop "$container" 2>/dev/null || true
-            podman rm -f "$container" 2>/dev/null || true
+            docker stop "$container" 2>/dev/null || true
+            docker rm -f "$container" 2>/dev/null || true
         done
         echo "✓ Removed all ontree-* containers"
     else
@@ -58,7 +58,7 @@ if command -v podman &> /dev/null; then
     fi
 else
     echo ""
-    echo "ℹ Podman not found - skipping container cleanup"
+    echo "ℹ Docker not found - skipping container cleanup"
 fi
 
 echo ""

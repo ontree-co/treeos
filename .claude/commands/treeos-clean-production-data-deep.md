@@ -17,11 +17,11 @@ This command will **PERMANENTLY DELETE** ALL TreeOS production data including:
 - `/opt/ontree/ontree.db` and related SQLite files (database)
 - `/opt/ontree/treeos` binary
 
-### Podman Containers and Images:
+### Docker Containers and Images:
 - **ALL containers starting with `ontree-`** will be stopped and removed
 - **ALL associated container images** will be deleted
 - **Container images will need to be re-downloaded** for testing scenarios
-- Podman build cache and dangling images will be pruned
+- Docker image cache will be pruned
 
 **This is a COMPLETE removal of TreeOS and will require full reinstallation!**
 
