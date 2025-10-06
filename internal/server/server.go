@@ -1021,25 +1021,26 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 						runningCount := 0
 						exitedCount := 0
 						for _, c := range containerInfos {
-							if c.State == "running" {
+							switch c.State {
+							case "running":
 								runningCount++
-							} else if c.State == "exited" {
+							case "exited":
 								exitedCount++
 							}
 						}
 						if runningCount == len(containerInfos) {
-							enrichedApp.App.Status = "running"
+							enrichedApp.Status = "running"
 						} else if exitedCount == len(containerInfos) {
-							enrichedApp.App.Status = "exited"
+							enrichedApp.Status = "exited"
 						} else if runningCount > 0 {
-							enrichedApp.App.Status = "partial"
+							enrichedApp.Status = "partial"
 						} else {
-							enrichedApp.App.Status = "unknown"
+							enrichedApp.Status = "unknown"
 						}
 					} else {
 						enrichedApp.ServiceCount = 0
 						enrichedApp.Containers = []ContainerInfo{}
-						enrichedApp.App.Status = "not created"
+						enrichedApp.Status = "not created"
 					}
 				}
 			}
