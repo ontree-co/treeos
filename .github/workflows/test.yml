@@ -52,7 +52,7 @@ jobs:
 
   lint:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -70,6 +70,18 @@ jobs:
         cache: true
         cache-dependency-path: go.sum
 
+    - name: Verify Go version consistency
+      run: |
+        EXPECTED_GO=$(grep '^golang' .tool-versions | awk '{print $2}')
+        ACTUAL_GO=$(go version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+        echo "Expected Go version from .tool-versions: ${EXPECTED_GO}"
+        echo "Actual Go version installed: ${ACTUAL_GO}"
+        if [[ "${EXPECTED_GO}" != "${ACTUAL_GO}" ]]; then
+          echo "::warning::Go version mismatch! .tool-versions has ${EXPECTED_GO} but ${ACTUAL_GO} is installed. Continuing anyway as go.mod takes precedence."
+        else
+          echo "✅ Go version check passed - using ${ACTUAL_GO}"
+        fi
+
     - name: Install dependencies
       run: make deps
 
@@ -79,11 +91,31 @@ jobs:
     - name: Prepare embedded assets
       run: make embed-assets
 
+    - name: Extract golangci-lint version from .tool-versions
+      id: tool-versions
+      run: |
+        GOLANGCI_VERSION=$(grep 'golangci-lint' .tool-versions | awk '{print $2}')
+        echo "golangci-lint-version=v${GOLANGCI_VERSION}" >> $GITHUB_OUTPUT
+        echo "Using golangci-lint version: v${GOLANGCI_VERSION}"
+
     - name: Run golangci-lint
+      id: golangci-lint
       uses: golangci/golangci-lint-action@v6
       with:
-        version: v1.64.7
+        version: ${{ steps.tool-versions.outputs.golangci-lint-version }}
         args: --timeout=5m
+
+    - name: Verify version consistency
+      run: |
+        EXPECTED_VERSION="${{ steps.tool-versions.outputs.golangci-lint-version }}"
+        ACTUAL_VERSION=$(golangci-lint --version | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+        echo "Expected version from .tool-versions: ${EXPECTED_VERSION}"
+        echo "Actual version installed: ${ACTUAL_VERSION}"
+        if [[ "${EXPECTED_VERSION}" != "${ACTUAL_VERSION}" ]]; then
+          echo "::error::Version mismatch! .tool-versions specifies ${EXPECTED_VERSION} but ${ACTUAL_VERSION} was installed."
+          exit 1
+        fi
+        echo "✅ Version check passed - using ${ACTUAL_VERSION}"
 
   build:
     runs-on: ubuntu-latest

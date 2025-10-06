@@ -5,6 +5,41 @@
 5. Add a unit test first if applicable to really find out if your fix fixes the problem.
 6. This project supports macOS on Apple Silicon and Linux on amd64.
 
+## Tool Version Management
+
+This project uses `.tool-versions` file to maintain consistent tool versions across all development environments.
+
+### Required Tools
+- Go 1.24.4
+- golangci-lint 2.5.0
+
+### Setup Instructions
+
+1. **Install asdf** (recommended version manager):
+   ```bash
+   # macOS
+   brew install asdf
+
+   # Linux
+   git clone https://github.com/asdf-vm/asdf.git ~/.asdf --branch v0.14.0
+   ```
+
+2. **Install plugins**:
+   ```bash
+   asdf plugin add golang
+   asdf plugin add golangci-lint
+   ```
+
+3. **Install specified versions**:
+   ```bash
+   asdf install
+   ```
+
+The `.tool-versions` file ensures all developers and CI use the same tool versions, preventing "works on my machine" issues.
+
+### CI/CD Configuration
+GitHub Actions is configured to use the same versions specified in `.tool-versions`. The workflow automatically uses golangci-lint v2.5.0 with the v2 configuration format.
+
 ## Working with Graphite instead of Git Directly
 
 Unless explicitly asked otherwise, use the gt CLI for interacting with PRs and create stacks. Stacks are easier to review because each PR is smaller and logically focused.

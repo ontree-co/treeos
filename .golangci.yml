@@ -1,3 +1,4 @@
+version: "2"
 run:
   build-tags:
     - integration
@@ -5,184 +6,196 @@ run:
 linters:
   enable:
     - gosec
+    - misspell
+    - revive
     - unused
     - errcheck
-    - revive
     - govet
     - staticcheck
     - ineffassign
-    - misspell
-
-linters-settings:
-  errcheck:
-    check-type-assertions: true
-    check-blank: true
-  gosec:
-    severity: medium
-    confidence: medium
-  revive:
-    severity: warning
-    enable-all-rules: false
+  settings:
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+    gosec:
+      severity: medium
+      confidence: medium
+    revive:
+      severity: warning
+      enable-all-rules: false
+      rules:
+        - name: blank-imports
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: dot-imports
+        - name: empty-block
+        - name: error-naming
+        - name: error-return
+        - name: error-strings
+        - name: errorf
+        - name: exported
+        - name: increment-decrement
+        - name: indent-error-flow
+        - name: package-comments
+        - name: range
+        - name: receiver-naming
+        - name: time-naming
+        - name: unexported-return
+        - name: var-declaration
+        - name: var-naming
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
     rules:
-      - name: blank-imports
-      - name: context-as-argument
-      - name: context-keys-type
-      - name: dot-imports
-      - name: empty-block
-      - name: error-naming
-      - name: error-return
-      - name: error-strings
-      - name: errorf
-      - name: exported
-      - name: increment-decrement
-      - name: indent-error-flow
-      - name: package-comments
-      - name: range
-      - name: receiver-naming
-      - name: time-naming
-      - name: unexported-return
-      - name: var-declaration
-      - name: var-naming
-
+      - linters:
+          - errcheck
+          - gosec
+        path: _test\.go
+      - linters:
+          - govet
+        text: 'shadow: declaration of "err" shadows declaration'
+      - linters:
+          - govet
+        path: main\.go
+        text: exitAfterDefer
+      - linters:
+          - gosec
+        path: internal/docker/apps\.go
+        text: G304
+      - linters:
+          - gosec
+        path: internal/server/handlers\.go
+        text: G304
+      - linters:
+          - gosec
+        path: internal/server/handlers\.go
+        text: G306
+      - linters:
+          - gosec
+        path: internal/yamlutil/yamlutil\.go
+        text: G306
+      - linters:
+          - gosec
+        path: cmd/treeos/main\.go
+        text: G302
+      - linters:
+          - gosec
+        path: cmd/treeos/main\.go
+        text: G204
+      - linters:
+          - gosec
+        path: internal/ollama/worker\.go
+        text: G204
+      - linters:
+          - gosec
+        path: internal/server/handlers_models\.go
+        text: G204
+      - linters:
+          - gosec
+        path: internal/server/handlers_logging\.go
+        text: G107
+      - linters:
+          - staticcheck
+        text: 'ST1005: error strings should not be capitalized'
+      - linters:
+          - errcheck
+        text: Error return value of .*(Close|Remove|Setenv|Chdir|MkdirAll|WriteFile|Fprintf|Fprint|Write|Encode) .* is not checked
+      - linters:
+          - errcheck
+        text: Error return value of `w\.Write` is not checked
+      - linters:
+          - errcheck
+        text: Error return value of `s\.caddyClient\.DeleteRoute` is not checked
+      - linters:
+          - errcheck
+        path: internal/server/handlers\.go
+        text: Error return value of `s\.dockerClient\.GetAppDetails` is not checked
+      - linters:
+          - errcheck
+        path: internal/server/api_handlers_chat\.go
+        text: Error return value of `.*\.Encode` is not checked
+      - linters:
+          - errcheck
+        path: internal/server/api_handlers_status\.go
+        text: Error return value of `json\.NewEncoder\(w\)\.Encode` is not checked
+      - linters:
+          - errcheck
+        path: internal/server/api_handlers_status\.go
+        text: Error return value of `\(\*encoding/json\.Encoder\)\.Encode` is not checked
+      - linters:
+          - errcheck
+        path: internal/server/handlers_logging\.go
+        text: Error return value of `.*\.Encode` is not checked
+      - linters:
+          - errcheck
+        path: internal/server/handlers_logging\.go
+        text: Error return value of `file\.WriteString` is not checked
+      - linters:
+          - errcheck
+        path: internal/server/handlers_logging\.go
+        text: Error return value of `io\.Copy` is not checked
+      - linters:
+          - errcheck
+        path: internal/server/handlers_logging\.go
+        text: Error return value of `fmt\.Sscanf` is not checked
+      - linters:
+          - errcheck
+        path: internal/server/handlers_models\.go
+        text: Error return value of `.*\.Encode` is not checked
+      - linters:
+          - errcheck
+        path: internal/ollama/worker\.go
+        text: Error return value of `cmd\.Wait` is not checked
+      - linters:
+          - gosec
+        path: internal/database/database\.go
+        text: G201
+      - linters:
+          - gosec
+        text: G304
+      - linters:
+          - gosec
+        text: G203
+      - linters:
+          - gosec
+        text: G301
+      - linters:
+          - gosec
+        text: G306
+      - linters:
+          - gosec
+        text: G302
+      - linters:
+          - gosec
+        path: cmd/treeos/main\.go
+        text: G204
+      - linters:
+          - gosec
+        path: internal/ollama/worker\.go
+        text: G204
+      - linters:
+          - staticcheck
+        path: internal/docker/container_naming_test\.go
+        text: 'SA1019: types.Container is deprecated'
+      - linters:
+          - revive
+        path: internal/update/types\.go
+        text: stutters
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
 issues:
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - errcheck
-        - gosec
-    - linters:
-        - govet
-      text: 'shadow: declaration of "err" shadows declaration'
-    - linters:
-        - govet
-      path: main\.go
-      text: exitAfterDefer
-    - linters:
-        - gosec
-      path: internal/docker/apps\.go
-      text: G304
-    - linters:
-        - gosec
-      path: internal/server/handlers\.go
-      text: G304
-    - linters:
-        - gosec
-      path: internal/server/handlers\.go
-      text: G306
-    - linters:
-        - gosec
-      path: internal/yamlutil/yamlutil\.go
-      text: G306
-    - linters:
-        - gosec
-      path: cmd/treeos/main\.go
-      text: G302
-    - linters:
-        - gosec
-      path: cmd/treeos/main\.go
-      text: G204
-    - linters:
-        - gosec
-      path: internal/ollama/worker\.go
-      text: G204
-    - linters:
-        - gosec
-      path: internal/server/handlers_models\.go
-      text: G204
-    - linters:
-        - gosec
-      path: internal/server/handlers_logging\.go
-      text: G107
-    - linters:
-        - typecheck
-      path: internal/migrations/migrations\.go
-      text: 'pattern .*: no matching files found'
-    - linters:
-        - staticcheck
-      text: 'ST1005: error strings should not be capitalized'
-    - linters:
-        - errcheck
-      text: "Error return value of .*(Close|Remove|Setenv|Chdir|MkdirAll|WriteFile|Fprintf|Fprint|Write|Encode) .* is not checked"
-    - linters:
-        - errcheck
-      text: 'Error return value of `w\.Write` is not checked'
-    - linters:
-        - errcheck
-      text: 'Error return value of `s\.caddyClient\.DeleteRoute` is not checked'
-    - linters:
-        - errcheck
-      path: internal/server/handlers\.go
-      text: 'Error return value of `s\.dockerClient\.GetAppDetails` is not checked'
-    - linters:
-        - errcheck
-      path: internal/server/api_handlers_chat\.go
-      text: 'Error return value of `.*\.Encode` is not checked'
-    - linters:
-        - errcheck
-      path: internal/server/api_handlers_status\.go
-      text: 'Error return value of `json\.NewEncoder\(w\)\.Encode` is not checked'
-    - linters:
-        - errcheck
-      path: internal/server/api_handlers_status\.go
-      text: 'Error return value of `\(\*encoding/json\.Encoder\)\.Encode` is not checked'
-    - linters:
-        - errcheck
-      path: internal/server/handlers_logging\.go
-      text: 'Error return value of `.*\.Encode` is not checked'
-    - linters:
-        - errcheck
-      path: internal/server/handlers_logging\.go
-      text: 'Error return value of `file\.WriteString` is not checked'
-    - linters:
-        - errcheck
-      path: internal/server/handlers_logging\.go
-      text: 'Error return value of `io\.Copy` is not checked'
-    - linters:
-        - errcheck
-      path: internal/server/handlers_logging\.go
-      text: 'Error return value of `fmt\.Sscanf` is not checked'
-    - linters:
-        - errcheck
-      path: internal/server/handlers_models\.go
-      text: 'Error return value of `.*\.Encode` is not checked'
-    - linters:
-        - errcheck
-      path: internal/ollama/worker\.go
-      text: 'Error return value of `cmd\.Wait` is not checked'
-    - linters:
-        - gosec
-      path: internal/database/database\.go
-      text: G201
-    - linters:
-        - gosec
-      text: G304
-    - linters:
-        - gosec
-      text: G203
-    - linters:
-        - gosec
-      text: G301
-    - linters:
-        - gosec
-      text: G306
-    - linters:
-        - gosec
-      text: G302
-    - linters:
-        - gosec
-      path: cmd/treeos/main\.go
-      text: G204
-    - linters:
-        - gosec
-      path: internal/ollama/worker\.go
-      text: G204
-    - linters:
-        - staticcheck
-      path: internal/docker/container_naming_test\.go
-      text: 'SA1019: types.Container is deprecated'
-    - linters:
-        - revive
-      path: internal/update/types\.go
-      text: stutters
   max-issues-per-linter: 0
   max-same-issues: 0
+formatters:
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
