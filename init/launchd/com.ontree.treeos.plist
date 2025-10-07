@@ -7,7 +7,7 @@
 
     <key>ProgramArguments</key>
     <array>
-        <string>/opt/ontree/treeos</string>
+        <string>/usr/local/ontree/treeos</string>
     </array>
 
     <key>UserName</key>
@@ -17,7 +17,7 @@
     <string>staff</string>
 
     <key>WorkingDirectory</key>
-    <string>/opt/ontree</string>
+    <string>/usr/local/ontree</string>
 
     <key>EnvironmentVariables</key>
     <dict>
@@ -37,10 +37,10 @@
     </dict>
 
     <key>StandardOutPath</key>
-    <string>/opt/ontree/logs/treeos.log</string>
+    <string>/usr/local/ontree/logs/treeos.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/opt/ontree/logs/treeos.error.log</string>
+    <string>/usr/local/ontree/logs/treeos.error.log</string>
 
     <key>ThrottleInterval</key>
     <integer>10</integer>
