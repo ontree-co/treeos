@@ -27,15 +27,30 @@ func Initialize(dbPath string) error {
 		db = nil
 	}
 
-	db, err = sql.Open("sqlite3", dbPath)
-	if err != nil {
-		return fmt.Errorf("failed to open database: %w", err)
+	// Add retry logic for database initialization after updates
+	var retryCount = 3
+	for i := 0; i < retryCount; i++ {
+		db, err = sql.Open("sqlite3", dbPath)
+		if err != nil {
+			if i < retryCount-1 {
+				log.Printf("Attempt %d: Failed to open database, retrying in 1 second: %v", i+1, err)
+				time.Sleep(1 * time.Second)
+				continue
+			}
+			return fmt.Errorf("failed to open database after %d attempts: %w", retryCount, err)
+		}
+		break
 	}
 
 	// Configure connection pool for better concurrency handling
 	db.SetMaxOpenConns(25)
 	db.SetMaxIdleConns(5)
 	db.SetConnMaxLifetime(5 * time.Minute)
+
+	// Force a checkpoint first to recover from any WAL issues after restart
+	if _, err := db.Exec("PRAGMA wal_checkpoint(RESTART)"); err != nil {
+		log.Printf("Warning: Could not checkpoint on startup: %v", err)
+	}
 
 	// Enable WAL mode for better concurrency (if not already enabled)
 	if _, err := db.Exec("PRAGMA journal_mode=WAL"); err != nil {
@@ -47,8 +62,17 @@ func Initialize(dbPath string) error {
 		log.Printf("Warning: Could not set synchronous mode: %v", err)
 	}
 
-	if err := db.Ping(); err != nil {
-		return fmt.Errorf("failed to ping database: %w", err)
+	// Retry ping with backoff
+	for i := 0; i < retryCount; i++ {
+		if err := db.Ping(); err != nil {
+			if i < retryCount-1 {
+				log.Printf("Attempt %d: Failed to ping database, retrying: %v", i+1, err)
+				time.Sleep(time.Duration(i+1) * time.Second)
+				continue
+			}
+			return fmt.Errorf("failed to ping database after %d attempts: %w", retryCount, err)
+		}
+		break
 	}
 
 	// Run migrations - this must complete synchronously
@@ -100,7 +124,7 @@ func createTables() error {
 			id INTEGER PRIMARY KEY CHECK (id = 1),
 			is_setup_complete INTEGER DEFAULT 0,
 			setup_date DATETIME,
-			node_name TEXT DEFAULT 'OnTree Node',
+			node_name TEXT DEFAULT 'TreeOS Node',
 			node_description TEXT,
 			public_base_domain TEXT,
 			tailscale_auth_key TEXT,
