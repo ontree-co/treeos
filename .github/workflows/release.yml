@@ -59,9 +59,20 @@ jobs:
         uses: goreleaser/goreleaser-action@v6
         with:
           version: latest
-          args: release --clean
+          args: release --clean --verbose
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check release artifacts
+        run: |
+          echo "=== Checking if release was created ==="
+          gh release list --limit 5 || echo "Failed to list releases"
+          echo "=== Checking dist directory ==="
+          ls -la dist/ || echo "No dist directory"
+          echo "=== Checking for release ==="
+          gh release view ${{ github.ref_name }} || echo "Release not found"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   publish-to-public:
     name: Publish to Public Repository
