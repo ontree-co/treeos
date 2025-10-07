@@ -194,6 +194,10 @@ func (s *Server) Shutdown() {
 		}
 	}
 	if s.db != nil {
+		// Checkpoint the database before closing to ensure WAL is written
+		if _, err := s.db.Exec("PRAGMA wal_checkpoint(TRUNCATE)"); err != nil {
+			log.Printf("Warning: Failed to checkpoint database during shutdown: %v", err)
+		}
 		// Close the global database connection, not just the local one
 		if err := database.Close(); err != nil {
 			log.Printf("Error closing database: %v", err)

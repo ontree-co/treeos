@@ -195,7 +195,19 @@ func (s *Server) handleSystemUpdateApply(w http.ResponseWriter, r *http.Request)
 			})
 		}
 
-		// Give time for the response to be sent
+		// Give time for the response to be sent and database to settle
+		time.Sleep(3 * time.Second)
+
+		// Force database checkpoint before shutdown to ensure WAL is written
+		if s.db != nil {
+			log.Println("Performing database checkpoint before restart...")
+			if _, err := s.db.Exec("PRAGMA wal_checkpoint(TRUNCATE)"); err != nil {
+				log.Printf("Warning: Failed to checkpoint database before restart: %v", err)
+			}
+			// Don't close database here - Shutdown() will do it
+		}
+
+		// Add a bit more time for filesystem to sync
 		time.Sleep(2 * time.Second)
 
 		// The systemd service should restart the application
