@@ -104,6 +104,7 @@ release:
   prerelease: auto
   name_template: "{{.ProjectName}}-v{{.Version}}"
   mode: replace
+  replace_existing_artifacts: true
   footer: |
     ## Installation
 
