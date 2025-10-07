@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/minio/selfupdate"
@@ -177,9 +178,109 @@ func (s *Service) isNewerVersion(latestVersion string) bool {
 		return true // Always allow updates from dev versions
 	}
 
-	// Simple string comparison for now
-	// TODO: Implement semantic version comparison
-	return latest > current
+	// Compare semantic versions properly
+	return compareVersions(latest, current) > 0
+}
+
+// compareVersions compares two semantic version strings
+// Returns: 1 if v1 > v2, -1 if v1 < v2, 0 if equal
+func compareVersions(v1, v2 string) int {
+	// Split versions into parts (e.g., "0.1.0-beta.10" -> ["0.1.0", "beta.10"])
+	parts1 := strings.SplitN(v1, "-", 2)
+	parts2 := strings.SplitN(v2, "-", 2)
+
+	// Compare main version numbers
+	mainCmp := compareVersionParts(parts1[0], parts2[0])
+	if mainCmp != 0 {
+		return mainCmp
+	}
+
+	// If main versions are equal, compare pre-release versions
+	// No pre-release version is higher than having a pre-release
+	if len(parts1) == 1 && len(parts2) == 2 {
+		return 1 // v1 (stable) > v2 (pre-release)
+	}
+	if len(parts1) == 2 && len(parts2) == 1 {
+		return -1 // v1 (pre-release) < v2 (stable)
+	}
+	if len(parts1) == 2 && len(parts2) == 2 {
+		// Both have pre-release versions, compare them
+		return comparePreRelease(parts1[1], parts2[1])
+	}
+
+	return 0
+}
+
+// compareVersionParts compares main version numbers (e.g., "0.1.0" vs "0.2.0")
+func compareVersionParts(v1, v2 string) int {
+	parts1 := strings.Split(v1, ".")
+	parts2 := strings.Split(v2, ".")
+
+	// Pad shorter version with zeros
+	maxLen := len(parts1)
+	if len(parts2) > maxLen {
+		maxLen = len(parts2)
+	}
+
+	for i := 0; i < maxLen; i++ {
+		var n1, n2 int
+
+		if i < len(parts1) {
+			n1, _ = strconv.Atoi(parts1[i])
+		}
+		if i < len(parts2) {
+			n2, _ = strconv.Atoi(parts2[i])
+		}
+
+		if n1 > n2 {
+			return 1
+		}
+		if n1 < n2 {
+			return -1
+		}
+	}
+
+	return 0
+}
+
+// comparePreRelease compares pre-release versions (e.g., "beta.9" vs "beta.10")
+func comparePreRelease(pr1, pr2 string) int {
+	// Split by dots to handle "beta.10", "rc.1", etc.
+	parts1 := strings.Split(pr1, ".")
+	parts2 := strings.Split(pr2, ".")
+
+	for i := 0; i < len(parts1) && i < len(parts2); i++ {
+		// Try to parse as number first
+		n1, err1 := strconv.Atoi(parts1[i])
+		n2, err2 := strconv.Atoi(parts2[i])
+
+		// If both are numbers, compare numerically
+		if err1 == nil && err2 == nil {
+			if n1 > n2 {
+				return 1
+			}
+			if n1 < n2 {
+				return -1
+			}
+			continue
+		}
+
+		// Otherwise compare as strings
+		cmp := strings.Compare(parts1[i], parts2[i])
+		if cmp != 0 {
+			return cmp
+		}
+	}
+
+	// If all compared parts are equal, longer version is greater
+	if len(parts1) > len(parts2) {
+		return 1
+	}
+	if len(parts1) < len(parts2) {
+		return -1
+	}
+
+	return 0
 }
 
 // GetCurrentVersion returns the current version
