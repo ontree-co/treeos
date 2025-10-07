@@ -134,7 +134,7 @@ func (r *Runner) checkDocker(ctx context.Context) CheckResult {
 }
 
 func (r *Runner) checkDockerCompose(ctx context.Context) CheckResult {
-	// Try docker compose (v2)
+	// Only check for docker compose v2 (plugin version)
 	version, err := commandVersion(ctx, "docker", "compose", "version")
 	if err == nil {
 		return CheckResult{
@@ -146,15 +146,16 @@ func (r *Runner) checkDockerCompose(ctx context.Context) CheckResult {
 		}
 	}
 
-	// Try docker-compose (v1)
-	version, err = commandVersion(ctx, "docker-compose", "--version")
-	if err == nil {
+	// Check if docker-compose v1 is installed (to provide better error message)
+	_, v1err := commandVersion(ctx, "docker-compose", "--version")
+	if v1err == nil {
 		return CheckResult{
-			ID:      "docker_compose",
-			Name:    "Docker Compose",
-			Status:  StatusOK,
-			Message: "Docker Compose v1 ready",
-			Version: version,
+			ID:          "docker_compose",
+			Name:        "Docker Compose",
+			Status:      StatusError,
+			Message:     "Docker Compose v2 required",
+			Details:     "Docker Compose v1 (standalone) found but v2 (Docker plugin) is required",
+			Remediation: dockerComposeRemediation(),
 		}
 	}
 
@@ -162,8 +163,8 @@ func (r *Runner) checkDockerCompose(ctx context.Context) CheckResult {
 		ID:          "docker_compose",
 		Name:        "Docker Compose",
 		Status:      StatusError,
-		Message:     "Docker Compose not available",
-		Details:     "Neither 'docker compose' (v2) nor 'docker-compose' (v1) found",
+		Message:     "Docker Compose v2 not available",
+		Details:     "Docker Compose v2 (plugin) is required but not found",
 		Remediation: dockerComposeRemediation(),
 	}
 }
@@ -273,10 +274,26 @@ func dockerDaemonRemediation() []string {
 }
 
 func dockerComposeRemediation() []string {
-	return []string{
-		"Install Docker Compose v2 (recommended): Docker Desktop includes it",
-		"Or install standalone: sudo apt-get install docker-compose-plugin",
-		"Or download binary: https://github.com/docker/compose/releases",
+	switch runtime.GOOS {
+	case "darwin":
+		return []string{
+			"Docker Compose v2 is required (not the standalone v1)",
+			"Install Docker Desktop which includes Compose v2: https://docker.com/products/docker-desktop",
+			"Or install via Homebrew: brew install docker-compose",
+		}
+	case "linux":
+		return []string{
+			"Docker Compose v2 is required (not the standalone docker-compose v1)",
+			"Install as Docker plugin: sudo apt-get update && sudo apt-get install docker-compose-plugin",
+			"For other distros: https://docs.docker.com/compose/install/linux/",
+			"Verify installation: docker compose version",
+		}
+	default:
+		return []string{
+			"Docker Compose v2 is required (as a Docker plugin)",
+			"Install from: https://docs.docker.com/compose/install/",
+			"Ensure 'docker compose' command works (not 'docker-compose')",
+		}
 	}
 }
 
