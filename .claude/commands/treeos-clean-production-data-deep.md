@@ -37,7 +37,7 @@ Ask the user to confirm by typing "yes" to proceed with COMPLETE deletion.
 ### Step 2: Execute Deep Cleanup (only if confirmed)
 If the user types "yes", execute the deep cleanup script with sudo:
 
-!sudo ./.claude/commands/clean-production-deep-noconfirm.sh
+!sudo ./.claude/commands/treeos-clean-production-deep-noconfirm.sh
 
 ### Step 3: Report Results
 After successful cleanup:
@@ -55,7 +55,7 @@ After deep cleanup, TreeOS must be completely reinstalled:
 
 **CRITICAL REMINDERS**:
 - ALWAYS get explicit "yes" confirmation from the user before executing deep cleanup
-- Use the non-interactive script `.claude/commands/clean-production-deep-noconfirm.sh` after confirmation
+- Use the non-interactive script `.claude/commands/treeos-clean-production-deep-noconfirm.sh` after confirmation
 - Script requires sudo privileges
 - This removes EVERYTHING - complete data loss
 - Container images will be re-downloaded (important for testing download scenarios)

@@ -35,7 +35,7 @@ Ask the user to confirm by typing "yes" to proceed with COMPLETE deletion.
 ### Step 2: Execute Deep Cleanup (only if confirmed)
 If the user types "yes", execute the deep cleanup script:
 
-!./.claude/commands/clean-demo-deep-noconfirm.sh
+!./.claude/commands/treeos-clean-demo-deep-noconfirm.sh
 
 ### Step 3: Report Results
 After successful cleanup:
@@ -52,7 +52,7 @@ After deep cleanup:
 
 **CRITICAL REMINDERS**:
 - ALWAYS get explicit "yes" confirmation from the user before executing deep cleanup
-- Use the non-interactive script `.claude/commands/clean-demo-deep-noconfirm.sh` after confirmation
+- Use the non-interactive script `.claude/commands/treeos-clean-demo-deep-noconfirm.sh` after confirmation
 - This removes EVERYTHING - complete data loss for demo mode
 - Container images will be re-downloaded (important for testing download scenarios)
 - DO NOT use `rm -rf` commands manually

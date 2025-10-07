@@ -12,7 +12,12 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Configuration
-ONTREE_DIR="/opt/ontree"
+# Use /usr/local/ontree on macOS, /opt/ontree on Linux
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    ONTREE_DIR="/usr/local/ontree"
+else
+    ONTREE_DIR="/opt/ontree"
+fi
 ONTREE_USER="ontree"
 BINARY_NAME="treeos"
 SERVICE_NAME="treeos"
@@ -174,9 +179,37 @@ check_root() {
 check_existing_installation() {
     if [ -d "$ONTREE_DIR" ]; then
         print_warning "Directory $ONTREE_DIR already exists!"
-        echo "Backing up existing installation to ${ONTREE_DIR}.backup.$(date +%Y%m%d-%H%M%S)"
-        mv "$ONTREE_DIR" "${ONTREE_DIR}.backup.$(date +%Y%m%d-%H%M%S)"
-        print_success "Existing installation backed up"
+        BACKUP_DIR="${ONTREE_DIR}.backup.$(date +%Y%m%d-%H%M%S)"
+        echo "Attempting to backup existing installation to ${BACKUP_DIR}"
+
+        # Try to move the directory (this might fail on macOS due to SIP)
+        if mv "$ONTREE_DIR" "$BACKUP_DIR" 2>/dev/null; then
+            print_success "Existing installation backed up to $BACKUP_DIR"
+        else
+            # If move fails, try to stop the service first (it might be using the directory)
+            print_info "Cannot move directory, attempting to stop existing service first..."
+
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+                # macOS - stop launchd service
+                launchctl stop com.ontree.treeos 2>/dev/null || true
+                launchctl unload /Library/LaunchDaemons/com.ontree.treeos.plist 2>/dev/null || true
+            else
+                # Linux - stop systemd service
+                systemctl stop $SERVICE_NAME 2>/dev/null || true
+            fi
+
+            # Try move again after stopping service
+            if mv "$ONTREE_DIR" "$BACKUP_DIR" 2>/dev/null; then
+                print_success "Existing installation backed up to $BACKUP_DIR"
+            else
+                # If still can't move, remove the directory with warning
+                print_warning "Cannot backup existing installation due to system restrictions"
+                print_warning "The existing installation will be removed and replaced"
+                echo -n "Removing existing installation... "
+                rm -rf "$ONTREE_DIR"
+                print_success "done"
+            fi
+        fi
     fi
 }
 
@@ -348,7 +381,7 @@ create_user() {
     else
         print_info "Creating user '$ONTREE_USER'..."
 
-        # Create user with home directory in /opt/ontree
+        # Create user with home directory
         if [[ "$OSTYPE" == "darwin"* ]]; then
             # macOS user creation
             # Find next available UID > 500
@@ -387,8 +420,14 @@ create_directories() {
     mkdir -p "$ONTREE_DIR/shared/ollama"
     mkdir -p "$ONTREE_DIR/logs"
 
-    # Set ownership
-    chown -R $ONTREE_USER:$ONTREE_USER "$ONTREE_DIR"
+    # Set ownership (use appropriate group for OS)
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS uses staff group
+        chown -R $ONTREE_USER:staff "$ONTREE_DIR"
+    else
+        # Linux uses same name as user
+        chown -R $ONTREE_USER:$ONTREE_USER "$ONTREE_DIR"
+    fi
 
     # Set permissions
     chmod 755 "$ONTREE_DIR"
@@ -404,11 +443,17 @@ create_directories() {
 install_binary() {
     print_info "Installing TreeOS binary..."
 
-    # Copy binary from /tmp to /opt/ontree
+    # Copy binary from /tmp to installation directory
     cp "/tmp/$BINARY_NAME" "$ONTREE_DIR/$BINARY_NAME"
 
-    # Set ownership and permissions
-    chown $ONTREE_USER:$ONTREE_USER "$ONTREE_DIR/$BINARY_NAME"
+    # Set ownership and permissions (use appropriate group for OS)
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS uses staff group
+        chown $ONTREE_USER:staff "$ONTREE_DIR/$BINARY_NAME"
+    else
+        # Linux uses same name as user
+        chown $ONTREE_USER:$ONTREE_USER "$ONTREE_DIR/$BINARY_NAME"
+    fi
     chmod 755 "$ONTREE_DIR/$BINARY_NAME"
 
     # Clean up downloaded binary
@@ -481,7 +526,7 @@ install_launchd_service() {
     print_info "Installing launchd service..."
 
     # Create launchd plist file
-    cat > /Library/LaunchDaemons/com.ontree.treeos.plist << 'EOF'
+    cat > /Library/LaunchDaemons/com.ontree.treeos.plist << EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -490,10 +535,10 @@ install_launchd_service() {
     <string>com.ontree.treeos</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/opt/ontree/treeos</string>
+        <string>${ONTREE_DIR}/treeos</string>
     </array>
     <key>WorkingDirectory</key>
-    <string>/opt/ontree</string>
+    <string>${ONTREE_DIR}</string>
     <key>UserName</key>
     <string>ontree</string>
     <key>GroupName</key>
@@ -506,13 +551,13 @@ install_launchd_service() {
         <false/>
     </dict>
     <key>StandardOutPath</key>
-    <string>/opt/ontree/logs/treeos.log</string>
+    <string>${ONTREE_DIR}/logs/treeos.log</string>
     <key>StandardErrorPath</key>
-    <string>/opt/ontree/logs/treeos.error.log</string>
+    <string>${ONTREE_DIR}/logs/treeos.error.log</string>
     <key>EnvironmentVariables</key>
     <dict>
         <key>HOME</key>
-        <string>/opt/ontree</string>
+        <string>${ONTREE_DIR}</string>
         <key>PATH</key>
         <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
     </dict>
