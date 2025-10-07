@@ -16,7 +16,7 @@ test.describe('Dashboard and System Vitals', () => {
     await expect(page.url()).toMatch(/^http:\/\/localhost:3002\/(\?.*)?$/);
     
     // Verify header elements
-    await expect(page.locator('.navbar-brand')).toContainText('OnTree.co');
+    await expect(page.locator('.navbar-brand')).toContainText('TreeOS');
     // User initial might be in a dropdown or different selector
     const userInitial = page.locator('.user-initial, .dropdown-toggle:has-text("admin"), .navbar .dropdown-toggle').first();
     if (await userInitial.count() > 0) {

@@ -3,7 +3,7 @@
 Place your IBM Plex font files here:
 
 - `IBMPlexSans-Regular.woff2` - Main body text font
-- `IBMPlexMono-Italic.woff2` - Brand/monospace font for OnTree.co logo
+- `IBMPlexMono-Italic.woff2` - Brand/monospace font for TreeOS logo
 
 The fonts are self-hosted for faster loading and better reliability compared to external font services like Google Fonts.
 
