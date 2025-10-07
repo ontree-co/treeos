@@ -345,14 +345,16 @@ check_docker() {
         print_error "Docker Compose v2 is required (found v1 standalone)"
         echo "TreeOS requires Docker Compose v2 (plugin version), not the standalone v1"
         echo "Install Docker Compose v2:"
-        echo "  Linux: sudo apt-get update && sudo apt-get install docker-compose-plugin"
+        echo "  Ubuntu/Debian: sudo apt update && sudo apt install docker-compose-v2"
+        echo "  Via Docker repo: sudo apt update && sudo apt install docker-compose-plugin"
         echo "  macOS: Install Docker Desktop which includes Compose v2"
         echo "  Other: https://docs.docker.com/compose/install/"
         exit 1
     else
         print_error "Docker Compose v2 is required but not found."
         echo "Install Docker Compose v2:"
-        echo "  Linux: sudo apt-get update && sudo apt-get install docker-compose-plugin"
+        echo "  Ubuntu/Debian: sudo apt update && sudo apt install docker-compose-v2"
+        echo "  Via Docker repo: sudo apt update && sudo apt install docker-compose-plugin"
         echo "  macOS: Install Docker Desktop which includes Compose v2"
         echo "  Other: https://docs.docker.com/compose/install/"
         exit 1

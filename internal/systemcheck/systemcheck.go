@@ -284,8 +284,9 @@ func dockerComposeRemediation() []string {
 	case "linux":
 		return []string{
 			"Docker Compose v2 is required (not the standalone docker-compose v1)",
-			"Install as Docker plugin: sudo apt-get update && sudo apt-get install docker-compose-plugin",
-			"For other distros: https://docs.docker.com/compose/install/linux/",
+			"Ubuntu/Debian: sudo apt update && sudo apt install docker-compose-v2",
+			"Or via Docker repos: sudo apt update && sudo apt install docker-compose-plugin",
+			"Other distros: https://docs.docker.com/compose/install/linux/",
 			"Verify installation: docker compose version",
 		}
 	default:
