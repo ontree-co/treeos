@@ -47,9 +47,9 @@ jobs:
 
           # Build with version info
           go build -ldflags "-s -w \
-            -X github.com/stefanmunz/ontree-node/internal/version.Version=v${VERSION} \
-            -X github.com/stefanmunz/ontree-node/internal/version.Commit=${GITHUB_SHA} \
-            -X github.com/stefanmunz/ontree-node/internal/version.BuildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            -X treeos/internal/version.Version=v${VERSION} \
+            -X treeos/internal/version.Commit=${GITHUB_SHA} \
+            -X treeos/internal/version.BuildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             -o treeos-darwin-${{ matrix.arch }} \
             ./cmd/treeos
 
@@ -58,8 +58,16 @@ jobs:
           VERSION=${GITHUB_REF#refs/tags/v}
           ARCHIVE_NAME="treeos_${VERSION}_darwin_${{ matrix.arch }}.tar.gz"
 
-          # Create archive matching GoReleaser format
-          tar -czf "${ARCHIVE_NAME}" treeos-darwin-${{ matrix.arch }}
+          # Rename binary to standard name
+          mv treeos-darwin-${{ matrix.arch }} treeos
+
+          # Create archive matching GoReleaser format with support files
+          tar -czf "${ARCHIVE_NAME}" \
+            treeos \
+            README.setup.md \
+            setup-production.sh \
+            init/launchd/com.ontree.treeos.plist \
+            || tar -czf "${ARCHIVE_NAME}" treeos
 
           # Generate checksum
           shasum -a 256 "${ARCHIVE_NAME}" > "${ARCHIVE_NAME}.sha256"
