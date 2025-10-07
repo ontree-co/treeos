@@ -31,23 +31,6 @@ builds:
       - -X {{.ModulePath}}/internal/version.Commit={{.Commit}}
       - -X {{.ModulePath}}/internal/version.BuildDate={{.Date}}
   
-  - id: treeos-arm64
-    main: ./cmd/treeos
-    binary: treeos
-    env:
-      - CGO_ENABLED=1
-      - CC=aarch64-linux-gnu-gcc
-      - CXX=aarch64-linux-gnu-g++
-    goos:
-      - linux
-    goarch:
-      - arm64
-    ldflags:
-      - -s -w
-      - -X {{.ModulePath}}/internal/version.Version={{.Version}}
-      - -X {{.ModulePath}}/internal/version.Commit={{.Commit}}
-      - -X {{.ModulePath}}/internal/version.BuildDate={{.Date}}
-
   - id: treeos-darwin-arm64
     main: ./cmd/treeos
     binary: treeos
@@ -125,6 +108,10 @@ release:
     ## Installation
 
     Download the appropriate package for your platform from the assets below.
+
+    ### Supported Platforms
+    - **Linux AMD64** (x86_64) - Intel/AMD processors
+    - **macOS ARM64** (Apple Silicon) - M1/M2/M3 chips
 
     ### Quick Start (Demo Mode)
     ```bash

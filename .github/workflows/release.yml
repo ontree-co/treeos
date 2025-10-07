@@ -47,11 +47,6 @@ jobs:
           cache: true
           cache-dependency-path: go.sum
 
-      - name: Install cross-compilation dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-
       - name: Prepare embedded assets
         run: make embed-assets
 
@@ -117,11 +112,11 @@ jobs:
           sudo mv treeos /usr/local/bin/
           sudo chmod +x /usr/local/bin/treeos
           ```
-          
-          ### Linux (ARM64)
+
+          ### macOS (Apple Silicon)
           ```bash
-          wget https://github.com/ontree-co/treeos/releases/download/${{ steps.get_release.outputs.TAG }}/treeos_${{ steps.get_release.outputs.VERSION }}_linux_arm64.tar.gz
-          tar -xzf treeos_${{ steps.get_release.outputs.VERSION }}_linux_arm64.tar.gz
+          wget https://github.com/ontree-co/treeos/releases/download/${{ steps.get_release.outputs.TAG }}/treeos_${{ steps.get_release.outputs.VERSION }}_darwin_arm64.tar.gz
+          tar -xzf treeos_${{ steps.get_release.outputs.VERSION }}_darwin_arm64.tar.gz
           sudo mv treeos /usr/local/bin/
           sudo chmod +x /usr/local/bin/treeos
           ```
