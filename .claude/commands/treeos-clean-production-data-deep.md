@@ -34,16 +34,32 @@ If the user confirms with "yes", proceed with deep cleanup. Otherwise, abort the
 ### Step 1: Get User Confirmation
 Ask the user to confirm by typing "yes" to proceed with COMPLETE deletion.
 
-### Step 2: Execute Deep Cleanup (only if confirmed)
-If the user types "yes", execute the deep cleanup script with sudo:
+### Step 2: Provide Cleanup Command (only if confirmed)
+If the user types "yes", provide the cleanup command for the user to run manually:
 
-!sudo ./.claude/commands/treeos-clean-production-deep-noconfirm.sh
+Tell the user to run this command in their terminal:
+```bash
+sudo ./.claude/commands/treeos-clean-production-deep-noconfirm.sh
+```
 
-### Step 3: Report Results
-After successful cleanup:
-!echo "TreeOS has been completely removed from the system, including all containers, images, shared data and Ollama models."
+**IMPORTANT**: DO NOT immediately check for results or assume the script has run. The script requires sudo and must be run manually by the user.
 
-If the user doesn't confirm, respond:
+### Step 3: Wait for User Confirmation
+After providing the command, ask the user to:
+1. Run the command in their terminal
+2. Once complete, either:
+   - Type "done" to confirm they've run it
+   - Or paste the output from the script
+
+**DO NOT** check `/opt/ontree` or Docker containers immediately - the folder might already be missing from previous operations, which doesn't mean the script has run.
+
+### Step 4: Verify Results (only after user confirms)
+Only after the user confirms they've run the script (by typing "done" or pasting output):
+- Check if `/opt/ontree` exists
+- Check for remaining Docker containers/images
+- Report the final status
+
+If the user doesn't confirm with "yes" in Step 1:
 !echo "Deep cleanup cancelled. No data was deleted."
 
 ## Reinstallation

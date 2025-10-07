@@ -311,7 +311,10 @@ download_binary() {
         mv "/tmp/treeos-${OS}-${ARCH}" "/tmp/$BINARY_NAME"
     elif [ -f "/tmp/treeos" ]; then
         # Fallback if archive contains just 'treeos'
-        mv "/tmp/treeos" "/tmp/$BINARY_NAME"
+        # Only move if the names are different, otherwise it's already correct
+        if [ "/tmp/treeos" != "/tmp/$BINARY_NAME" ]; then
+            mv "/tmp/treeos" "/tmp/$BINARY_NAME"
+        fi
     else
         print_error "Could not find TreeOS binary in extracted archive"
         exit 1
@@ -357,19 +360,7 @@ check_docker() {
         exit 1
     fi
 
-    # Add ontree user to docker group (Linux only)
-    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-        if getent group docker >/dev/null 2>&1; then
-            if ! id -nG "$ONTREE_USER" 2>/dev/null | grep -qw docker; then
-                print_info "Adding user '$ONTREE_USER' to docker group..."
-                usermod -aG docker "$ONTREE_USER"
-                print_success "User '$ONTREE_USER' added to docker group"
-                print_info "Note: You may need to restart the TreeOS service for group changes to take effect"
-            else
-                print_success "User '$ONTREE_USER' already in docker group"
-            fi
-        fi
-    fi
+    # Docker group membership will be configured after user creation
 }
 
 # Create ontree user if it doesn't exist
@@ -407,6 +398,23 @@ create_user() {
         fi
 
         print_success "User '$ONTREE_USER' created"
+    fi
+}
+
+# Configure docker group membership for ontree user
+configure_docker_group() {
+    # Add ontree user to docker group (Linux only)
+    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        if getent group docker >/dev/null 2>&1; then
+            if ! id -nG "$ONTREE_USER" 2>/dev/null | grep -qw docker; then
+                print_info "Adding user '$ONTREE_USER' to docker group..."
+                usermod -aG docker "$ONTREE_USER"
+                print_success "User '$ONTREE_USER' added to docker group"
+                print_info "Note: You may need to restart the TreeOS service for group changes to take effect"
+            else
+                print_success "User '$ONTREE_USER' already in docker group"
+            fi
+        fi
     fi
 }
 
@@ -623,6 +631,7 @@ main() {
 
     # Execute installation steps
     create_user
+    configure_docker_group
     install_rocm
     configure_gpu_permissions
     create_directories
