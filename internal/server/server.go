@@ -65,6 +65,7 @@ type Server struct {
 	stopOnce              sync.Once
 	updateMu              sync.Mutex
 	composeHealthy        bool
+	httpServer            *http.Server
 }
 
 var (
@@ -178,6 +179,17 @@ func New(cfg *config.Config, versionInfo version.Info) (*Server, error) {
 
 // Shutdown gracefully shuts down the server
 func (s *Server) Shutdown() {
+	log.Println("Starting graceful shutdown...")
+
+	// First, shutdown the HTTP server to stop accepting new requests
+	if s.httpServer != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := s.httpServer.Shutdown(ctx); err != nil {
+			log.Printf("HTTP server shutdown error: %v", err)
+		}
+	}
+
 	s.stopOnce.Do(func() {
 		if s.stopCh != nil {
 			close(s.stopCh)
@@ -195,14 +207,17 @@ func (s *Server) Shutdown() {
 	}
 	if s.db != nil {
 		// Checkpoint the database before closing to ensure WAL is written
+		log.Println("Checkpointing database before shutdown...")
 		if _, err := s.db.Exec("PRAGMA wal_checkpoint(TRUNCATE)"); err != nil {
 			log.Printf("Warning: Failed to checkpoint database during shutdown: %v", err)
 		}
 		// Close the global database connection, not just the local one
+		log.Println("Closing database connection...")
 		if err := database.Close(); err != nil {
 			log.Printf("Error closing database: %v", err)
 		}
 	}
+	log.Println("Graceful shutdown complete")
 }
 
 // loadTemplates loads all HTML templates
@@ -566,7 +581,7 @@ func (s *Server) Start() error {
 	log.Printf("Starting server on %s", addr)
 
 	// Create server with proper timeouts
-	server := &http.Server{
+	s.httpServer = &http.Server{
 		Addr:         addr,
 		Handler:      mux,
 		ReadTimeout:  15 * time.Second,
@@ -574,7 +589,7 @@ func (s *Server) Start() error {
 		IdleTimeout:  60 * time.Second,
 	}
 
-	return server.ListenAndServe()
+	return s.httpServer.ListenAndServe()
 }
 
 // startVitalsCleanup runs a background job to clean up old system vital logs

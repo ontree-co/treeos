@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -211,8 +212,13 @@ func (s *Server) handleSystemUpdateApply(w http.ResponseWriter, r *http.Request)
 		time.Sleep(2 * time.Second)
 
 		// The systemd service should restart the application
-		// Exit cleanly to trigger restart
+		// Call Shutdown to cleanly close everything
 		s.Shutdown()
+
+		// Now exit the process to trigger systemd restart
+		// This will also trigger the defer in main.go
+		log.Println("Exiting process to trigger systemd restart...")
+		os.Exit(0)
 	}()
 
 	w.Header().Set("Content-Type", "application/json")
