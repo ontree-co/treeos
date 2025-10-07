@@ -56,7 +56,7 @@ func (s *GitHubUpdateSource) FetchManifest(channel UpdateChannel) (*UpdateManife
 		// Get the latest non-prerelease
 		apiURL = fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", s.Owner, s.Repo)
 	} else {
-		// Get all releases and filter for latest prerelease
+		// Get all releases and filter for latest beta/prerelease
 		apiURL = fmt.Sprintf("https://api.github.com/repos/%s/%s/releases", s.Owner, s.Repo)
 	}
 
@@ -89,15 +89,16 @@ func (s *GitHubUpdateSource) FetchManifest(channel UpdateChannel) (*UpdateManife
 		}
 		release = &singleRelease
 	} else {
-		// Parse array of releases and find latest prerelease
+		// Parse array of releases and find latest beta release
 		var releases []GitHubRelease
 		if err := json.NewDecoder(resp.Body).Decode(&releases); err != nil {
 			return nil, fmt.Errorf("failed to decode releases: %w", err)
 		}
 
-		// Find the latest prerelease
+		// Find the latest beta release (either marked as prerelease or with beta in version)
 		for i := range releases {
-			if releases[i].Prerelease {
+			// Check if it's a prerelease OR has "beta" in the tag name
+			if releases[i].Prerelease || strings.Contains(strings.ToLower(releases[i].TagName), "beta") {
 				release = &releases[i]
 				break
 			}
