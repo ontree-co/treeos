@@ -308,7 +308,9 @@ func (t *tarGzBinaryExtractor) extract() {
 			hasher := sha256.New()
 			multiWriter := io.MultiWriter(t.pipeWriter, hasher)
 
-			_, err = io.Copy(multiWriter, tarReader)
+			// Limit the size to prevent decompression bombs (max 200MB for binary)
+			limitedReader := io.LimitReader(tarReader, 200*1024*1024)
+			_, err = io.Copy(multiWriter, limitedReader) //nolint:gosec // Size limited to 200MB
 			if err != nil {
 				t.pipeWriter.CloseWithError(fmt.Errorf("failed to extract binary: %w", err))
 				return
