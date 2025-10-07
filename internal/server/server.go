@@ -566,11 +566,14 @@ func (s *Server) Start() error {
 		}
 	}))))
 
-	// Monitoring routes (only if enabled)
-	if s.config.MonitoringEnabled {
-		mux.HandleFunc("/monitoring", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleMonitoring))))
-		mux.HandleFunc("/monitoring/", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.routeMonitoring))))
-	}
+	// Monitoring routes have been removed - functionality is integrated into dashboard
+	// Keeping the redirect handler for backwards compatibility
+	mux.HandleFunc("/monitoring", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/", http.StatusMovedPermanently)
+	})
+	mux.HandleFunc("/monitoring/", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/", http.StatusMovedPermanently)
+	})
 
 	// Start server
 	addr := s.config.ListenAddr

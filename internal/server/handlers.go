@@ -440,10 +440,18 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		// Redirect to next URL or dashboard
 		next := session.Values["next"]
 		if nextURL, ok := next.(string); ok && nextURL != "" {
+			// Clear the next value
 			delete(session.Values, "next")
 			if err := session.Save(r, w); err != nil {
 				log.Printf("Failed to save session: %v", err)
 			}
+
+			// Skip deprecated/old routes and go to dashboard instead
+			if strings.HasPrefix(nextURL, "/monitoring") {
+				http.Redirect(w, r, "/?login=success", http.StatusFound)
+				return
+			}
+
 			// Add login=success query param for PostHog tracking
 			if strings.Contains(nextURL, "?") {
 				nextURL += "&login=success"
