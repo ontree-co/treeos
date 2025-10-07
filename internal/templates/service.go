@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"treeos/internal/config"
 	"treeos/internal/embeds"
 )
 
@@ -110,37 +111,37 @@ func (s *Service) ProcessTemplateContent(content string, appName string) string 
 
 	// {{APP_VOLUMES_PATH}} - Context-aware path to app volumes directory
 	// In demo: ./volumes (relative to docker-compose.yml location)
-	// In production: /opt/ontree/apps/{appName}/volumes (absolute path)
+	// In production: OS-specific absolute path
 	appVolumesPath := "./volumes"
 	if !isDemo {
-		appVolumesPath = fmt.Sprintf("/opt/ontree/apps/%s/volumes", appName)
+		appVolumesPath = config.GetAppVolumesPath(appName)
 	}
 	content = strings.ReplaceAll(content, "{{APP_VOLUMES_PATH}}", appVolumesPath)
 
 	// {{APP_MNT_PATH}} - Context-aware path to app mnt directory
 	// In demo: ./mnt (relative to docker-compose.yml location)
-	// In production: /opt/ontree/apps/{appName}/mnt (absolute path)
+	// In production: OS-specific absolute path
 	appMntPath := "./mnt"
 	if !isDemo {
-		appMntPath = fmt.Sprintf("/opt/ontree/apps/%s/mnt", appName)
+		appMntPath = config.GetAppMntPath(appName)
 	}
 	content = strings.ReplaceAll(content, "{{APP_MNT_PATH}}", appMntPath)
 
 	// {{SHARED_OLLAMA_PATH}} - Context-aware path to shared Ollama models
 	// In demo: ../../shared/ollama (relative, go up 2 levels from app dir)
-	// In production: /opt/ontree/shared/ollama (absolute path)
+	// In production: OS-specific absolute path
 	sharedOllamaPath := "../../shared/ollama"
 	if !isDemo {
-		sharedOllamaPath = "/opt/ontree/shared/ollama"
+		sharedOllamaPath = config.GetSharedOllamaPath()
 	}
 	content = strings.ReplaceAll(content, "{{SHARED_OLLAMA_PATH}}", sharedOllamaPath)
 
 	// {{SHARED_PATH}} - Context-aware path to shared directory
 	// In demo: ../../shared (relative, go up 2 levels from app dir)
-	// In production: /opt/ontree/shared (absolute path)
+	// In production: OS-specific absolute path
 	sharedPath := "../../shared"
 	if !isDemo {
-		sharedPath = "/opt/ontree/shared"
+		sharedPath = config.GetSharedPath()
 	}
 	content = strings.ReplaceAll(content, "{{SHARED_PATH}}", sharedPath)
 

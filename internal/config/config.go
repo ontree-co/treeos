@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -58,24 +59,79 @@ type Config struct {
 	UptimeKumaBaseURL string `toml:"uptime_kuma_base_url"` // Base URL for Uptime Kuma API
 }
 
-// GetSharedPath returns the base path for shared resources based on the run mode
-func GetSharedPath() string {
-	// Check for run mode environment variable
+// GetBasePath returns the base ontree directory based on run mode and OS
+func GetBasePath() string {
 	if os.Getenv("TREEOS_RUN_MODE") == "demo" {
+		return "."
+	}
+	// Production mode - OS specific
+	if runtime.GOOS == "darwin" {
+		return "/usr/local/ontree"
+	}
+	return "/opt/ontree"
+}
+
+// GetAppsPath returns the apps directory path
+func GetAppsPath() string {
+	base := GetBasePath()
+	if base == "." {
+		return "./apps"
+	}
+	return filepath.Join(base, "apps")
+}
+
+// GetDatabasePath returns the database file path
+func GetDatabasePath() string {
+	base := GetBasePath()
+	if base == "." {
+		return "./ontree.db"
+	}
+	return filepath.Join(base, "ontree.db")
+}
+
+// GetSharedPath returns the base path for shared resources
+func GetSharedPath() string {
+	base := GetBasePath()
+	if base == "." {
 		return "./shared"
 	}
-	// Production mode
-	return "/opt/ontree/shared"
+	return filepath.Join(base, "shared")
 }
 
 // GetSharedOllamaPath returns the path to the shared Ollama models directory
 func GetSharedOllamaPath() string {
-	base := GetSharedPath()
-	// Ensure relative paths maintain the ./ prefix for Docker
-	if strings.HasPrefix(base, "./") {
-		return base + "/ollama"
+	sharedPath := GetSharedPath()
+	if strings.HasPrefix(sharedPath, "./") {
+		return sharedPath + "/ollama"
 	}
-	return filepath.Join(base, "ollama")
+	return filepath.Join(sharedPath, "ollama")
+}
+
+// GetAppVolumesPath returns the volumes path for a specific app
+func GetAppVolumesPath(appName string) string {
+	appsPath := GetAppsPath()
+	if strings.HasPrefix(appsPath, "./") {
+		return appsPath + "/" + appName + "/volumes"
+	}
+	return filepath.Join(appsPath, appName, "volumes")
+}
+
+// GetAppMntPath returns the mnt path for a specific app
+func GetAppMntPath(appName string) string {
+	appsPath := GetAppsPath()
+	if strings.HasPrefix(appsPath, "./") {
+		return appsPath + "/" + appName + "/mnt"
+	}
+	return filepath.Join(appsPath, appName, "mnt")
+}
+
+// GetLogsPath returns the logs directory path
+func GetLogsPath() string {
+	base := GetBasePath()
+	if base == "." {
+		return "./logs"
+	}
+	return filepath.Join(base, "logs")
 }
 
 // defaultConfig returns the default configuration based on the run mode
@@ -94,15 +150,9 @@ func defaultConfig() *Config {
 		AutoUpdateEnabled: true,
 	}
 
-	// Set paths based on run mode
-	if runMode == DemoMode {
-		config.AppsDir = "./apps"
-		config.DatabasePath = "./ontree.db"
-	} else {
-		// Production mode
-		config.AppsDir = "/opt/ontree/apps"
-		config.DatabasePath = "/opt/ontree/ontree.db"
-	}
+	// Set paths using centralized functions
+	config.AppsDir = GetAppsPath()
+	config.DatabasePath = GetDatabasePath()
 
 	return config
 }
@@ -128,11 +178,19 @@ func Load() (*Config, error) {
 		if runMode == "demo" {
 			config.RunMode = DemoMode
 			// Update default paths for demo mode if not already set
-			if config.AppsDir == "/opt/ontree/apps" {
-				config.AppsDir = "./apps"
+			// Check if we're switching from production defaults to demo
+			prodAppsPath := filepath.Join("/opt/ontree", "apps")
+			prodDBPath := filepath.Join("/opt/ontree", "ontree.db")
+			if runtime.GOOS == "darwin" {
+				prodAppsPath = filepath.Join("/usr/local/ontree", "apps")
+				prodDBPath = filepath.Join("/usr/local/ontree", "ontree.db")
 			}
-			if config.DatabasePath == "/opt/ontree/ontree.db" {
-				config.DatabasePath = "./ontree.db"
+
+			if config.AppsDir == prodAppsPath {
+				config.AppsDir = GetAppsPath()
+			}
+			if config.DatabasePath == prodDBPath {
+				config.DatabasePath = GetDatabasePath()
 			}
 		} else {
 			config.RunMode = ProductionMode

@@ -9,12 +9,13 @@ import (
 	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
+	"treeos/internal/config"
 )
 
 func main() {
 	var dbPath string
 	var dryRun bool
-	flag.StringVar(&dbPath, "db", "/opt/ontree/apps/ontree.db", "Path to the database")
+	flag.StringVar(&dbPath, "db", config.GetDatabasePath(), "Path to the database")
 	flag.BoolVar(&dryRun, "dry-run", false, "Show what would be done without making changes")
 	flag.Parse()
 

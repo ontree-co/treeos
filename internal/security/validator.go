@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v3"
+	"treeos/internal/config"
 )
 
 // DangerousCapabilities defines the list of container capabilities that are not allowed
@@ -144,9 +145,9 @@ func (v *Validator) validateBindMounts(serviceName string, service ServiceConfig
 		volumesPath = "./volumes/"
 		mntPath = "./mnt/"
 	} else {
-		// In production mode, we still use absolute paths
-		volumesPath = fmt.Sprintf("/opt/ontree/apps/%s/volumes/", v.appName)
-		mntPath = fmt.Sprintf("/opt/ontree/apps/%s/mnt/", v.appName)
+		// In production mode, use OS-specific absolute paths
+		volumesPath = fmt.Sprintf("%s/", config.GetAppVolumesPath(v.appName))
+		mntPath = fmt.Sprintf("%s/", config.GetAppMntPath(v.appName))
 	}
 
 	for _, volume := range service.Volumes {
@@ -202,14 +203,15 @@ func (v *Validator) validateBindMounts(serviceName string, service ServiceConfig
 						}
 
 						// Check if path is in one of the allowed directories
+						sharedPath := fmt.Sprintf("%s/", config.GetSharedPath())
 						if !strings.HasPrefix(hostPath, volumesPath) &&
 						   !strings.HasPrefix(hostPath, mntPath) &&
-						   !strings.HasPrefix(hostPath, "/opt/ontree/shared/") {
+						   !strings.HasPrefix(hostPath, sharedPath) {
 							return ValidationError{
 								Service: serviceName,
 								Rule:    "bind mount path",
-								Detail:  fmt.Sprintf("bind mount path '%s' is not allowed. Use paths within '%s', '%s', or '/opt/ontree/shared/'",
-									hostPath, volumesPath, mntPath),
+								Detail:  fmt.Sprintf("bind mount path '%s' is not allowed. Use paths within '%s', '%s', or '%s'",
+									hostPath, volumesPath, mntPath, sharedPath),
 							}
 						}
 					}
@@ -262,14 +264,15 @@ func (v *Validator) validateBindMounts(serviceName string, service ServiceConfig
 						}
 
 						// Check if path is in one of the allowed directories
+						sharedPath := fmt.Sprintf("%s/", config.GetSharedPath())
 						if !strings.HasPrefix(source, volumesPath) &&
 						   !strings.HasPrefix(source, mntPath) &&
-						   !strings.HasPrefix(source, "/opt/ontree/shared/") {
+						   !strings.HasPrefix(source, sharedPath) {
 							return ValidationError{
 								Service: serviceName,
 								Rule:    "bind mount path",
-								Detail:  fmt.Sprintf("bind mount path '%s' is not allowed. Use paths within '%s', '%s', or '/opt/ontree/shared/'",
-									source, volumesPath, mntPath),
+								Detail:  fmt.Sprintf("bind mount path '%s' is not allowed. Use paths within '%s', '%s', or '%s'",
+									source, volumesPath, mntPath, sharedPath),
 							}
 						}
 					}

@@ -468,11 +468,16 @@ func extractHostPort(composeContent string) (int, error) {
 
 // usesSharedModels checks if the compose content references the shared models directory
 func usesSharedModels(composeContent string) bool {
-	// Check for shared/ollama structure
-	return strings.Contains(composeContent, "/opt/ontree/shared/ollama") ||
+	// Check for shared/ollama structure in both demo and production paths
+	sharedPath := config.GetSharedPath()
+	sharedOllamaPath := config.GetSharedOllamaPath()
+
+	return strings.Contains(composeContent, sharedOllamaPath) ||
 		strings.Contains(composeContent, "./shared/ollama") ||
-		strings.Contains(composeContent, "/opt/ontree/shared/") ||
-		strings.Contains(composeContent, "./shared/")
+		strings.Contains(composeContent, "../../shared/ollama") ||
+		strings.Contains(composeContent, sharedPath) ||
+		strings.Contains(composeContent, "./shared/") ||
+		strings.Contains(composeContent, "../../shared/")
 }
 
 // ensureSharedModelsDirectory creates the shared models directory with proper permissions

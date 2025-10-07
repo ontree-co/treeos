@@ -217,12 +217,8 @@ func getAppsDir() string {
 	// Load configuration to get the apps directory
 	cfg, err := config.Load()
 	if err != nil {
-		// Fall back to mode-based defaults if config fails to load
-		isDemo := os.Getenv("TREEOS_RUN_MODE") == "demo"
-		if isDemo {
-			return "./apps"
-		}
-		return "/opt/ontree/apps"
+		// Fall back to centralized path function if config fails to load
+		return config.GetAppsPath()
 	}
 	return cfg.AppsDir
 }

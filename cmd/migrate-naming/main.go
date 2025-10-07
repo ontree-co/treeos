@@ -9,13 +9,14 @@ import (
 	"path/filepath"
 	"strings"
 
+	"treeos/internal/config"
 	"treeos/internal/naming"
 )
 
 func main() {
 	var appsDir string
 	var dryRun bool
-	flag.StringVar(&appsDir, "apps-dir", "/opt/ontree/apps", "Path to the apps directory")
+	flag.StringVar(&appsDir, "apps-dir", config.GetAppsPath(), "Path to the apps directory")
 	flag.BoolVar(&dryRun, "dry-run", false, "Show what would be done without making changes")
 	flag.Parse()
 
