@@ -23,7 +23,7 @@ type GitHubUpdateSource struct {
 // NewGitHubUpdateSource creates a new GitHub update source
 func NewGitHubUpdateSource() *GitHubUpdateSource {
 	return &GitHubUpdateSource{
-		Owner: "stefanmunz",
+		Owner: "ontree-co",
 		Repo:  "treeos",
 		HTTPClient: &http.Client{
 			Timeout: 30 * time.Second,
