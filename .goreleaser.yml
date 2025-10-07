@@ -58,7 +58,7 @@ archives:
       {{- if .Arm }}v{{ .Arm }}{{ end }}
     # Include setup files with the binary
     files:
-      - src: setup-production.sh
+      - src: .claude/commands/treeos-setup-production-noconfirm.sh
         dst: setup-production.sh
       - src: init/systemd/treeos.service
         dst: treeos.service
