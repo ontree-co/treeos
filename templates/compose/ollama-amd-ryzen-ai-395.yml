@@ -11,7 +11,6 @@ services:
     labels:
       - "ontree.inference=true"
       - "ontree.type=ollama"
-    privileged: true
     devices:
       - /dev/kfd
       - /dev/dri
