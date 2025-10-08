@@ -10,8 +10,17 @@ services:
       - {{SHARED_OLLAMA_PATH}}:/root/.ollama
     environment:
       - OLLAMA_HOST=0.0.0.0
-      - OLLAMA_KEEP_ALIVE=1h
+      - OLLAMA_KEEP_ALIVE=24h
       - OLLAMA_NUM_PARALLEL=1
     labels:
       - "ontree.inference=true"
       - "ontree.type=ollama"
+    mem_limit: 32g
+    mem_reservation: 16g
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
