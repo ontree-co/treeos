@@ -18,50 +18,70 @@ OnTree is a Podman-based container management application with a web interface f
 
 ## Quick Start
 
-### Development Setup (Fresh Linux Machine)
+### Development Setup
 
-#### 1. Install Dependencies
+This project uses [asdf](https://asdf-vm.com/) to manage tool versions consistently across all developers and CI.
 
-**Ubuntu/Debian:**
+#### One-Time Setup
+
+**Automated setup** (recommended):
+
+1. Run the development setup from Claude Code:
+   ```
+   /treeos-setup-development-environment
+   ```
+   This will install asdf via your package manager and all required tools (Go, golangci-lint, Node.js) at the exact versions specified in `.tool-versions`.
+
+   Or manually run:
+   ```bash
+   ./.claude/commands/treeos-setup-development-environment.sh
+   ```
+
+   **Note**: On Linux, this requires sudo for `apt install asdf` (or `dnf install asdf` on Fedora/RHEL).
+
+2. Restart your terminal (or run `source ~/.bashrc`) to activate asdf.
+
+3. Verify installation:
+   ```bash
+   asdf current
+   # Should show:
+   # golang          1.24.4
+   # golangci-lint   2.5.0
+   # nodejs          22.11.0
+   ```
+
+**That's it!** From now on, `asdf` automatically switches to the correct tool versions whenever you're in this repository.
+
+#### Building and Running
+
 ```bash
-sudo apt update
-sudo apt install -y golang-go make git podman podman-compose golang-github-containernetworking-plugin-dnsname
-# Install Node.js 22 (via nvm or NodeSource)
-```
-
-**Fedora/RHEL:**
-```bash
-sudo dnf install -y golang make git podman podman-compose podman-plugins
-sudo dnf module install -y nodejs:22
-```
-
-#### 2. Build and Run
-
-```bash
-# Clone repository
+# Clone repository (if not already done)
 git clone https://github.com/stefanmunz/treeos.git
 cd treeos
 
 # Setup environment
 cp .env.example .env
 
-# Install debugging tools
-go install github.com/go-delve/delve/cmd/dlv@latest
-echo 'export PATH=$PATH:$(go env GOPATH)/bin' >> ~/.bashrc
-source ~/.bashrc
+# Install Go dependencies
+go mod download
 
 # Build
-go mod download
 make build
 
-# Run with debugging
-dlv exec ./build/treeos
-
-# Or run normally
+# Run
 ./build/treeos
 ```
 
-Access at `http://localhost:2000` (or port configured in .env)
+Access at `http://localhost:3000` (or port configured in .env)
+
+#### Manual Setup (if you prefer managing tools yourself)
+
+If you prefer not to use asdf, ensure you have these exact versions installed:
+- Go 1.24.4
+- golangci-lint 2.5.0 (built with Go 1.24.4+)
+- Node.js 22.11.0
+
+**Note**: Version mismatches may cause linting and CI failures
 
 ### Running Pre-built Binary
 
@@ -174,7 +194,7 @@ monitoring_enabled = false
 
 ### Prerequisites
 
-- Go 1.23 or later
+- Go 1.24.4 (managed via asdf, see Development Setup above)
 - Podman 4.0+ (with built-in `podman compose` support)
 - Make
 
