@@ -146,12 +146,12 @@ test-all:
 .PHONY: lint
 lint: embed-assets
 	@echo "Running linter..."
-	@if [ ! -f $(GOLINT) ]; then \
-		echo "golangci-lint v1.62.2 not found. Please install it first."; \
-		echo "Run: make install-tools"; \
+	@if ! command -v golangci-lint >/dev/null 2>&1; then \
+		echo "golangci-lint not found. Please install it first."; \
+		echo "Run: make install-tools or use asdf install"; \
 		exit 1; \
 	fi
-	$(GOLINT) run ./...
+	golangci-lint run ./...
 	@echo "Linting complete"
 
 # Clean build artifacts
@@ -188,8 +188,8 @@ vet:
 .PHONY: install-tools
 install-tools:
 	@echo "Installing development tools..."
-	@echo "Installing golangci-lint v1.62.2..."
-	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.62.2
+	@echo "Installing golangci-lint v2.5.0..."
+	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@v2.5.0
 	@echo "Installing goose for migrations..."
 	@go install github.com/pressly/goose/v3/cmd/goose@latest
 	@echo "Development tools installed"
