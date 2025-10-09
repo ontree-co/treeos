@@ -164,6 +164,9 @@ jobs:
     - name: Install dependencies
       run: make deps
 
+    - name: Prepare embedded assets
+      run: make embed-assets
+
     - name: Install Playwright
       working-directory: ./tests/e2e
       run: |
