@@ -226,10 +226,18 @@ func compareVersionParts(v1, v2 string) int {
 		var n1, n2 int
 
 		if i < len(parts1) {
-			n1, _ = strconv.Atoi(parts1[i])
+			var err error
+			n1, err = strconv.Atoi(parts1[i])
+			if err != nil {
+				n1 = 0
+			}
 		}
 		if i < len(parts2) {
-			n2, _ = strconv.Atoi(parts2[i])
+			var err error
+			n2, err = strconv.Atoi(parts2[i])
+			if err != nil {
+				n2 = 0
+			}
 		}
 
 		if n1 > n2 {

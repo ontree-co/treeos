@@ -571,6 +571,8 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/monitoring", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/", http.StatusMovedPermanently)
 	})
+	// Handle monitoring dashboard updates
+	mux.HandleFunc("/monitoring/dashboard/all", s.TracingMiddleware(s.SetupRequiredMiddleware(s.AuthRequiredMiddleware(s.handleDashboardMonitoringUpdate))))
 	mux.HandleFunc("/monitoring/", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/", http.StatusMovedPermanently)
 	})

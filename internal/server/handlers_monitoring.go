@@ -32,37 +32,6 @@ func (s *Server) handleMonitoring(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusMovedPermanently)
 }
 
-// routeMonitoring routes all /monitoring/* requests to the appropriate handler
-func (s *Server) routeMonitoring(w http.ResponseWriter, r *http.Request) {
-	path := r.URL.Path
-
-	// Route based on the path pattern
-	switch {
-	case path == "/monitoring/dashboard/all":
-		s.handleDashboardMonitoringUpdate(w, r)
-	case path == "/monitoring/partials/cpu":
-		s.handleMonitoringCPUPartial(w, r)
-	case path == "/monitoring/partials/memory":
-		s.handleMonitoringMemoryPartial(w, r)
-	case path == "/monitoring/partials/disk":
-		s.handleMonitoringDiskPartial(w, r)
-	case path == "/monitoring/partials/network":
-		s.handleMonitoringNetworkPartial(w, r)
-	case path == "/monitoring/partials/gpu":
-		s.handleMonitoringGPUPartial(w, r)
-	case path == "/monitoring/partials/upload":
-		s.handleMonitoringUploadPartial(w, r)
-	case path == "/monitoring/partials/download":
-		s.handleMonitoringDownloadPartial(w, r)
-	case strings.HasPrefix(path, "/monitoring/charts/"):
-		s.handleMonitoringCharts(w, r)
-	case strings.HasPrefix(path, "/monitoring/detail/"):
-		s.handleMonitoringDetail(w, r)
-	default:
-		http.NotFound(w, r)
-	}
-}
-
 // handleDashboardMonitoringUpdate returns all six monitoring cards data for the dashboard
 // This is called every second via HTMX to update the monitoring cards
 func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, _ *http.Request) {
@@ -216,7 +185,7 @@ func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, _ *http.
 					</div>
 				</div>
 			</div>
-			
+
 			<!-- GPU Card -->
 			<div class="col-12 col-md-6 col-lg-4">
 				<div id="gpu-card">
@@ -232,7 +201,7 @@ func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, _ *http.
 					</div>
 				</div>
 			</div>
-			
+
 			<!-- Memory Card -->
 			<div class="col-12 col-md-6 col-lg-4">
 				<div id="memory-card">
@@ -248,7 +217,7 @@ func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, _ *http.
 					</div>
 				</div>
 			</div>
-			
+
 			<!-- Second Row: Disk, Download, Upload -->
 			<!-- Disk Card -->
 			<div class="col-12 col-md-6 col-lg-4">
@@ -265,7 +234,7 @@ func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, _ *http.
 					</div>
 				</div>
 			</div>
-			
+
 			<!-- Download Card -->
 			<div class="col-12 col-md-6 col-lg-4">
 				<div id="download-card">
@@ -281,7 +250,7 @@ func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, _ *http.
 					</div>
 				</div>
 			</div>
-			
+
 			<!-- Upload Card -->
 			<div class="col-12 col-md-6 col-lg-4">
 				<div id="upload-card">
@@ -967,18 +936,6 @@ func ifElse(condition bool, trueVal, falseVal string) string {
 	return falseVal
 }
 
-// handleMonitoringDetail handles the full-page detail view for monitoring metrics
-func (s *Server) handleMonitoringDetail(w http.ResponseWriter, r *http.Request) {
-	// Only allow GET method
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	// Redirect to dashboard since the separate monitoring detail page has been removed
-	// The monitoring functionality is now integrated into the main dashboard
-	http.Redirect(w, r, "/", http.StatusMovedPermanently)
-}
 
 
 // handleMonitoringGPUPartial returns the GPU monitoring card partial
