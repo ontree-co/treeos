@@ -17,7 +17,7 @@
       "description": "System service for running LLMs with NVIDIA GPU acceleration. Manages shared model store.",
       "category": "LLM Inference",
       "icon": "bi-gpu-card",
-      "filename": "ollama-nvidia.yml",
+      "filename": "ollama-nvidia-32gb-vram.yml",
       "port": "11434",
       "documentation_url": "https://ollama.ai",
       "is_system_service": true
@@ -28,7 +28,7 @@
       "description": "System service for running LLMs with AMD AI 370-class ROCm support. Manages shared model store.",
       "category": "LLM Inference",
       "icon": "bi-gpu-card",
-      "filename": "ollama-amd-ai370.yml",
+      "filename": "ollama-amd-ai370-32gb-ram.yml",
       "port": "11434",
       "documentation_url": "https://ollama.ai",
       "is_system_service": true
@@ -39,7 +39,7 @@
       "description": "System service for running LLMs with AMD Ryzen AI 395+ ROCm support. Manages shared model store.",
       "category": "LLM Inference",
       "icon": "bi-gpu-card",
-      "filename": "ollama-amd-ryzen-ai-395.yml",
+      "filename": "ollama-amd-ryzen-ai-395-128gb-ram-96gb-gpu.yml",
       "port": "11434",
       "documentation_url": "https://ollama.ai",
       "is_system_service": true
@@ -83,6 +83,16 @@
       "filename": "nginx-test.yml",
       "port": "8080",
       "documentation_url": "https://nginx.org/en/docs/"
+    },
+    {
+      "id": "readeck",
+      "name": "Readeck",
+      "description": "A simple web application to save and organize articles, web pages, and documents for later reading. Features full-text search and offline reading.",
+      "category": "Others",
+      "icon": "bi-bookmark-star",
+      "filename": "readeck.yml",
+      "port": "8001",
+      "documentation_url": "https://readeck.org/"
     },
     {
       "id": "unifi-network",
