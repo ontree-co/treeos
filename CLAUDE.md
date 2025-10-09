@@ -40,6 +40,17 @@ The `.tool-versions` file ensures all developers and CI use the same tool versio
 ### CI/CD Configuration
 GitHub Actions is configured to use the same versions specified in `.tool-versions`. The workflow automatically uses golangci-lint v2.5.0 with the v2 configuration format.
 
+### ⚠️ Version Mismatch Protocol
+
+**If you encounter version mismatch errors** (e.g., "the Go language version used to build golangci-lint is lower than the targeted Go version"):
+
+1. **STOP and REPORT to the user immediately** - This is YOUR responsibility, not outside your scope
+2. Explain the mismatch clearly (required vs installed versions)
+3. Warn that linting and pre-commit hooks will fail
+4. Offer to fix by running `asdf install` (if asdf is available)
+
+**DO NOT overlook or skip past version errors.** Pre-commit hooks require correct versions per Rule #2.
+
 ## Working with Graphite instead of Git Directly
 
 Unless explicitly asked otherwise, use the gt CLI for interacting with PRs and create stacks. Stacks are easier to review because each PR is smaller and logically focused.
