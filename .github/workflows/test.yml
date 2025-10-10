@@ -156,10 +156,17 @@ jobs:
         cache: true
         cache-dependency-path: go.sum
 
+    - name: Extract Node version from .tool-versions
+      id: node-version
+      run: |
+        NODE_VERSION=$(grep '^nodejs' .tool-versions | awk '{print $2}')
+        echo "version=$NODE_VERSION" >> $GITHUB_OUTPUT
+        echo "Using Node.js version: $NODE_VERSION"
+
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
-        node-version-file: '.node-version'
+        node-version: ${{ steps.node-version.outputs.version }}
 
     - name: Install dependencies
       run: make deps
@@ -206,10 +213,17 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Extract Node version from .tool-versions
+      id: node-version
+      run: |
+        NODE_VERSION=$(grep '^nodejs' .tool-versions | awk '{print $2}')
+        echo "version=$NODE_VERSION" >> $GITHUB_OUTPUT
+        echo "Using Node.js version: $NODE_VERSION"
+
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
-        node-version-file: '.node-version'
+        node-version: ${{ steps.node-version.outputs.version }}
 
     - name: Install documentation dependencies
       working-directory: ./documentation
