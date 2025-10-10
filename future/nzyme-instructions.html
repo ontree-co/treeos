@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nzyme Network Defense System - Setup Required</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 10px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #555;
+            margin-top: 30px;
+        }
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .info {
+            background: #d1ecf1;
+            border-left: 4px solid #0dcaf0;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .success {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+        pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        ul {
+            line-height: 1.8;
+        }
+        a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛡️ Nzyme Network Defense System</h1>
+
+        <div class="warning">
+            <strong>⚠️ Manual Setup Required:</strong> The containerized version of nzyme requires additional configuration due to limitations with the available Docker images.
+        </div>
+
+        <div class="success">
+            <strong>✅ Database Ready:</strong> PostgreSQL database is running and ready for nzyme at port 5433.
+        </div>
+
+        <h2>Current Status</h2>
+        <p>The PostgreSQL database for nzyme has been successfully deployed. However, the nzyme application itself requires manual installation due to:</p>
+        <ul>
+            <li>The community Docker image (r4ulcl/nzyme) uses an outdated version (v1.2.2 from 2021)</li>
+            <li>Network monitoring requires special permissions that are restricted in containers</li>
+            <li>Modern nzyme versions (v2.0+) have significant improvements but lack official Docker support</li>
+        </ul>
+
+        <h2>Database Connection Details</h2>
+        <div class="info">
+            <strong>PostgreSQL is ready with these credentials:</strong>
+            <pre>Host: localhost
+Port: 5433
+Database: nzyme
+Username: nzyme
+Password: nzyme_password</pre>
+        </div>
+
+        <h2>Recommended Installation Options</h2>
+
+        <h3>Option 1: Direct Installation on Host (Recommended)</h3>
+        <p>Install nzyme directly on your Ubuntu/Debian system following the official guide:</p>
+        <ol>
+            <li>Visit <a href="https://docs.nzyme.org/getting-started/installation/ubuntu-server-2404/" target="_blank">Official Installation Guide</a></li>
+            <li>Download the latest .deb packages</li>
+            <li>Configure to use the PostgreSQL database above</li>
+            <li>Set up network interfaces for monitoring</li>
+        </ol>
+
+        <h3>Option 2: Build Custom Docker Image</h3>
+        <p>Create a modern Docker image with nzyme v2.0+:</p>
+        <pre>FROM ubuntu:24.04
+RUN apt-get update && apt-get install -y openjdk-17-jdk wget
+# Download and install latest nzyme
+# Configure for container environment</pre>
+
+        <h3>Option 3: Run Taps Externally</h3>
+        <p>Deploy nzyme-tap on dedicated hardware (Raspberry Pi, etc.) with proper network access for monitoring.</p>
+
+        <h2>Network Monitoring Limitations</h2>
+        <div class="warning">
+            <strong>Important:</strong> Full network monitoring capabilities require:
+            <ul>
+                <li>NET_ADMIN capability (restricted in TreeOS for security)</li>
+                <li>Access to network interfaces in monitor mode</li>
+                <li>WiFi adapter with monitor mode support (for WiFi monitoring)</li>
+            </ul>
+        </div>
+
+        <h2>Next Steps</h2>
+        <ol>
+            <li>Choose your installation method from the options above</li>
+            <li>Configure nzyme to connect to the PostgreSQL database</li>
+            <li>Set up network interfaces for monitoring (if running on host)</li>
+            <li>Access the nzyme web interface (typically on port 22900)</li>
+        </ol>
+
+        <h2>Resources</h2>
+        <ul>
+            <li><a href="https://www.nzyme.org/" target="_blank">Nzyme Official Website</a></li>
+            <li><a href="https://docs.nzyme.org/" target="_blank">Documentation</a></li>
+            <li><a href="https://github.com/nzymedefense/nzyme" target="_blank">GitHub Repository</a></li>
+            <li><a href="https://community.nzyme.org/" target="_blank">Community Forums</a></li>
+        </ul>
+    </div>
+</body>
+</html>
