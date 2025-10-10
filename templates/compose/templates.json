@@ -95,6 +95,16 @@
       "documentation_url": "https://readeck.org/"
     },
     {
+      "id": "miniflux",
+      "name": "Miniflux",
+      "description": "Minimalist and privacy-focused RSS feed reader. Features automatic tracking removal, full-text extraction, and keyboard navigation.",
+      "category": "Others",
+      "icon": "bi-rss",
+      "filename": "miniflux.yml",
+      "port": "8081",
+      "documentation_url": "https://miniflux.app/"
+    },
+    {
       "id": "unifi-network",
       "name": "Unifi Network Application",
       "description": "Enterprise-grade network management system for Ubiquiti devices. Manages APs, switches, and gateways.",

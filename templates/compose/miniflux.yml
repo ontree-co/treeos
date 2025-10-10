@@ -1,0 +1,120 @@
+# Miniflux RSS Reader for TreeOS
+#
+# Required environment variables (add to your .env file):
+#   POSTGRES_USER=miniflux
+#   POSTGRES_PASSWORD=<secure_password>
+#   POSTGRES_DB=miniflux
+#   CREATE_ADMIN=1
+#   ADMIN_USERNAME=admin
+#   ADMIN_PASSWORD=<your_admin_password>
+#
+# Optional variables:
+#   MINIFLUX_PORT=8081
+#   POLLING_FREQUENCY=60
+#   WORKER_POOL_SIZE=5
+#   BASE_URL=https://miniflux.yourdomain.com
+
+version: '3.8'
+
+services:
+  miniflux:
+    image: miniflux/miniflux:2.1.4
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Database connection
+      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres/${POSTGRES_DB}?sslmode=disable
+
+      # Automatically run database migrations
+      - RUN_MIGRATIONS=1
+
+      # Create admin user on first run
+      # NOTE: After initial setup, consider removing CREATE_ADMIN from your .env file
+      - CREATE_ADMIN=${CREATE_ADMIN}
+      - ADMIN_USERNAME=${ADMIN_USERNAME}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+
+      # Optional: Configure base URL if using reverse proxy
+      - BASE_URL=${BASE_URL:-}
+
+      # Optional: Configure polling frequency (in minutes, default is 60)
+      - POLLING_FREQUENCY=${POLLING_FREQUENCY:-60}
+
+      # Optional: Number of workers for feed refreshing (default is 5)
+      - WORKER_POOL_SIZE=${WORKER_POOL_SIZE:-5}
+
+      # Privacy settings
+      - REMOVE_PIXEL_TRACKERS=1
+      - HTTPS=
+
+      # Optional: OAuth2 settings (uncomment if needed)
+      # - OAUTH2_PROVIDER=${OAUTH2_PROVIDER:-}
+      # - OAUTH2_CLIENT_ID=${OAUTH2_CLIENT_ID:-}
+      # - OAUTH2_CLIENT_SECRET=${OAUTH2_CLIENT_SECRET:-}
+      # - OAUTH2_REDIRECT_URL=${OAUTH2_REDIRECT_URL:-}
+      # - OAUTH2_OIDC_DISCOVERY_ENDPOINT=${OAUTH2_OIDC_DISCOVERY_ENDPOINT:-}
+
+      # Timezone
+      - TZ=${TZ:-UTC}
+    ports:
+      - "${MINIFLUX_PORT:-8081}:8080"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "miniflux", "-healthcheck", "auto"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      - miniflux_postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  miniflux_postgres_data:
+
+x-ontree:
+  subdomain: miniflux
+  host_port: 8081
+  is_exposed: false
+  tailscale_exposed: false
+  emoji: "📰"
+  bypass_security: false
+  requires_https: false
+  description: "Minimalist RSS feed reader with privacy protection"
+  notes: |
+    Miniflux is a minimalist and privacy-focused RSS feed reader.
+
+    Features:
+    - Automatically removes tracking pixels
+    - Full-text extraction from summary feeds
+    - Keyboard navigation support
+    - No ads, no telemetry
+    - Clean, readable interface
+
+    Initial Setup:
+    1. Check your .env file for admin credentials (ADMIN_USERNAME and ADMIN_PASSWORD)
+    2. Access the web interface at http://miniflux.yourdomain.com
+    3. Login with the admin credentials from your .env file
+    4. Change the admin password through the web interface
+    5. After setup, set CREATE_ADMIN=0 in your .env file
+
+    Configuration Tips:
+    - Adjust POLLING_FREQUENCY for how often feeds are checked
+    - Increase WORKER_POOL_SIZE for faster feed updates (uses more resources)
+    - Configure OAuth2 variables for SSO integration if needed
+
+    For more information: https://miniflux.app/docs/
