@@ -115,6 +115,16 @@
       "documentation_url": "https://www.ui.com/download/unifi/",
       "requires_https": true,
       "multi_port": true
+    },
+    {
+      "id": "diskspeed",
+      "name": "Disk Speed Test",
+      "description": "Benchmark read and write speeds of storage volumes. Features both CLI and web UI for testing disk performance.",
+      "category": "Others",
+      "icon": "bi-speedometer2",
+      "filename": "diskspeed.yml",
+      "port": "8082",
+      "documentation_url": "https://hub.docker.com/r/smunz/diskspeed"
     }
   ]
 }
