@@ -20,7 +20,7 @@ CURRENT_VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
 VERSION="${CURRENT_VERSION#v}"
 
 # Parse version components
-# Handle both v1.0.0 and v1.0.0-beta.1 formats
+# Handle both v1.0.0 and v1.0.0-beta.01 formats
 if [[ "$VERSION" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)(-beta\.([0-9]+))?$ ]]; then
     MAJOR="${BASH_REMATCH[1]}"
     MINOR="${BASH_REMATCH[2]}"
@@ -42,9 +42,9 @@ fi
 case "$RELEASE_TYPE" in
     beta)
         if [ "$IS_BETA" = true ]; then
-            # Increment beta number
-            NEXT_BETA=$((BETA_NUM + 1))
-            NEXT_VERSION="v${MAJOR}.${MINOR}.${PATCH}-beta.${NEXT_BETA}"
+            # Increment beta number (zero-padded to 2 digits)
+            NEXT_BETA=$((10#$BETA_NUM + 1))
+            NEXT_VERSION="v${MAJOR}.${MINOR}.${PATCH}-beta.$(printf '%02d' $NEXT_BETA)"
         else
             echo "Error: Cannot increment beta on stable version '$CURRENT_VERSION'" >&2
             echo "Use 'patch-beta', 'minor-beta', or 'major-beta' to start a new beta series" >&2
@@ -68,11 +68,11 @@ case "$RELEASE_TYPE" in
         if [ "$IS_BETA" = true ]; then
             # Skip current beta, go to next patch beta
             NEXT_PATCH=$((PATCH + 1))
-            NEXT_VERSION="v${MAJOR}.${MINOR}.${NEXT_PATCH}-beta.1"
+            NEXT_VERSION="v${MAJOR}.${MINOR}.${NEXT_PATCH}-beta.01"
         else
             # Start beta for next patch
             NEXT_PATCH=$((PATCH + 1))
-            NEXT_VERSION="v${MAJOR}.${MINOR}.${NEXT_PATCH}-beta.1"
+            NEXT_VERSION="v${MAJOR}.${MINOR}.${NEXT_PATCH}-beta.01"
         fi
         ;;
 
@@ -80,11 +80,11 @@ case "$RELEASE_TYPE" in
         if [ "$IS_BETA" = true ]; then
             # Skip current beta, go to next minor beta
             NEXT_MINOR=$((MINOR + 1))
-            NEXT_VERSION="v${MAJOR}.${NEXT_MINOR}.0-beta.1"
+            NEXT_VERSION="v${MAJOR}.${NEXT_MINOR}.0-beta.01"
         else
             # Start beta for next minor
             NEXT_MINOR=$((MINOR + 1))
-            NEXT_VERSION="v${MAJOR}.${NEXT_MINOR}.0-beta.1"
+            NEXT_VERSION="v${MAJOR}.${NEXT_MINOR}.0-beta.01"
         fi
         ;;
 
@@ -92,11 +92,11 @@ case "$RELEASE_TYPE" in
         if [ "$IS_BETA" = true ]; then
             # Skip current beta, go to next major beta
             NEXT_MAJOR=$((MAJOR + 1))
-            NEXT_VERSION="v${NEXT_MAJOR}.0.0-beta.1"
+            NEXT_VERSION="v${NEXT_MAJOR}.0.0-beta.01"
         else
             # Start beta for next major
             NEXT_MAJOR=$((MAJOR + 1))
-            NEXT_VERSION="v${NEXT_MAJOR}.0.0-beta.1"
+            NEXT_VERSION="v${NEXT_MAJOR}.0.0-beta.01"
         fi
         ;;
 
