@@ -220,8 +220,19 @@ func (s *Server) handleCreateFromTemplate(w http.ResponseWriter, r *http.Request
 			}
 		}
 
+		// Get .env.example content if it exists for this template
+		envContent, err := s.templateSvc.GetTemplateEnvExample(templateID)
+		if err != nil {
+			log.Printf("Error reading .env.example for template %s: %v", templateID, err)
+			http.Error(w, "Failed to read template environment file", http.StatusInternalServerError)
+			return
+		}
+		if envContent != "" {
+			log.Printf("Found .env.example for template %s, will use default environment variables", templateID)
+		}
+
 		// Create the app using scaffold logic with template flag
-		if err := s.createAppScaffoldFromTemplate(appName, processedContent, "", emoji); err != nil {
+		if err := s.createAppScaffoldFromTemplate(appName, processedContent, envContent, emoji); err != nil {
 			log.Printf("Error creating app from template: %v", err)
 			http.Error(w, fmt.Sprintf("Failed to create application: %v", err), http.StatusInternalServerError)
 			return

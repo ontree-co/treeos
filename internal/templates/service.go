@@ -97,6 +97,27 @@ func (s *Service) GetTemplateContent(template *Template) (string, error) {
 	return string(content), nil
 }
 
+// GetTemplateEnvExample reads the .env.example file for a template if it exists
+// Returns empty string (not an error) if the .env.example file doesn't exist
+func (s *Service) GetTemplateEnvExample(templateID string) (string, error) {
+	templateFS, err := embeds.TemplateFS()
+	if err != nil {
+		return "", fmt.Errorf("failed to get template filesystem: %w", err)
+	}
+
+	// Construct the .env.example filename based on template ID
+	envExamplePath := filepath.Join(s.templatesPath, templateID+".env.example")
+
+	// Try to read the file - if it doesn't exist, return empty string (not an error)
+	content, err := fs.ReadFile(templateFS, envExamplePath)
+	if err != nil {
+		// File doesn't exist - this is normal for templates without .env.example
+		return "", nil
+	}
+
+	return string(content), nil
+}
+
 // ProcessTemplateContent replaces template variables with actual values
 func (s *Service) ProcessTemplateContent(content string, appName string) string {
 	// Note: Version locking is now handled by the agent during initial setup
