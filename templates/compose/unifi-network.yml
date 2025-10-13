@@ -1,3 +1,15 @@
+# UniFi Network Application Template
+#
+# This template deploys the UniFi Network Controller with MongoDB.
+#
+# BACKUP RESTORATION NOTE:
+# If restoring from a backup that references a different MongoDB hostname
+# (e.g., "unifi-mongo"), you'll need to update the hostname in system.properties:
+#   docker exec <container> sed -i 's/old-mongo-hostname:/mongo:/g' /config/data/system.properties
+#   docker restart <container>
+#
+# The controller will automatically migrate databases from older versions.
+
 version: "3.8"
 
 services:
@@ -14,7 +26,7 @@ services:
       start_period: 40s
 
   app:
-    image: lscr.io/linuxserver/unifi-network-application:8.4.62
+    image: lscr.io/linuxserver/unifi-network-application:latest
     depends_on:
       mongo:
         condition: service_healthy
@@ -29,15 +41,16 @@ services:
       - MONGO_PORT=27017
     volumes:
       - unifi_config:/config
-      - ./fix-mongo-uri.sh:/custom-cont-init.d/fix-mongo-uri.sh:ro
     ports:
-      - "${UNIFI_HTTPS_PORT:-8443}:8443"
-      - "${UNIFI_HTTP_PORT:-8080}:8080"
-      - "${UNIFI_STUN_PORT:-3478}:3478/udp"
-      - "${UNIFI_DISCOVERY_PORT:-10001}:10001/udp"
       - "${UNIFI_L2_DISCOVERY_PORT:-1900}:1900/udp"
-      - "${UNIFI_SPEEDTEST_PORT:-6789}:6789"
+      - "${UNIFI_STUN_PORT:-3478}:3478/udp"
       - "${UNIFI_SYSLOG_PORT:-5514}:5514/udp"
+      - "${UNIFI_SPEEDTEST_PORT:-6789}:6789"
+      - "${UNIFI_HTTP_PORT:-8080}:8080"
+      - "${UNIFI_HTTPS_PORT:-8443}:8443"
+      - "${UNIFI_GUEST_HTTPS_PORT:-8843}:8843"
+      - "${UNIFI_GUEST_HTTP_PORT:-8880}:8880"
+      - "${UNIFI_DISCOVERY_PORT:-10001}:10001/udp"
     restart: unless-stopped
 
 volumes:
@@ -45,9 +58,9 @@ volumes:
   unifi_config:
 
 x-ontree:
-  subdomain: unifi
+  subdomain: unifi-network
   host_port: 8443
   is_exposed: false
   tailscale_exposed: false
-  emoji: "🌐"
+  emoji: "📡"
   bypass_security: false
