@@ -1,19 +1,36 @@
 # TreeOS
 
-[![Build Status](https://ci.codeberg.org/api/badges/ontree/treeos/status.svg)](https://ci.codeberg.org/ontree/treeos)
 [![GitHub Actions](https://github.com/stefanmunz/treeos/actions/workflows/test.yml/badge.svg)](https://github.com/stefanmunz/treeos/actions)
 
 ## What is TreeOS?
 
-TreeOS is server software for your home lab or office—it puts AI on your site, both literally on your infrastructure and figuratively at your side. Builders get a single place to run their services and the models that power them, all from the browser without touching the command line.
+TreeOS brings the **iOS App Store experience to server applications**. Browse a curated catalog, click to install, and watch your apps deploy—no command line, no configuration files, no DevOps expertise required.
 
-TreeOS is a platform for shipping containers alongside local LLMs:
+It's server software for your home lab or office that puts AI on your site, both literally on your infrastructure and figuratively at your side. Builders get a single place to run their services and the models that power them, all from the browser.
 
-- **🚀 One-Click Deployments** – Launch production-ready stacks from polished templates or remix them into your own projects.
-- **🎛️ Polished Interface** – A cohesive web dashboard for editing Compose files, streaming logs, and managing environments directly in the browser.
-- **🧠 Model-Native Platform** – Treat models as first-class citizens. Pull curated chat, code, and vision models, watch download progress live, and plug them straight into your apps.
-- **🛠️ Built for Builders** – Tailored to people who want to bring their own code, keep data on their hardware, and iterate quickly.
-- **⚙️ Optimized for AMD AI 300 Series** – Designed to leverage modern APUs with up to 128 GB of RAM so local inference and application hosting share the same machine gracefully.
+**Key Capabilities:**
+
+- **📱 App Store Simplicity** – Browse, install, and manage server applications with the same ease as your phone. One click to deploy production-ready stacks.
+- **🧠 Model-Native Platform** – Treat AI models as first-class citizens. Pull curated chat, code, and vision models, watch download progress live, and plug them straight into your apps.
+- **🤖 Built for AI & Agentic Coding** – Designed from the ground up to work with AI assistants. Install routines, slash commands, and structured APIs let agents manage your infrastructure autonomously.
+- **🛠️ Built for Builders** – Bring your own code, keep data on your hardware, and iterate quickly with full control over your stack.
+
+## Recommended Hardware
+
+<div align="center">
+  <img src="https://raw.githubusercontent.com/stefanmunz/treeos/main/documentation/static/img/framework.png" alt="Framework Desktop" width="600">
+</div>
+
+TreeOS is optimized for the **AMD Ryzen™ AI Max+ 395** with 128GB of RAM. This powerful APU allows local inference and application hosting to share the same machine gracefully, eliminating the need for separate GPU servers.
+
+Our preferred hardware vendor is [Framework](https://frame.work/desktop) with their Desktop machine, starting at **$1,999 USD** (€2,329 in Germany). The Framework Desktop combines:
+
+- **Upgradeable & Repairable Design** – Future-proof your investment with modular components
+- **128GB Unified Memory** – Share memory between CPU and GPU for efficient AI workloads
+- **AMD Ryzen AI Max+ 395** – Powerful APU with integrated RDNA 3.5 graphics
+- **Perfect for Home Labs** – Quiet, compact, and energy-efficient
+
+This configuration makes it ideal for running multiple AI models, containers, and services simultaneously without compromise.
 
 ## Architecture
 
@@ -22,6 +39,7 @@ TreeOS is a platform for shipping containers alongside local LLMs:
 - **Database**: SQLite for metadata storage
 - **Container Management**: Docker and Docker Compose
 - **Asset Embedding**: Templates and static files embedded in binary
+- **Platform Support**: Works on Linux and macOS, optimized for Ubuntu 24.04. LTS
 
 ## Features
 
@@ -35,6 +53,35 @@ TreeOS is a platform for shipping containers alongside local LLMs:
 - **System Monitoring Dashboard**: Real-time system metrics with historical sparklines (CPU, Memory, Disk, Network)
 - **Security Validation**: Built-in checks for container security (mounts, capabilities, privilege levels)
 - **Caddy Integration**: Automatic domain configuration for exposed applications
+
+## Roadmap
+
+### Developer Preview Status
+
+TreeOS is currently in **developer preview**. While it is stable enough to run in production, we cannot guarantee database compatibility between developer preview versions. Backwards compatibility will be maintained starting with version 1.0.
+
+### Upcoming Releases
+
+**0.2.0 - Stability & Architecture** (Current Focus)
+- Focus on production stability and reliability
+- Optimize software architecture for agentic coding
+- Incorporate learnings from 0.1.x development
+- **CLI Tool**: TreeOS becomes available as a command-line interface tool in addition to the web interface
+
+**0.3.0 - Tailscale Integration**
+- Deep Tailscale integration for containers
+- Seamless private networking between services
+- Zero-configuration VPN mesh for your applications
+
+**0.5.0 - Cloud VPS Support**
+- Optimize TreeOS for cloud VPS deployments
+- Multi-node support for distributed deployments
+- Enhanced networking for cloud environments
+
+**1.0 - Stable Release**
+- Backwards compatibility guarantees
+- Production-ready with long-term support
+- API stability commitments
 
 ## Quick Start
 
