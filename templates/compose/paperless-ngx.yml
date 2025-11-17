@@ -1,0 +1,175 @@
+# Paperless NGX Document Management System for TreeOS
+#
+# Required environment variables (add to your .env file):
+#   PAPERLESS_SECRET_KEY=<generate_long_random_string>
+#   PAPERLESS_TIME_ZONE=Europe/Berlin
+#   PAPERLESS_OCR_LANGUAGE=eng
+#   PAPERLESS_PORT=8010
+#
+# Optional variables:
+#   PAPERLESS_URL=https://paperless.yourdomain.com
+#   PAPERLESS_OCR_LANGUAGES=
+#
+# Important directories:
+#   ./data - Database and configuration files
+#   ./media - Document storage
+#   ./consume - Document import directory (monitored)
+#   ./export - Document export directory
+
+version: '3.8'
+
+services:
+  broker:
+    image: docker.io/library/redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - paperless_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  webserver:
+    image: ghcr.io/paperless-ngx/paperless-ngx:latest
+    restart: unless-stopped
+    depends_on:
+      broker:
+        condition: service_healthy
+      gotenberg:
+        condition: service_started
+      tika:
+        condition: service_started
+    ports:
+      - "${PAPERLESS_PORT:-8010}:8000"
+    volumes:
+      - paperless_data:/usr/src/paperless/data
+      - paperless_media:/usr/src/paperless/media
+      - paperless_export:/usr/src/paperless/export
+      - paperless_consume:/usr/src/paperless/consume
+    environment:
+      # Redis connection
+      - PAPERLESS_REDIS=redis://broker:6379
+
+      # Document processing services
+      - PAPERLESS_TIKA_ENABLED=1
+      - PAPERLESS_TIKA_GOTENBERG_ENDPOINT=http://gotenberg:3000
+      - PAPERLESS_TIKA_ENDPOINT=http://tika:9998
+
+      # Core settings
+      - PAPERLESS_SECRET_KEY=${PAPERLESS_SECRET_KEY}
+      - PAPERLESS_TIME_ZONE=${PAPERLESS_TIME_ZONE:-UTC}
+      - PAPERLESS_OCR_LANGUAGE=${PAPERLESS_OCR_LANGUAGE:-eng}
+
+      # Optional: Additional OCR languages (space-separated)
+      # See https://packages.debian.org/search?keywords=tesseract-ocr-&searchon=names
+      - PAPERLESS_OCR_LANGUAGES=${PAPERLESS_OCR_LANGUAGES:-}
+
+      # Optional: Public URL (for reverse proxy setups)
+      - PAPERLESS_URL=${PAPERLESS_URL:-}
+
+      # Optional: User/Group mapping for file permissions
+      - USERMAP_UID=${USERMAP_UID:-1000}
+      - USERMAP_GID=${USERMAP_GID:-1000}
+
+      # Document consumption settings
+      - PAPERLESS_CONSUMER_POLLING=60
+      - PAPERLESS_CONSUMER_DELETE_DUPLICATES=true
+      - PAPERLESS_CONSUMER_RECURSIVE=true
+      - PAPERLESS_CONSUMER_SUBDIRS_AS_TAGS=false
+
+      # Optional: Email settings for document import via email
+      # - PAPERLESS_EMAIL_HOST=${PAPERLESS_EMAIL_HOST:-}
+      # - PAPERLESS_EMAIL_PORT=${PAPERLESS_EMAIL_PORT:-}
+      # - PAPERLESS_EMAIL_HOST_USER=${PAPERLESS_EMAIL_HOST_USER:-}
+      # - PAPERLESS_EMAIL_HOST_PASSWORD=${PAPERLESS_EMAIL_HOST_PASSWORD:-}
+      # - PAPERLESS_EMAIL_USE_SSL=${PAPERLESS_EMAIL_USE_SSL:-false}
+      # - PAPERLESS_EMAIL_USE_TLS=${PAPERLESS_EMAIL_USE_TLS:-false}
+
+      # Optional: Automatic tagging and classification
+      - PAPERLESS_AUTO_LOGIN_USERNAME=${PAPERLESS_AUTO_LOGIN_USERNAME:-}
+      - PAPERLESS_FILENAME_FORMAT=${PAPERLESS_FILENAME_FORMAT:-{created_year}/{correspondent}/{title}}
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+
+  gotenberg:
+    image: docker.io/gotenberg/gotenberg:8.7
+    restart: unless-stopped
+    # Security: Disable JavaScript and restrict file access for .eml conversions
+    command:
+      - "gotenberg"
+      - "--chromium-disable-javascript=true"
+      - "--chromium-allow-list=file:///tmp/.*"
+    environment:
+      - GOTENBERG_CHROMIUM_MAX_QUEUE_SIZE=20
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  tika:
+    image: docker.io/apache/tika:latest
+    restart: unless-stopped
+    environment:
+      - JAVA_OPTS=-Xmx512m
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9998/tika"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  paperless_data:
+  paperless_media:
+  paperless_redis_data:
+  paperless_export:
+  paperless_consume:
+
+x-ontree:
+  subdomain: paperless
+  host_port: 8010
+  is_exposed: false
+  tailscale_exposed: false
+  emoji: "📄"
+  bypass_security: false
+  requires_https: false
+  description: "Smart document management system with OCR and full-text search"
+  notes: |
+    Paperless NGX is a document management system that transforms your physical documents into a searchable online archive.
+
+    Features:
+    - Automatic OCR for scanned documents
+    - Full-text search across all documents
+    - Automatic tagging and categorization
+    - Email document import
+    - Mobile app support
+    - Multi-user with permissions
+    - Document versioning
+
+    Initial Setup:
+    1. Access the web interface at http://paperless.yourdomain.com:8010
+    2. On first access, you'll be prompted to create your admin account
+    3. Choose a strong username and password
+    4. Configure document types, correspondents, and tags in the admin interface
+
+    Document Import:
+    - Place documents in the consume folder (automatically monitored)
+    - Documents are processed, OCR'd, and moved to the media folder
+    - Original files are preserved
+
+    Supported Formats:
+    - PDF, PNG, JPG, TIFF, GIF, BMP
+    - Office documents (Word, Excel, PowerPoint) via Tika
+    - Email files (.eml, .msg)
+    - Plain text files
+
+    For more information: https://docs.paperless-ngx.com/

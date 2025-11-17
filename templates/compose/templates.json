@@ -125,6 +125,16 @@
       "filename": "diskspeed.yml",
       "port": "8082",
       "documentation_url": "https://hub.docker.com/r/smunz/diskspeed"
+    },
+    {
+      "id": "paperless-ngx",
+      "name": "Paperless NGX",
+      "description": "Smart document management system that transforms physical documents into a searchable digital archive with OCR and AI-powered organization.",
+      "category": "Others",
+      "icon": "bi-file-earmark-text",
+      "filename": "paperless-ngx.yml",
+      "port": "8010",
+      "documentation_url": "https://docs.paperless-ngx.com/"
     }
   ]
 }
