@@ -1,0 +1,5 @@
+expected_services:
+  - ollama
+id: ollama-amd-ryzen-ai-395
+name: ollama-amd-ryzen-ai-395
+primary_service: ollama

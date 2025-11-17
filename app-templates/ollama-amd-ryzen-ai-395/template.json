@@ -1,0 +1,13 @@
+{
+  "id": "ollama-amd-ryzen-ai-395",
+  "name": "Ollama (AMD Ryzen AI 395+)",
+  "description": "System service for running LLMs with AMD Ryzen AI 395+ ROCm support. Manages shared model store.",
+  "category_tags": [
+    "LLM Inference"
+  ],
+  "icon": "bi-gpu-card",
+  "port": "11434",
+  "documentation_url": "https://ollama.ai",
+  "is_system_service": true,
+  "filename": "docker-compose.yml"
+}
