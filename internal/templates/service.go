@@ -15,20 +15,16 @@ import (
 
 // Template represents an application template
 type Template struct {
-	ID               string `json:"id"`
-	Name             string `json:"name"`
-	Description      string `json:"description"`
-	Category         string `json:"category"`
-	Icon             string `json:"icon"`
-	Filename         string `json:"filename"`
-	Port             string `json:"port"`
-	DocumentationURL string `json:"documentation_url"`
-	IsSystemService  bool   `json:"is_system_service,omitempty"`
-}
-
-// File represents the structure of the templates.json file
-type File struct {
-	Templates []Template `json:"templates"`
+	ID               string   `json:"id"`
+	Name             string   `json:"name"`
+	Description      string   `json:"description"`
+	Category         string   `json:"category,omitempty"`      // legacy single category support
+	CategoryTags     []string `json:"category_tags,omitempty"` // preferred multi-category tags
+	Icon             string   `json:"icon"`
+	Filename         string   `json:"filename"`
+	Port             string   `json:"port"`
+	DocumentationURL string   `json:"documentation_url"`
+	IsSystemService  bool     `json:"is_system_service,omitempty"`
 }
 
 // Service provides template management functionality
@@ -45,24 +41,54 @@ func NewService(templatesPath string) *Service {
 
 // GetAvailableTemplates returns all available application templates
 func (s *Service) GetAvailableTemplates() ([]Template, error) {
-	templateFS, err := embeds.TemplateFS()
+	templateFS, err := embeds.AppTemplateFS()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get template filesystem: %w", err)
 	}
 
-	jsonPath := filepath.Join(s.templatesPath, "templates.json")
-	fmt.Printf("DEBUG: Looking for templates at: %s\n", jsonPath)
-	data, err := fs.ReadFile(templateFS, jsonPath)
+	entries, err := fs.ReadDir(templateFS, s.templatesPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read templates.json: %w", err)
+		return nil, fmt.Errorf("failed to list templates directory: %w", err)
 	}
 
-	var templatesFile File
-	if err := json.Unmarshal(data, &templatesFile); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal templates.json: %w", err)
+	templates := make([]Template, 0, len(entries))
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		dirName := entry.Name()
+		jsonPath := filepath.Join(s.templatesPath, dirName, "template.json")
+		fmt.Printf("DEBUG: Looking for template metadata at: %s\n", jsonPath)
+
+		data, err := fs.ReadFile(templateFS, jsonPath)
+		if err != nil {
+			// Skip directories without template.json
+			fmt.Printf("DEBUG: Skipping %s (no template.json)\n", dirName)
+			continue
+		}
+
+		var tmpl Template
+		if err := json.Unmarshal(data, &tmpl); err != nil {
+			fmt.Printf("DEBUG: Failed to unmarshal %s: %v\n", jsonPath, err)
+			continue
+		}
+
+		// Default sensible values
+		if tmpl.ID == "" {
+			tmpl.ID = dirName
+		}
+		if tmpl.Filename == "" {
+			tmpl.Filename = "docker-compose.yml"
+		}
+		if len(tmpl.CategoryTags) == 0 && tmpl.Category != "" {
+			tmpl.CategoryTags = []string{tmpl.Category}
+		}
+
+		templates = append(templates, tmpl)
 	}
 
-	return templatesFile.Templates, nil
+	return templates, nil
 }
 
 // GetTemplateByID retrieves a specific template by its ID
@@ -83,12 +109,12 @@ func (s *Service) GetTemplateByID(id string) (*Template, error) {
 
 // GetTemplateContent reads the docker-compose.yml content for a template
 func (s *Service) GetTemplateContent(template *Template) (string, error) {
-	templateFS, err := embeds.TemplateFS()
+	templateFS, err := embeds.AppTemplateFS()
 	if err != nil {
 		return "", fmt.Errorf("failed to get template filesystem: %w", err)
 	}
 
-	yamlPath := filepath.Join(s.templatesPath, template.Filename)
+	yamlPath := filepath.Join(s.templatesPath, template.ID, template.Filename)
 	content, err := fs.ReadFile(templateFS, yamlPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to read template file %s: %w", template.Filename, err)
@@ -100,13 +126,13 @@ func (s *Service) GetTemplateContent(template *Template) (string, error) {
 // GetTemplateEnvExample reads the .env.example file for a template if it exists
 // Returns empty string (not an error) if the .env.example file doesn't exist
 func (s *Service) GetTemplateEnvExample(templateID string) (string, error) {
-	templateFS, err := embeds.TemplateFS()
+	templateFS, err := embeds.AppTemplateFS()
 	if err != nil {
 		return "", fmt.Errorf("failed to get template filesystem: %w", err)
 	}
 
-	// Construct the .env.example filename based on template ID
-	envExamplePath := filepath.Join(s.templatesPath, templateID+".env.example")
+	// .env.example lives inside the template directory
+	envExamplePath := filepath.Join(s.templatesPath, templateID, ".env.example")
 
 	// Try to read the file - if it doesn't exist, return empty string (not an error)
 	content, err := fs.ReadFile(templateFS, envExamplePath)

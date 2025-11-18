@@ -1,0 +1,12 @@
+{
+  "id": "librechat",
+  "name": "LibreChat",
+  "description": "Enhanced ChatGPT clone with multi-model support. Connects to Ollama and other AI providers.",
+  "category_tags": [
+    "LLM Web Interfaces"
+  ],
+  "icon": "bi-chat-square-text",
+  "port": "3002",
+  "documentation_url": "https://www.librechat.ai",
+  "filename": "docker-compose.yml"
+}

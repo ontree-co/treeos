@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -92,24 +93,30 @@ func (s *Server) handleTemplates(w http.ResponseWriter, r *http.Request) {
 		log.Printf("DEBUG: Template %d: %s (%s)", i, t.Name, t.Filename)
 	}
 
-	// Group templates by category with proper ordering
+	// Group templates by category tags (dynamically discovered)
 	categorizedTemplates := make(map[string][]interface{})
-	categoryOrder := []string{"LLM Inference", "LLM Web Interfaces", "Others"}
+	categorySet := make(map[string]struct{})
 
-	// Initialize categories in order
-	for _, cat := range categoryOrder {
-		categorizedTemplates[cat] = []interface{}{}
-	}
-
-	// Group templates
 	for _, template := range templates {
-		if _, exists := categorizedTemplates[template.Category]; exists {
-			categorizedTemplates[template.Category] = append(categorizedTemplates[template.Category], template)
-		} else {
-			// If category doesn't exist, add to Others
-			categorizedTemplates["Others"] = append(categorizedTemplates["Others"], template)
+		tags := template.CategoryTags
+		if len(tags) == 0 && template.Category != "" {
+			tags = []string{template.Category}
+		}
+		if len(tags) == 0 {
+			tags = []string{"Others"}
+		}
+		for _, tag := range tags {
+			categorySet[tag] = struct{}{}
+			categorizedTemplates[tag] = append(categorizedTemplates[tag], template)
 		}
 	}
+
+	// Build a deterministic category order (alphabetical)
+	categoryOrder := make([]string, 0, len(categorySet))
+	for tag := range categorySet {
+		categoryOrder = append(categoryOrder, tag)
+	}
+	sort.Strings(categoryOrder)
 
 	// Prepare template data
 	data := s.baseTemplateData(user)

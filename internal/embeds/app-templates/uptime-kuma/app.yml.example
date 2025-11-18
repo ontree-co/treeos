@@ -1,0 +1,5 @@
+expected_services:
+  - uptime-kuma
+id: uptime-kuma
+name: uptime-kuma
+primary_service: uptime-kuma

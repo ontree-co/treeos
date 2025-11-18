@@ -18,14 +18,14 @@ services:
     ports:
       - "8080:80"
     volumes:
-      - /opt/ontree/apps/test-app/volumes/web_data:/usr/share/nginx/html
+      - /usr/local/ontree/apps/test-app/volumes/web_data:/usr/share/nginx/html
       - nginx-config:/etc/nginx
   db:
     image: postgres:15
     environment:
       POSTGRES_PASSWORD: secret
     volumes:
-      - /opt/ontree/apps/test-app/volumes/db_data:/var/lib/postgresql/data
+      - /usr/local/ontree/apps/test-app/volumes/db_data:/var/lib/postgresql/data
       - db-backup:/backup
 volumes:
   nginx-config:
@@ -232,7 +232,7 @@ services:
   web:
     image: nginx:latest
     volumes:
-      - /opt/ontree/apps/my-app/volumes/web_data:/usr/share/nginx/html
+      - /usr/local/ontree/apps/my-app/volumes/web_data:/usr/share/nginx/html
 `,
 			shouldFail: false,
 		},
@@ -245,7 +245,7 @@ services:
   web:
     image: nginx:latest
     volumes:
-      - /opt/ontree/apps/my-app/mnt/config:/etc/nginx/conf.d
+      - /usr/local/ontree/apps/my-app/mnt/config:/etc/nginx/conf.d
 `,
 			shouldFail: false,
 		},
@@ -258,7 +258,7 @@ services:
   web:
     image: nginx:latest
     volumes:
-      - /opt/ontree/shared/models:/models:ro
+      - /usr/local/ontree/shared/models:/models:ro
 `,
 			shouldFail: false,
 		},
@@ -285,7 +285,7 @@ services:
   web:
     image: nginx:latest
     volumes:
-      - /opt/ontree/apps/other-app/volumes/data:/data
+      - /usr/local/ontree/apps/other-app/volumes/data:/data
 `,
 			shouldFail: true,
 			errorMsg:   "is not allowed",
@@ -299,7 +299,7 @@ services:
   web:
     image: nginx:latest
     volumes:
-      - /opt/ontree/apps/my-app/volumes/data/:/usr/share/nginx/html
+      - /usr/local/ontree/apps/my-app/volumes/data/:/usr/share/nginx/html
 `,
 			shouldFail: false,
 		},
@@ -356,7 +356,7 @@ services:
     image: nginx:latest
     volumes:
       - type: bind
-        source: /opt/ontree/apps/my-app/mnt/config
+        source: /usr/local/ontree/apps/my-app/mnt/config
         target: /etc/nginx
 `,
 			shouldFail: false,
@@ -386,7 +386,7 @@ services:
   web:
     image: nginx:latest
     volumes:
-      - /opt/ontree/apps/test-app/volumes/html:/usr/share/nginx/html
+      - /usr/local/ontree/apps/test-app/volumes/html:/usr/share/nginx/html
       - nginx-cache:/var/cache/nginx
       - type: volume
         source: nginx-logs
@@ -449,12 +449,12 @@ services:
   web:
     image: nginx:latest
     volumes:
-      - /opt/ontree/apps/complex-app/volumes/html:/usr/share/nginx/html
+      - /usr/local/ontree/apps/complex-app/volumes/html:/usr/share/nginx/html
   db:
     image: postgres:15
     privileged: true
     volumes:
-      - /opt/ontree/apps/complex-app/volumes/db_data:/var/lib/postgresql/data
+      - /usr/local/ontree/apps/complex-app/volumes/db_data:/var/lib/postgresql/data
 `,
 			shouldFail: true,
 			errorMsg:   "privileged mode is not allowed",
@@ -519,7 +519,7 @@ services:
 func TestValidateBindMounts_DemoMode(t *testing.T) {
 	// Set demo mode environment variable
 	oldEnv := os.Getenv("TREEOS_RUN_MODE")
-	os.Setenv("TREEOS_RUN_MODE", "demo")              //nolint:errcheck,gosec // Test setup
+	os.Setenv("TREEOS_RUN_MODE", "demo")       //nolint:errcheck,gosec // Test setup
 	defer os.Setenv("TREEOS_RUN_MODE", oldEnv) //nolint:errcheck // Test cleanup
 
 	tests := []struct {
@@ -577,7 +577,7 @@ services:
   web:
     image: nginx:latest
     volumes:
-      - /opt/ontree/apps/test-app/volumes/data:/data
+      - /usr/local/ontree/apps/test-app/volumes/data:/data
 `,
 			shouldFail: true,
 			errorMsg:   "must be a relative path in demo mode",

@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  readeck:
+    image: codeberg.org/readeck/readeck:latest
+    container_name: ${COMPOSE_PROJECT_NAME}-readeck-1
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8001}:8000"
+    volumes:
+      - readeck_data:/readeck
+
+x-ontree:
+  subdomain: ${APP_SUBDOMAIN:-readeck}
+  host_port: 8001
+  is_exposed: false
+  tailscale_exposed: false
+  emoji: "🔖"
+
+volumes:
+  readeck_data:

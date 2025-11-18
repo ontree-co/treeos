@@ -1,0 +1,12 @@
+{
+  "id": "uptime-kuma",
+  "name": "Uptime Kuma",
+  "description": "A fancy self-hosted monitoring tool for tracking the uptime and performance of your websites and applications.",
+  "category_tags": [
+    "Others"
+  ],
+  "icon": "bi-heart-pulse",
+  "port": "4001",
+  "documentation_url": "https://github.com/louislam/uptime-kuma",
+  "filename": "docker-compose.yml"
+}

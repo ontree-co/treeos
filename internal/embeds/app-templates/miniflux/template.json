@@ -1,0 +1,12 @@
+{
+  "id": "miniflux",
+  "name": "Miniflux",
+  "description": "Minimalist and privacy-focused RSS feed reader. Features automatic tracking removal, full-text extraction, and keyboard navigation.",
+  "category_tags": [
+    "Others"
+  ],
+  "icon": "bi-rss",
+  "port": "8081",
+  "documentation_url": "https://miniflux.app/",
+  "filename": "docker-compose.yml"
+}

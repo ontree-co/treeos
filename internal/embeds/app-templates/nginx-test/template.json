@@ -1,0 +1,12 @@
+{
+  "id": "nginx-test",
+  "name": "Nginx Test",
+  "description": "Simple Nginx web server for testing",
+  "category_tags": [
+    "Others"
+  ],
+  "icon": "bi-server",
+  "port": "8080",
+  "documentation_url": "https://nginx.org/en/docs/",
+  "filename": "docker-compose.yml"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "openwebui",
+  "name": "Open WebUI",
+  "description": "User-friendly web interface for LLMs. Connects to existing Ollama instance.",
+  "category_tags": [
+    "LLM Web Interfaces"
+  ],
+  "icon": "bi-chat-dots",
+  "port": "3001",
+  "documentation_url": "https://github.com/open-webui/open-webui",
+  "filename": "docker-compose.yml"
+}

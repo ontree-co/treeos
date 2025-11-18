@@ -1,0 +1,5 @@
+expected_services:
+  - ollama
+id: ollama-nvidia
+name: ollama-nvidia
+primary_service: ollama

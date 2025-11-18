@@ -1,0 +1,6 @@
+expected_services:
+  - miniflux
+  - postgres
+id: miniflux
+name: miniflux
+primary_service: miniflux

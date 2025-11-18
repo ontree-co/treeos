@@ -1,0 +1,6 @@
+expected_services:
+  - mongo
+  - app
+id: unifi-network
+name: unifi-network
+primary_service: app

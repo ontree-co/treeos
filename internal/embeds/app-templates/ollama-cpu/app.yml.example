@@ -1,0 +1,5 @@
+expected_services:
+  - ollama
+id: ollama-cpu
+name: ollama-cpu
+primary_service: ollama

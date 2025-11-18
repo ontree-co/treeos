@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  uptime-kuma:
+    image: louislam/uptime-kuma:latest
+    volumes:
+      - uptime_kuma_data:/app/data
+    ports:
+      - "4001:3001"
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+
+volumes:
+  uptime_kuma_data:

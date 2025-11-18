@@ -7,7 +7,7 @@ import (
 
 func TestProcessTemplateContent(t *testing.T) {
 	// Create a service
-	svc := NewService("compose")
+	svc := NewService(".")
 
 	// Test content with a simple image
 	testContent := `version: '3.8'

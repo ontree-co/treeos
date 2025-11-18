@@ -1,0 +1,5 @@
+expected_services:
+  - diskspeed
+id: diskspeed
+name: diskspeed
+primary_service: diskspeed

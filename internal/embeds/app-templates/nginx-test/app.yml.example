@@ -1,0 +1,5 @@
+expected_services:
+  - nginx
+id: nginx-test
+name: nginx-test
+primary_service: nginx

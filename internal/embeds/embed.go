@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-//go:embed static templates templates/dashboard/_*.html
+//go:embed static templates templates/dashboard/_*.html app-templates
 var content embed.FS
 
 // StaticFS returns the embedded static files
@@ -16,9 +16,14 @@ func StaticFS() (fs.FS, error) {
 	return fs.Sub(content, "static")
 }
 
-// TemplateFS returns the embedded template files
+// TemplateFS returns the embedded HTML template files
 func TemplateFS() (fs.FS, error) {
 	return fs.Sub(content, "templates")
+}
+
+// AppTemplateFS returns the embedded application template files
+func AppTemplateFS() (fs.FS, error) {
+	return fs.Sub(content, "app-templates")
 }
 
 // ParseTemplate parses templates from the embedded filesystem with custom functions
@@ -27,10 +32,10 @@ func ParseTemplate(patterns ...string) (*template.Template, error) {
 	funcMap := template.FuncMap{
 		"extractHostPort": extractHostPort,
 	}
-	
+
 	// Create template with custom functions
 	tmpl := template.New("").Funcs(funcMap)
-	
+
 	// Parse templates from embedded filesystem
 	return tmpl.ParseFS(content, patterns...)
 }

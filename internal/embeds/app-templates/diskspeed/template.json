@@ -1,0 +1,12 @@
+{
+  "id": "diskspeed",
+  "name": "Disk Speed Test",
+  "description": "Benchmark read and write speeds of storage volumes. Features both CLI and web UI for testing disk performance.",
+  "category_tags": [
+    "Others"
+  ],
+  "icon": "bi-speedometer2",
+  "port": "8082",
+  "documentation_url": "https://hub.docker.com/r/smunz/diskspeed",
+  "filename": "docker-compose.yml"
+}

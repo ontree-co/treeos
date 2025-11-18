@@ -7,6 +7,18 @@ import (
 	"testing"
 )
 
+func baseAppsDir() string {
+	return filepath.Join(GetBasePath(), "apps")
+}
+
+func baseDBPath() string {
+	return filepath.Join(GetBasePath(), "ontree.db")
+}
+
+func baseSharedPath() string {
+	return filepath.Join(GetBasePath(), "shared")
+}
+
 func TestDefaultConfig(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -20,8 +32,8 @@ func TestDefaultConfig(t *testing.T) {
 			name:           "default production mode",
 			envVars:        map[string]string{},
 			wantRunMode:    ProductionMode,
-			wantAppsDir:    "/opt/ontree/apps",
-			wantDBPath:     "/opt/ontree/ontree.db",
+			wantAppsDir:    baseAppsDir(),
+			wantDBPath:     baseDBPath(),
 			wantListenAddr: DefaultPort,
 		},
 		{
@@ -49,15 +61,22 @@ func TestDefaultConfig(t *testing.T) {
 			// Get default config
 			cfg := defaultConfig()
 
+			expectedAppsDir := tt.wantAppsDir
+			expectedDBPath := tt.wantDBPath
+			if tt.wantRunMode == ProductionMode && (len(tt.envVars) == 0 || (len(tt.envVars) == 1 && tt.envVars["TREEOS_RUN_MODE"] == "production")) {
+				expectedAppsDir = GetAppsPath()
+				expectedDBPath = GetDatabasePath()
+			}
+
 			// Check results
 			if cfg.RunMode != tt.wantRunMode {
 				t.Errorf("RunMode = %v, want %v", cfg.RunMode, tt.wantRunMode)
 			}
-			if cfg.AppsDir != tt.wantAppsDir {
-				t.Errorf("AppsDir = %v, want %v", cfg.AppsDir, tt.wantAppsDir)
+			if cfg.AppsDir != expectedAppsDir {
+				t.Errorf("AppsDir = %v, want %v", cfg.AppsDir, expectedAppsDir)
 			}
-			if cfg.DatabasePath != tt.wantDBPath {
-				t.Errorf("DatabasePath = %v, want %v", cfg.DatabasePath, tt.wantDBPath)
+			if cfg.DatabasePath != expectedDBPath {
+				t.Errorf("DatabasePath = %v, want %v", cfg.DatabasePath, expectedDBPath)
 			}
 			if cfg.ListenAddr != tt.wantListenAddr {
 				t.Errorf("ListenAddr = %v, want %v", cfg.ListenAddr, tt.wantListenAddr)
@@ -114,8 +133,8 @@ func TestLoad(t *testing.T) {
 				"TREEOS_RUN_MODE": "production",
 			},
 			wantRunMode: ProductionMode,
-			wantAppsDir: "/opt/ontree/apps",
-			wantDBPath:  "/opt/ontree/ontree.db",
+			wantAppsDir: baseAppsDir(),
+			wantDBPath:  baseDBPath(),
 			wantListen:  DefaultPort,
 		},
 	}
@@ -150,22 +169,29 @@ func TestLoad(t *testing.T) {
 				t.Fatalf("Load() error = %v", err)
 			}
 
+			expectedAppsDir := tt.wantAppsDir
+			expectedDBPath := tt.wantDBPath
+			if tt.wantRunMode == ProductionMode && (len(tt.envVars) == 0 || (len(tt.envVars) == 1 && tt.envVars["TREEOS_RUN_MODE"] == "production")) {
+				expectedAppsDir = GetAppsPath()
+				expectedDBPath = GetDatabasePath()
+			}
+
 			// Check results
 			if cfg.RunMode != tt.wantRunMode {
 				t.Errorf("RunMode = %v, want %v", cfg.RunMode, tt.wantRunMode)
 			}
 			// For relative paths, check if they were converted to absolute paths correctly
-			if strings.HasPrefix(tt.wantAppsDir, "./") {
+			if strings.HasPrefix(expectedAppsDir, "./") {
 				// For relative paths, just check that it ends with the expected suffix
-				expectedSuffix := strings.TrimPrefix(tt.wantAppsDir, "./")
+				expectedSuffix := strings.TrimPrefix(expectedAppsDir, "./")
 				if !strings.HasSuffix(cfg.AppsDir, expectedSuffix) {
 					t.Errorf("AppsDir = %v, want path ending with %v", cfg.AppsDir, expectedSuffix)
 				}
-			} else if cfg.AppsDir != tt.wantAppsDir {
-				t.Errorf("AppsDir = %v, want %v", cfg.AppsDir, tt.wantAppsDir)
+			} else if cfg.AppsDir != expectedAppsDir {
+				t.Errorf("AppsDir = %v, want %v", cfg.AppsDir, expectedAppsDir)
 			}
-			if cfg.DatabasePath != tt.wantDBPath {
-				t.Errorf("DatabasePath = %v, want %v", cfg.DatabasePath, tt.wantDBPath)
+			if cfg.DatabasePath != expectedDBPath {
+				t.Errorf("DatabasePath = %v, want %v", cfg.DatabasePath, expectedDBPath)
 			}
 			if cfg.ListenAddr != tt.wantListen {
 				t.Errorf("ListenAddr = %v, want %v", cfg.ListenAddr, tt.wantListen)
@@ -176,21 +202,18 @@ func TestLoad(t *testing.T) {
 
 func TestGetSharedPath(t *testing.T) {
 	tests := []struct {
-		name     string
-		envVars  map[string]string
-		wantPath string
+		name    string
+		envVars map[string]string
 	}{
 		{
-			name:     "production mode returns /opt/ontree/shared",
-			envVars:  map[string]string{},
-			wantPath: "/opt/ontree/shared",
+			name:    "production mode returns base shared path",
+			envVars: map[string]string{},
 		},
 		{
 			name: "demo mode returns ./shared",
 			envVars: map[string]string{
 				"TREEOS_RUN_MODE": "demo",
 			},
-			wantPath: "./shared",
 		},
 	}
 
@@ -206,8 +229,14 @@ func TestGetSharedPath(t *testing.T) {
 
 			// Get shared path
 			got := GetSharedPath()
-			if got != tt.wantPath {
-				t.Errorf("GetSharedPath() = %v, want %v", got, tt.wantPath)
+
+			expected := filepath.Join(GetBasePath(), "shared")
+			if GetBasePath() == "." {
+				expected = "./shared"
+			}
+
+			if got != expected {
+				t.Errorf("GetSharedPath() = %v, want %v", got, expected)
 			}
 		})
 	}
@@ -215,21 +244,18 @@ func TestGetSharedPath(t *testing.T) {
 
 func TestGetSharedOllamaPath(t *testing.T) {
 	tests := []struct {
-		name     string
-		envVars  map[string]string
-		wantPath string
+		name    string
+		envVars map[string]string
 	}{
 		{
-			name:     "production mode returns /opt/ontree/shared/ollama",
-			envVars:  map[string]string{},
-			wantPath: "/opt/ontree/shared/ollama",
+			name:    "production mode returns base shared/ollama path",
+			envVars: map[string]string{},
 		},
 		{
 			name: "demo mode returns ./shared/ollama",
 			envVars: map[string]string{
 				"TREEOS_RUN_MODE": "demo",
 			},
-			wantPath: "./shared/ollama",
 		},
 	}
 
@@ -245,8 +271,15 @@ func TestGetSharedOllamaPath(t *testing.T) {
 
 			// Get shared ollama path
 			got := GetSharedOllamaPath()
-			if got != tt.wantPath {
-				t.Errorf("GetSharedOllamaPath() = %v, want %v", got, tt.wantPath)
+
+			base := GetBasePath()
+			expected := filepath.Join(base, "shared", "ollama")
+			if base == "." {
+				expected = "./shared/ollama"
+			}
+
+			if got != expected {
+				t.Errorf("GetSharedOllamaPath() = %v, want %v", got, expected)
 			}
 		})
 	}

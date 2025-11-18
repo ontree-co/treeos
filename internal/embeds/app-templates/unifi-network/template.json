@@ -1,0 +1,14 @@
+{
+  "id": "unifi-network",
+  "name": "Unifi Network Application",
+  "description": "Enterprise-grade network management system for Ubiquiti devices. Manages APs, switches, and gateways.",
+  "category_tags": [
+    "Networking"
+  ],
+  "icon": "bi-router",
+  "port": "8443",
+  "documentation_url": "https://www.ui.com/download/unifi/",
+  "requires_https": true,
+  "multi_port": true,
+  "filename": "docker-compose.yml"
+}

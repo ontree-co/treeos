@@ -1,0 +1,12 @@
+{
+  "id": "paperless-ngx",
+  "name": "Paperless NGX",
+  "description": "Smart document management system that transforms physical documents into a searchable digital archive with OCR and AI-powered organization.",
+  "category_tags": [
+    "Others"
+  ],
+  "icon": "bi-file-earmark-text",
+  "port": "8010",
+  "documentation_url": "https://docs.paperless-ngx.com/",
+  "filename": "docker-compose.yml"
+}

@@ -169,7 +169,7 @@ func New(cfg *config.Config, versionInfo version.Info) (*Server, error) {
 	s.sseManager = NewSSEManager()
 
 	// Initialize template service
-	templatesPath := "compose" // Path within the embedded templates directory
+	templatesPath := "." // Path within the embedded app templates directory
 	s.templateSvc = templates.NewService(templatesPath)
 
 	// Agent will be initialized in Start() if enabled

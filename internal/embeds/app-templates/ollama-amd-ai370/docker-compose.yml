@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  ollama:
+    image: docker.io/ollama/ollama:rocm
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - {{SHARED_OLLAMA_PATH}}:/root/.ollama
+    labels:
+      - "ontree.inference=true"
+      - "ontree.type=ollama"
+    devices:
+      - /dev/kfd
+      - /dev/dri
+    environment:
+      - HSA_OVERRIDE_GFX_VERSION=11.0.0
+      - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_KEEP_ALIVE=12h
+      - OLLAMA_NUM_PARALLEL=1
+    mem_limit: 16g
+    mem_reservation: 8g

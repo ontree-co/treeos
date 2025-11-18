@@ -1,0 +1,13 @@
+{
+  "id": "ollama-cpu",
+  "name": "Ollama (CPU)",
+  "description": "System service for running LLMs on CPU. Use this version for Mac machines. Manages shared model store for all AI applications.",
+  "category_tags": [
+    "LLM Inference"
+  ],
+  "icon": "bi-cpu",
+  "port": "11434",
+  "documentation_url": "https://ollama.ai",
+  "is_system_service": true,
+  "filename": "docker-compose.yml"
+}

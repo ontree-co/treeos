@@ -1,0 +1,7 @@
+expected_services:
+  - librechat
+  - mongodb
+  - meilisearch
+id: librechat
+name: librechat
+primary_service: librechat

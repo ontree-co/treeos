@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  diskspeed:
+    image: smunz/diskspeed:v0.1.0
+    container_name: ${COMPOSE_PROJECT_NAME}-diskspeed-1
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8082}:8080"
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+    volumes:
+      - ${TEST_PATH:-./test-data}:/data  # Path to test disk speed
+
+x-ontree:
+  subdomain: ${APP_SUBDOMAIN:-diskspeed}
+  host_port: 8082
+  is_exposed: false
+  tailscale_exposed: false
+  emoji: "💾"

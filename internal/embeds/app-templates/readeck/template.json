@@ -1,0 +1,12 @@
+{
+  "id": "readeck",
+  "name": "Readeck",
+  "description": "A simple web application to save and organize articles, web pages, and documents for later reading. Features full-text search and offline reading.",
+  "category_tags": [
+    "Others"
+  ],
+  "icon": "bi-bookmark-star",
+  "port": "8001",
+  "documentation_url": "https://readeck.org/",
+  "filename": "docker-compose.yml"
+}

@@ -1,0 +1,5 @@
+expected_services:
+  - ollama
+id: ollama-amd-ai370
+name: ollama-amd-ai370
+primary_service: ollama

@@ -1,0 +1,8 @@
+expected_services:
+  - broker
+  - webserver
+  - gotenberg
+  - tika
+id: paperless-ngx
+name: paperless-ngx
+primary_service: webserver
