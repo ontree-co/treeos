@@ -170,6 +170,42 @@ run: build
 	@echo "Running $(BINARY_NAME)..."
 	./$(BUILD_DIR)/$(BINARY_NAME)
 
+# Development mode with hot reload using wgo
+.PHONY: dev
+dev:
+	@echo "🚀 Starting development server with hot reload..."
+	@which wgo > /dev/null 2>&1 || (echo "❌ wgo not found. Install with: go install github.com/bokwoon95/wgo@latest" && exit 1)
+	@./scripts/dev-wgo.sh
+
+# Development mode with debugging support (no hot reload)
+.PHONY: dev-debug
+dev-debug: embed-assets
+	@echo "🐛 Starting development server in debug mode (no hot reload)..."
+	@echo "Use VSCode debugger or dlv to attach to the process"
+	@mkdir -p $(BUILD_DIR)
+	@# Source .env file if it exists to get LISTEN_ADDR
+	@if [ -f .env ]; then \
+		export $$(cat .env | grep -v '^#' | xargs); \
+	fi; \
+	DEBUG=true TREEOS_RUN_MODE=demo \
+		dlv debug --headless --listen=:2345 --api-version=2 \
+		--accept-multiclient --continue \
+		$(MAIN_PATH)
+
+# Development mode with simple file watching (alternative to wgo)
+.PHONY: dev-watch
+dev-watch: embed-assets
+	@echo "👁️ Starting development with simple file watching..."
+	@mkdir -p $(BUILD_DIR)
+	@echo "Watching Go files for changes..."
+	@# Source .env file if it exists to get LISTEN_ADDR
+	@if [ -f .env ]; then \
+		export $$(cat .env | grep -v '^#' | xargs); \
+	fi; \
+	DEBUG=true TREEOS_RUN_MODE=demo \
+		wgo -file=".go" -xdir="vendor" -xdir="documentation" -xdir="tests" \
+		go run $(MAIN_PATH)
+
 # Format code
 .PHONY: fmt
 fmt:
@@ -192,6 +228,10 @@ install-tools:
 	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@v2.5.0
 	@echo "Installing goose for migrations..."
 	@go install github.com/pressly/goose/v3/cmd/goose@latest
+	@echo "Installing wgo for hot reload..."
+	@go install github.com/bokwoon95/wgo@latest
+	@echo "Installing delve debugger..."
+	@go install github.com/go-delve/delve/cmd/dlv@latest
 	@echo "Development tools installed"
 
 # Check for module updates
@@ -301,6 +341,9 @@ help:
 	@echo "  lint            - Run golangci-lint"
 	@echo "  clean           - Remove build artifacts"
 	@echo "  run             - Build and run the application"
+	@echo "  dev             - Run with hot reload using wgo"
+	@echo "  dev-debug       - Run with debugging support (Delve)"
+	@echo "  dev-watch       - Run with simple file watching"
 	@echo "  fmt             - Format Go code"
 	@echo "  vet             - Run go vet"
 	@echo "  check-templates - Check HTML template syntax"

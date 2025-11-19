@@ -5,6 +5,16 @@
 5. Add a unit test first if applicable to really find out if your fix fixes the problem.
 6. This project supports macOS on Apple Silicon and Linux on amd64.
 
+## Development with Hot Reload
+
+This project supports hot reloading using `wgo` for improved development experience:
+
+- **`make dev`** - Run with hot reload (recommended for development)
+- **`make dev-debug`** - Run with Delve debugger (for breakpoint debugging)
+- **`make dev-watch`** - Simple file watching mode
+
+See [docs/WGO_HOT_RELOAD.md](docs/WGO_HOT_RELOAD.md) for detailed setup and usage instructions.
+
 ## Tool Version Management
 
 This project uses `.tool-versions` file to maintain consistent tool versions across all development environments.

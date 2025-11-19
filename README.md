@@ -199,6 +199,12 @@ make test-all
 ### Development Commands
 
 ```bash
+# Hot reload development (recommended)
+make dev              # Auto-rebuilds on file changes using wgo
+
+# Traditional debugging
+make dev-debug        # Run with Delve debugger (attach on port 2345)
+
 # Format code
 make fmt
 
@@ -210,10 +216,9 @@ make check-templates
 
 # Generate coverage report
 make test-coverage
-
-# Run with hot reload (development)
-go run cmd/treeos/main.go
 ```
+
+**Hot Reload**: TreeOS uses [wgo](https://github.com/bokwoon95/wgo) for automatic rebuilding during development. When you run `make dev`, it watches your Go files, templates, and static assets. Any changes trigger an automatic rebuild and server restart, significantly speeding up the development cycle. Environment variables are loaded from `.env` file. For breakpoint debugging, use VSCode's F5 key or `make dev-debug`.
 
 ## Release Management
 

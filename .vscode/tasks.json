@@ -34,6 +34,64 @@
             "problemMatcher": ["$go"]
         },
         {
+            "label": "dev-server",
+            "type": "shell",
+            "command": "make",
+            "args": ["dev"],
+            "isBackground": true,
+            "problemMatcher": {
+                "pattern": {
+                    "regexp": "^(.+?):(\\d+):(\\d+):\\s+(.+)$",
+                    "file": 1,
+                    "line": 2,
+                    "column": 3,
+                    "message": 4
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "^.*Starting development server.*$",
+                    "endsPattern": "^.*Build complete.*$"
+                }
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "dedicated",
+                "showReuseMessage": false,
+                "clear": true
+            }
+        },
+        {
+            "label": "dev-debug-server",
+            "type": "shell",
+            "command": "make",
+            "args": ["dev-debug"],
+            "isBackground": true,
+            "problemMatcher": {
+                "pattern": {
+                    "regexp": "^(.+?):(\\d+):(\\d+):\\s+(.+)$",
+                    "file": 1,
+                    "line": 2,
+                    "column": 3,
+                    "message": 4
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "^.*Starting development server in debug mode.*$",
+                    "endsPattern": "^.*API server listening.*$"
+                }
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "dedicated",
+                "showReuseMessage": false,
+                "clear": true
+            }
+        },
+        {
             "label": "test",
             "type": "shell",
             "command": "make",

@@ -1,6 +1,12 @@
 // Place your key bindings in this file to override the defaults
 [
   {
+    "key": "ctrl+shift+r",
+    "command": "workbench.action.debug.selectandstart",
+    "args": "Dev Server (Hot Reload)",
+    "when": "!inDebugMode"
+  },
+  {
     "key": "ctrl+shift+l",
     "command": "workbench.action.tasks.runTask",
     "args": "Lint - All (make lint)",

@@ -9,15 +9,37 @@
             "program": "${workspaceFolder}/cmd/treeos/main.go",
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "embed-assets",
-            // Note: LISTEN_ADDR is not set here, so it uses the default port from config.DefaultPort (currently :3000)
+            "envFile": "${workspaceFolder}/.env",
             "env": {
                 // Run in demo mode for development
                 "TREEOS_RUN_MODE": "demo",
-                // Comment out to use platform defaults
-                // "ONTREE_APPS_DIR": "${workspaceFolder}/apps",
-                "DATABASE_PATH": "${workspaceFolder}/ontree.db"
+                // Override with workspaceFolder paths
+                "ONTREE_APPS_DIR": "${workspaceFolder}/apps",
+                "DATABASE_PATH": "${workspaceFolder}/ontree.db",
+                "DEBUG": "true"
+                // LISTEN_ADDR is loaded from .env file (port 4000)
             },
             "args": [],
+            "showLog": true
+        },
+        {
+            "name": "Dev Server (Hot Reload)",
+            "type": "node",
+            "request": "launch",
+            "runtimeExecutable": "make",
+            "runtimeArgs": ["dev"],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "skipFiles": ["<node_internals>/**"]
+        },
+        {
+            "name": "Attach to Delve (for dev-debug)",
+            "type": "go",
+            "request": "attach",
+            "mode": "remote",
+            "remotePath": "${workspaceFolder}",
+            "port": 2345,
+            "host": "127.0.0.1",
             "showLog": true
         },
         {
@@ -41,6 +63,23 @@
             "cwd": "${workspaceFolder}/tests/e2e",
             "console": "integratedTerminal",
             "preLaunchTask": "start-test-server"
+        },
+        {
+            "name": "Dev Server with Debug Option",
+            "type": "node",
+            "request": "launch",
+            "runtimeExecutable": "make",
+            "runtimeArgs": ["dev-debug"],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "skipFiles": ["<node_internals>/**"]
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Dev + Debug Ready",
+            "configurations": ["Dev Server with Debug Option", "Attach to Delve (for dev-debug)"],
+            "stopAll": true
         }
     ]
 }
