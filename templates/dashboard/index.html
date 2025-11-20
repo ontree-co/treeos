@@ -122,10 +122,10 @@
 <!-- Application Management Section -->
 <div class="row">
     <div class="col-12">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
+        <div class="card dashboard-panel">
+            <div class="card-header dashboard-panel-header">
                 <h2 class="mb-0">📱 Apps</h2>
-                <div>
+                <div class="dashboard-panel-actions">
                     <a href="/templates" class="btn btn-primary btn-lg">
                         <i class="bi bi-plus-circle"></i> Create New App
                     </a>
@@ -255,10 +255,10 @@
 <!-- Models Management Section -->
 <div class="row mt-4">
     <div class="col-12">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
+        <div class="card dashboard-panel">
+            <div class="card-header dashboard-panel-header">
                 <h2 class="mb-0">🎲 Models</h2>
-                <div>
+                <div class="dashboard-panel-actions">
                     <button class="btn btn-primary btn-lg" id="add-model-btn" onclick="showModelLibrary()">
                         <i class="bi bi-download"></i> Download Models
                     </button>
@@ -288,6 +288,7 @@
         transition: background-color 0.2s, box-shadow 0.2s;
         height: 100%;
         border: 1px solid rgba(0,0,0,0.125);
+        background-color: var(--color-panel-surface);
         cursor: pointer;
     }
 
@@ -331,7 +332,7 @@
     
     /* Ensure white background for cards inside gradient container */
     .funky-gradient-card .monitoring-card {
-        background-color: white;
+        background-color: var(--color-panel-surface);
     }
 
     /* Gray background on hover for cards inside gradient container */
