@@ -586,7 +586,9 @@
                 {{if or $view.ServiceOptions $view.HasServices}}
                 <hr>
                 <div class="mt-3">
-                    <h6 class="mb-2"><i>📋</i> Service Logs</h6>
+                    <h6 class="mb-3" style="font-size: 1rem; font-weight: 600;">
+                        <i class="bi bi-journal-text me-2"></i>Service Logs
+                    </h6>
                     <div class="accordion" id="logsAccordion">
                         <div class="accordion-item border-0 pb-2">
                             <button class="config-section-toggle collapsed" type="button"
@@ -597,7 +599,7 @@
                             </button>
                             <div id="logs-all" class="accordion-collapse collapse" data-service="all">
                                 <div class="accordion-body px-0">
-                                    <div class="p-3 rounded logs-content-wrapper service-log-pane"
+                                    <div class="p-3 rounded logs-content-wrapper service-log-pane mt-2"
                                          data-log-pane="all"
                                          style="max-height: 500px; overflow-y: auto; font-family: monospace; font-size: 0.875rem; background-color: var(--monitoring-card-surface, var(--color-panel-surface)); color: var(--color-text-primary);">
                                         <div class="text-muted text-center">
@@ -618,7 +620,7 @@
                             </button>
                             <div id="logs-{{.}}" class="accordion-collapse collapse" data-service="{{.}}">
                                 <div class="accordion-body px-0">
-                                    <div class="p-3 rounded logs-content-wrapper service-log-pane"
+                                    <div class="p-3 rounded logs-content-wrapper service-log-pane mt-2"
                                          data-log-pane="{{.}}"
                                          style="max-height: 500px; overflow-y: auto; font-family: monospace; font-size: 0.875rem; background-color: var(--monitoring-card-surface, var(--color-panel-surface)); color: var(--color-text-primary);">
                                         <div class="text-muted text-center">
