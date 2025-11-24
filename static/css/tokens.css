@@ -29,10 +29,14 @@
   /* Accent colors */
   --blue-1: #5b82e1;
   --blue-2: #436ad7;
+  --blue-3: #8fb4ff;
   --purple-1: #6366f1;
   --purple-2: #f3e8ff;
   --color-accent-blue: #5b82e1;
   --color-accent-blue-strong: #436ad7;
+  --color-accent-blue-light: var(--blue-3);
+  --color-accent-blue-light-rgb: 143, 180, 255;
+  --color-accent-blue-rgb: 91, 130, 225;
 
   /* Support colors */
   --amber-1: #fff8c0;
@@ -163,10 +167,10 @@
   --color-overlay: rgba(var(--green-1-rgb), 0.75);
 
   /* Buttons */
-  --color-button-primary-bg: var(--green-2);
-  --color-button-primary-text: var(--gray-1);
-  --color-button-primary-hover-bg: var(--green-1);
-  --color-button-primary-hover-text: var(--gray-1);
+  --color-button-primary-bg: var(--gray-1);
+  --color-button-primary-text: var(--green-2);
+  --color-button-primary-hover-bg: var(--gray-2);
+  --color-button-primary-hover-text: var(--green-1);
   --color-button-secondary-hover: var(--gray-2);
   --color-button-ghost-text: #fdf6e2;
   --color-button-ghost-hover-text: #fff8c0;

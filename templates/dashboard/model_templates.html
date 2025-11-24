@@ -4,7 +4,7 @@
 <div class="row">
     <div class="col-12">
         <nav aria-label="breadcrumb">
-            <ol class="breadcrumb">
+            <ol class="breadcrumb model-breadcrumb">
                 <li class="breadcrumb-item"><a href="/">Dashboard</a></li>
                 <li class="breadcrumb-item active">Model Library</li>
             </ol>
@@ -12,11 +12,11 @@
 
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h1><i class="bi bi-cpu"></i> Model Library</h1>
-            <div>
-                <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#customModelModal">
+            <div class="d-flex gap-3 flex-wrap">
+                <button class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#customModelModal">
                     <i class="bi bi-cloud-download"></i> Load Other Model
                 </button>
-                <a href="/" class="btn btn-outline-secondary">
+                <a href="/" class="btn btn-secondary">
                     ← Back to Dashboard
                 </a>
             </div>
@@ -26,7 +26,7 @@
 
 <div class="row mb-4">
     <div class="col-12">
-        <div class="alert alert-info">
+        <div class="alert alert-info model-hint">
             <h5><i class="bi bi-lightbulb"></i> AI Model Library</h5>
             <p class="mb-0">
                 Browse and download AI models for chat, code generation, and vision tasks.
@@ -46,17 +46,14 @@
 
             {{if $chatModels}}
             <h4 class="mb-3"><i class="bi bi-chat-dots"></i> Chat Models</h4>
-            <div class="row mb-4">
+            <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 mb-4">
                 {{range $chatModels}}
-                <div class="col-md-6 col-lg-4 mb-4">
+                <div class="col mb-4">
                     <div class="card h-100 model-card" data-model="{{.Name}}" onclick="navigateToModel(event, '{{.Name}}')">
                         <div class="card-body d-flex flex-column">
                             <div class="d-flex align-items-center mb-3">
-                                <i class="bi bi-chat-dots fs-2 text-primary me-3"></i>
-                                <div>
-                                    <h5 class="card-title mb-0">{{.DisplayName}}</h5>
-                                    <small class="text-muted">Chat Model</small>
-                                </div>
+                                <i class="bi bi-chat-dots fs-2 model-icon me-3"></i>
+                                <h5 class="card-title mb-0">{{.DisplayName}}</h5>
                             </div>
 
                             <p class="card-text flex-grow-1">{{.Description}}</p>
@@ -65,12 +62,14 @@
                                 <i class="bi bi-hdd"></i> Size: {{.SizeEstimate}}
                             </p>
 
-                            <div class="d-flex gap-2 align-items-center">
+                            <div class="d-flex gap-3 align-items-center flex-wrap">
                                 {{if eq .Status "not_downloaded"}}
-                                    <button class="btn btn-primary model-action-btn" onclick="downloadModel('{{.Name}}')">
+                                    <button class="btn btn-primary model-action-btn action-half" onclick="downloadModel('{{.Name}}')">
                                         <i class="bi bi-download"></i> Download
                                     </button>
-                                    <span class="badge bg-secondary">Not Downloaded</span>
+                                    <a href="{{.DocumentationURL}}" target="_blank" class="btn btn-secondary model-action-btn action-half">
+                                        <i class="bi bi-globe2"></i> Website
+                                    </a>
                                 {{else if eq .Status "queued"}}
                                     <button class="btn btn-info model-action-btn" disabled>
                                         <i class="bi bi-hourglass-split"></i> Queued
@@ -91,10 +90,12 @@
                                         </div>
                                     </div>
                                 {{else if eq .Status "completed"}}
-                                    <button class="btn btn-success model-action-btn" disabled>
+                                    <button class="btn btn-primary model-action-btn action-half" disabled aria-disabled="true" tabindex="-1">
                                         <i class="bi bi-check-circle-fill"></i> Installed
                                     </button>
-                                    <span class="badge bg-success">Ready</span>
+                                    <a href="{{.DocumentationURL}}" target="_blank" class="btn btn-secondary model-action-btn action-half">
+                                        <i class="bi bi-globe2"></i> Website
+                                    </a>
                                 {{else if eq .Status "failed"}}
                                     <button class="btn btn-warning model-action-btn" onclick="retryModel('{{.Name}}')">
                                         <i class="bi bi-arrow-clockwise"></i> Retry
@@ -115,17 +116,14 @@
 
             {{if $codeModels}}
             <h4 class="mb-3"><i class="bi bi-code-slash"></i> Code Models</h4>
-            <div class="row mb-4">
+            <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 mb-4">
                 {{range $codeModels}}
-                <div class="col-md-6 col-lg-4 mb-4">
+                <div class="col mb-4">
                     <div class="card h-100 model-card" data-model="{{.Name}}" onclick="navigateToModel(event, '{{.Name}}')">
                         <div class="card-body d-flex flex-column">
                             <div class="d-flex align-items-center mb-3">
-                                <i class="bi bi-code-slash fs-2 text-success me-3"></i>
-                                <div>
-                                    <h5 class="card-title mb-0">{{.DisplayName}}</h5>
-                                    <small class="text-muted">Code Model</small>
-                                </div>
+                                <i class="bi bi-code-slash fs-2 model-icon me-3"></i>
+                                <h5 class="card-title mb-0">{{.DisplayName}}</h5>
                             </div>
 
                             <p class="card-text flex-grow-1">{{.Description}}</p>
@@ -134,12 +132,14 @@
                                 <i class="bi bi-hdd"></i> Size: {{.SizeEstimate}}
                             </p>
 
-                            <div class="d-flex gap-2 align-items-center">
+                            <div class="d-flex gap-3 align-items-center flex-wrap">
                                 {{if eq .Status "not_downloaded"}}
-                                    <button class="btn btn-primary model-action-btn" onclick="downloadModel('{{.Name}}')">
+                                    <button class="btn btn-primary model-action-btn action-half" onclick="downloadModel('{{.Name}}')">
                                         <i class="bi bi-download"></i> Download
                                     </button>
-                                    <span class="badge bg-secondary">Not Downloaded</span>
+                                    <a href="{{.DocumentationURL}}" target="_blank" class="btn btn-secondary model-action-btn action-half">
+                                        <i class="bi bi-globe2"></i> Website
+                                    </a>
                                 {{else if eq .Status "queued"}}
                                     <button class="btn btn-info model-action-btn" disabled>
                                         <i class="bi bi-hourglass-split"></i> Queued
@@ -160,10 +160,12 @@
                                         </div>
                                     </div>
                                 {{else if eq .Status "completed"}}
-                                    <button class="btn btn-success model-action-btn" disabled>
+                                    <button class="btn btn-primary model-action-btn action-half" disabled aria-disabled="true" tabindex="-1">
                                         <i class="bi bi-check-circle-fill"></i> Installed
                                     </button>
-                                    <span class="badge bg-success">Ready</span>
+                                    <a href="{{.DocumentationURL}}" target="_blank" class="btn btn-secondary model-action-btn action-half">
+                                        <i class="bi bi-globe2"></i> Website
+                                    </a>
                                 {{else if eq .Status "failed"}}
                                     <button class="btn btn-warning model-action-btn" onclick="retryModel('{{.Name}}')">
                                         <i class="bi bi-arrow-clockwise"></i> Retry
@@ -184,17 +186,14 @@
 
             {{if $visionModels}}
             <h4 class="mb-3"><i class="bi bi-eye"></i> Vision Models</h4>
-            <div class="row mb-4">
+            <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 mb-4">
                 {{range $visionModels}}
-                <div class="col-md-6 col-lg-4 mb-4">
+                <div class="col mb-4">
                     <div class="card h-100 model-card" data-model="{{.Name}}" onclick="navigateToModel(event, '{{.Name}}')">
                         <div class="card-body d-flex flex-column">
                             <div class="d-flex align-items-center mb-3">
-                                <i class="bi bi-eye fs-2 text-info me-3"></i>
-                                <div>
-                                    <h5 class="card-title mb-0">{{.DisplayName}}</h5>
-                                    <small class="text-muted">Vision Model</small>
-                                </div>
+                                <i class="bi bi-eye fs-2 model-icon me-3"></i>
+                                <h5 class="card-title mb-0">{{.DisplayName}}</h5>
                             </div>
 
                             <p class="card-text flex-grow-1">{{.Description}}</p>
@@ -203,12 +202,14 @@
                                 <i class="bi bi-hdd"></i> Size: {{.SizeEstimate}}
                             </p>
 
-                            <div class="d-flex gap-2 align-items-center">
+                            <div class="d-flex gap-3 align-items-center flex-wrap">
                                 {{if eq .Status "not_downloaded"}}
-                                    <button class="btn btn-primary model-action-btn" onclick="downloadModel('{{.Name}}')">
+                                    <button class="btn btn-primary model-action-btn action-half" onclick="downloadModel('{{.Name}}')">
                                         <i class="bi bi-download"></i> Download
                                     </button>
-                                    <span class="badge bg-secondary">Not Downloaded</span>
+                                    <a href="{{.DocumentationURL}}" target="_blank" class="btn btn-secondary model-action-btn action-half">
+                                        <i class="bi bi-globe2"></i> Website
+                                    </a>
                                 {{else if eq .Status "queued"}}
                                     <button class="btn btn-info model-action-btn" disabled>
                                         <i class="bi bi-hourglass-split"></i> Queued
@@ -229,10 +230,12 @@
                                         </div>
                                     </div>
                                 {{else if eq .Status "completed"}}
-                                    <button class="btn btn-success model-action-btn" disabled>
+                                    <button class="btn btn-primary model-action-btn action-half" disabled aria-disabled="true" tabindex="-1">
                                         <i class="bi bi-check-circle-fill"></i> Installed
                                     </button>
-                                    <span class="badge bg-success">Ready</span>
+                                    <a href="{{.DocumentationURL}}" target="_blank" class="btn btn-secondary model-action-btn action-half">
+                                        <i class="bi bi-globe2"></i> Website
+                                    </a>
                                 {{else if eq .Status "failed"}}
                                     <button class="btn btn-warning model-action-btn" onclick="retryModel('{{.Name}}')">
                                         <i class="bi bi-arrow-clockwise"></i> Retry
@@ -254,17 +257,14 @@
             {{$customModels := .CustomModels}}
             {{if $customModels}}
             <h4 class="mb-3"><i class="bi bi-box"></i> Custom Models</h4>
-            <div class="row mb-4">
+            <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 mb-4">
                 {{range $customModels}}
-                <div class="col-md-6 col-lg-4 mb-4">
+                <div class="col mb-4">
                     <div class="card h-100 model-card" data-model="{{.Name}}" onclick="navigateToModel(event, '{{.Name}}')">
                         <div class="card-body d-flex flex-column">
                             <div class="d-flex align-items-center mb-3">
-                                <i class="bi bi-box fs-2 text-warning me-3"></i>
-                                <div>
-                                    <h5 class="card-title mb-0">{{.DisplayName}}</h5>
-                                    <small class="text-muted">Custom Model</small>
-                                </div>
+                                <i class="bi bi-box fs-2 model-icon me-3"></i>
+                                <h5 class="card-title mb-0">{{.DisplayName}}</h5>
                             </div>
 
                             <p class="card-text flex-grow-1">{{.Description}}</p>
@@ -273,12 +273,14 @@
                                 <i class="bi bi-hdd"></i> Size: {{.SizeEstimate}}
                             </p>
 
-                            <div class="d-flex gap-2 align-items-center">
+                            <div class="d-flex gap-3 align-items-center flex-wrap">
                                 {{if eq .Status "not_downloaded"}}
-                                    <button class="btn btn-primary model-action-btn" onclick="downloadModel('{{.Name}}')">
+                                    <button class="btn btn-primary model-action-btn action-half" onclick="downloadModel('{{.Name}}')">
                                         <i class="bi bi-download"></i> Download
                                     </button>
-                                    <span class="badge bg-secondary">Not Downloaded</span>
+                                    <a href="{{.DocumentationURL}}" target="_blank" class="btn btn-secondary model-action-btn action-half">
+                                        <i class="bi bi-globe2"></i> Website
+                                    </a>
                                 {{else if eq .Status "queued"}}
                                     <button class="btn btn-info model-action-btn" disabled>
                                         <i class="bi bi-hourglass-split"></i> Queued
@@ -299,10 +301,12 @@
                                         </div>
                                     </div>
                                 {{else if eq .Status "completed"}}
-                                    <button class="btn btn-success model-action-btn" disabled>
+                                    <button class="btn btn-primary model-action-btn action-half" disabled aria-disabled="true" tabindex="-1">
                                         <i class="bi bi-check-circle-fill"></i> Installed
                                     </button>
-                                    <span class="badge bg-success">Ready</span>
+                                    <a href="{{.DocumentationURL}}" target="_blank" class="btn btn-secondary model-action-btn action-half">
+                                        <i class="bi bi-globe2"></i> Website
+                                    </a>
                                 {{else if eq .Status "failed"}}
                                     <button class="btn btn-warning model-action-btn" onclick="retryModel('{{.Name}}')">
                                         <i class="bi bi-arrow-clockwise"></i> Retry
@@ -350,22 +354,52 @@
 </div>
 
 <style>
-.model-card {
-    transition: transform 0.2s, box-shadow 0.2s;
-    cursor: pointer;
+.model-breadcrumb .breadcrumb-item a,
+.model-breadcrumb .breadcrumb-item,
+.model-breadcrumb .breadcrumb-item+.breadcrumb-item::before {
+    color: var(--color-text-primary);
 }
 
-.model-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+.model-hint {
+    background-color: rgba(var(--color-accent-blue-rgb, 91, 130, 225), 0.12);
+    border-color: var(--color-accent-blue);
+}
+
+[data-theme="dark"] .model-hint {
+    background-color: rgba(var(--color-accent-blue-light-rgb, 143, 180, 255), 0.3);
+    border-color: var(--color-accent-blue-light, var(--color-accent-blue));
+}
+
+.model-card {
+    background-color: var(--monitoring-card-surface, var(--color-panel-surface));
+    border: 1px solid var(--color-border-subtle);
+    cursor: pointer;
 }
 
 .model-card .card-body {
     min-height: 280px;
+    background-color: var(--monitoring-card-surface, var(--color-panel-surface));
+}
+
+.model-icon {
+    color: var(--color-brand-primary);
+}
+
+[data-theme="dark"] .model-icon {
+    color: var(--color-text-primary);
+}
+
+.model-card .text-muted {
+    color: var(--color-text-primary) !important;
 }
 
 .model-action-btn {
     min-width: 120px;
+    min-height: 44px;
+}
+
+.action-half {
+    flex: 1 1 0;
 }
 
 @keyframes spin {
