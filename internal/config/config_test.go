@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -13,10 +14,6 @@ func baseAppsDir() string {
 
 func baseDBPath() string {
 	return filepath.Join(GetBasePath(), "ontree.db")
-}
-
-func baseSharedPath() string {
-	return filepath.Join(GetBasePath(), "shared")
 }
 
 func TestDefaultConfig(t *testing.T) {
@@ -201,19 +198,28 @@ func TestLoad(t *testing.T) {
 }
 
 func TestGetSharedPath(t *testing.T) {
+	// Determine expected production path based on OS
+	expectedProductionPath := "/opt/ontree/shared"
+	if runtime.GOOS == "darwin" {
+		expectedProductionPath = "/usr/local/ontree/shared"
+	}
+
 	tests := []struct {
-		name    string
-		envVars map[string]string
+		name     string
+		envVars  map[string]string
+		expected string
 	}{
 		{
-			name:    "production mode returns base shared path",
-			envVars: map[string]string{},
+			name:     "production mode returns OS-specific shared path",
+			envVars:  map[string]string{},
+			expected: expectedProductionPath,
 		},
 		{
 			name: "demo mode returns ./shared",
 			envVars: map[string]string{
 				"TREEOS_RUN_MODE": "demo",
 			},
+			expected: "./shared",
 		},
 	}
 
@@ -227,35 +233,37 @@ func TestGetSharedPath(t *testing.T) {
 				os.Setenv(k, v) //nolint:errcheck,gosec // Test setup
 			}
 
-			// Get shared path
 			got := GetSharedPath()
-
-			expected := filepath.Join(GetBasePath(), "shared")
-			if GetBasePath() == "." {
-				expected = "./shared"
-			}
-
-			if got != expected {
-				t.Errorf("GetSharedPath() = %v, want %v", got, expected)
+			if got != tt.expected {
+				t.Errorf("GetSharedPath() = %v, want %v", got, tt.expected)
 			}
 		})
 	}
 }
 
 func TestGetSharedOllamaPath(t *testing.T) {
+	// Determine expected production path based on OS
+	expectedProductionPath := "/opt/ontree/shared/ollama"
+	if runtime.GOOS == "darwin" {
+		expectedProductionPath = "/usr/local/ontree/shared/ollama"
+	}
+
 	tests := []struct {
-		name    string
-		envVars map[string]string
+		name     string
+		envVars  map[string]string
+		expected string
 	}{
 		{
-			name:    "production mode returns base shared/ollama path",
-			envVars: map[string]string{},
+			name:     "production mode returns OS-specific shared/ollama path",
+			envVars:  map[string]string{},
+			expected: expectedProductionPath,
 		},
 		{
 			name: "demo mode returns ./shared/ollama",
 			envVars: map[string]string{
 				"TREEOS_RUN_MODE": "demo",
 			},
+			expected: "./shared/ollama",
 		},
 	}
 
@@ -269,17 +277,9 @@ func TestGetSharedOllamaPath(t *testing.T) {
 				os.Setenv(k, v) //nolint:errcheck,gosec // Test setup
 			}
 
-			// Get shared ollama path
 			got := GetSharedOllamaPath()
-
-			base := GetBasePath()
-			expected := filepath.Join(base, "shared", "ollama")
-			if base == "." {
-				expected = "./shared/ollama"
-			}
-
-			if got != expected {
-				t.Errorf("GetSharedOllamaPath() = %v, want %v", got, expected)
+			if got != tt.expected {
+				t.Errorf("GetSharedOllamaPath() = %v, want %v", got, tt.expected)
 			}
 		})
 	}
