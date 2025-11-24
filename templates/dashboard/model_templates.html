@@ -74,7 +74,6 @@
                                     <button class="btn btn-info model-action-btn" disabled>
                                         <i class="bi bi-hourglass-split"></i> Queued
                                     </button>
-                                    <span class="badge bg-info">Queued</span>
                                 {{else if eq .Status "downloading"}}
                                     <div class="d-flex align-items-center gap-2 w-100">
                                         <button class="btn btn-sm btn-danger" onclick="cancelDownload('{{.Name}}');">
@@ -100,7 +99,6 @@
                                     <button class="btn btn-warning model-action-btn" onclick="retryModel('{{.Name}}')">
                                         <i class="bi bi-arrow-clockwise"></i> Retry
                                     </button>
-                                    <span class="badge bg-danger">Failed</span>
                                 {{end}}
                             </div>
 

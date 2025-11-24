@@ -147,12 +147,37 @@
         border-radius: 4px;
     }
 
+    /* Unified cards like dashboard panels */
+    .app-section-card {
+        background-color: var(--monitoring-card-surface, var(--color-panel-surface));
+        border: 1px solid var(--color-border-subtle);
+        box-shadow: none;
+    }
+
+    .app-section-card .card-header {
+        background-color: var(--monitoring-card-surface, var(--color-panel-surface));
+        border-bottom: 1px solid var(--color-border-subtle);
+        color: var(--color-text-primary);
+        padding: 1.25rem 1.5rem;
+    }
+
+    .app-section-card .card-header h5 {
+        font-size: 1.25rem;
+        font-weight: 600;
+    }
+
+    .app-section-card .card-body {
+        background-color: var(--monitoring-card-surface, var(--color-panel-surface));
+        color: var(--color-text-primary);
+        padding: 1.25rem 1.5rem;
+    }
+
     .config-section-toggle {
         width: 100%;
-        border: 1px solid var(--color-border-subtle);
-        border-radius: 0;
-        background-color: #eeeeee;
-        color: inherit;
+        border: 1px solid var(--color-text-primary);
+        border-radius: var(--radius-sm);
+        background-color: var(--monitoring-card-surface, var(--color-panel-surface));
+        color: var(--color-text-primary);
         font-weight: 600;
         font-size: 1rem;
         display: flex;
@@ -176,17 +201,13 @@
         transform: rotate(90deg);
     }
 
-    .config-section-toggle:not(.collapsed) {
-        border-bottom: none;
-    }
-
     .config-section-toggle + .accordion-collapse .accordion-body {
-        border: 1px solid var(--color-border-subtle);
+        border: 1px solid var(--color-text-primary);
         border-top: none;
-        border-radius: 0;
-        background-color: #eeeeee;
+        border-radius: var(--radius-sm);
+        background-color: var(--monitoring-card-surface, var(--color-panel-surface));
         padding: 1rem;
-        margin-bottom: 0.5rem;
+        margin-bottom: 0;
     }
 
     .accordion-item + .accordion-item {
@@ -194,53 +215,215 @@
     }
 
     .config-code-block {
-        background-color: #eeeeee;
+        background-color: var(--monitoring-card-surface, var(--color-panel-surface));
         border: 1px solid var(--color-border-subtle);
-        border-radius: 0;
+        border-radius: var(--radius-sm);
         color: var(--color-text-primary);
     }
 
-    [data-theme="dark"] .config-code-block {
-        background-color: var(--color-shell);
-        border-color: #eeeeee;
+    /* Service table text colors */
+    .app-services-table th,
+    .app-services-table td,
+    .app-services-table code,
+    .app-services-table small,
+    .app-services-table .text-muted {
+        color: var(--color-text-primary) !important;
+        background-color: transparent !important;
     }
 
-    .configuration-card {
-        background-color: #eeeeee;
-        border: 1px solid var(--color-border-subtle);
-        border-radius: 0;
+    .app-services-table th,
+    .app-services-table td {
+        padding-top: 0.85rem;
+        padding-bottom: 0.85rem;
     }
 
-    .configuration-card .card-header,
-    .configuration-card .card-body {
-        background-color: #eeeeee;
-        border-radius: 0;
+    /* Table borders adapt to theme */
+    .app-services-table th,
+    .app-services-table td {
+        border-color: var(--color-border-subtle) !important;
     }
 
-    .configuration-card .card-header {
-        border-bottom: 1px solid var(--color-border-subtle);
+    [data-theme="dark"] .app-services-table th,
+    [data-theme="dark"] .app-services-table td {
+        border-color: var(--color-text-primary) !important;
     }
 
-    [data-theme="dark"] .configuration-card,
-    [data-theme="dark"] .configuration-card .card-header,
-    [data-theme="dark"] .configuration-card .card-body,
-    [data-theme="dark"] .config-section-toggle,
-    [data-theme="dark"] .config-section-toggle + .accordion-collapse .accordion-body,
-    [data-theme="dark"] .config-code-block {
-        background-color: var(--color-shell);
+    /* Accordion wrappers transparent and no outer rounding */
+    .accordion {
+        background: transparent;
     }
 
-    [data-theme="dark"] .configuration-card,
-    [data-theme="dark"] .configuration-card .card-header,
-    [data-theme="dark"] .configuration-card .card-body,
-    [data-theme="dark"] .config-section-toggle,
-    [data-theme="dark"] .config-section-toggle + .accordion-collapse .accordion-body,
-    [data-theme="dark"] .config-code-block {
-        border-color: #eeeeee;
+    .accordion-item {
+        background: transparent;
+        border: 0;
     }
 
-    [data-theme="dark"] .configuration-card .card-header {
-        border-bottom-color: #eeeeee;
+    .file-path {
+        color: var(--color-text-primary);
+    }
+
+.file-label {
+    color: var(--color-text-primary) !important;
+}
+
+:root {
+    --danger-red-light: #dc3545;
+    --danger-red-dark: #ff6b6b;
+    --danger-red-light-rgb: 220, 53, 69;
+    --danger-red-dark-rgb: 255, 107, 107;
+}
+
+[data-theme="dark"] {
+    --danger-red-light: #dc3545;
+    --danger-red-dark: #ff6b6b;
+    --danger-red-light-rgb: 220, 53, 69;
+    --danger-red-dark-rgb: 255, 107, 107;
+}
+
+.danger-header {
+    background-color: var(--danger-red-light, var(--color-feedback-error)) !important;
+    color: #ffffff !important;
+}
+
+    [data-theme="dark"] .danger-header {
+        background-color: var(--danger-red-dark, var(--color-feedback-error)) !important;
+        color: #ffffff !important;
+    }
+
+    /* Force header icon/text to inherit danger-header color */
+    .danger-header h5,
+    .danger-header i {
+        color: inherit !important;
+    }
+
+.danger-outline {
+    border-color: var(--danger-red-light, var(--color-feedback-error)) !important;
+}
+
+[data-theme="dark"] .danger-card {
+    background-color: rgba(var(--danger-red-dark-rgb, 255, 107, 107), 0.08) !important;
+    color: var(--color-text-primary) !important;
+}
+
+.danger-card {
+    background-color: rgba(var(--danger-red-light-rgb, 220, 53, 69), 0.08) !important;
+    color: var(--color-text-primary) !important;
+    border-color: var(--danger-red-light, var(--color-feedback-error)) !important;
+}
+
+/* Danger body text defaults */
+    .danger-card h6,
+    .danger-card p,
+    .danger-card ul,
+    .danger-card li,
+    .danger-card .alert,
+    .danger-card .alert strong {
+        color: var(--color-text-primary) !important;
+    }
+
+    .form-check.form-switch .form-check-input {
+        margin-top: 0;
+    }
+
+[data-theme="dark"] .danger-card {
+    background-color: rgba(var(--danger-red-dark-rgb, 255, 107, 107), 0.12) !important;
+    border-color: var(--danger-red-dark, var(--color-feedback-error)) !important;
+}
+
+[data-theme="dark"] .danger-card .alert,
+[data-theme="dark"] .danger-card .alert strong,
+[data-theme="dark"] .danger-card h6,
+[data-theme="dark"] .danger-card p,
+[data-theme="dark"] .danger-card ul,
+[data-theme="dark"] .danger-card li,
+[data-theme="dark"] .danger-card .alert-danger,
+[data-theme="dark"] .danger-card .alert-warning {
+    color: var(--color-text-primary) !important;
+}
+
+.danger-card .alert {
+    background-color: rgba(var(--color-accent-blue-rgb, 91, 130, 225), 0.12);
+    border-color: var(--color-accent-blue);
+    color: var(--color-text-primary);
+}
+
+[data-theme="dark"] .danger-card .alert {
+    background-color: rgba(var(--color-accent-blue-light-rgb, 143, 180, 255), 0.25);
+    border-color: var(--color-accent-blue-light, var(--color-accent-blue));
+    color: var(--color-text-primary);
+}
+
+[data-theme="dark"] .danger-card {
+    background-color: rgba(var(--danger-red-dark-rgb, 255, 107, 107), 0.12) !important;
+    border-color: var(--danger-red-dark, var(--color-feedback-error)) !important;
+}
+
+[data-theme="dark"] .danger-card .alert,
+[data-theme="dark"] .danger-card .alert strong,
+[data-theme="dark"] .danger-card h6,
+[data-theme="dark"] .danger-card p,
+[data-theme="dark"] .danger-card ul,
+[data-theme="dark"] .danger-card li,
+[data-theme="dark"] .danger-card .alert-danger,
+[data-theme="dark"] .danger-card .alert-warning {
+    color: var(--color-text-primary) !important;
+}
+
+    [data-theme="dark"] .danger-outline {
+        border-color: var(--danger-red-dark, var(--color-feedback-error)) !important;
+    }
+
+    .btn-danger-solid {
+        background-color: var(--danger-red-light, var(--color-feedback-error));
+        border: 1px solid var(--danger-red-light, var(--color-feedback-error));
+        color: #ffffff;
+    }
+
+    .btn-danger-solid:hover,
+    .btn-danger-solid:focus {
+        background-color: var(--danger-red-light, var(--color-feedback-error));
+        border-color: var(--danger-red-light, var(--color-feedback-error));
+        color: #ffffff;
+    }
+
+    [data-theme="dark"] .btn-danger-solid,
+    [data-theme="dark"] .btn-danger-solid:hover,
+    [data-theme="dark"] .btn-danger-solid:focus {
+        background-color: var(--danger-red-dark, var(--color-feedback-error));
+        border-color: var(--danger-red-dark, var(--color-feedback-error));
+        color: #ffffff;
+    }
+
+    /* Security toggle */
+    .danger-card .form-check-input {
+        width: 3rem;
+        height: 1.6rem;
+        cursor: pointer;
+        border-color: var(--color-accent-blue);
+        background-color: rgba(var(--color-accent-blue-rgb, 91, 130, 225), 0.15);
+    }
+
+    .danger-card .form-check-input:checked {
+        background-color: var(--color-accent-blue);
+        border-color: var(--color-accent-blue);
+    }
+
+    [data-theme="dark"] .danger-card .form-check-input {
+        border-color: var(--color-accent-blue-light, var(--color-accent-blue));
+        background-color: rgba(var(--color-accent-blue-light-rgb, 143, 180, 255), 0.25);
+    }
+
+    [data-theme="dark"] .danger-card .form-check-input:checked {
+        background-color: var(--color-accent-blue-light, var(--color-accent-blue));
+        border-color: var(--color-accent-blue-light, var(--color-accent-blue));
+    }
+
+    /* Breadcrumb uses primary text color in all themes */
+    .breadcrumb,
+    .breadcrumb .breadcrumb-item,
+    .breadcrumb .breadcrumb-item a,
+    .breadcrumb .breadcrumb-item+.breadcrumb-item::before {
+        color: var(--color-text-primary);
     }
 </style>
 {{ $view := .View }}
@@ -256,7 +439,7 @@
             <h1 class="mb-0">
                 {{if $view.Emoji}}{{ $view.Emoji }}{{else}}<i>📦</i>{{end}} {{ $view.Name }}
             </h1>
-            <a href="/" class="btn btn-outline-secondary">← Back to Dashboard</a>
+            <a href="/" class="btn btn-secondary">← Back to Dashboard</a>
         </div>
     </div>
 </div>
@@ -279,25 +462,25 @@
 <!-- Containers -->
 <div class="row mb-4">
     <div class="col-12">
-        <div class="card dashboard-panel configuration-card">
-            <div class="card-header dashboard-panel-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Running Containers</h5>
+        <div class="card app-section-card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-hdd-stack me-2"></i> Containers</h5>
                 <div class="btn-group" role="group">
                     {{if $view.Actions.CanStop}}
                     <form method="post" action="/api/apps/{{ $view.Name }}/stop" class="d-inline"
                           onsubmit="event.preventDefault(); handleAppAction(this, 'stop');">
-                        <button type="submit" class="btn btn-warning confirm-action"
+                        <button type="submit" class="btn btn-secondary confirm-action"
                                 data-action="Stop"
                                 data-confirm-text="Stop all services?">
-                            <i>⏹️</i> Stop
+                            <i class="bi bi-stop-fill"></i> Stop All
                         </button>
                     </form>
                     {{end}}
                     {{if $view.Actions.CanStart}}
                     <form method="post" action="/api/apps/{{ $view.Name }}/start" class="d-inline"
                           onsubmit="event.preventDefault(); handleAppAction(this, 'start');">
-                        <button type="submit" class="btn btn-success">
-                            <i>▶️</i> Start
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-play-fill"></i> Start
                         </button>
                     </form>
                     {{end}}
@@ -335,8 +518,8 @@
                     </div>
                 </div>
                 {{if $view.HasServices}}
-                <div class="table-responsive">
-                    <table class="table table-striped">
+                <div class="table-responsive mb-4">
+                    <table class="table table-striped app-services-table align-middle">
                         <thead>
                             <tr>
                                 <th>Container</th>
@@ -352,7 +535,15 @@
                             <tr>
                                 <td><strong>{{.Name}}</strong></td>
                                 <td><code>{{.Image}}</code></td>
-                                <td><span class="badge {{.StatusClass}}">{{.StatusLabel}}</span></td>
+                                <td>
+                                    {{if eq .StatusLabel "Running"}}
+                                        <span class="badge badge-running">{{.StatusLabel}}</span>
+                                    {{else if or (eq .StatusLabel "Stopped") (eq .StatusLabel "Exited")}}
+                                        <span class="badge badge-stopped">{{.StatusLabel}}</span>
+                                    {{else}}
+                                        <span class="badge {{.StatusClass}}">{{.StatusLabel}}</span>
+                                    {{end}}
+                                </td>
                                 <td>
                                     {{if .State}}
                                         <small class="text-muted">{{.State}}</small>
@@ -363,7 +554,7 @@
                                 <td>
                                     {{if .Ports}}
                                         {{range .Ports}}
-                                            <span class="badge bg-light text-dark">{{.}}</span>
+                                            <span class="badge badge-stopped">{{.}}</span>
                                         {{end}}
                                     {{else}}
                                         <span class="text-muted">-</span>
@@ -375,7 +566,7 @@
                                         {{$hostPort := extractHostPort $firstPort}}
                                         <a href="http://{{$view.TailscaleDNS}}:{{$hostPort}}"
                                            target="_blank"
-                                           class="btn btn-sm btn-outline-primary">
+                                           class="btn btn-sm btn-primary">
                                             <i class="bi bi-box-arrow-up-right"></i> Visit
                                         </a>
                                     {{else}}
@@ -388,43 +579,59 @@
                     </table>
                 </div>
                 {{else}}
-                <p class="text-muted mb-0" id="no-services-message">No services reported yet.</p>
+                <p class="text-muted mb-4" id="no-services-message">No services reported yet.</p>
                 {{end}}
-            </div>
-        </div>
-    </div>
-</div>
 
-<!-- Service Logs -->
-<div class="row mt-4 mb-4">
-    <div class="col-12">
-        <div class="card dashboard-panel">
-            <div class="card-header dashboard-panel-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">
-                    <i>📋</i> Service Logs
-                </h5>
-                <div class="d-flex align-items-center gap-2">
-                    <select id="service-filter" class="form-select form-select-sm" style="width: auto;">
-                        <option value="all">All Services</option>
+                <!-- Service Logs Accordion -->
+                {{if or $view.ServiceOptions $view.HasServices}}
+                <hr>
+                <div class="mt-3">
+                    <h6 class="mb-2"><i>📋</i> Service Logs</h6>
+                    <div class="accordion" id="logsAccordion">
+                        <div class="accordion-item border-0 pb-2">
+                            <button class="config-section-toggle collapsed" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#logs-all"
+                                    aria-expanded="false" aria-controls="logs-all" data-bs-parent="">
+                                <span class="toggle-icon">▶</span>
+                                <span>All Services</span>
+                            </button>
+                            <div id="logs-all" class="accordion-collapse collapse" data-service="all">
+                                <div class="accordion-body px-0">
+                                    <div class="p-3 rounded logs-content-wrapper service-log-pane"
+                                         data-log-pane="all"
+                                         style="max-height: 500px; overflow-y: auto; font-family: monospace; font-size: 0.875rem; background-color: var(--monitoring-card-surface, var(--color-panel-surface)); color: var(--color-text-primary);">
+                                        <div class="text-muted text-center">
+                                            <p>Expand to start following logs.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         {{range $view.ServiceOptions}}
-                        <option value="{{.}}">{{.}}</option>
+                        <div class="accordion-item border-0 pb-2">
+                            <button class="config-section-toggle collapsed" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#logs-{{.}}"
+                                    aria-expanded="false" aria-controls="logs-{{.}}" data-bs-parent="">
+                                <span class="toggle-icon">▶</span>
+                                <span>{{.}}</span>
+                            </button>
+                            <div id="logs-{{.}}" class="accordion-collapse collapse" data-service="{{.}}">
+                                <div class="accordion-body px-0">
+                                    <div class="p-3 rounded logs-content-wrapper service-log-pane"
+                                         data-log-pane="{{.}}"
+                                         style="max-height: 500px; overflow-y: auto; font-family: monospace; font-size: 0.875rem; background-color: var(--monitoring-card-surface, var(--color-panel-surface)); color: var(--color-text-primary);">
+                                        <div class="text-muted text-center">
+                                            <p>Expand to start following logs.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                         {{end}}
-                    </select>
-                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="loadServiceLogs()">
-                        <i>🔄</i> Refresh
-                    </button>
-                    <button type="button" class="btn btn-sm btn-primary" id="follow-logs-btn" onclick="toggleFollowLogs()">
-                        <i>▶️</i> Follow
-                    </button>
-                </div>
-            </div>
-            <div class="card-body">
-                <div id="service-logs-content" class="bg-dark text-light p-3 rounded logs-content-wrapper"
-                     style="max-height: 500px; overflow-y: auto; font-family: monospace; font-size: 0.875rem;">
-                    <div class="text-muted text-center">
-                        <p>Click "Refresh" to load logs or "Follow" to stream logs in real-time.</p>
                     </div>
                 </div>
+                {{end}}
             </div>
         </div>
     </div>
@@ -433,25 +640,25 @@
 <!-- Configuration -->
 <div class="row mb-4">
     <div class="col-12">
-        <div class="card dashboard-panel">
-            <div class="card-header dashboard-panel-header">
-                <h5 class="mb-0">Configuration</h5>
+        <div class="card app-section-card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-gear-wide-connected me-2"></i> Configuration</h5>
             </div>
             <div class="card-body">
                 <div class="accordion" id="configAccordion">
                     <div class="accordion-item border-0 pb-2">
-                        <button class="config-section-toggle collapsed" type="button"
-                                data-bs-toggle="collapse" data-bs-target="#config-env"
-                                aria-expanded="false" aria-controls="config-env">
+                            <button class="config-section-toggle collapsed" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#config-env"
+                                    aria-expanded="false" aria-controls="config-env" data-bs-parent="">
                             <span class="toggle-icon">▶</span>
                             <span>Environment (.env)</span>
                         </button>
                         <div id="config-env" class="accordion-collapse collapse" data-bs-parent="#configAccordion">
-                            <div class="accordion-body px-0">
-                                <div class="d-flex flex-column flex-md-row justify-content-between align-items-start mb-2 gap-2">
-                                    <small class="text-muted">File: <code>{{$view.EnvPath}}</code></small>
-                                    <a href="/apps/{{$view.Name}}/edit" class="btn btn-sm btn-outline-primary">
-                                        <i>✏️</i> Edit
+                            <div class="accordion-body px-3">
+                                <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-2 gap-2 w-100">
+                                    <small class="text-primary file-label mb-0">File: <code class="file-path">{{$view.EnvPath}}</code></small>
+                                    <a href="/apps/{{$view.Name}}/edit" class="btn btn-sm btn-primary ms-auto">
+                                        <i class="bi bi-pencil-square"></i> Edit
                                     </a>
                                 </div>
                                 <pre class="config-code-block p-3"><code>{{$view.EnvContent}}</code></pre>
@@ -459,18 +666,18 @@
                         </div>
                     </div>
                     <div class="accordion-item border-0 pb-2">
-                        <button class="config-section-toggle collapsed" type="button"
-                                data-bs-toggle="collapse" data-bs-target="#config-compose"
-                                aria-expanded="false" aria-controls="config-compose">
+                            <button class="config-section-toggle collapsed" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#config-compose"
+                                    aria-expanded="false" aria-controls="config-compose" data-bs-parent="">
                             <span class="toggle-icon">▶</span>
                             <span>docker-compose.yml</span>
                         </button>
                         <div id="config-compose" class="accordion-collapse collapse" data-bs-parent="#configAccordion">
-                            <div class="accordion-body px-0">
-                                <div class="d-flex flex-column flex-md-row justify-content-between align-items-start mb-2 gap-2">
-                                    <small class="text-muted">File: <code>{{$view.ComposePath}}</code></small>
-                                    <a href="/apps/{{$view.Name}}/edit" class="btn btn-sm btn-outline-primary">
-                                        <i>✏️</i> Edit
+                            <div class="accordion-body px-3">
+                                <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-2 gap-2 w-100">
+                                    <small class="text-primary file-label mb-0">File: <code class="file-path">{{$view.ComposePath}}</code></small>
+                                    <a href="/apps/{{$view.Name}}/edit" class="btn btn-sm btn-primary ms-auto">
+                                        <i class="bi bi-pencil-square"></i> Edit
                                     </a>
                                 </div>
                                 <pre class="config-code-block p-3"><code>{{$view.ComposeContent}}</code></pre>
@@ -478,18 +685,18 @@
                         </div>
                     </div>
                     <div class="accordion-item border-0">
-                        <button class="config-section-toggle collapsed" type="button"
-                                data-bs-toggle="collapse" data-bs-target="#config-app"
-                                aria-expanded="false" aria-controls="config-app">
+                            <button class="config-section-toggle collapsed" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#config-app"
+                                    aria-expanded="false" aria-controls="config-app" data-bs-parent="">
                             <span class="toggle-icon">▶</span>
                             <span>app.yml</span>
                         </button>
                         <div id="config-app" class="accordion-collapse collapse" data-bs-parent="#configAccordion">
-                            <div class="accordion-body px-0">
-                                <div class="d-flex flex-column flex-md-row justify-content-between align-items-start mb-2 gap-2">
-                                    <small class="text-muted">File: <code>{{$view.AppYmlPath}}</code></small>
-                                    <a href="/apps/{{$view.Name}}/edit" class="btn btn-sm btn-outline-primary">
-                                        <i>✏️</i> Edit
+                            <div class="accordion-body px-3">
+                                <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-2 gap-2 w-100">
+                                    <small class="text-primary file-label mb-0">File: <code class="file-path">{{$view.AppYmlPath}}</code></small>
+                                    <a href="/apps/{{$view.Name}}/edit" class="btn btn-sm btn-primary ms-auto">
+                                        <i class="bi bi-pencil-square"></i> Edit
                                     </a>
                                 </div>
                                 <pre class="config-code-block p-3"><code>{{$view.AppYmlContent}}</code></pre>
@@ -505,36 +712,36 @@
 <!-- Danger Zone -->
 <div class="row mt-4">
     <div class="col-12">
-        <div class="card border-danger">
-            <div class="card-header bg-danger text-white">
+        <div class="card app-section-card border-danger">
+            <div class="card-header danger-header">
                 <h5 class="mb-0">
-                    <i class="fas fa-exclamation-triangle me-2"></i>Danger Zone
+                    <i class="bi bi-exclamation-octagon-fill me-2"></i>Danger Zone
                 </h5>
             </div>
             <div class="card-body">
                 <!-- Security Bypass Section -->
-                <div class="border rounded p-3 mb-4">
-                    <h6 class="text-danger mb-3">
+                <div class="border rounded p-3 mb-4 danger-outline danger-card">
+                    <h6 class="mb-3">
                         <i class="fas fa-shield-alt me-2"></i>Security Validation
                     </h6>
                     <div class="alert alert-warning mb-3">
                         <i class="fas fa-exclamation-triangle me-2"></i>
                         <strong>Warning:</strong> Disabling security validation allows containers to run with dangerous capabilities, privileged mode, and unrestricted bind mounts. Only use this if you trust the application completely.
                     </div>
-                    <div class="form-check form-switch mb-3">
+                    <div class="form-check form-switch mb-4 d-flex align-items-center gap-3">
                         <input class="form-check-input" type="checkbox" id="bypassSecuritySwitch" {{if $view.Security.BypassEnabled}}checked{{end}}>
-                        <label class="form-check-label" for="bypassSecuritySwitch">
+                        <label class="form-check-label mb-0" for="bypassSecuritySwitch">
                             Bypass security validation for this app
                         </label>
                     </div>
-                    <button type="button" class="btn btn-warning" onclick="saveSecurityBypass()" id="saveSecurityBtn">
-                        <i class="fas fa-save me-1"></i> Save Security Settings
+                    <button type="button" class="btn btn-destructive" onclick="saveSecurityBypass()" id="saveSecurityBtn">
+                        <i class="fas fa-save me-1"></i> Update Security Settings
                     </button>
                 </div>
 
                 <!-- Delete App Section -->
-                <div class="border rounded p-3">
-                    <h6 class="text-danger mb-3">
+                <div class="border rounded p-3 danger-outline danger-card">
+                    <h6 class="mb-3">
                         <i class="fas fa-trash-alt me-2"></i>Delete Application
                     </h6>
                     <div class="alert alert-danger mb-3">
@@ -542,14 +749,14 @@
                         <strong>Warning:</strong> This will permanently delete the application and its data.
                     </div>
 
-                    <p class="small text-muted">This action will:</p>
-                    <ul class="small text-muted">
+                    <p>This action will:</p>
+                    <ul>
                         <li>Stop and remove all containers</li>
                         <li>Delete all app data and configuration files</li>
-                        <li>Remove the entire app directory at <code>{{$view.AppPath}}</code></li>
+                        <li>Remove the entire app directory at <code class="file-path">{{$view.AppPath}}</code></li>
                     </ul>
-                    <p class="small text-danger"><strong>This action cannot be undone!</strong></p>
-                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteConfirmModal">
+                    <p><strong>This action cannot be undone!</strong></p>
+                    <button type="button" class="btn btn-destructive" data-bs-toggle="modal" data-bs-target="#deleteConfirmModal">
                         <i class="fas fa-trash-alt me-1"></i> Delete App Permanently
                     </button>
                 </div>
@@ -1114,80 +1321,58 @@ function hideProgressBarIfContainerRunning() {
     }
 }
 
-let logsEventSource = null;
-let followLogsActive = false;
+const logStreams = new Map();
+const appNameForLogs = '{{.View.Name}}';
 
-function loadServiceLogs() {
-    const appName = '{{.View.Name}}';
-    const serviceFilter = document.getElementById('service-filter').value;
-    const logsContent = document.getElementById('service-logs-content');
+function startLogStream(service) {
+    stopLogStream(service);
+    const pane = document.querySelector(`[data-log-pane="${service}"]`);
+    if (!pane) return;
+    pane.innerHTML = '<div class="text-center text-muted"><span class="spinner-border spinner-border-sm" role="status"></span> Streaming logs...</div>';
 
-    logsContent.innerHTML = '<div class="text-center text-muted"><span class="spinner-border spinner-border-sm" role="status"></span> Loading logs...</div>';
+    const es = new EventSource(`/api/apps/${appNameForLogs}/logs/stream?service=${service}`);
+    logStreams.set(service, es);
 
-    fetch(`/api/apps/${appName}/logs?service=${serviceFilter}`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Failed to load logs: ${response.status}`);
-            }
-            return response.text();
-        })
-        .then(logs => {
-            logsContent.innerHTML = logs ? `<pre class="mb-0">${logs}</pre>` : '<div class="text-center text-muted">No logs available.</div>';
-        })
-        .catch(error => {
-            logsContent.innerHTML = `<div class="text-center text-danger">${error.message}</div>`;
-        });
-}
-
-function toggleFollowLogs() {
-    const button = document.getElementById('follow-logs-btn');
-    const appName = '{{.View.Name}}';
-    const serviceFilter = document.getElementById('service-filter').value;
-    const logsContent = document.getElementById('service-logs-content');
-
-    if (followLogsActive) {
-        followLogsActive = false;
-        button.innerHTML = '<i>▶️</i> Follow';
-        button.classList.replace('btn-danger', 'btn-primary');
-        if (logsEventSource) {
-            logsEventSource.close();
-            logsEventSource = null;
-        }
-        return;
-    }
-
-    followLogsActive = true;
-    button.innerHTML = '<i>⏹️</i> Stop';
-    button.classList.replace('btn-primary', 'btn-danger');
-
-    logsContent.innerHTML = '<div class="text-center text-muted"><span class="spinner-border spinner-border-sm" role="status"></span> Streaming logs...</div>';
-
-    logsEventSource = new EventSource(`/api/apps/${appName}/logs/stream?service=${serviceFilter}`);
-
-    logsEventSource.onmessage = function(event) {
+    es.onmessage = function(event) {
         if (event.data === '[DONE]') {
             return;
         }
-        if (logsContent.innerHTML.includes('Streaming logs')) {
-            logsContent.innerHTML = '';
+        if (pane.innerHTML.includes('Streaming logs')) {
+            pane.innerHTML = '';
         }
         const pre = document.createElement('pre');
         pre.textContent = event.data;
-        logsContent.appendChild(pre);
-        logsContent.scrollTop = logsContent.scrollHeight;
+        pane.appendChild(pre);
+        pane.scrollTop = pane.scrollHeight;
     };
 
-    logsEventSource.onerror = function() {
-        followLogsActive = false;
-        button.innerHTML = '<i>▶️</i> Follow';
-        button.classList.replace('btn-danger', 'btn-primary');
-        logsContent.innerHTML = '<div class="text-center text-danger">Connection lost. Try again.</div>';
-        if (logsEventSource) {
-            logsEventSource.close();
-            logsEventSource = null;
-        }
+    es.onerror = function() {
+        stopLogStream(service);
+        pane.innerHTML = '<div class="text-center" style="color: var(--color-text-primary);">Connection lost. Try closing and reopening.</div>';
     };
 }
+
+function stopLogStream(service) {
+    const es = logStreams.get(service);
+    if (es) {
+        es.close();
+        logStreams.delete(service);
+    }
+}
+
+document.addEventListener('show.bs.collapse', function(e) {
+    const target = e.target;
+    const service = target.getAttribute('data-service');
+    if (!service) return;
+    startLogStream(service);
+});
+
+document.addEventListener('hide.bs.collapse', function(e) {
+    const target = e.target;
+    const service = target.getAttribute('data-service');
+    if (!service) return;
+    stopLogStream(service);
+});
 
 function saveSecurityBypass() {
     const appName = '{{.View.Name}}';

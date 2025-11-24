@@ -17,15 +17,12 @@
                         <small class="text-muted">{{.Description}} • {{.SizeEstimate}}</small>
                     </div>
                     <div class="d-flex align-items-center gap-2">
-                        {{if ne .Status "downloading"}}
-                            <span class="badge status-badge bg-{{.StatusColor}}">{{.StatusText}}</span>
-                        {{end}}
                         {{if eq .Status "not_downloaded"}}
                             <button class="btn btn-sm btn-primary model-action-btn" onclick="downloadModel('{{.Name}}')">
                                 <i class="bi bi-download"></i> Download
                             </button>
                         {{else if eq .Status "queued"}}
-                            <button class="btn btn-sm btn-info model-action-btn" disabled>
+                            <button class="btn btn-sm btn-primary model-action-btn" disabled aria-disabled="true">
                                 <i class="bi bi-hourglass-split"></i> Queued
                             </button>
                         {{else if eq .Status "downloading"}}
@@ -46,7 +43,7 @@
                                 </button>
                             </div>
                         {{else if eq .Status "completed"}}
-                            <button class="btn btn-sm btn-success model-action-btn" disabled>
+                            <button class="btn btn-sm btn-primary model-action-btn" disabled aria-disabled="true">
                                 <i class="bi bi-check-circle-fill"></i> Installed
                             </button>
                         {{else if eq .Status "failed"}}
@@ -75,15 +72,12 @@
                         <small class="text-muted">{{.Description}} • {{.SizeEstimate}}</small>
                     </div>
                     <div class="d-flex align-items-center gap-2">
-                        {{if ne .Status "downloading"}}
-                            <span class="badge status-badge bg-{{.StatusColor}}">{{.StatusText}}</span>
-                        {{end}}
                         {{if eq .Status "not_downloaded"}}
                             <button class="btn btn-sm btn-primary model-action-btn" onclick="downloadModel('{{.Name}}')">
                                 <i class="bi bi-download"></i> Download
                             </button>
                         {{else if eq .Status "queued"}}
-                            <button class="btn btn-sm btn-info model-action-btn" disabled>
+                            <button class="btn btn-sm btn-primary model-action-btn" disabled aria-disabled="true">
                                 <i class="bi bi-hourglass-split"></i> Queued
                             </button>
                         {{else if eq .Status "downloading"}}
@@ -104,7 +98,7 @@
                                 </button>
                             </div>
                         {{else if eq .Status "completed"}}
-                            <button class="btn btn-sm btn-success model-action-btn" disabled>
+                            <button class="btn btn-sm btn-primary model-action-btn" disabled aria-disabled="true">
                                 <i class="bi bi-check-circle-fill"></i> Installed
                             </button>
                         {{else if eq .Status "failed"}}
@@ -133,15 +127,12 @@
                         <small class="text-muted">{{.Description}} • {{.SizeEstimate}}</small>
                     </div>
                     <div class="d-flex align-items-center gap-2">
-                        {{if ne .Status "downloading"}}
-                            <span class="badge status-badge bg-{{.StatusColor}}">{{.StatusText}}</span>
-                        {{end}}
                         {{if eq .Status "not_downloaded"}}
                             <button class="btn btn-sm btn-primary model-action-btn" onclick="downloadModel('{{.Name}}')">
                                 <i class="bi bi-download"></i> Download
                             </button>
                         {{else if eq .Status "queued"}}
-                            <button class="btn btn-sm btn-info model-action-btn" disabled>
+                            <button class="btn btn-sm btn-primary model-action-btn" disabled aria-disabled="true">
                                 <i class="bi bi-hourglass-split"></i> Queued
                             </button>
                         {{else if eq .Status "downloading"}}
@@ -162,7 +153,7 @@
                                 </button>
                             </div>
                         {{else if eq .Status "completed"}}
-                            <button class="btn btn-sm btn-success model-action-btn" disabled>
+                            <button class="btn btn-sm btn-primary model-action-btn" disabled aria-disabled="true">
                                 <i class="bi bi-check-circle-fill"></i> Installed
                             </button>
                         {{else if eq .Status "failed"}}
@@ -191,15 +182,12 @@
                         <small class="text-muted">{{.Description}} • {{.SizeEstimate}}</small>
                     </div>
                     <div class="d-flex align-items-center gap-2">
-                        {{if ne .Status "downloading"}}
-                            <span class="badge status-badge bg-{{.StatusColor}}">{{.StatusText}}</span>
-                        {{end}}
                         {{if eq .Status "not_downloaded"}}
                             <button class="btn btn-sm btn-primary model-action-btn" onclick="downloadModel('{{.Name}}')">
                                 <i class="bi bi-download"></i> Download
                             </button>
                         {{else if eq .Status "queued"}}
-                            <button class="btn btn-sm btn-info model-action-btn" disabled>
+                            <button class="btn btn-sm btn-primary model-action-btn" disabled aria-disabled="true">
                                 <i class="bi bi-hourglass-split"></i> Queued
                             </button>
                         {{else if eq .Status "downloading"}}

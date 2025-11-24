@@ -203,11 +203,94 @@
   color: var(--color-brand-primary);
 }
 
+[data-theme="dark"] .badge-running {
+  background-color: var(--gray-1);
+  color: var(--green-1);
+}
+
+[data-theme="dark"] .badge-stopped {
+  background-color: var(--green-2);
+  color: var(--gray-1);
+}
+
 /* Dark theme adjustments */
 [data-theme="dark"] .btn.btn-secondary,
 [data-theme="dark"] .btn.btn-secondary:hover {
   background-color: rgba(var(--color-accent-blue-light-rgb, 143, 180, 255), 0.12);
   color: var(--color-text-primary);
+}
+
+/* Destructive button (danger-styled with double hairline) */
+.btn.btn-destructive {
+  position: relative;
+  z-index: 0;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  border: none;
+  padding: 0.65rem 1.5rem;
+  background-color: var(--danger-red-light, var(--color-feedback-error));
+  color: #ffffff;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.btn.btn-destructive::before,
+.btn.btn-destructive::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-sm);
+  pointer-events: none;
+}
+
+.btn.btn-destructive::before {
+  inset: -3px;
+  border-radius: calc(var(--radius-sm) + 0.08rem);
+  border: 1px solid var(--danger-red-light, var(--color-feedback-error));
+  z-index: -2;
+}
+
+.btn.btn-destructive::after {
+  inset: 0;
+  border: 1px solid var(--danger-red-light, var(--color-feedback-error));
+  z-index: -1;
+}
+
+[data-theme="dark"] .btn.btn-destructive {
+  background-color: var(--danger-red-dark, var(--color-feedback-error));
+}
+
+[data-theme="dark"] .btn.btn-destructive::before,
+[data-theme="dark"] .btn.btn-destructive::after {
+  border-color: var(--danger-red-dark, var(--color-feedback-error));
+}
+
+/* Detail page badge tweaks in dark mode */
+[data-theme="dark"] .app-section-card .badge.bg-success {
+  background-color: var(--gray-1);
+  color: var(--green-1);
+}
+
+[data-theme="dark"] .app-section-card .badge.bg-secondary {
+  background-color: var(--green-2);
+  color: var(--gray-1);
+}
+
+/* Light theme badge styling helpers */
+.badge-running {
+  background-color: var(--color-button-primary-bg);
+  color: #ffffff;
+}
+
+.badge-stopped {
+  background-color: var(--color-card-bg);
+  color: var(--gray-5);
 }
 
 /* Button states */

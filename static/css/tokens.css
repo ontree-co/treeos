@@ -177,7 +177,7 @@
 
   /* Feedback colors */
   --color-feedback-success: var(--success-2);
-  --color-feedback-error: var(--error-2);
+  --color-feedback-error: var(--error-1);
 
   /* Monitoring cards */
   --color-card-bg: rgba(var(--gray-3-rgb), 0.15);
