@@ -261,6 +261,21 @@ svg {
     box-shadow: none;
 }
 
+.app-name-cell .app-name {
+    display: block;
+    font-size: 1.1rem;
+    font-weight: 650;
+    color: var(--color-text-primary);
+}
+
+.status-col {
+    width: 11%;
+}
+
+.uptime-col {
+    width: 11%;
+}
+
 .card-header {
     background-color: var(--color-surface-contrast);
     border-bottom: 1px solid var(--color-border-subtle);

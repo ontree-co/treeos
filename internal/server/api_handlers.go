@@ -48,12 +48,13 @@ type AppStatusResponse struct {
 
 // ServiceStatusDetail represents status detail for a single service
 type ServiceStatusDetail struct {
-	Name   string   `json:"name"`
-	Image  string   `json:"image"`
-	Status string   `json:"status"`
-	State  string   `json:"state,omitempty"`
-	Ports  []string `json:"ports,omitempty"`
-	Error  string   `json:"error,omitempty"`
+	Name          string   `json:"name"`
+	ContainerName string   `json:"container_name,omitempty"`
+	Image         string   `json:"image"`
+	Status        string   `json:"status"`
+	State         string   `json:"state,omitempty"`
+	Ports         []string `json:"ports,omitempty"`
+	Error         string   `json:"error,omitempty"`
 }
 
 // SystemCheckResponse represents the response from a system check API call.
@@ -136,7 +137,7 @@ func (s *Server) handleCreateApp(w http.ResponseWriter, r *http.Request) {
 	if err := os.WriteFile(composeFile, []byte(req.ComposeYAML), 0600); err != nil { // #nosec G306 - compose files need to be readable
 		log.Printf("Failed to write docker-compose.yml: %v", err)
 		// Clean up directories
-		os.RemoveAll(appDir)  //nolint:errcheck,gosec // Best effort cleanup
+		os.RemoveAll(appDir)   //nolint:errcheck,gosec // Best effort cleanup
 		os.RemoveAll(mountDir) //nolint:errcheck,gosec // Best effort cleanup
 		http.Error(w, "Failed to write docker-compose.yml", http.StatusInternalServerError)
 		return
@@ -148,7 +149,7 @@ func (s *Server) handleCreateApp(w http.ResponseWriter, r *http.Request) {
 		if err := os.WriteFile(envFile, []byte(req.EnvContent), 0600); err != nil { // #nosec G306 - env files need to be readable
 			log.Printf("Failed to write .env file: %v", err)
 			// Clean up
-			os.RemoveAll(appDir)  //nolint:errcheck,gosec // Best effort cleanup
+			os.RemoveAll(appDir)   //nolint:errcheck,gosec // Best effort cleanup
 			os.RemoveAll(mountDir) //nolint:errcheck,gosec // Best effort cleanup
 			http.Error(w, "Failed to write .env file", http.StatusInternalServerError)
 			return
@@ -804,10 +805,11 @@ func (s *Server) handleAPIAppStatus(w http.ResponseWriter, r *http.Request) {
 		status := mapContainerState(container.State)
 
 		service := ServiceStatusDetail{
-			Name:   serviceName,
-			Image:  container.Image,
-			Status: status,
-			State:  container.State,
+			Name:          serviceName,
+			ContainerName: container.Name,
+			Image:         container.Image,
+			Status:        status,
+			State:         container.State,
 		}
 
 		// Add health status if available

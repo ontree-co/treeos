@@ -580,10 +580,11 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 				}
 
 				service := ServiceStatusDetail{
-					Name:   serviceName,
-					Image:  container.Image,
-					Status: strings.ToLower(container.State),
-					State:  container.Status,
+					Name:          serviceName,
+					ContainerName: container.Name,
+					Image:         container.Image,
+					Status:        strings.ToLower(container.State),
+					State:         container.Status,
 				}
 
 				// Add port information

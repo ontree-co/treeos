@@ -147,13 +147,8 @@
                             <tbody>
                                 {{range .Apps}}
                                 <tr style="cursor: pointer;" onclick="window.location.href='/apps/{{.Name}}'">
-                                    <td>
-                                        <strong>{{if .Emoji}}{{.Emoji}} {{end}}{{.Name}}</strong>
-                                        {{if gt .ServiceCount 0}}
-                                            <br><small class="text-muted">{{.ServiceCount}} Service{{if ne .ServiceCount 1}}s{{end}}</small>
-                                        {{else if .Services}}
-                                            <br><small class="text-muted">{{len .Services}} Service{{if ne (len .Services) 1}}s{{end}}</small>
-                                        {{end}}
+                                    <td class="app-name-cell align-middle">
+                                        <span class="app-name">{{if .Emoji}}{{.Emoji}} {{end}}{{.Name}}</span>
                                     </td>
                                     <td>
                                         {{if .Containers}}
@@ -168,7 +163,7 @@
                                             <span class="text-muted">-</span>
                                         {{end}}
                                     </td>
-                                    <td>
+                                    <td class="status-col">
                                         {{if .Containers}}
                                             {{range .Containers}}
                                                 <div>
@@ -191,7 +186,7 @@
                                             <span class="text-muted">-</span>
                                         {{end}}
                                     </td>
-                                    <td>
+                                    <td class="uptime-col">
                                         {{if .Containers}}
                                             {{range .Containers}}
                                                 <div>
