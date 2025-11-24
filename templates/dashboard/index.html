@@ -17,9 +17,9 @@
                     <div class="row g-3">
                         <!-- First Row: CPU, GPU, Memory -->
                         <!-- CPU Card -->
-                        <div class="col-12 col-md-6 col-lg-4">
+                        <div class="col-6 col-md-4 col-lg-2">
                             <div id="cpu-card">
-                                <div class="card monitoring-card bg-white">
+                                <div class="card monitoring-card">
                                     <div class="card-body">
                                         <h6 class="metric-title">CPU Usage</h6>
                                         <div class="metric-value">{{.MonitoringData.CPUPercent}}%</div>
@@ -31,11 +31,11 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- GPU Card -->
-                        <div class="col-12 col-md-6 col-lg-4">
+                        <div class="col-6 col-md-4 col-lg-2">
                             <div id="gpu-card">
-                                <div class="card monitoring-card bg-white">
+                                <div class="card monitoring-card">
                                     <div class="card-body">
                                         <h6 class="metric-title">GPU Load</h6>
                                         <div class="metric-value">{{.MonitoringData.GPULoad}}%</div>
@@ -47,11 +47,11 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Memory Card -->
-                        <div class="col-12 col-md-6 col-lg-4">
+                        <div class="col-6 col-md-4 col-lg-2">
                             <div id="memory-card">
-                                <div class="card monitoring-card bg-white">
+                                <div class="card monitoring-card">
                                     <div class="card-body">
                                         <h6 class="metric-title">Memory Usage</h6>
                                         <div class="metric-value">{{.MonitoringData.MemoryPercent}}%</div>
@@ -63,12 +63,12 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Second Row: Disk, Download, Upload -->
                         <!-- Disk Card -->
-                        <div class="col-12 col-md-6 col-lg-4">
+                        <div class="col-6 col-md-4 col-lg-2">
                             <div id="disk-card">
-                                <div class="card monitoring-card bg-white">
+                                <div class="card monitoring-card">
                                     <div class="card-body">
                                         <h6 class="metric-title">Disk Usage (/)</h6>
                                         <div class="metric-value">{{.MonitoringData.DiskUsagePercent}}%</div>
@@ -80,11 +80,11 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Download Card -->
-                        <div class="col-12 col-md-6 col-lg-4">
+                        <div class="col-6 col-md-4 col-lg-2">
                             <div id="download-card">
-                                <div class="card monitoring-card bg-white">
+                                <div class="card monitoring-card">
                                     <div class="card-body">
                                         <h6 class="metric-title">Download</h6>
                                         <div class="metric-value">{{.MonitoringData.DownloadRate}}</div>
@@ -96,11 +96,11 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Upload Card -->
-                        <div class="col-12 col-md-6 col-lg-4">
+                        <div class="col-6 col-md-4 col-lg-2">
                             <div id="upload-card">
-                                <div class="card monitoring-card bg-white">
+                                <div class="card monitoring-card">
                                     <div class="card-body">
                                         <h6 class="metric-title">Upload</h6>
                                         <div class="metric-value">{{.MonitoringData.UploadRate}}</div>
@@ -285,59 +285,82 @@
 <style>
     /* Monitoring card styles for dashboard */
     .monitoring-card {
-        transition: background-color 0.2s, box-shadow 0.2s;
         height: 100%;
-        border: 1px solid rgba(0,0,0,0.125);
-        background-color: var(--color-panel-surface);
+        border: 1px solid var(--color-border-subtle);
+        background-color: var(--monitoring-card-surface, var(--color-panel-surface)) !important;
         cursor: pointer;
     }
 
-    .monitoring-card:hover {
-        background-color: #ededed !important;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    .monitoring-card .card-body {
+        padding: 0.75rem;
     }
-    
+
     .metric-value {
-        font-size: 2rem;
+        font-size: 1.35rem;
         font-weight: 600;
-        color: #2d3748;
-        margin: 0.5rem 0;
+        color: var(--color-text-primary);
+        margin: 0.35rem 0;
     }
-    
+
     .sparkline-container {
-        height: 40px;
+        height: 28px;
         overflow: hidden;
-        margin-top: 0.5rem;
+        margin-top: 0.35rem;
         position: relative;
     }
-    
+
     .sparkline-container svg {
         width: 100%;
         height: 100%;
+        background-color: var(--monitoring-card-surface, var(--color-panel-surface)) !important;
     }
-    
+
+    /* Normalize sparkline backgrounds even if SVG includes its own rect */
+    .sparkline-container svg rect:first-child {
+        fill: var(--monitoring-card-surface, var(--color-panel-surface)) !important;
+    }
+
+    .sparkline-container svg *,
+    .sparkline-container svg {
+        background-color: var(--monitoring-card-surface, var(--color-panel-surface)) !important;
+    }
+
+    /* Style SVG sparkline colors using CSS */
+    .sparkline-container svg polyline {
+        stroke: var(--color-text-primary);
+    }
+
+    .sparkline-container svg circle {
+        fill: var(--color-text-primary);
+    }
+
+    .sparkline-container svg text {
+        fill: var(--color-text-primary);
+    }
+
     .metric-title {
-        font-size: 0.9rem;
+        font-size: 0.95rem;
         font-weight: 500;
-        color: #4a5568;
-        margin-bottom: 0.5rem;
+        color: var(--color-text-primary);
+        margin-bottom: 0.35rem;
     }
-    
+
+    /* Override Bootstrap's text-muted in monitoring cards */
+    .monitoring-card .text-muted {
+        color: var(--color-text-primary) !important;
+        font-size: 0.75rem;
+    }
+
     .metric-loading {
         min-height: 120px;
         display: flex;
         align-items: center;
         justify-content: center;
     }
-    
-    /* Ensure white background for cards inside gradient container */
-    .funky-gradient-card .monitoring-card {
-        background-color: var(--color-panel-surface);
-    }
 
-    /* Gray background on hover for cards inside gradient container */
-    .funky-gradient-card .monitoring-card:hover {
-        background-color: #ededed !important;
+    /* Ensure panel surface background for cards inside gradient container */
+    .funky-gradient-card .monitoring-card {
+        background-color: var(--monitoring-card-surface, var(--color-panel-surface)) !important;
     }
     
     /* Adjust text color for gradient background */

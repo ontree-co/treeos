@@ -83,247 +83,6 @@
         font-size: 0.9rem;
     }
 
-    /* Chat message styles */
-    .chat-message {
-        padding: 12px 16px;
-        margin-bottom: 12px;
-        border-radius: 8px;
-        border-left: 4px solid;
-        background: #f8f9fa;
-        transition: all 0.2s ease;
-        max-width: 40%;
-        margin-right: auto;
-    }
-    
-    .chat-message.user-message {
-        margin-right: 0;
-        margin-left: auto;
-        border-left: none;
-        border-right: 4px solid #0d6efd;
-        background: #e7f3ff;
-        text-align: right;
-    }
-    
-    .chat-message.user-message .chat-message-header {
-        flex-direction: row-reverse;
-    }
-    
-    .chat-message.user-message .chat-message-header > div {
-        flex-direction: row-reverse;
-    }
-    
-    .chat-message.user-message .chat-message-avatar {
-        margin-right: 0;
-        margin-left: 10px;
-        background: #0d6efd;
-    }
-    
-    .chat-message.system-message {
-        margin-left: auto;
-        margin-right: auto;
-        max-width: 60%;
-        background: #e9ecef;
-        border-left: none;
-        border-right: none;
-        text-align: center;
-        font-style: italic;
-    }
-    
-    .chat-message.system-message .chat-message-header {
-        justify-content: center;
-    }
-    
-    .chat-message:hover {
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    
-    .chat-message.status-info {
-        border-left-color: #17a2b8;
-        background: #d1ecf1;
-    }
-    
-    .chat-message.status-warning {
-        border-left-color: #ffc107;
-        background: #fff3cd;
-    }
-    
-    .chat-message.status-error {
-        border-left-color: #fd7e14;
-        background: #ffe5d0;
-    }
-    
-    .chat-message.status-critical {
-        border-left-color: #dc3545;
-        background: #f8d7da;
-    }
-    
-    .chat-message-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 8px;
-    }
-    
-    .chat-message-avatar {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        background: #6c757d;
-        color: white;
-        font-size: 18px;
-        margin-right: 10px;
-    }
-    
-    .chat-message-timestamp {
-        font-size: 0.875rem;
-        color: #6c757d;
-    }
-    
-    .chat-message-summary {
-        font-size: 1rem;
-        margin-bottom: 8px;
-        color: #212529;
-    }
-    
-    .chat-message-details {
-        margin-top: 8px;
-        padding: 8px;
-        background: rgba(255,255,255,0.5);
-        border-radius: 4px;
-        font-size: 0.875rem;
-    }
-    
-    .chat-message-details.collapsed {
-        display: none;
-    }
-    
-    .chat-message-toggle {
-        cursor: pointer;
-        color: #0d6efd;
-        font-size: 0.875rem;
-        text-decoration: none;
-    }
-    
-    .chat-message-toggle:hover {
-        text-decoration: underline;
-    }
-    
-    .chat-status-badge {
-        display: inline-block;
-        padding: 0.25rem 0.5rem;
-        border-radius: 0.25rem;
-        font-size: 0.75rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    
-    .chat-status-badge.status-info {
-        background: #17a2b8;
-        color: white;
-    }
-    
-    .chat-status-badge.status-warning {
-        background: #ffc107;
-        color: #212529;
-    }
-    
-    .chat-status-badge.status-error {
-        background: #fd7e14;
-        color: white;
-    }
-    
-    .chat-status-badge.status-critical {
-        background: #dc3545;
-        color: white;
-    }
-    
-    #chat-messages-container {
-        padding: 8px;
-        background: #ffffff;
-    }
-    
-    .chat-empty-state {
-        text-align: center;
-        padding: 40px 20px;
-        color: #6c757d;
-    }
-    
-    .chat-empty-state i {
-        font-size: 48px;
-        margin-bottom: 16px;
-        display: block;
-    }
-    
-    /* Message input area styles */
-    .message-input-area {
-        border-top: 1px solid #dee2e6;
-        padding: 16px;
-        background: #f8f9fa;
-    }
-    
-    .message-input-wrapper {
-        display: flex;
-        gap: 8px;
-        margin-bottom: 12px;
-    }
-    
-    .message-input {
-        flex: 1;
-        border: 1px solid #ced4da;
-        border-radius: 20px;
-        padding: 8px 16px;
-        font-size: 14px;
-        outline: none;
-        transition: border-color 0.15s ease;
-    }
-    
-    .message-input:focus {
-        border-color: #0d6efd;
-        box-shadow: 0 0 0 0.2rem rgba(13,110,253,0.1);
-    }
-    
-    .message-send-btn {
-        background: #0d6efd;
-        color: white;
-        border: none;
-        border-radius: 20px;
-        padding: 0 20px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.15s ease;
-    }
-    
-    .message-send-btn:hover {
-        background: #0b5ed7;
-    }
-    
-    .message-suggestions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-    }
-    
-    .suggestion-chip {
-        padding: 6px 12px;
-        background: #e9ecef;
-        border: none;
-        border-radius: 9999px;
-        font-size: 13px;
-        color: #495057;
-        transition: all 0.15s ease;
-    }
-    
-    .suggestion-chip:hover {
-        background: #dee2e6;
-        color: #212529;
-    }
     
     .log-entry {
         padding: 8px 12px;
@@ -387,6 +146,102 @@
         background-color: #6c757d;
         border-radius: 4px;
     }
+
+    .config-section-toggle {
+        width: 100%;
+        border: 1px solid var(--color-border-subtle);
+        border-radius: 0;
+        background-color: #eeeeee;
+        color: inherit;
+        font-weight: 600;
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        text-align: left;
+        gap: 0.5rem;
+    }
+
+    .config-section-toggle:focus {
+        outline: none;
+        box-shadow: none;
+    }
+
+    .config-section-toggle .toggle-icon {
+        display: inline-flex;
+        transition: transform 0.2s ease;
+    }
+
+    .config-section-toggle:not(.collapsed) .toggle-icon {
+        transform: rotate(90deg);
+    }
+
+    .config-section-toggle:not(.collapsed) {
+        border-bottom: none;
+    }
+
+    .config-section-toggle + .accordion-collapse .accordion-body {
+        border: 1px solid var(--color-border-subtle);
+        border-top: none;
+        border-radius: 0;
+        background-color: #eeeeee;
+        padding: 1rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .accordion-item + .accordion-item {
+        margin-top: 1rem;
+    }
+
+    .config-code-block {
+        background-color: #eeeeee;
+        border: 1px solid var(--color-border-subtle);
+        border-radius: 0;
+        color: var(--color-text-primary);
+    }
+
+    [data-theme="dark"] .config-code-block {
+        background-color: var(--color-shell);
+        border-color: #eeeeee;
+    }
+
+    .configuration-card {
+        background-color: #eeeeee;
+        border: 1px solid var(--color-border-subtle);
+        border-radius: 0;
+    }
+
+    .configuration-card .card-header,
+    .configuration-card .card-body {
+        background-color: #eeeeee;
+        border-radius: 0;
+    }
+
+    .configuration-card .card-header {
+        border-bottom: 1px solid var(--color-border-subtle);
+    }
+
+    [data-theme="dark"] .configuration-card,
+    [data-theme="dark"] .configuration-card .card-header,
+    [data-theme="dark"] .configuration-card .card-body,
+    [data-theme="dark"] .config-section-toggle,
+    [data-theme="dark"] .config-section-toggle + .accordion-collapse .accordion-body,
+    [data-theme="dark"] .config-code-block {
+        background-color: var(--color-shell);
+    }
+
+    [data-theme="dark"] .configuration-card,
+    [data-theme="dark"] .configuration-card .card-header,
+    [data-theme="dark"] .configuration-card .card-body,
+    [data-theme="dark"] .config-section-toggle,
+    [data-theme="dark"] .config-section-toggle + .accordion-collapse .accordion-body,
+    [data-theme="dark"] .config-code-block {
+        border-color: #eeeeee;
+    }
+
+    [data-theme="dark"] .configuration-card .card-header {
+        border-bottom-color: #eeeeee;
+    }
 </style>
 {{ $view := .View }}
 <div class="row">
@@ -421,62 +276,11 @@
 </div>
 {{end}}
 
-<!-- Agent Chat History -->
-<div class="row mt-4 mb-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">
-                    <i>💬</i> Agent Status Updates
-                </h5>
-                <div>
-                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="loadChatMessages()">
-                        <i>🔄</i> Refresh
-                    </button>
-                </div>
-            </div>
-            <div class="card-body p-0">
-                <div id="chat-messages-container" style="max-height: 400px; overflow-y: auto; padding: 16px;">
-                    <div class="text-center text-muted">
-                        <span class="spinner-border spinner-border-sm" role="status"></span> Loading messages...
-                    </div>
-                </div>
-                <div class="message-input-area">
-                    <div class="message-input-wrapper">
-                        <input type="text"
-                               class="message-input form-control"
-                               id="agent-message-input"
-                               placeholder="Message"
-                               onkeypress="if(event.key === 'Enter') sendAgentMessage()">
-                        <button type="button" class="message-send-btn" onclick="sendAgentMessage()">
-                            Send
-                        </button>
-                    </div>
-                    <div class="message-suggestions">
-                        <button type="button" class="suggestion-chip" onclick="sendSuggestion('Run check')">
-                            Run check
-                        </button>
-                        <button type="button" class="suggestion-chip" onclick="sendSuggestion('Show container status')">
-                            Show container status
-                        </button>
-                        <button type="button" class="suggestion-chip" onclick="sendSuggestion('Check for updates')">
-                            Check for updates
-                        </button>
-                        <button type="button" class="suggestion-chip" onclick="sendSuggestion('Restart containers')">
-                            Restart containers
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- Containers -->
 <div class="row mb-4">
     <div class="col-12">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
+        <div class="card dashboard-panel configuration-card">
+            <div class="card-header dashboard-panel-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">Running Containers</h5>
                 <div class="btn-group" role="group">
                     {{if $view.Actions.CanStop}}
@@ -594,8 +398,8 @@
 <!-- Service Logs -->
 <div class="row mt-4 mb-4">
     <div class="col-12">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
+        <div class="card dashboard-panel">
+            <div class="card-header dashboard-panel-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">
                     <i>📋</i> Service Logs
                 </h5>
@@ -626,185 +430,72 @@
     </div>
 </div>
 
-<!-- Public Access -->
+<!-- Configuration -->
 <div class="row mb-4">
     <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Public Access</h5>
+        <div class="card dashboard-panel">
+            <div class="card-header dashboard-panel-header">
+                <h5 class="mb-0">Configuration</h5>
             </div>
             <div class="card-body">
-                {{$public := $view.PublicAccess}}
-                {{if $public.Alert}}
-                <div class="alert alert-{{$public.Alert.Type}} mb-3">{{$public.Alert.Message}}</div>
-                {{end}}
-                {{if $public.Exposed}}
-                <div class="mb-3">
-                    <p class="mb-2"><strong>Subdomain:</strong> <code>{{$public.Subdomain}}</code></p>
-                    {{if $public.PublicURL}}
-                    <p class="mb-3">
-                        <strong>Public URL:</strong><br>
-                        <a href="{{$public.PublicURL}}" target="_blank" class="text-decoration-none">
-                            <i>🔗</i> {{$public.PublicURL}}
-                        </a>
-                    </p>
-                    {{end}}
-                    <div class="btn-group" role="group">
-                        <form method="post" action="/apps/{{$view.Name}}/unexpose" class="d-inline">
-                            <button type="submit" class="btn btn-warning"
-                                    onclick="return confirm('Confirm Unexpose?');">
-                                <i>🔒</i> Unexpose Publicly
-                            </button>
-                        </form>
-                        <button type="button"
-                                class="btn btn-primary"
-                                hx-get="/api/apps/{{$view.Name}}/status"
-                                hx-target="#status-result"
-                                hx-indicator="#status-spinner">
-                            <i>🔍</i> Check Status
+                <div class="accordion" id="configAccordion">
+                    <div class="accordion-item border-0 pb-2">
+                        <button class="config-section-toggle collapsed" type="button"
+                                data-bs-toggle="collapse" data-bs-target="#config-env"
+                                aria-expanded="false" aria-controls="config-env">
+                            <span class="toggle-icon">▶</span>
+                            <span>Environment (.env)</span>
                         </button>
-                    </div>
-                    <span id="status-spinner" class="htmx-indicator spinner-border spinner-border-sm ms-2" role="status">
-                        <span class="visually-hidden">Checking...</span>
-                    </span>
-                    <div id="status-result" class="mt-3"></div>
-                </div>
-                {{else}}
-                <form method="post" action="/apps/{{$view.Name}}/expose"
-                      class="d-inline {{if not $public.FormEnabled}}opacity-50{{end}}"
-                      {{if not $public.FormEnabled}}style="pointer-events: none;"{{end}}>
-                    <div class="mb-3">
-                        <label for="subdomain" class="form-label">Subdomain</label>
-                        <div class="input-group">
-                            <input type="text"
-                                   class="form-control"
-                                   id="subdomain"
-                                   name="subdomain"
-                                   placeholder="myapp"
-                                   pattern="[a-z0-9-]+"
-                                   title="Only lowercase letters, numbers, and hyphens allowed"
-                                   value="{{$public.Subdomain}}"
-                                   {{if not $public.FormEnabled}}disabled{{end}}
-                                   required>
-                            {{if $public.BaseDomain}}
-                            <span class="input-group-text text-muted">.{{$public.BaseDomain}}</span>
-                            {{end}}
+                        <div id="config-env" class="accordion-collapse collapse" data-bs-parent="#configAccordion">
+                            <div class="accordion-body px-0">
+                                <div class="d-flex flex-column flex-md-row justify-content-between align-items-start mb-2 gap-2">
+                                    <small class="text-muted">File: <code>{{$view.EnvPath}}</code></small>
+                                    <a href="/apps/{{$view.Name}}/edit" class="btn btn-sm btn-outline-primary">
+                                        <i>✏️</i> Edit
+                                    </a>
+                                </div>
+                                <pre class="config-code-block p-3"><code>{{$view.EnvContent}}</code></pre>
+                            </div>
                         </div>
-                        <small class="form-text text-muted">
-                            Choose a subdomain for your app. Only lowercase letters, numbers, and hyphens allowed.
-                        </small>
                     </div>
-                    <button type="submit" class="btn btn-primary" {{if not $public.FormEnabled}}disabled{{end}}>
-                        <i>🌐</i> Expose Publicly
-                    </button>
-                </form>
-                {{end}}
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Tailscale Access -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Tailscale Access</h5>
-            </div>
-            <div class="card-body">
-                {{$tailscale := $view.Tailscale}}
-                {{if $tailscale.Alert}}
-                <div class="alert alert-info mb-3">{{$tailscale.Alert.Message}}</div>
-                {{end}}
-                {{if and $tailscale.Exposed $tailscale.Hostname}}
-                <div class="mb-3">
-                    <p class="mb-2"><strong>Hostname:</strong> <code>{{$tailscale.Hostname}}</code></p>
-                    {{if $tailscale.URL}}
-                    <p class="mb-3">
-                        <strong>Tailscale URL:</strong><br>
-                        <a href="{{$tailscale.URL}}" target="_blank" class="text-decoration-none">
-                            <i>🔗</i> {{$tailscale.URL}}
-                        </a>
-                    </p>
-                    {{end}}
-                    <form method="post" action="/apps/{{$view.Name}}/unexpose-tailscale" class="d-inline">
-                        <button type="submit" class="btn btn-warning"
-                                onclick="return confirm('Confirm Remove from Tailscale?');">
-                            <i>🔒</i> Remove from Tailscale
+                    <div class="accordion-item border-0 pb-2">
+                        <button class="config-section-toggle collapsed" type="button"
+                                data-bs-toggle="collapse" data-bs-target="#config-compose"
+                                aria-expanded="false" aria-controls="config-compose">
+                            <span class="toggle-icon">▶</span>
+                            <span>docker-compose.yml</span>
                         </button>
-                    </form>
-                </div>
-                {{else}}
-                <form method="post" action="/apps/{{$view.Name}}/expose-tailscale"
-                      class="d-inline {{if not $tailscale.FormEnabled}}opacity-50{{end}}"
-                      {{if not $tailscale.FormEnabled}}style="pointer-events: none;"{{end}}>
-                    <p class="text-muted">
-                        This app will be accessible as <code>{{$view.Name}}</code> on your Tailscale network.
-                    </p>
-                    <button type="submit" class="btn btn-primary" {{if not $tailscale.FormEnabled}}disabled{{end}}>
-                        <i>🔐</i> Expose on Tailscale
-                    </button>
-                </form>
-                {{end}}
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Configuration (.env) -->
-<div class="row mb-3">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Configuration (.env)</h5>
-                <a href="/apps/{{$view.Name}}/edit" class="btn btn-sm btn-outline-primary">
-                    <i>✏️</i> Edit
-                </a>
-            </div>
-            <div class="card-body">
-                <div class="position-relative">
-                    <pre class="bg-light p-3 rounded"><code>{{$view.EnvContent}}</code></pre>
-                    <small class="text-muted">File: <code>{{$view.EnvPath}}</code></small>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Configuration (docker-compose.yml) -->
-<div class="row mb-3">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Configuration (docker-compose.yml)</h5>
-                <a href="/apps/{{$view.Name}}/edit" class="btn btn-sm btn-outline-primary">
-                    <i>✏️</i> Edit
-                </a>
-            </div>
-            <div class="card-body">
-                <div class="position-relative">
-                    <pre class="bg-light p-3 rounded"><code>{{$view.ComposeContent}}</code></pre>
-                    <small class="text-muted">File: <code>{{$view.ComposePath}}</code></small>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Configuration (app.yml) -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Configuration (app.yml)</h5>
-                <a href="/apps/{{$view.Name}}/edit" class="btn btn-sm btn-outline-primary">
-                    <i>✏️</i> Edit
-                </a>
-            </div>
-            <div class="card-body">
-                <div class="position-relative">
-                    <pre class="bg-light p-3 rounded"><code>{{$view.AppYmlContent}}</code></pre>
-                    <small class="text-muted">File: <code>{{$view.AppYmlPath}}</code></small>
+                        <div id="config-compose" class="accordion-collapse collapse" data-bs-parent="#configAccordion">
+                            <div class="accordion-body px-0">
+                                <div class="d-flex flex-column flex-md-row justify-content-between align-items-start mb-2 gap-2">
+                                    <small class="text-muted">File: <code>{{$view.ComposePath}}</code></small>
+                                    <a href="/apps/{{$view.Name}}/edit" class="btn btn-sm btn-outline-primary">
+                                        <i>✏️</i> Edit
+                                    </a>
+                                </div>
+                                <pre class="config-code-block p-3"><code>{{$view.ComposeContent}}</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item border-0">
+                        <button class="config-section-toggle collapsed" type="button"
+                                data-bs-toggle="collapse" data-bs-target="#config-app"
+                                aria-expanded="false" aria-controls="config-app">
+                            <span class="toggle-icon">▶</span>
+                            <span>app.yml</span>
+                        </button>
+                        <div id="config-app" class="accordion-collapse collapse" data-bs-parent="#configAccordion">
+                            <div class="accordion-body px-0">
+                                <div class="d-flex flex-column flex-md-row justify-content-between align-items-start mb-2 gap-2">
+                                    <small class="text-muted">File: <code>{{$view.AppYmlPath}}</code></small>
+                                    <a href="/apps/{{$view.Name}}/edit" class="btn btn-sm btn-outline-primary">
+                                        <i>✏️</i> Edit
+                                    </a>
+                                </div>
+                                <pre class="config-code-block p-3"><code>{{$view.AppYmlContent}}</code></pre>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -865,8 +556,6 @@
             </div>
         </div>
     </div>
-</div>
-
 <!-- Delete Confirmation Modal -->
 <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -1425,155 +1114,6 @@ function hideProgressBarIfContainerRunning() {
     }
 }
 
-function loadChatMessages() {
-    const appName = '{{.View.Name}}';
-    const container = document.getElementById('chat-messages-container');
-    container.innerHTML = '<div class="text-center text-muted"><span class="spinner-border spinner-border-sm" role="status"></span> Loading messages...</div>';
-    fetch(`/api/apps/${appName}/chat`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            renderChatMessages(data.messages || []);
-        })
-        .catch(error => {
-            container.innerHTML = `<div class="text-center text-muted"><i>😕</i><br>Failed to load messages: ${error}</div>`;
-        });
-}
-
-function renderChatMessages(messages) {
-    const container = document.getElementById('chat-messages-container');
-    container.innerHTML = '';
-
-    if (!messages || messages.length === 0) {
-        container.innerHTML = '<div class="chat-empty-state"><i>🪴</i>No agent updates yet.<br><small>Send a message below to interact with the agent.</small></div>';
-        return;
-    }
-
-    messages.forEach(msg => {
-        const messageElement = document.createElement('div');
-        messageElement.className = 'chat-message';
-
-        if (msg.status_class) {
-            messageElement.classList.add(`status-${msg.status_class}`);
-        }
-
-        if (msg.sender_type === 'user') {
-            messageElement.classList.add('user-message');
-        } else if (msg.sender_type === 'system') {
-            messageElement.classList.add('system-message');
-        }
-
-        const header = document.createElement('div');
-        header.className = 'chat-message-header';
-
-        const left = document.createElement('div');
-        left.style.display = 'flex';
-        left.style.alignItems = 'center';
-
-        const avatar = document.createElement('div');
-        avatar.className = 'chat-message-avatar';
-        avatar.textContent = msg.sender_icon || '🤖';
-        left.appendChild(avatar);
-
-        const summaryWrapper = document.createElement('div');
-        summaryWrapper.style.display = 'flex';
-        summaryWrapper.style.flexDirection = 'column';
-
-        const summary = document.createElement('div');
-        summary.className = 'chat-message-summary';
-        summary.textContent = msg.summary || '(no summary provided)';
-        summaryWrapper.appendChild(summary);
-
-        if (msg.status_label) {
-            const badge = document.createElement('span');
-            badge.className = `chat-status-badge status-${msg.status_class || 'info'}`;
-            badge.textContent = msg.status_label;
-            summaryWrapper.appendChild(badge);
-        }
-
-        left.appendChild(summaryWrapper);
-        header.appendChild(left);
-
-        const timestamp = document.createElement('div');
-        timestamp.className = 'chat-message-timestamp';
-        timestamp.textContent = msg.timestamp || '';
-        header.appendChild(timestamp);
-
-        messageElement.appendChild(header);
-
-        if (msg.details) {
-            const details = document.createElement('div');
-            details.className = 'chat-message-details collapsed';
-            details.textContent = msg.details;
-            messageElement.appendChild(details);
-
-            const toggle = document.createElement('a');
-            toggle.href = '#';
-            toggle.className = 'chat-message-toggle';
-            toggle.textContent = 'Show details';
-            toggle.onclick = function(event) {
-                event.preventDefault();
-                if (details.classList.contains('collapsed')) {
-                    details.classList.remove('collapsed');
-                    toggle.textContent = 'Hide details';
-                } else {
-                    details.classList.add('collapsed');
-                    toggle.textContent = 'Show details';
-                }
-            };
-            messageElement.appendChild(toggle);
-        }
-
-        container.appendChild(messageElement);
-    });
-}
-
-function sendAgentMessage() {
-    const input = document.getElementById('agent-message-input');
-    const message = input.value.trim();
-    if (!message) {
-        return;
-    }
-
-    input.value = '';
-    input.disabled = true;
-
-    const appName = '{{.View.Name}}';
-    fetch(`/api/apps/${appName}/chat`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ message: message })
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.json();
-    })
-    .then(() => {
-        loadChatMessages();
-    })
-    .catch(error => {
-        alert('Failed to send message: ' + error);
-    })
-    .finally(() => {
-        input.disabled = false;
-        input.focus();
-    });
-}
-
-function sendSuggestion(text) {
-    const input = document.getElementById('agent-message-input');
-    input.value = text;
-    sendAgentMessage();
-}
-
 let logsEventSource = null;
 let followLogsActive = false;
 
@@ -1771,7 +1311,5 @@ function openPort(portMapping) {
     }
 }
 
-// Initial data loads
-loadChatMessages();
 </script>
 {{end}}

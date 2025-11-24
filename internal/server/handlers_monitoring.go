@@ -171,9 +171,9 @@ func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, _ *http.
 		<div class="row g-3">
 			<!-- First Row: CPU, GPU, Memory -->
 			<!-- CPU Card -->
-			<div class="col-12 col-md-6 col-lg-4">
+			<div class="col-6 col-md-4 col-lg-2">
 				<div id="cpu-card">
-					<div class="card monitoring-card bg-white">
+					<div class="card monitoring-card">
 						<div class="card-body">
 							<h6 class="metric-title">CPU Usage</h6>
 							<div class="metric-value">%.1f%%</div>
@@ -187,9 +187,9 @@ func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, _ *http.
 			</div>
 
 			<!-- GPU Card -->
-			<div class="col-12 col-md-6 col-lg-4">
+			<div class="col-6 col-md-4 col-lg-2">
 				<div id="gpu-card">
-					<div class="card monitoring-card bg-white">
+					<div class="card monitoring-card">
 						<div class="card-body">
 							<h6 class="metric-title">GPU Load</h6>
 							<div class="metric-value">%.1f%%</div>
@@ -203,9 +203,9 @@ func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, _ *http.
 			</div>
 
 			<!-- Memory Card -->
-			<div class="col-12 col-md-6 col-lg-4">
+			<div class="col-6 col-md-4 col-lg-2">
 				<div id="memory-card">
-					<div class="card monitoring-card bg-white">
+					<div class="card monitoring-card">
 						<div class="card-body">
 							<h6 class="metric-title">Memory Usage</h6>
 							<div class="metric-value">%.1f%%</div>
@@ -220,9 +220,9 @@ func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, _ *http.
 
 			<!-- Second Row: Disk, Download, Upload -->
 			<!-- Disk Card -->
-			<div class="col-12 col-md-6 col-lg-4">
+			<div class="col-6 col-md-4 col-lg-2">
 				<div id="disk-card">
-					<div class="card monitoring-card bg-white">
+					<div class="card monitoring-card">
 						<div class="card-body">
 							<h6 class="metric-title">Disk Usage (/)</h6>
 							<div class="metric-value">%.1f%%</div>
@@ -236,9 +236,9 @@ func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, _ *http.
 			</div>
 
 			<!-- Download Card -->
-			<div class="col-12 col-md-6 col-lg-4">
+			<div class="col-6 col-md-4 col-lg-2">
 				<div id="download-card">
-					<div class="card monitoring-card bg-white">
+					<div class="card monitoring-card">
 						<div class="card-body">
 							<h6 class="metric-title">Download</h6>
 							<div class="metric-value">%s</div>
@@ -252,9 +252,9 @@ func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, _ *http.
 			</div>
 
 			<!-- Upload Card -->
-			<div class="col-12 col-md-6 col-lg-4">
+			<div class="col-6 col-md-4 col-lg-2">
 				<div id="upload-card">
-					<div class="card monitoring-card bg-white">
+					<div class="card monitoring-card">
 						<div class="card-body">
 							<h6 class="metric-title">Upload</h6>
 							<div class="metric-value">%s</div>

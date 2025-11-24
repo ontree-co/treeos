@@ -31,6 +31,8 @@
   --blue-2: #436ad7;
   --purple-1: #6366f1;
   --purple-2: #f3e8ff;
+  --color-accent-blue: #5b82e1;
+  --color-accent-blue-strong: #436ad7;
 
   /* Support colors */
   --amber-1: #fff8c0;
@@ -41,6 +43,14 @@
   --error-2: #ffd6b3;
   --neutral-warm-1: #f1e3c8;
   --neutral-warm-2: #dccc99;
+
+  /* Highlighted card gradient colors (from landingpages) */
+  --gradient-card-start-light: #245c42;
+  --gradient-card-end-light: #527329;
+  --gradient-card-start-dark: #eeeeee;
+  --gradient-card-end-dark: #b6c3c0;
+  --gradient-card-border-light: #0f3e29;
+  --gradient-card-border-dark: #d1d5db;
 
   /* Typography */
   --font-sans: "IBM Plex Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -83,7 +93,7 @@
   --color-text-link-hover: var(--blue-2);
 
   /* Borders */
-  --color-border-subtle: rgba(var(--green-2-rgb), 0.15);
+  --color-border-subtle: #dcdcdc;
   --color-border-strong: rgba(var(--green-2-rgb), 0.25);
   --color-border-contrast: rgba(var(--gray-5-rgb), 0.8);
 
@@ -110,6 +120,7 @@
   --color-card-border: rgba(var(--green-2-rgb), 0.1);
   --color-metric-value: var(--gray-5);
   --color-panel-surface: #d9dbd3;
+  --monitoring-card-surface: var(--color-panel-surface);
 }
 
 /* Dark theme */
@@ -169,4 +180,5 @@
   --color-card-border: rgba(var(--gray-3-rgb), 0.3);
   --color-metric-value: var(--gray-1);
   --color-panel-surface: var(--color-card-bg);
+  --monitoring-card-surface: var(--green-3);
 }

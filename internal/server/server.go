@@ -499,8 +499,14 @@ func (s *Server) Start() error {
 	if err != nil {
 		return fmt.Errorf("failed to get static filesystem: %w", err)
 	}
-	fs := http.FileServer(http.FS(staticFS))
-	mux.Handle("/static/", http.StripPrefix("/static/", fs))
+	staticHandler := http.FileServer(http.FS(staticFS))
+	mux.Handle("/static/", http.StripPrefix("/static/", staticHandler))
+	mux.Handle("/favicon.ico", staticHandler)
+	mux.Handle("/favicon.svg", staticHandler)
+	mux.Handle("/apple-touch-icon.png", staticHandler)
+	mux.Handle("/site.webmanifest", staticHandler)
+	mux.Handle("/web-app-manifest-192x192.png", staticHandler)
+	mux.Handle("/web-app-manifest-512x512.png", staticHandler)
 
 	// Public routes (no auth required)
 	mux.HandleFunc("/setup", s.TracingMiddleware(s.SetupRequiredMiddleware(s.handleSetup)))
@@ -1235,6 +1241,8 @@ func (s *Server) baseTemplateData(user *database.User) map[string]interface{} {
 		nodeIcon = "tree1.png" // Default icon
 		nodeName = "TreeOS"    // Default name
 	}
+	nodeIcon = strings.TrimSpace(nodeIcon)
+	nodeName = strings.TrimSpace(nodeName)
 	if nodeIcon == "" {
 		nodeIcon = "tree1.png"
 	}
