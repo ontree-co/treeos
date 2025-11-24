@@ -52,13 +52,14 @@ type appDetailView struct {
 }
 
 type serviceView struct {
-	Name        string
-	Image       string
-	Status      string
-	StatusLabel string
-	StatusClass string
-	State       string
-	Ports       []string
+	Name          string
+	ContainerName string
+	Image         string
+	Status        string
+	StatusLabel   string
+	StatusClass   string
+	State         string
+	Ports         []string
 }
 
 func (s *Server) getAppDetailsForRequest(w http.ResponseWriter, r *http.Request, appName string) (*containerruntime.App, bool) {
@@ -682,13 +683,14 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 		serviceOptions := make([]string, 0, len(appStatus.Services))
 		for _, svc := range appStatus.Services {
 			service := serviceView{
-				Name:        svc.Name,
-				Image:       svc.Image,
-				Status:      svc.Status,
-				StatusLabel: capitalizeFirst(svc.Status),
-				StatusClass: statusBadgeClass(svc.Status),
-				State:       svc.State,
-				Ports:       svc.Ports,
+				Name:          svc.Name,
+				ContainerName: svc.ContainerName,
+				Image:         svc.Image,
+				Status:        svc.Status,
+				StatusLabel:   capitalizeFirst(svc.Status),
+				StatusClass:   statusBadgeClass(svc.Status),
+				State:         svc.State,
+				Ports:         svc.Ports,
 			}
 			view.Services = append(view.Services, service)
 			if svc.Name != "" {
