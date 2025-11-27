@@ -677,6 +677,12 @@ func (s *Server) startVitalsCollection() {
 }
 
 func (s *Server) startAutoUpdateScheduler() {
+	// Disable automatic updates in demo/debug runs to avoid unexpected upgrades during development
+	if s.config.IsDemo() || os.Getenv("DEBUG") == "true" {
+		logging.Infof("Automatic updates disabled in demo/debug mode")
+		return
+	}
+
 	if !s.config.AutoUpdateEnabled {
 		logging.Infof("Automatic updates disabled (AUTO_UPDATE_ENABLED=false)")
 		return
