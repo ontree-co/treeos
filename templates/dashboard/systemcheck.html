@@ -2,30 +2,24 @@
 
 {{define "content"}}
 <div class="row justify-content-center">
-    <div class="col-md-8 col-lg-6">
-        <div class="card shadow-sm">
+    <div class="col-md-8 col-lg-7 col-xl-6">
+        <div class="card card-border-soft text-body">
             <div class="card-body">
-                <h2 class="card-title text-center mb-4">System Check</h2>
-                <p class="text-muted text-center mb-4">
-                    We're checking if your system has all the required components for TreeOS.
-                </p>
+                <h2 class="card-title mb-3 text-success-emphasis">System Check</h2>
 
-                <div class="mb-4">
-                    {{template "system-check" .}}
-                </div>
+                {{template "system-check" .}}
 
-                <form method="POST" action="/systemcheck">
-                    <div class="d-flex gap-3">
-                        <div class="flex-grow-1">
-                            <button type="submit" name="action" value="complete" id="complete-setup-btn" class="btn btn-success w-100" disabled>
-                                <i class="bi bi-check-circle me-2"></i>Complete Setup
-                            </button>
-                        </div>
-                        <div>
-                            <button type="submit" name="action" value="continue" class="btn btn-outline-secondary">
-                                Continue Without Fixing Everything
-                            </button>
-                        </div>
+                <form method="POST" action="/systemcheck" class="d-grid gap-3 mt-4 d-none" id="systemcheck-actions">
+                    <button type="submit" name="action" value="complete" id="complete-setup-btn" class="btn btn-primary w-100" disabled>
+                        <i class="bi bi-check-circle me-2"></i>Complete Setup
+                    </button>
+                    <div class="d-flex gap-3 flex-column flex-md-row d-none" id="secondary-actions">
+                        <button type="submit" name="action" value="again" class="btn btn-outline-primary flex-fill">
+                            <i class="bi bi-arrow-repeat me-2"></i>Run Again
+                        </button>
+                        <button type="submit" name="action" value="continue" class="btn btn-outline-secondary flex-fill">
+                            Continue Without Fixing Everything
+                        </button>
                     </div>
                 </form>
             </div>
@@ -37,6 +31,8 @@
 // Monitor system check results to enable/disable Complete Setup button
 function monitorSystemCheckResults() {
     const completeBtn = document.getElementById('complete-setup-btn');
+    const secondaryActions = document.getElementById('secondary-actions');
+    const formActions = document.getElementById('systemcheck-actions');
     if (!completeBtn) return;
 
     // Function to check if all system checks are green
@@ -60,15 +56,19 @@ function monitorSystemCheckResults() {
             }
         });
 
-        // Enable button only if we have results and all are green
+        // Show/hide buttons based on state
+        const hasAnyResult = hasResults;
+        formActions.classList.toggle('d-none', !hasAnyResult);
+        secondaryActions.classList.toggle('d-none', !hasAnyResult || allGreen);
+
         if (hasResults && allGreen) {
             completeBtn.disabled = false;
-            completeBtn.classList.remove('btn-secondary');
-            completeBtn.classList.add('btn-success');
+            completeBtn.classList.remove('btn-outline-secondary');
+            completeBtn.classList.add('btn-primary');
         } else {
             completeBtn.disabled = true;
-            completeBtn.classList.remove('btn-success');
-            completeBtn.classList.add('btn-secondary');
+            completeBtn.classList.remove('btn-primary');
+            completeBtn.classList.add('btn-outline-secondary');
         }
     }
 
@@ -98,4 +98,14 @@ function monitorSystemCheckResults() {
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', monitorSystemCheckResults);
 </script>
+<style>
+.system-check-panel,
+.system-check-panel p,
+.system-check-panel .fw-semibold,
+.system-check-panel .status-icon i,
+.system-check-panel strong,
+.system-check-panel .text-body {
+    color: var(--color-text-primary) !important;
+}
+</style>
 {{end}}

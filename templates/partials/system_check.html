@@ -6,18 +6,17 @@
 {{ $panelID := "system-check-panel" }}
 {{ with index . "SystemCheckPanelID" }}{{ $panelID = . }}{{ end }}
 {{ $detailsVisible := or $autoRun $visible }}
-<div id="{{$panelID}}" class="card" data-system-check data-auto-run="{{if $autoRun}}true{{else}}false{{end}}" data-details-visible="{{if $detailsVisible}}true{{else}}false{{end}}">
-    <div class="card-header d-flex justify-content-between align-items-center">
+<div id="{{$panelID}}" class="system-check-panel" data-system-check data-auto-run="{{if $autoRun}}true{{else}}false{{end}}" data-details-visible="{{if $detailsVisible}}true{{else}}false{{end}}">
+    <div class="d-flex justify-content-between align-items-center mb-2">
         <div class="d-flex align-items-center">
             <i class="bi bi-gear-wide-connected me-2"></i>
             <strong>System Check</strong>
         </div>
-        <button type="button" class="btn btn-outline-primary btn-sm" data-action="run-system-check">
+        <button type="button" class="btn btn-outline-primary btn-sm d-none" data-action="run-system-check" data-role="inline-run">
             <i class="bi bi-arrow-repeat me-1"></i><span data-role="run-label">{{if $autoRun}}Run Again{{else}}Run System Check{{end}}</span>
         </button>
     </div>
-    <div class="card-body">
-        <p class="mb-3 text-muted" data-role="summary">{{if $autoRun}}Running system checks…{{else}}Click "Run System Check" to begin.{{end}}</p>
+    <p class="mb-3 text-body" data-role="summary">{{if $autoRun}}Running system checks…{{else}}Click "Run System Check" to begin.{{end}}</p>
         <div data-role="details-panel" class="{{if not $detailsVisible}}d-none{{end}}">
             <ul class="list-unstyled mb-3" data-role="check-list">
         <li class="d-flex align-items-start mb-2" data-check="directories">
@@ -26,9 +25,9 @@
                 </div>
                 <div>
                     <div class="fw-semibold">Prepare system directories</div>
-                    <div class="text-muted small" data-role="message"></div>
-                    <div class="text-muted small" data-role="details"></div>
-                    <ul class="text-muted small ps-3 mb-0" data-role="remediation"></ul>
+                    <div class="text-body small" data-role="message"></div>
+                    <div class="text-body small" data-role="details"></div>
+                    <ul class="text-body small ps-3 mb-0" data-role="remediation"></ul>
                 </div>
             </li>
         <li class="d-flex align-items-start mb-2" data-check="docker">
@@ -37,9 +36,9 @@
                 </div>
                 <div>
                     <div class="fw-semibold">Docker</div>
-                    <div class="text-muted small" data-role="message"></div>
-                    <div class="text-muted small" data-role="details"></div>
-                    <ul class="text-muted small ps-3 mb-0" data-role="remediation"></ul>
+                    <div class="text-body small" data-role="message"></div>
+                    <div class="text-body small" data-role="details"></div>
+                    <ul class="text-body small ps-3 mb-0" data-role="remediation"></ul>
                 </div>
             </li>
         <li class="d-flex align-items-start mb-2" data-check="docker_compose">
@@ -48,9 +47,9 @@
                 </div>
                 <div>
                     <div class="fw-semibold">Docker Compose</div>
-                    <div class="text-muted small" data-role="message"></div>
-                    <div class="text-muted small" data-role="details"></div>
-                    <ul class="text-muted small ps-3 mb-0" data-role="remediation"></ul>
+                    <div class="text-body small" data-role="message"></div>
+                    <div class="text-body small" data-role="details"></div>
+                    <ul class="text-body small ps-3 mb-0" data-role="remediation"></ul>
                 </div>
             </li>
         <li class="d-flex align-items-start mb-2" data-check="caddy">
@@ -59,14 +58,13 @@
                 </div>
                 <div>
                     <div class="fw-semibold">Caddy</div>
-                    <div class="text-muted small" data-role="message"></div>
-                    <div class="text-muted small" data-role="details"></div>
-                    <ul class="text-muted small ps-3 mb-0" data-role="remediation"></ul>
+                    <div class="text-body small" data-role="message"></div>
+                    <div class="text-body small" data-role="details"></div>
+                    <ul class="text-body small ps-3 mb-0" data-role="remediation"></ul>
                 </div>
             </li>
     </ul>
         </div>
-    </div>
 </div>
 
 <script>
@@ -286,13 +284,21 @@
 
     ready(function() {
         document.querySelectorAll('[data-system-check]').forEach(function(panel) {
-            if (panel.dataset.autoRun === 'true') {
+            const runButton = panel.querySelector('[data-action=\"run-system-check\"]');
+            const autoRun = panel.dataset.autoRun === 'true';
+            if (autoRun) {
                 toggleDetails(panel, true);
+                if (runButton) {
+                    runButton.classList.add('d-none');
+                }
                 runSystemCheck(panel);
             } else {
                 toggleDetails(panel, panel.dataset.detailsVisible === 'true');
                 updateRunButton(panel, panel.dataset.detailsVisible === 'true');
                 panel.querySelectorAll('[data-check]').forEach(setQuestionState);
+                if (runButton) {
+                    runButton.classList.remove('d-none');
+                }
             }
         });
     });

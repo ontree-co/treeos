@@ -254,6 +254,28 @@ svg {
     background-color: var(--color-card-bg);
     box-shadow: var(--color-shadow-card);
 }
+.card.card-border-soft .card-header {
+    background-color: transparent;
+}
+.card.card-border-soft {
+    border: 1px solid var(--color-border-subtle);
+}
+.card.card-border-soft,
+.card.card-border-soft .card-body,
+.card.card-border-soft .card-header,
+.card.card-border-soft h1,
+.card.card-border-soft h2,
+.card.card-border-soft h3,
+.card.card-border-soft h4,
+.card.card-border-soft h5,
+.card.card-border-soft h6,
+.card.card-border-soft p,
+.card.card-border-soft label,
+.card.card-border-soft small,
+.card.card-border-soft .form-text,
+.card.card-border-soft .form-label {
+    color: var(--color-text-primary);
+}
 
 .card.monitoring-card {
     background-color: var(--monitoring-card-surface, var(--color-panel-surface)) !important;
@@ -419,4 +441,11 @@ svg {
     .emoji-option {
         font-size: 1.25rem;
     }
+}
+
+
+/* Soft border variant for auth/setup cards */
+.card-border-soft {
+    border: 1px solid var(--color-border-subtle);
+    box-shadow: var(--color-shadow-card);
 }

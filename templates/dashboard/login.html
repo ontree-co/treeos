@@ -3,8 +3,8 @@
 {{define "content"}}
 <div class="auth-setup py-5">
     <div class="row justify-content-center">
-        <div class="col-md-6 col-lg-4">
-            <div class="card shadow-sm">
+        <div class="col-md-7 col-lg-5 col-xl-4">
+            <div class="card text-body card-border-soft">
                 <div class="card-body">
                     <h2 class="card-title text-center mb-4">Welcome Back</h2>
                     
@@ -39,11 +39,17 @@
 <style>
 .auth-setup {
     min-height: calc(100vh - 140px);
-    background: linear-gradient(135deg, var(--color-shell), var(--color-surface));
+    background: transparent;
     transition: background 0.3s ease;
 }
 [data-theme="dark"] .auth-setup {
-    background: linear-gradient(135deg, var(--color-shell-dark, #0f172a), var(--color-surface-dark, #111827));
+    background: transparent;
+}
+.auth-setup .card-title,
+.auth-setup p,
+.auth-setup .form-label,
+.auth-setup .form-text {
+    color: var(--color-text-primary) !important;
 }
 </style>
 {{end}}

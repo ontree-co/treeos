@@ -3,11 +3,11 @@
 {{define "content"}}
 <div class="auth-setup py-5">
     <div class="row justify-content-center">
-        <div class="col-md-6 col-lg-5">
-            <div class="card shadow-sm">
+        <div class="col-md-7 col-lg-5 col-xl-5">
+            <div class="card text-body card-border-soft">
                 <div class="card-body">
-                    <h2 class="card-title text-center mb-4">Welcome to TreeOS</h2>
-                    <p class="text-muted text-center mb-4">
+                    <h2 class="card-title text-center mb-4 text-success-emphasis">Welcome to TreeOS</h2>
+                    <p class="text-muted text-center mb-4 text-body">
                         Let's set up your TreeOS node. Create an admin account to get started.
                     </p>
 
@@ -62,6 +62,14 @@
                             <div class="tree-grid mb-3" style="display: flex; gap: 10px; flex-wrap: wrap;">
                                 <button type="button"
                                         class="tree-option"
+                                        data-tree="logo.png"
+                                        onclick="selectTree(this)"
+                                        aria-label="Select logo"
+                                        style="padding: 5px; border: 2px solid transparent; border-radius: 8px; background: #f8f9fa; cursor: pointer; transition: all 0.2s;">
+                                    <img src="/static/logo/logo.png" alt="TreeOS Logo" style="width: 40px; height: 40px; object-fit: contain;">
+                                </button>
+                                <button type="button"
+                                        class="tree-option"
                                         data-tree="tree0.png"
                                         onclick="selectTree(this)"
                                         aria-label="Select tree 0"
@@ -101,8 +109,8 @@
                                     <img src="/static/images/trees/tree3.png" alt="Tree 3" style="width: 40px; height: 40px; object-fit: contain;">
                                 </button>
                             </div>
-                            <input type="hidden" name="node_icon" id="selected-tree" value="">
-                            <small class="form-text text-muted">Choose an icon for your TreeOS node - it will appear in the header next to the logo</small>
+                            <input type="hidden" name="node_icon" id="selected-tree" value="logo.png">
+                            <small class="form-text text-muted">Choose an icon for your TreeOS node - it will appear in the UI next to your node name</small>
                         </div>
                     </div>
 
@@ -119,11 +127,17 @@
 <style>
 .auth-setup {
     min-height: calc(100vh - 140px);
-    background: linear-gradient(135deg, var(--color-shell), var(--color-surface));
+    background: transparent;
     transition: background 0.3s ease;
 }
 [data-theme="dark"] .auth-setup {
-    background: linear-gradient(135deg, var(--color-shell-dark, #0f172a), var(--color-surface-dark, #111827));
+    background: transparent;
+}
+.auth-setup .card-title,
+.auth-setup p,
+.auth-setup .form-label,
+.auth-setup .form-text {
+    color: var(--color-text-primary) !important;
 }
 .tree-option.selected {
     border-color: #0d6efd !important;
@@ -149,60 +163,19 @@ function selectTree(button) {
     // Update hidden input value
     const tree = button.getAttribute('data-tree');
     document.getElementById('selected-tree').value = tree;
-
-    // Update the icon in the header immediately
-    updateHeaderIcon(tree);
-}
-
-function updateHeaderIcon(iconName) {
-    // Find the header icon image
-    const headerIcon = document.querySelector('.navbar-brand img');
-
-    if (headerIcon) {
-        // Update the src to the new icon
-        headerIcon.src = '/static/images/trees/' + iconName;
-    } else {
-        // If no icon exists in header yet, create and insert it
-        const navbarBrand = document.querySelector('.navbar-brand');
-        if (navbarBrand) {
-            const img = document.createElement('img');
-            img.src = '/static/images/trees/' + iconName;
-            img.alt = 'Tree';
-            img.style.width = '30px';
-            img.style.height = '30px';
-            img.style.objectFit = 'contain';
-            img.style.marginRight = '8px';
-
-            // Insert before the text
-            const span = navbarBrand.querySelector('span');
-            navbarBrand.insertBefore(img, span);
-        }
-    }
 }
 
 // On page load, select the first tree icon for both header and selection menu
 document.addEventListener('DOMContentLoaded', function() {
     const treeOptions = document.querySelectorAll('.tree-option');
     if (treeOptions.length > 0) {
-        // Check if there's already a selected value
-        let selectedValue = document.getElementById('selected-tree').value;
+        let selectedValue = document.getElementById('selected-tree').value || 'logo.png';
 
-        // If no value, select the first one (not random)
-        if (!selectedValue) {
-            const firstTree = treeOptions[0];
-            firstTree.classList.add('selected');
-            const firstTreeIcon = firstTree.getAttribute('data-tree');
-            document.getElementById('selected-tree').value = firstTreeIcon;
-            // Update the header icon to match
-            updateHeaderIcon(firstTreeIcon);
-        } else {
-            // Mark the pre-selected tree
-            const button = document.querySelector(`[data-tree="${selectedValue}"]`);
-            if (button) {
-                button.classList.add('selected');
-                // Ensure header matches the selection
-                updateHeaderIcon(selectedValue);
-            }
+        // Mark the pre-selected tree
+        const button = document.querySelector(`[data-tree="${selectedValue}"]`) || treeOptions[0];
+        if (button) {
+            button.classList.add('selected');
+            document.getElementById('selected-tree').value = button.getAttribute('data-tree');
         }
     }
 });

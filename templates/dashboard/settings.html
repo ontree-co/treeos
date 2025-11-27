@@ -28,14 +28,15 @@
 <div class="row">
     <div class="col-12">
         <nav aria-label="breadcrumb">
-            <ol class="breadcrumb">
+            <ol class="breadcrumb text-body">
                 <li class="breadcrumb-item"><a href="/">Dashboard</a></li>
                 <li class="breadcrumb-item active">Settings</li>
             </ol>
         </nav>
         
-        <h1 class="mb-4">
-            <i>⚙️</i> Settings
+        <h1 class="mb-4 d-flex align-items-center gap-2">
+            <i class="bi bi-gear-wide-connected"></i>
+            Settings
         </h1>
     </div>
 </div>
@@ -43,21 +44,21 @@
 <div class="row">
     <div class="col-12">
         <!-- Node Name -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0">Node Name</h5>
+        <div class="card card-border-soft text-body mb-4">
+            <div class="card-header border-0 bg-transparent text-body">
+                <h5 class="mb-0 text-body">Node Name</h5>
             </div>
             <div class="card-body">
                 <form method="post" action="/settings">
                     <div class="mb-3">
-                        <label for="node_name" class="form-label">Node Name</label>
+                        <label for="node_name" class="form-label text-body">Node Name</label>
                         <input type="text" class="form-control" id="node_name" name="node_name"
                                value="{{.NodeName}}" placeholder="Enter a name for your TreeOS node">
-                        <small class="form-text text-muted">This name will appear in the browser tab title as "NodeName - TreeOS Node".</small>
+                        <small class="form-text text-body">This name will appear in the browser tab title as "NodeName - TreeOS Node".</small>
                     </div>
                     <div class="d-flex justify-content-end">
                         <button type="submit" name="action" value="update_node_name" class="btn btn-primary">
-                            <i>💾</i> Save Node Name
+                            <i class="bi bi-save me-2"></i>Save Node Name
                         </button>
                     </div>
                 </form>
@@ -65,18 +66,26 @@
         </div>
 
         <!-- Node Appearance -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0">Node Appearance</h5>
+        <div class="card card-border-soft text-body mb-4">
+            <div class="card-header border-0 bg-transparent text-body">
+                <h5 class="mb-0 text-body">Node Appearance</h5>
             </div>
             <div class="card-body">
                 <form method="post" action="/settings">
                     <div class="mb-3">
-                        <label class="form-label">Node Icon</label>
+                        <label class="form-label text-body">Node Icon</label>
                         <div class="tree-selector" id="tree-selector">
                             <div class="tree-grid mb-3" style="display: flex; gap: 10px; flex-wrap: wrap;">
                                 <button type="button"
-                                        class="tree-option {{if eq .CurrentNodeIcon "tree0.png"}}selected{{end}}"
+                                        class='tree-option {{if or (eq .CurrentNodeIcon "logo.png") (eq .CurrentNodeIcon "")}}selected{{end}}'
+                                        data-tree="logo.png"
+                                        onclick="selectTree(this)"
+                                        aria-label="Select logo"
+                                        style="padding: 5px; border: 2px solid transparent; border-radius: 8px; background: #f8f9fa; cursor: pointer; transition: all 0.2s;">
+                                    <img src="/static/logo/logo.png" alt="TreeOS Logo" style="width: 40px; height: 40px; object-fit: contain;">
+                                </button>
+                                <button type="button"
+                                        class='tree-option {{if eq .CurrentNodeIcon "tree0.png"}}selected{{end}}'
                                         data-tree="tree0.png"
                                         onclick="selectTree(this)"
                                         aria-label="Select tree 0"
@@ -84,7 +93,7 @@
                                     <img src="/static/images/trees/tree0.png" alt="Tree 0" style="width: 40px; height: 40px; object-fit: contain;">
                                 </button>
                                 <button type="button"
-                                        class="tree-option {{if eq .CurrentNodeIcon "tree00.png"}}selected{{end}}"
+                                        class='tree-option {{if eq .CurrentNodeIcon "tree00.png"}}selected{{end}}'
                                         data-tree="tree00.png"
                                         onclick="selectTree(this)"
                                         aria-label="Select tree 00"
@@ -92,7 +101,7 @@
                                     <img src="/static/images/trees/tree00.png" alt="Tree 00" style="width: 40px; height: 40px; object-fit: contain;">
                                 </button>
                                 <button type="button"
-                                        class="tree-option {{if eq .CurrentNodeIcon "tree1.png"}}selected{{end}}"
+                                        class='tree-option {{if eq .CurrentNodeIcon "tree1.png"}}selected{{end}}'
                                         data-tree="tree1.png"
                                         onclick="selectTree(this)"
                                         aria-label="Select tree 1"
@@ -100,7 +109,7 @@
                                     <img src="/static/images/trees/tree1.png" alt="Tree 1" style="width: 40px; height: 40px; object-fit: contain;">
                                 </button>
                                 <button type="button"
-                                        class="tree-option {{if eq .CurrentNodeIcon "tree2.png"}}selected{{end}}"
+                                        class='tree-option {{if eq .CurrentNodeIcon "tree2.png"}}selected{{end}}'
                                         data-tree="tree2.png"
                                         onclick="selectTree(this)"
                                         aria-label="Select tree 2"
@@ -108,7 +117,7 @@
                                     <img src="/static/images/trees/tree2.png" alt="Tree 2" style="width: 40px; height: 40px; object-fit: contain;">
                                 </button>
                                 <button type="button"
-                                        class="tree-option {{if eq .CurrentNodeIcon "tree3.png"}}selected{{end}}"
+                                        class='tree-option {{if eq .CurrentNodeIcon "tree3.png"}}selected{{end}}'
                                         data-tree="tree3.png"
                                         onclick="selectTree(this)"
                                         aria-label="Select tree 3"
@@ -116,67 +125,67 @@
                                     <img src="/static/images/trees/tree3.png" alt="Tree 3" style="width: 40px; height: 40px; object-fit: contain;">
                                 </button>
                             </div>
-                            <input type="hidden" name="node_icon" id="selected-tree" value="{{.CurrentNodeIcon}}">
-                            <small class="form-text text-muted">Choose an icon for your TreeOS node. Changes are reflected immediately in the header (save to make permanent).</small>
+                            <input type="hidden" name="node_icon" id="selected-tree" value="{{if .CurrentNodeIcon}}{{.CurrentNodeIcon}}{{else}}logo.png{{end}}">
+                            <small class="form-text text-body">Choose an icon for your TreeOS node. Changes are reflected immediately in the header (save to make permanent).</small>
                         </div>
                     </div>
 
                     <div class="d-flex justify-content-end">
                         <button type="submit" name="action" value="update_node_icon" class="btn btn-primary">
-                            <i>💾</i> Save Node Icon
+                            <i class="bi bi-save me-2"></i>Save Node Icon
                         </button>
                     </div>
                 </form>
             </div>
         </div>
 
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">System Updates</h5>
+        <div class="card card-border-soft text-body">
+            <div class="card-header border-0 bg-transparent text-body">
+                <h5 class="mb-0 text-body">System Updates</h5>
             </div>
             <div class="card-body">
-                <p class="text-muted mb-4">
+                <p class="text-body">
                     Configure automatic system updates for TreeOS.
                 </p>
 
                 <form method="post" action="/settings">
                     <div class="mb-4">
-                        <label class="form-label">Current Version</label>
+                        <label class="form-label text-body">Current Version</label>
                         <div class="input-group">
                             <input type="text" class="form-control" value="{{.CurrentVersion}}" readonly>
                             <button type="button" class="btn btn-outline-primary" id="checkUpdateBtn" onclick="checkForUpdate()">
-                                <i>🔄</i> Check for Update
+                                <i class="bi bi-arrow-repeat me-2"></i>Check for Update
                             </button>
                         </div>
                         <div id="updateStatus" class="mt-2"></div>
                     </div>
 
                     <div class="mb-4">
-                        <label class="form-label">Update Channel</label>
+                        <label class="form-label text-body">Update Channel</label>
                         <div class="form-check">
                             <input class="form-check-input" type="radio" name="update_channel" id="channel_stable" value="stable"
                                    {{if eq .UpdateChannel "stable"}}checked{{end}}>
-                            <label class="form-check-label" for="channel_stable">
-                                <strong>🛡️ Stable</strong>
-                                <small class="text-muted d-block">Tested releases only</small>
+                            <label class="form-check-label text-body text-body" for="channel_stable">
+                                <strong class="text-body">Stable</strong>
+                                <small class="text-body-secondary d-block">Tested releases only</small>
                             </label>
                         </div>
                         <div class="form-check mt-2">
                             <input class="form-check-input" type="radio" name="update_channel" id="channel_beta" value="beta"
                                    {{if or (eq .UpdateChannel "beta") (eq .UpdateChannel "")}}checked{{end}}>
-                            <label class="form-check-label" for="channel_beta">
-                                <strong>🚀 Beta</strong>
-                                <small class="text-muted d-block">Latest features and fixes</small>
+                            <label class="form-check-label text-body text-body" for="channel_beta">
+                                <strong class="text-body">Beta</strong>
+                                <small class="text-body-secondary d-block">Latest features and fixes</small>
                             </label>
                         </div>
-                        <small class="form-text text-muted mt-2">
+                        <small class="form-text text-body mt-2">
                             Choose which update channel to receive updates from
                         </small>
                     </div>
 
                     <div class="d-flex justify-content-end">
                         <button type="submit" class="btn btn-primary">
-                            <i>💾</i> Save Settings
+                            <i class="bi bi-save me-2"></i>Save Settings
                         </button>
                     </div>
                 </form>
@@ -187,12 +196,12 @@
             {{template "system-check" .}}
         </div>
 
-        <div class="card mt-4">
-            <div class="card-header">
-                <h5 class="mb-0">LLM Configuration</h5>
+        <div class="card card-border-soft text-body mt-4">
+            <div class="card-header border-0 bg-transparent text-body">
+                <h5 class="mb-0 text-body">LLM Configuration</h5>
             </div>
             <div class="card-body">
-                <p class="text-muted mb-4">
+                <p class="text-body">
                     Configure the Large Language Model for future AI features.
                 </p>
 
@@ -205,14 +214,14 @@
                             <div class="form-check">
                                 <input class="form-check-input" type="radio" name="agent_type" id="agent_type_local" value="local" 
                                        {{if or (eq .AgentLLMAPIURL "http://localhost:11434/v1/chat/completions") (eq .AgentLLMAPIURL "")}}checked{{end}}>
-                                <label class="form-check-label" for="agent_type_local">
+                                <label class="form-check-label text-body text-body" for="agent_type_local">
                                     <strong>Use Local Agent</strong> (Ollama on port 11434)
                                 </label>
                             </div>
                             <div class="form-check mt-2">
                                 <input class="form-check-input" type="radio" name="agent_type" id="agent_type_cloud" value="cloud"
                                        {{if and (ne .AgentLLMAPIURL "http://localhost:11434/v1/chat/completions") (ne .AgentLLMAPIURL "")}}checked{{end}}>
-                                <label class="form-check-label" for="agent_type_cloud">
+                                <label class="form-check-label text-body text-body" for="agent_type_cloud">
                                     <strong>Use Cloud Agent</strong> (OpenAI or compatible API)
                                 </label>
                             </div>
@@ -220,11 +229,11 @@
 
                         <!-- Local Agent Settings -->
                         <div id="localAgentSettings" class="agent-settings" style="display: none;">
-                            <div class="card bg-light mb-3">
+                            <div class="card card-border-soft text-body mb-3">
                                 <div class="card-body">
-                                    <h6 class="card-title">Local Agent Settings</h6>
+                                    <h6 class="card-title text-body">Local Agent Settings</h6>
                                     <div class="mb-3">
-                                        <label for="agent_llm_model_local" class="form-label">Model Name</label>
+                                        <label for="agent_llm_model_local" class="form-label text-body">Model Name</label>
                                         {{if .CompletedModels}}
                                             <select class="form-control" id="agent_llm_model_local" name="agent_llm_model_local">
                                                 <option value="">-- Select a model --</option>
@@ -235,22 +244,20 @@
                                                     </option>
                                                 {{end}}
                                             </select>
-                                            <small class="form-text text-muted">
+                                            <small class="form-text text-body">
                                                 Select from your installed Ollama models
                                             </small>
                                         {{else}}
                                             <input type="text" class="form-control" id="agent_llm_model_local" name="agent_llm_model_local" 
                                                    value="{{if eq .AgentLLMAPIURL "http://localhost:11434/v1/chat/completions"}}{{.AgentLLMModel}}{{else}}{{end}}" 
                                                    placeholder="e.g., llama3.2:3b">
-                                            <small class="form-text text-muted">
+                                            <small class="form-text text-body">
                                                 No models installed yet. <a href="/models">Install models</a> or enter a model name manually.
                                             </small>
                                         {{end}}
                                     </div>
                                     <div class="alert alert-info mb-0">
-                                        <small>
-                                            <i>ℹ️</i> Connecting to Ollama at <code>localhost:11434</code>
-                                        </small>
+                                        <small class="text-body"><i class="bi bi-info-circle me-1"></i> Connecting to Ollama at <code>localhost:11434</code></small>
                                     </div>
                                 </div>
                             </div>
@@ -258,41 +265,41 @@
 
                         <!-- Cloud Agent Settings -->
                         <div id="cloudAgentSettings" class="agent-settings" style="display: none;">
-                            <div class="card bg-light mb-3">
+                            <div class="card card-border-soft text-body mb-3">
                                 <div class="card-body">
-                                    <h6 class="card-title">Cloud Agent Settings</h6>
+                                    <h6 class="card-title text-body">Cloud Agent Settings</h6>
                                     <div class="mb-3">
-                                        <label for="agent_llm_api_key" class="form-label">
+                                        <label for="agent_llm_api_key" class="form-label text-body">
                                             API Key
                                             {{if .ConfigAgentLLMAPIKey}}<span class="badge bg-info">Set via env</span>{{end}}
                                         </label>
                                         <input type="password" class="form-control" id="agent_llm_api_key" name="agent_llm_api_key" 
                                                value="{{.AgentLLMAPIKey}}" placeholder="sk-...">
-                                        <small class="form-text text-muted">
+                                        <small class="form-text text-body">
                                             Your OpenAI API key or key for OpenAI-compatible service
                                         </small>
                                     </div>
 
                                     <div class="mb-3">
-                                        <label for="agent_llm_api_url" class="form-label">
+                                        <label for="agent_llm_api_url" class="form-label text-body">
                                             API URL <span class="badge bg-secondary">Optional</span>
                                         </label>
                                         <input type="text" class="form-control" id="agent_llm_api_url" name="agent_llm_api_url" 
                                                value="{{if and (ne .AgentLLMAPIURL "http://localhost:11434/v1/chat/completions") (ne .AgentLLMAPIURL "")}}{{.AgentLLMAPIURL}}{{else}}https://api.openai.com/v1/chat/completions{{end}}" 
                                                placeholder="https://api.openai.com/v1/chat/completions">
-                                        <small class="form-text text-muted">
+                                        <small class="form-text text-body">
                                             Leave default for OpenAI, or specify custom endpoint
                                         </small>
                                     </div>
 
                                     <div class="mb-3">
-                                        <label for="agent_llm_model_cloud" class="form-label">
+                                        <label for="agent_llm_model_cloud" class="form-label text-body">
                                             Model
                                         </label>
                                         <input type="text" class="form-control" id="agent_llm_model_cloud" name="agent_llm_model_cloud" 
                                                value="{{if ne .AgentLLMAPIURL "http://localhost:11434/v1/chat/completions"}}{{.AgentLLMModel}}{{else}}gpt-4-turbo-preview{{end}}" 
                                                placeholder="gpt-4-turbo-preview">
-                                        <small class="form-text text-muted">
+                                        <small class="form-text text-body">
                                             Model name (e.g., "gpt-4", "gpt-3.5-turbo")
                                         </small>
                                     </div>
@@ -322,16 +329,16 @@
                 <h5 class="mb-0">Uptime Kuma Integration</h5>
             </div>
             <div class="card-body">
-                <p class="text-muted mb-4">
+                <p class="text-body">
                     Connect to Uptime Kuma for external monitoring of your applications.
                 </p>
 
                 <form method="post" action="/settings">
                     <div class="mb-3">
-                        <label for="uptime_kuma_base_url" class="form-label">Uptime Kuma Base URL</label>
+                        <label for="uptime_kuma_base_url" class="form-label text-body">Uptime Kuma Base URL</label>
                         <input type="text" class="form-control" id="uptime_kuma_base_url" name="uptime_kuma_base_url"
                                value="{{.UptimeKumaBaseURL}}" placeholder="http://localhost:3001">
-                        <small class="form-text text-muted">
+                        <small class="form-text text-body">
                             The base URL of your Uptime Kuma instance (e.g., http://localhost:3001)
                         </small>
                     </div>
@@ -391,13 +398,13 @@
                         <small>This feature is only supported on Linux servers.</small>
                     </div>
                 {{else}}
-                    <p class="text-muted mb-4">
+                    <p class="text-body">
                         Configure base domains for exposing applications. These settings allow apps to be accessed via custom subdomains with automatic HTTPS certificates.
                     </p>
 
                     <form method="post" action="/settings">
                         <div class="mb-4">
-                            <label for="public_base_domain" class="form-label">
+                            <label for="public_base_domain" class="form-label text-body">
                                 Public Base Domain
                             </label>
                             <input type="text"
@@ -407,7 +414,7 @@
                                    placeholder="example.com"
                                    value="{{.PublicBaseDomain}}"
                                    {{if not .PlatformSupportsCaddy}}disabled{{end}}>
-                            <small class="form-text text-muted">
+                            <small class="form-text text-body">
                                 Your public domain (e.g., homelab.com). Apps will be accessible at subdomain.homelab.com.
                             </small>
                             {{if and .ConfigPublicDomain (ne .ConfigPublicDomain .PublicBaseDomain)}}
@@ -420,7 +427,7 @@
                         </div>
 
                         <div class="mb-3">
-                            <label for="tailscale_auth_key" class="form-label">
+                            <label for="tailscale_auth_key" class="form-label text-body">
                                 Tailscale Auth Key
                                 <span class="badge bg-secondary">Required for Tailscale</span>
                             </label>
@@ -430,7 +437,7 @@
                                    name="tailscale_auth_key"
                                    placeholder="tskey-auth-..."
                                    value="{{.TailscaleAuthKey}}">
-                            <small class="form-text text-muted">
+                            <small class="form-text text-body">
                                 Generate an auth key from Tailscale Admin Console with ephemeral and reusable options.
                             </small>
                             {{if .ConfigTailscaleAuthKey}}
@@ -443,7 +450,7 @@
                         </div>
 
                         <div class="mb-4">
-                            <label for="tailscale_tags" class="form-label">
+                            <label for="tailscale_tags" class="form-label text-body">
                                 Tailscale Tags
                                 <span class="badge bg-secondary">Optional</span>
                             </label>
@@ -455,7 +462,7 @@
                                    value="{{.TailscaleTags}}"
                                    pattern="tag:[a-z0-9-]+"
                                    title="Must start with 'tag:' followed by lowercase letters, numbers, and hyphens">
-                            <small class="form-text text-muted">
+                            <small class="form-text text-body">
                                 Tag to apply to all exposed apps for ACL management (e.g., tag:ontree-apps).
                             </small>
                             {{if and .ConfigTailscaleTags (ne .ConfigTailscaleTags .TailscaleTags)}}
@@ -497,7 +504,7 @@
                 <h5 class="mb-0">Environment Variables</h5>
             </div>
             <div class="card-body">
-                <p class="text-muted mb-3">
+                <p class="text-body">
                     Domain settings can also be configured via environment variables, which take priority over database settings:
                 </p>
                 <ul class="font-monospace small">
@@ -675,7 +682,7 @@ function checkForUpdate() {
             statusDiv.innerHTML = `
                 <div class="alert alert-danger">
                     <i>❌</i> <strong>${errorMessage}</strong>
-                    ${helpText ? `<br><small class="text-muted mt-2 d-block">${helpText}</small>` : ''}
+                    ${helpText ? `<br><small class="text-body mt-2 d-block">${helpText}</small>` : ''}
                     <br>
                     <small class="mt-2 d-block">
                         <a href="#" onclick="checkForUpdate(); return false;">Click here to try again</a>
@@ -715,7 +722,7 @@ function applyUpdate() {
                     <div class="progress mt-2">
                         <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 100%"></div>
                     </div>
-                    <small class="text-muted">Downloading update package...</small>
+                    <small class="text-body">Downloading update package...</small>
                 </div>`;
 
             // Start monitoring for completion or failure
@@ -791,7 +798,7 @@ function checkUpdateStatusAndReconnect() {
                         <div class="alert alert-danger">
                             <i>❌</i> <strong>Update Failed</strong><br>
                             ${data.error}<br>
-                            ${data.message ? `<small class="text-muted mt-2 d-block">Technical details: ${data.message}</small>` : ''}
+                            ${data.message ? `<small class="text-body mt-2 d-block">Technical details: ${data.message}</small>` : ''}
                             <hr>
                             <small>If this issue persists, please <a href="https://github.com/ontree-co/treeos/issues" target="_blank">file an issue</a>.</small>
                         </div>`;
@@ -817,7 +824,7 @@ function checkUpdateStatusAndReconnect() {
                                 <div class="progress-bar progress-bar-striped progress-bar-animated"
                                      style="width: ${data.percentage || 0}%"></div>
                             </div>
-                            <small class="text-muted">${data.stage || 'Processing'}: ${Math.round(data.percentage || 0)}%</small>
+                            <small class="text-body">${data.stage || 'Processing'}: ${Math.round(data.percentage || 0)}%</small>
                         </div>`;
                     // Continue checking
                     setTimeout(checkStatus, 2000);
