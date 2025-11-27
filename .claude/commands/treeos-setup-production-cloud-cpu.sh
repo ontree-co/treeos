@@ -214,6 +214,52 @@ configure_docker_group() {
     fi
 }
 
+# Install Caddy web server
+install_caddy() {
+    print_info "Checking for Caddy web server..."
+
+    if command -v caddy >/dev/null 2>&1; then
+        print_success "Caddy is already installed"
+        return
+    fi
+
+    print_info "Installing Caddy..."
+
+    if command -v apt-get >/dev/null 2>&1; then
+        # Debian/Ubuntu
+        apt-get install -y debian-keyring debian-archive-keyring apt-transport-https curl
+        curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+        curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list
+        apt-get update
+        apt-get install -y caddy || {
+            print_warning "Failed to install Caddy - continuing without Caddy"
+            return 0
+        }
+        print_success "Caddy installed successfully"
+    elif command -v dnf >/dev/null 2>&1; then
+        # Fedora/RHEL
+        dnf install -y 'dnf-command(copr)'
+        dnf copr enable -y @caddy/caddy
+        dnf install -y caddy || {
+            print_warning "Failed to install Caddy - continuing without Caddy"
+            return 0
+        }
+        print_success "Caddy installed successfully"
+    elif command -v yum >/dev/null 2>&1; then
+        # CentOS/older RHEL
+        yum install -y yum-plugin-copr
+        yum copr enable -y @caddy/caddy
+        yum install -y caddy || {
+            print_warning "Failed to install Caddy - continuing without Caddy"
+            return 0
+        }
+        print_success "Caddy installed successfully"
+    else
+        print_warning "Unsupported package manager - please install Caddy manually: https://caddyserver.com/docs/install"
+        return 0
+    fi
+}
+
 # Create directory structure
 create_directories() {
     print_info "Creating directory structure..."
@@ -322,6 +368,7 @@ main() {
     # Execute installation steps
     create_user
     configure_docker_group
+    install_caddy
     create_directories
     install_binary
     install_systemd_service

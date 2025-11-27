@@ -166,11 +166,69 @@ install_rocm() {
     fi
 }
 
+# Install Caddy web server
+install_caddy() {
+    print_info "Checking for Caddy web server..."
+
+    if command -v caddy >/dev/null 2>&1; then
+        print_success "Caddy is already installed"
+        return
+    fi
+
+    print_info "Installing Caddy..."
+
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS - use Homebrew
+        if command -v brew >/dev/null 2>&1; then
+            brew install caddy || {
+                print_warning "Failed to install Caddy via Homebrew - continuing without Caddy"
+                return 0
+            }
+            print_success "Caddy installed successfully"
+        else
+            print_warning "Homebrew not found - please install Caddy manually: https://caddyserver.com/docs/install"
+            return 0
+        fi
+    elif command -v apt-get >/dev/null 2>&1; then
+        # Debian/Ubuntu
+        apt-get install -y debian-keyring debian-archive-keyring apt-transport-https curl
+        curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+        curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list
+        apt-get update
+        apt-get install -y caddy || {
+            print_warning "Failed to install Caddy - continuing without Caddy"
+            return 0
+        }
+        print_success "Caddy installed successfully"
+    elif command -v dnf >/dev/null 2>&1; then
+        # Fedora/RHEL
+        dnf install -y 'dnf-command(copr)'
+        dnf copr enable -y @caddy/caddy
+        dnf install -y caddy || {
+            print_warning "Failed to install Caddy - continuing without Caddy"
+            return 0
+        }
+        print_success "Caddy installed successfully"
+    elif command -v yum >/dev/null 2>&1; then
+        # CentOS/older RHEL
+        yum install -y yum-plugin-copr
+        yum copr enable -y @caddy/caddy
+        yum install -y caddy || {
+            print_warning "Failed to install Caddy - continuing without Caddy"
+            return 0
+        }
+        print_success "Caddy installed successfully"
+    else
+        print_warning "Unsupported package manager - please install Caddy manually: https://caddyserver.com/docs/install"
+        return 0
+    fi
+}
+
 # Check if running with root privileges
 check_root() {
     if [ "$EUID" -ne 0 ]; then
         print_error "This script must be run with sudo or as root"
-        echo "Usage: sudo ./.claude/commands/setup-production-noconfirm.sh"
+        echo "Usage: sudo ./.claude/commands/treeos-setup-production-local-amd.sh"
         exit 1
     fi
 }
@@ -643,6 +701,7 @@ main() {
     # Execute installation steps
     create_user
     configure_docker_group
+    install_caddy
     install_rocm
     configure_gpu_permissions
     create_directories
