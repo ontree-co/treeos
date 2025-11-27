@@ -371,47 +371,47 @@
             </a>
             
             <div class="header-actions">
+                <a
+                    class="header-action-btn github-link d-none d-md-inline-flex"
+                    href="https://github.com/ontree/treeos"
+                    aria-label="View TreeOS on GitHub"
+                    title="GitHub"
+                    target="_blank"
+                    rel="noreferrer"
+                >
+                    <svg class="icon icon-tabler icon-tabler-brand-github" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                        <path d="M9 19c-4.3 1.4 -4.3 -2.5 -6 -3m12 5v-3.5c0 -1 .1 -1.4 -.5 -2c2.8 -.3 5.5 -1.4 5.5 -6a4.6 4.6 0 0 0 -1.3 -3.2a4.2 4.2 0 0 0 -.1 -3.2s-1.1 -.3 -3.5 1.3a12.3 12.3 0 0 0 -6.2 0c-2.4 -1.6 -3.5 -1.3 -3.5 -1.3a4.2 4.2 0 0 0 -.1 3.2a4.6 4.6 0 0 0 -1.3 3.2c0 4.6 2.7 5.7 5.5 6c-.6 .6 -.6 1.2 -.5 2v3.5" />
+                    </svg>
+                </a>
+
+                <!-- Theme Toggle - Desktop only -->
+                <button
+                    type="button"
+                    class="header-action-btn theme-toggle-btn d-none d-md-flex"
+                    data-theme-toggle
+                    aria-label="Toggle theme"
+                    title="Toggle light/dark mode"
+                >
+                    <svg class="theme-icon theme-icon--sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                        <path d="M14.828 14.828a4 4 0 1 0 -5.656 -5.656a4 4 0 0 0 5.656 5.656z"></path>
+                        <path d="M6.343 17.657l-1.414 1.414"></path>
+                        <path d="M6.343 6.343l-1.414 -1.414"></path>
+                        <path d="M17.657 6.343l1.414 -1.414"></path>
+                        <path d="M17.657 17.657l1.414 1.414"></path>
+                        <path d="M4 12h-2"></path>
+                        <path d="M12 4v-2"></path>
+                        <path d="M20 12h2"></path>
+                        <path d="M12 20v2"></path>
+                    </svg>
+                    <svg class="theme-icon theme-icon--moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                        <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z"></path>
+                    </svg>
+                </button>
+
                 {{if .User}}
-                    <a
-                        class="header-action-btn github-link d-none d-md-inline-flex"
-                        href="https://github.com/ontree/treeos"
-                        aria-label="View TreeOS on GitHub"
-                        title="GitHub"
-                        target="_blank"
-                        rel="noreferrer"
-                    >
-                        <svg class="icon icon-tabler icon-tabler-brand-github" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                            <path d="M9 19c-4.3 1.4 -4.3 -2.5 -6 -3m12 5v-3.5c0 -1 .1 -1.4 -.5 -2c2.8 -.3 5.5 -1.4 5.5 -6a4.6 4.6 0 0 0 -1.3 -3.2a4.2 4.2 0 0 0 -.1 -3.2s-1.1 -.3 -3.5 1.3a12.3 12.3 0 0 0 -6.2 0c-2.4 -1.6 -3.5 -1.3 -3.5 -1.3a4.2 4.2 0 0 0 -.1 3.2a4.6 4.6 0 0 0 -1.3 3.2c0 4.6 2.7 5.7 5.5 6c-.6 .6 -.6 1.2 -.5 2v3.5" />
-                        </svg>
-                    </a>
-
-                    <!-- Theme Toggle - Desktop only -->
-                    <button
-                        type="button"
-                        class="header-action-btn theme-toggle-btn d-none d-md-flex"
-                        data-theme-toggle
-                        aria-label="Toggle theme"
-                        title="Toggle light/dark mode"
-                    >
-                        <svg class="theme-icon theme-icon--sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
-                            <path d="M14.828 14.828a4 4 0 1 0 -5.656 -5.656a4 4 0 0 0 5.656 5.656z"></path>
-                            <path d="M6.343 17.657l-1.414 1.414"></path>
-                            <path d="M6.343 6.343l-1.414 -1.414"></path>
-                            <path d="M17.657 6.343l1.414 -1.414"></path>
-                            <path d="M17.657 17.657l1.414 1.414"></path>
-                            <path d="M4 12h-2"></path>
-                            <path d="M12 4v-2"></path>
-                            <path d="M20 12h2"></path>
-                            <path d="M12 20v2"></path>
-                        </svg>
-                        <svg class="theme-icon theme-icon--moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
-                            <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z"></path>
-                        </svg>
-                    </button>
-
                     <div class="dropdown">
                         <a class="header-action-btn settings-trigger" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <svg class="icon icon-tabler icon-tabler-settings" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -476,6 +476,34 @@
                             </a></li>
                         </ul>
                     </div>
+                {{end}}
+
+                {{if not .User}}
+                <!-- Theme toggle on mobile when logged out -->
+                <button
+                    type="button"
+                    class="header-action-btn d-md-none"
+                    data-theme-toggle
+                    aria-label="Toggle theme"
+                    title="Toggle light/dark mode"
+                >
+                    <svg class="theme-icon theme-icon--sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                        <path d="M14.828 14.828a4 4 0 1 0 -5.656 -5.656a4 4 0 0 0 5.656 5.656z"></path>
+                        <path d="M6.343 17.657l-1.414 1.414"></path>
+                        <path d="M6.343 6.343l-1.414 -1.414"></path>
+                        <path d="M17.657 6.343l1.414 -1.414"></path>
+                        <path d="M17.657 17.657l1.414 1.414"></path>
+                        <path d="M4 12h-2"></path>
+                        <path d="M12 4v-2"></path>
+                        <path d="M20 12h2"></path>
+                        <path d="M12 20v2"></path>
+                    </svg>
+                    <svg class="theme-icon theme-icon--moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                        <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z"></path>
+                    </svg>
+                </button>
                 {{end}}
             </div>
         </div>

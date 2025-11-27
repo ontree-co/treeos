@@ -1,14 +1,15 @@
 {{define "title"}}Setup - TreeOS{{end}}
 
 {{define "content"}}
-<div class="row justify-content-center">
-    <div class="col-md-6 col-lg-5">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <h2 class="card-title text-center mb-4">Welcome to TreeOS</h2>
-                <p class="text-muted text-center mb-4">
-                    Let's set up your TreeOS node. Create an admin account to get started.
-                </p>
+<div class="auth-setup py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h2 class="card-title text-center mb-4">Welcome to TreeOS</h2>
+                    <p class="text-muted text-center mb-4">
+                        Let's set up your TreeOS node. Create an admin account to get started.
+                    </p>
 
                 {{if .Errors}}
                     <div class="alert alert-danger">
@@ -109,13 +110,21 @@
                         <button type="submit" class="btn btn-primary">Continue to System Check</button>
                     </div>
                 </form>
+                </div>
             </div>
         </div>
-
     </div>
 </div>
 
 <style>
+.auth-setup {
+    min-height: calc(100vh - 140px);
+    background: linear-gradient(135deg, var(--color-shell), var(--color-surface));
+    transition: background 0.3s ease;
+}
+[data-theme="dark"] .auth-setup {
+    background: linear-gradient(135deg, var(--color-shell-dark, #0f172a), var(--color-surface-dark, #111827));
+}
 .tree-option.selected {
     border-color: #0d6efd !important;
     background: #e7f3ff !important;
