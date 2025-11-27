@@ -4,10 +4,10 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
+	"treeos/internal/logging"
 
 	"treeos/internal/config"
 	"treeos/internal/naming"
@@ -31,13 +31,13 @@ func main() {
 
 	// Check if directory exists
 	if _, err := os.Stat(appsDir); os.IsNotExist(err) {
-		log.Fatalf("Apps directory does not exist: %s", appsDir)
+		logging.Fatalf("Apps directory does not exist: %s", appsDir)
 	}
 
 	// Read all subdirectories
 	entries, err := os.ReadDir(appsDir)
 	if err != nil {
-		log.Fatalf("Failed to read apps directory: %v", err)
+		logging.Fatalf("Failed to read apps directory: %v", err)
 	}
 
 	migrated := 0

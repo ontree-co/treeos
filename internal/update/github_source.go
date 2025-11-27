@@ -15,9 +15,9 @@ import (
 
 // GitHubUpdateSource fetches updates from GitHub releases
 type GitHubUpdateSource struct {
-	Owner       string
-	Repo        string
-	HTTPClient  *http.Client
+	Owner      string
+	Repo       string
+	HTTPClient *http.Client
 }
 
 // NewGitHubUpdateSource creates a new GitHub update source
@@ -33,11 +33,11 @@ func NewGitHubUpdateSource() *GitHubUpdateSource {
 
 // GitHubRelease represents a GitHub release
 type GitHubRelease struct {
-	TagName     string    `json:"tag_name"`
-	Name        string    `json:"name"`
-	Body        string    `json:"body"`
-	Prerelease  bool      `json:"prerelease"`
-	PublishedAt time.Time `json:"published_at"`
+	TagName     string        `json:"tag_name"`
+	Name        string        `json:"name"`
+	Body        string        `json:"body"`
+	Prerelease  bool          `json:"prerelease"`
+	PublishedAt time.Time     `json:"published_at"`
 	Assets      []GitHubAsset `json:"assets"`
 }
 

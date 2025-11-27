@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
-	"log"
 	"strings"
+	"treeos/internal/logging"
 
 	_ "github.com/mattn/go-sqlite3"
 	"treeos/internal/config"
@@ -31,7 +31,7 @@ func main() {
 	// Open database
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
-		log.Fatalf("Failed to open database: %v", err)
+		logging.Fatalf("Failed to open database: %v", err)
 	}
 	defer db.Close() //nolint:errcheck // Cleanup, error not critical
 
@@ -40,7 +40,7 @@ func main() {
 
 	rows, err := db.Query("SELECT DISTINCT app_id FROM chat_messages")
 	if err != nil {
-		log.Fatalf("Failed to query chat_messages: %v", err)
+		logging.Fatalf("Failed to query chat_messages: %v", err)
 	}
 
 	var appIDs []string

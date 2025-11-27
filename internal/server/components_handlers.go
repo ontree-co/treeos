@@ -2,11 +2,11 @@ package server
 
 import (
 	"fmt"
-	"log"
 	"math/rand"
 	"net/http"
 	"strings"
 	"time"
+	"treeos/internal/logging"
 
 	"treeos/internal/yamlutil"
 )
@@ -97,7 +97,7 @@ function selectEmoji(button) {
 	// Return HTML fragment
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if _, err := w.Write([]byte(html.String())); err != nil {
-		log.Printf("Failed to write response: %v", err)
+		logging.Errorf("Failed to write response: %v", err)
 	}
 }
 

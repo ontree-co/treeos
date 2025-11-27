@@ -25,31 +25,31 @@ const (
 
 // ImageProgress represents progress for a single container image
 type ImageProgress struct {
-	Name        string  `json:"name"`
-	Progress    float64 `json:"progress"`    // Percentage 0-100
-	Downloaded  int64   `json:"downloaded"` // Bytes downloaded
-	Total       int64   `json:"total"`      // Total bytes
-	Status      string  `json:"status"`     // downloading, extracting, complete
+	Name       string  `json:"name"`
+	Progress   float64 `json:"progress"`   // Percentage 0-100
+	Downloaded int64   `json:"downloaded"` // Bytes downloaded
+	Total      int64   `json:"total"`      // Total bytes
+	Status     string  `json:"status"`     // downloading, extracting, complete
 }
 
 // AppProgress represents the overall progress for an app operation
 type AppProgress struct {
-	AppName               string                    `json:"app_name"`
-	Operation             Operation                 `json:"operation"`
-	OverallProgress       float64                   `json:"overall_progress"`       // 0-100
-	Message               string                    `json:"message"`                // Human readable status
-	Details               string                    `json:"details"`                // Additional details
-	Images                map[string]*ImageProgress `json:"images"`                 // Per-image progress
-	EstimatedTimeRemaining string                   `json:"estimated_time_remaining,omitempty"`
-	StartTime             time.Time                 `json:"start_time"`
-	LastUpdate            time.Time                 `json:"last_update"`
-	Error                 string                    `json:"error,omitempty"`
+	AppName                string                    `json:"app_name"`
+	Operation              Operation                 `json:"operation"`
+	OverallProgress        float64                   `json:"overall_progress"` // 0-100
+	Message                string                    `json:"message"`          // Human readable status
+	Details                string                    `json:"details"`          // Additional details
+	Images                 map[string]*ImageProgress `json:"images"`           // Per-image progress
+	EstimatedTimeRemaining string                    `json:"estimated_time_remaining,omitempty"`
+	StartTime              time.Time                 `json:"start_time"`
+	LastUpdate             time.Time                 `json:"last_update"`
+	Error                  string                    `json:"error,omitempty"`
 }
 
 // Tracker manages progress for multiple app operations
 type Tracker struct {
-	mu    sync.RWMutex
-	apps  map[string]*AppProgress
+	mu   sync.RWMutex
+	apps map[string]*AppProgress
 }
 
 // NewTracker creates a new progress tracker

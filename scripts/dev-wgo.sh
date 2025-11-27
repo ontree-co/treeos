@@ -10,9 +10,37 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+# Determine quiet mode: default to true when LOG_LEVEL=error (override with QUIET)
+if [ "${LOG_LEVEL,,}" == "error" ]; then
+    QUIET="${QUIET:-true}"
+else
+    QUIET="${QUIET:-false}"
+fi
+
+# Default DEBUG aligns with LOG_LEVEL unless explicitly set
+if [ -z "${DEBUG+x}" ]; then
+    if [ "${LOG_LEVEL,,}" == "error" ]; then
+        DEBUG="false"
+    else
+        DEBUG="true"
+    fi
+fi
+
+say() {
+    if [ "$QUIET" != "true" ]; then
+        echo -e "$@"
+    fi
+}
+
+say_plain() {
+    if [ "$QUIET" != "true" ]; then
+        echo "$@"
+    fi
+}
+
 # Load .env file if it exists
 if [ -f .env ]; then
-    echo -e "${YELLOW}📋 Loading .env file...${NC}"
+    say "${YELLOW}📋 Loading .env file...${NC}"
     export $(cat .env | grep -v '^#' | xargs)
 fi
 
@@ -30,20 +58,20 @@ DEBUG="${DEBUG:-true}"
 ONTREE_APPS_DIR="${ONTREE_APPS_DIR:-./apps}"
 DATABASE_PATH="${DATABASE_PATH:-./ontree.db}"
 
-echo -e "${GREEN}🚀 Starting TreeOS Development Server with Hot Reload${NC}"
-echo -e "${YELLOW}Configuration:${NC}"
-echo "  Port: $PORT"
-echo "  Debug Mode: $DEBUG"
-echo "  Apps Directory: $ONTREE_APPS_DIR"
-echo "  Database: $DATABASE_PATH"
-echo ""
+say "${GREEN}🚀 Starting TreeOS Development Server with Hot Reload${NC}"
+say "${YELLOW}Configuration:${NC}"
+say_plain "  Port: $PORT"
+say_plain "  Debug Mode: $DEBUG"
+say_plain "  Apps Directory: $ONTREE_APPS_DIR"
+say_plain "  Database: $DATABASE_PATH"
+say ""
 
 # Ensure directories exist
 mkdir -p "$ONTREE_APPS_DIR" logs
 
-# Function to build assets
+    # Function to build assets
 build_assets() {
-    echo -e "${YELLOW}📦 Building embedded assets...${NC}"
+    say "${YELLOW}📦 Building embedded assets...${NC}"
     make embed-assets
 }
 
@@ -53,12 +81,12 @@ build_assets
 # Start wgo with file watching
 # Watch Go files for backend changes
 # Watch templates and static files for frontend changes
-echo -e "${GREEN}👁️  Starting file watcher with wgo...${NC}"
-echo -e "${YELLOW}Watching for changes in:${NC}"
-echo "  - *.go files (application code)"
-echo "  - templates/** (HTML templates)"
-echo "  - static/** (CSS, JS, images)"
-echo ""
+say "${GREEN}👁️  Starting file watcher with wgo...${NC}"
+say "${YELLOW}Watching for changes in:${NC}"
+say_plain "  - *.go files (application code)"
+say_plain "  - templates/** (HTML templates)"
+say_plain "  - static/** (CSS, JS, images)"
+say ""
 
 # Export environment variables for the application
 export DEBUG="$DEBUG"
@@ -69,6 +97,27 @@ if [ -z "$LISTEN_ADDR" ]; then
     export LISTEN_ADDR=":$PORT"
 fi
 export TREEOS_RUN_MODE="demo"
+export QUIET="$QUIET"
+
+build_url() {
+    local addr="$1"
+    case "$addr" in
+        http://*|https://*)
+            echo "$addr"
+            ;;
+        :*)
+            echo "http://localhost$addr"
+            ;;
+        *:*)
+            echo "http://$addr"
+            ;;
+        *)
+            echo "http://$addr"
+            ;;
+    esac
+}
+
+SERVER_URL="$(build_url "$LISTEN_ADDR")"
 
 # Run wgo with multiple file watchers
 # Pass environment to the subshell
@@ -77,22 +126,21 @@ wgo -file=".go" -file=".html" -file=".css" -file=".js" \
     -xdir="vendor" -xdir="node_modules" -xdir="documentation" -xdir="tests" -xdir="build" \
     -xdir=".git" -xdir="logs" -xdir="apps" -xdir="internal/embeds" \
     -debounce="500ms" \
-    -verbose \
     bash -c "
-        echo -e '${YELLOW}🔄 Changes detected, rebuilding...${NC}'
+        if [ \"${QUIET}\" != \"true\" ]; then echo -e '${YELLOW}🔄 Changes detected, rebuilding...${NC}'; fi
 
         # Check if templates or static files changed
         if find templates static -newer build/treeos 2>/dev/null | grep -q .; then
-            echo -e '${YELLOW}📦 Rebuilding embedded assets...${NC}'
+            if [ \"${QUIET}\" != \"true\" ]; then echo -e '${YELLOW}📦 Rebuilding embedded assets...${NC}'; fi
             make embed-assets || exit 1
         fi
 
         # Build the application
-        echo -e '${YELLOW}🔨 Building application...${NC}'
+        if [ \"${QUIET}\" != \"true\" ]; then echo -e '${YELLOW}🔨 Building application...${NC}'; fi
         go build -o build/treeos cmd/treeos/main.go || exit 1
 
-        echo -e '${GREEN}✅ Build complete, starting server on ${LISTEN_ADDR}...${NC}'
-        echo '----------------------------------------'
+        if [ \"${QUIET}\" != \"true\" ]; then echo -e \"${GREEN}✅ Build complete, starting server on ${SERVER_URL}...${NC}\"; fi
+        if [ \"${QUIET}\" != \"true\" ]; then echo '----------------------------------------'; fi
 
         # Run the application with environment variables
         DEBUG='${DEBUG}' \
@@ -100,5 +148,6 @@ wgo -file=".go" -file=".html" -file=".css" -file=".js" \
         DATABASE_PATH='${DATABASE_PATH}' \
         LISTEN_ADDR='${LISTEN_ADDR}' \
         TREEOS_RUN_MODE='${TREEOS_RUN_MODE}' \
+        QUIET='${QUIET}' \
         ./build/treeos
     "

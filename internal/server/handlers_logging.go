@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+	"treeos/internal/logging"
 )
 
 // LogEntry represents a log entry from the browser
@@ -49,7 +49,7 @@ func (s *Server) handleBrowserLog(w http.ResponseWriter, r *http.Request) {
 
 	if !isDebug {
 		// In production, just log to stdout (for PostHog/monitoring)
-		log.Printf("[BROWSER] [%s] %s", strings.ToUpper(entry.Level), entry.Message)
+		logging.Infof("[BROWSER] [%s] %s", strings.ToUpper(entry.Level), entry.Message)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
@@ -59,7 +59,7 @@ func (s *Server) handleBrowserLog(w http.ResponseWriter, r *http.Request) {
 	// In debug mode, write to unified log file
 	logDir := "./logs"
 	if err := os.MkdirAll(logDir, 0755); err != nil { //nolint:gosec // Log directory needs group read access
-		log.Printf("Failed to create log directory: %v", err)
+		logging.Errorf("Failed to create log directory: %v", err)
 		// Don't fail the request, just log to server logs
 	}
 
@@ -67,9 +67,9 @@ func (s *Server) handleBrowserLog(w http.ResponseWriter, r *http.Request) {
 	logPath := filepath.Join(logDir, "treeos.log")
 	file, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644) //nolint:gosec // Log file path from config
 	if err != nil {
-		log.Printf("Failed to open log file: %v", err)
+		logging.Errorf("Failed to open log file: %v", err)
 		// Log to stdout as fallback
-		log.Printf("[BROWSER] [%s] %s", strings.ToUpper(entry.Level), entry.Message)
+		logging.Infof("[BROWSER] [%s] %s", strings.ToUpper(entry.Level), entry.Message)
 	} else {
 		defer file.Close() //nolint:errcheck // Cleanup, error not critical
 
@@ -89,7 +89,7 @@ func (s *Server) handleBrowserLog(w http.ResponseWriter, r *http.Request) {
 		_, _ = file.WriteString(logLine)
 
 		// Also log to stdout in debug mode for immediate visibility
-		log.Printf("[BROWSER] [%s] %s", strings.ToUpper(entry.Level), entry.Message)
+		logging.Infof("[BROWSER] [%s] %s", strings.ToUpper(entry.Level), entry.Message)
 	}
 
 	// Return success response
@@ -128,7 +128,7 @@ func (s *Server) handleGetLogs(w http.ResponseWriter, r *http.Request) {
 
 		resp, err := http.Get(lokiURL) //nolint:gosec // URL is constructed from safe local inputs
 		if err != nil {
-			log.Printf("Failed to query Loki: %v", err)
+			logging.Errorf("Failed to query Loki: %v", err)
 			// Fall back to file reading
 			s.sendLogsFromFiles(w, source, limit)
 			return

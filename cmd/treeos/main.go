@@ -4,7 +4,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"os/exec"
@@ -31,9 +30,10 @@ func main() {
 		// It's okay if .env doesn't exist, especially in production
 		// Only log in debug mode
 		if os.Getenv("DEBUG") == "true" {
-			log.Printf("No .env file found or error loading it: %v", err)
+			logging.Errorf("No .env file found or error loading it: %v", err)
 		}
 	}
+	logging.ConfigureLevelFromEnv()
 
 	// Parse CLI flags before handling subcommands
 	demoMode := false
@@ -125,7 +125,7 @@ func main() {
 			}
 			defer func() {
 				if err := database.Close(); err != nil {
-					log.Printf("Failed to close database: %v", err)
+					logging.Errorf("Failed to close database: %v", err)
 				}
 			}()
 
@@ -145,29 +145,34 @@ func main() {
 	if isDebug || isDemo {
 		logDir := "./logs" // Always use local directory in debug/demo
 		if err := logging.Initialize(logDir); err != nil {
-			log.Printf("Warning: Failed to initialize file logging: %v", err)
+			logging.Warnf("Warning: Failed to initialize file logging: %v", err)
 			// Continue with standard logging to stdout
 		} else {
 			defer logging.Close() //nolint:errcheck // Cleanup, error not critical
-			log.Printf("Debug/demo logging initialized to %s", logDir)
+			logging.Infof("Debug/demo logging initialized to %s", logDir)
 		}
 	} else {
 		// In production, just use stdout (captured by systemd/launchd/etc)
-		log.Printf("Running in production mode - logging to stdout only")
+		logging.Infof("Running in production mode - logging to stdout only")
 	}
 
-	// Initialize telemetry
+	// Initialize telemetry only when not in errors-only mode
 	ctx := context.Background()
-	shutdown, err := telemetry.InitializeFromEnv(ctx)
-	if err != nil {
-		log.Printf("Warning: Failed to initialize telemetry: %v", err)
-		// Continue without telemetry
+	var shutdown func(context.Context) error
+	if logging.GetLevel() < logging.LevelError {
+		shutdown, err = telemetry.InitializeFromEnv(ctx)
+		if err != nil {
+			logging.Warnf("Warning: Failed to initialize telemetry: %v", err)
+			// Continue without telemetry
+		} else {
+			defer func() {
+				if err := shutdown(ctx); err != nil {
+					logging.Errorf("Error shutting down telemetry: %v", err)
+				}
+			}()
+		}
 	} else {
-		defer func() {
-			if err := shutdown(ctx); err != nil {
-				log.Printf("Error shutting down telemetry: %v", err)
-			}
-		}()
+		logging.Infof("Telemetry disabled (LOG_LEVEL=error)")
 	}
 
 	// Database initialization is now handled in server.New()
@@ -370,7 +375,7 @@ func setupLinuxDirs(appsDir string) error {
 	}
 	if err := os.Remove(testFile); err != nil {
 		// Log but don't fail - the test succeeded
-		log.Printf("Warning: failed to remove test file: %v", err)
+		logging.Warnf("Warning: failed to remove test file: %v", err)
 	}
 
 	fmt.Printf("✓ Successfully created %s with correct permissions\n", appsDir)

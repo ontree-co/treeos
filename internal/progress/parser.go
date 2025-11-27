@@ -46,7 +46,7 @@ var (
 
 	// Updated patterns to match actual Docker output format
 	dockerProgressBarRegex = regexp.MustCompile(`([a-f0-9]{12,})\s+(Downloading|Extracting)\s+\[[=>\s]*\]\s+(\d+(?:\.\d+)?)\s*([KMGT]?B)\s*/\s*(\d+(?:\.\d+)?)\s*([KMGT]?B)`)
-	dockerCompleteRegex     = regexp.MustCompile(`([a-f0-9]{12,})\s+(Download complete|Extracting complete|Pull complete)`)
+	dockerCompleteRegex    = regexp.MustCompile(`([a-f0-9]{12,})\s+(Download complete|Extracting complete|Pull complete)`)
 
 	// Container status patterns
 	containerStartingRegex = regexp.MustCompile(`(?i)starting.*?container.*?([^\s]+)`)

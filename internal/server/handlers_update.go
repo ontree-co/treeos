@@ -1,10 +1,10 @@
 package server
 
 import (
+	"treeos/internal/logging"
 	// "context"  // Commented out - used by handleAppCheckUpdate
 	"fmt"
 	// "io"       // Commented out - used by handleAppCheckUpdate
-	"log"
 	"net/http"
 	"strings"
 	// "time"     // Commented out - used by handleAppCheckUpdate
@@ -37,19 +37,19 @@ func (s *Server) handleAppCheckUpdate(w http.ResponseWriter, r *http.Request) {
 	// Get service name from query parameter
 	serviceName := r.URL.Query().Get("service")
 
-	log.Printf("Checking for updates for app: %s, service: %s", appName, serviceName)
+	logging.Infof("Checking for updates for app: %s, service: %s", appName, serviceName)
 
 	// Get app details
 	app, err := s.runtimeSvc.GetAppDetails(appName)
 	if err != nil {
-		log.Printf("Failed to get app details: %v", err)
+		logging.Errorf("Failed to get app details: %v", err)
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		fmt.Fprintf(w, `<span class="text-danger">Failed to get app details</span>`)
 		return
 	}
 
 	if app == nil {
-		log.Printf("App %s not found", appName)
+		logging.Infof("App %s not found", appName)
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		fmt.Fprintf(w, `<span class="text-danger">App not found</span>`)
 		return
@@ -80,7 +80,7 @@ func (s *Server) handleAppCheckUpdate(w http.ResponseWriter, r *http.Request) {
 	// Check for updates
 	updateInfo, err := s.checkImageUpdate(imageName)
 	if err != nil {
-		log.Printf("Failed to check updates for image %s: %v", imageName, err)
+		logging.Errorf("Failed to check updates for image %s: %v", imageName, err)
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		fmt.Fprintf(w, `<span class="text-danger">Failed to check: %s</span>`, err.Error())
 		return
@@ -167,7 +167,7 @@ func (s *Server) checkImageUpdate(imageName string) (*ImageUpdateInfo, error) {
 	// Read the pull output to ensure it completes
 	pullOutput, err := io.ReadAll(reader)
 	if err != nil {
-		log.Printf("Error reading pull output: %v", err)
+		logging.Errorf("Error reading pull output: %v", err)
 	}
 
 	// Check if the pull output indicates a new image was downloaded
@@ -218,16 +218,16 @@ func (s *Server) handleAppUpdate(w http.ResponseWriter, r *http.Request) {
 	appName := strings.TrimPrefix(r.URL.Path, "/apps/")
 	appName = strings.TrimSuffix(appName, "/update")
 
-	log.Printf("Update requested for app: %s", appName)
+	logging.Infof("Update requested for app: %s", appName)
 
 	// For now, just redirect back with a message that the user needs to recreate manually
 	session, err := s.sessionStore.Get(r, "ontree-session")
 	if err != nil {
-		log.Printf("Failed to get session: %v", err)
+		logging.Errorf("Failed to get session: %v", err)
 	} else {
 		session.AddFlash("Please use the 'Recreate' button to update the container with the latest image", "info")
 		if err := session.Save(r, w); err != nil {
-			log.Printf("Failed to save session: %v", err)
+			logging.Errorf("Failed to save session: %v", err)
 		}
 	}
 

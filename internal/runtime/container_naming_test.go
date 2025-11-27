@@ -8,10 +8,10 @@ import (
 // TestContainerPrefixMatching tests that container name prefix matching works correctly
 func TestContainerPrefixMatching(t *testing.T) {
 	tests := []struct {
-		name           string
-		appName        string
-		containerName  string
-		shouldMatch    bool
+		name          string
+		appName       string
+		containerName string
+		shouldMatch   bool
 	}{
 		{
 			name:          "lowercase app name with matching container",

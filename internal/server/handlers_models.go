@@ -3,13 +3,13 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
+	"treeos/internal/logging"
 
 	"treeos/internal/config"
 	"treeos/internal/ollama"
@@ -20,7 +20,7 @@ func (s *Server) handleModelTemplates(w http.ResponseWriter, r *http.Request) {
 	// Get all models from database
 	models, err := ollama.GetAllModels(s.db)
 	if err != nil {
-		log.Printf("Failed to get models: %v", err)
+		logging.Errorf("Failed to get models: %v", err)
 		http.Error(w, "Failed to retrieve models", http.StatusInternalServerError)
 		return
 	}
@@ -89,7 +89,7 @@ func (s *Server) handleModelTemplates(w http.ResponseWriter, r *http.Request) {
 	tmpl := s.templates["model_templates"]
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
-		log.Printf("Failed to execute model templates template: %v", err)
+		logging.Errorf("Failed to execute model templates template: %v", err)
 		http.Error(w, "Failed to render page", http.StatusInternalServerError)
 	}
 }
@@ -142,7 +142,7 @@ func (s *Server) handleAPIModelsGet(w http.ResponseWriter, r *http.Request) {
 	// Get all models from database
 	models, err := ollama.GetAllModels(s.db)
 	if err != nil {
-		log.Printf("Failed to get models: %v", err)
+		logging.Errorf("Failed to get models: %v", err)
 		http.Error(w, "Failed to retrieve models", http.StatusInternalServerError)
 		return
 	}
@@ -205,7 +205,7 @@ func (s *Server) handleAPIModelPull(w http.ResponseWriter, _ *http.Request, mode
 	// Look up existing database record (only present once the model has been downloaded/queued)
 	dbModel, err := ollama.GetModel(s.db, modelName)
 	if err != nil {
-		log.Printf("Failed to get model: %v", err)
+		logging.Errorf("Failed to get model: %v", err)
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
 	}
@@ -223,12 +223,12 @@ func (s *Server) handleAPIModelPull(w http.ResponseWriter, _ *http.Request, mode
 		}
 
 		if err = ollama.CreateModel(s.db, customModel); err != nil {
-			log.Printf("Failed to create custom model entry: %v", err)
+			logging.Errorf("Failed to create custom model entry: %v", err)
 			http.Error(w, "Failed to register custom model", http.StatusInternalServerError)
 			return
 		}
 
-		log.Printf("Created entry for custom model: %s", modelName)
+		logging.Infof("Created entry for custom model: %s", modelName)
 
 	default:
 		status := ollama.StatusNotDownloaded
@@ -249,14 +249,14 @@ func (s *Server) handleAPIModelPull(w http.ResponseWriter, _ *http.Request, mode
 				http.Error(w, "Model is already downloaded", http.StatusConflict)
 				return
 			}
-			log.Printf("Model %s marked as completed but not found in Ollama, allowing re-download", modelName)
+			logging.Infof("Model %s marked as completed but not found in Ollama, allowing re-download", modelName)
 		}
 	}
 
 	// Create a new download job
 	job, err := ollama.CreateDownloadJob(s.db, modelName)
 	if err != nil {
-		log.Printf("Failed to create download job: %v", err)
+		logging.Errorf("Failed to create download job: %v", err)
 		http.Error(w, "Failed to queue download", http.StatusInternalServerError)
 		return
 	}
@@ -265,7 +265,7 @@ func (s *Server) handleAPIModelPull(w http.ResponseWriter, _ *http.Request, mode
 	if s.ollamaWorker != nil {
 		s.ollamaWorker.AddJob(*job)
 	} else {
-		log.Printf("Warning: Ollama worker not initialized")
+		logging.Warnf("Warning: Ollama worker not initialized")
 		http.Error(w, "Download service unavailable", http.StatusServiceUnavailable)
 		return
 	}
@@ -284,7 +284,7 @@ func (s *Server) handleAPIModelRetry(w http.ResponseWriter, _ *http.Request, mod
 	// Check if model exists
 	model, err := ollama.GetModel(s.db, modelName)
 	if err != nil {
-		log.Printf("Failed to get model: %v", err)
+		logging.Errorf("Failed to get model: %v", err)
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
 	}
@@ -303,7 +303,7 @@ func (s *Server) handleAPIModelRetry(w http.ResponseWriter, _ *http.Request, mod
 	// Clear error state
 	err = ollama.ClearModelError(s.db, modelName)
 	if err != nil {
-		log.Printf("Failed to clear model error: %v", err)
+		logging.Errorf("Failed to clear model error: %v", err)
 		http.Error(w, "Failed to clear error state", http.StatusInternalServerError)
 		return
 	}
@@ -311,7 +311,7 @@ func (s *Server) handleAPIModelRetry(w http.ResponseWriter, _ *http.Request, mod
 	// Create a new download job
 	job, err := ollama.CreateDownloadJob(s.db, modelName)
 	if err != nil {
-		log.Printf("Failed to create retry job: %v", err)
+		logging.Errorf("Failed to create retry job: %v", err)
 		http.Error(w, "Failed to queue retry", http.StatusInternalServerError)
 		return
 	}
@@ -320,7 +320,7 @@ func (s *Server) handleAPIModelRetry(w http.ResponseWriter, _ *http.Request, mod
 	if s.ollamaWorker != nil {
 		s.ollamaWorker.AddJob(*job)
 	} else {
-		log.Printf("Warning: Ollama worker not initialized")
+		logging.Warnf("Warning: Ollama worker not initialized")
 		http.Error(w, "Download service unavailable", http.StatusServiceUnavailable)
 		return
 	}
@@ -336,7 +336,7 @@ func (s *Server) handleAPIModelRetry(w http.ResponseWriter, _ *http.Request, mod
 
 // handleAPIModelsSSE handles SSE connections for real-time model updates
 func (s *Server) handleAPIModelsSSE(w http.ResponseWriter, r *http.Request) {
-	log.Printf("SSE client connecting from %s", r.RemoteAddr)
+	logging.Infof("SSE client connecting from %s", r.RemoteAddr)
 
 	// Set SSE headers
 	w.Header().Set("Content-Type", "text/event-stream")
@@ -354,10 +354,10 @@ func (s *Server) handleAPIModelsSSE(w http.ResponseWriter, r *http.Request) {
 
 	// Register client with SSE manager
 	s.sseManager.RegisterClient("models", client)
-	log.Printf("SSE client registered for models updates")
+	logging.Infof("SSE client registered for models updates")
 	defer func() {
 		s.sseManager.UnregisterClient("models", client)
-		log.Printf("SSE client disconnected")
+		logging.Infof("SSE client disconnected")
 	}()
 
 	// Create a flusher for immediate sending
@@ -393,7 +393,7 @@ func (s *Server) handleAPIModelsSSE(w http.ResponseWriter, r *http.Request) {
 
 		case <-notify:
 			// Client disconnected
-			log.Printf("SSE: Client disconnected from models stream")
+			logging.Infof("SSE: Client disconnected from models stream")
 			return
 
 		case <-client.Close:
@@ -416,7 +416,7 @@ func (s *Server) discoverOllamaContainer() *OllamaContainer {
 	cmd := exec.Command("docker", "ps", "--filter", "label=ontree.inference=true", "--format", "{{.Names}}\t{{.Ports}}")
 	output, err := cmd.Output()
 	if err != nil {
-		log.Printf("Failed to discover Ollama container: %v", err)
+		logging.Errorf("Failed to discover Ollama container: %v", err)
 		return nil
 	}
 
@@ -427,7 +427,7 @@ func (s *Server) discoverOllamaContainer() *OllamaContainer {
 
 	// If multiple containers found, log warning and use first
 	if len(lines) > 1 {
-		log.Printf("Warning: Found %d containers with ontree.inference=true label, using first one", len(lines))
+		logging.Warnf("Warning: Found %d containers with ontree.inference=true label, using first one", len(lines))
 	}
 
 	// Parse first container
@@ -470,14 +470,14 @@ func (s *Server) getInstalledModels() []string {
 	// First discover the container
 	container := s.discoverOllamaContainer()
 	if container == nil {
-		log.Printf("No Ollama container found")
+		logging.Infof("No Ollama container found")
 		return nil
 	}
 
 	cmd := exec.Command("docker", "exec", container.Name, "ollama", "list") //nolint:gosec // container.Name is from Docker API
 	output, err := cmd.Output()
 	if err != nil {
-		log.Printf("Failed to list Ollama models: %v", err)
+		logging.Errorf("Failed to list Ollama models: %v", err)
 		return nil
 	}
 
@@ -494,7 +494,7 @@ func (s *Server) getInstalledModels() []string {
 			// Keep the full model name including tag
 			modelName := fields[0]
 			models = append(models, modelName)
-			log.Printf("Found installed model: %s", modelName)
+			logging.Infof("Found installed model: %s", modelName)
 		}
 	}
 	return models
@@ -568,14 +568,14 @@ func (s *Server) renderModelsHTML(w http.ResponseWriter, _ *http.Request, models
 	// Use the pre-loaded template
 	tmpl, ok := s.templates["models_list"]
 	if !ok {
-		log.Printf("Models list template not found")
+		logging.Infof("Models list template not found")
 		http.Error(w, "Template not found", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "models-list-partial", data); err != nil {
-		log.Printf("Failed to execute models list template: %v", err)
+		logging.Errorf("Failed to execute models list template: %v", err)
 	}
 }
 
@@ -620,20 +620,20 @@ func (s *Server) startOllamaWorker() {
 	// Initialize database models
 	err := ollama.InitializeModels(s.db)
 	if err != nil {
-		log.Printf("Failed to initialize Ollama models: %v", err)
+		logging.Errorf("Failed to initialize Ollama models: %v", err)
 		return
 	}
 
 	if err := ollama.SyncDatabaseWithSharedModels(s.db); err != nil {
-		log.Printf("Failed to synchronize Ollama models with shared storage: %v", err)
+		logging.Errorf("Failed to synchronize Ollama models with shared storage: %v", err)
 	}
 
 	// Log if an Ollama container is available at startup (for debugging)
 	container := s.discoverOllamaContainer()
 	if container != nil {
-		log.Printf("Ollama container available at startup: %s on port %s", container.Name, container.Port)
+		logging.Infof("Ollama container available at startup: %s on port %s", container.Name, container.Port)
 	} else {
-		log.Printf("No Ollama container found at startup - will discover dynamically when needed")
+		logging.Infof("No Ollama container found at startup - will discover dynamically when needed")
 	}
 
 	// Create and start worker with discovered container name
@@ -647,9 +647,9 @@ func (s *Server) startOllamaWorker() {
 	// Listen for updates and broadcast via SSE
 	go func() {
 		updates := s.ollamaWorker.GetUpdatesChannel()
-		log.Println("Starting to listen for Ollama worker updates...")
+		logging.Info("Starting to listen for Ollama worker updates...")
 		for update := range updates {
-			log.Printf("Received update from worker: model=%s, status=%s, progress=%d%%",
+			logging.Infof("Received update from worker: model=%s, status=%s, progress=%d%%",
 				update.ModelName, update.Status, update.Progress)
 
 			// Broadcast to all connected SSE clients
@@ -663,11 +663,11 @@ func (s *Server) startOllamaWorker() {
 			})
 
 			// Note: The broadcast only happens if clients are connected
-			log.Printf("Attempted to broadcast update for model %s (clients may not be connected)", update.ModelName)
+			logging.Infof("Attempted to broadcast update for model %s (clients may not be connected)", update.ModelName)
 		}
 	}()
 
-	log.Println("Ollama worker started")
+	logging.Info("Ollama worker started")
 }
 
 // handleAPIModelDelete handles model deletion requests
@@ -675,7 +675,7 @@ func (s *Server) handleAPIModelDelete(w http.ResponseWriter, _ *http.Request, mo
 	// Check if model exists
 	model, err := ollama.GetModel(s.db, modelName)
 	if err != nil {
-		log.Printf("Failed to get model: %v", err)
+		logging.Errorf("Failed to get model: %v", err)
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
 	}
@@ -698,7 +698,7 @@ func (s *Server) handleAPIModelDelete(w http.ResponseWriter, _ *http.Request, mo
 	if err != nil {
 		// Check if model doesn't exist in Ollama (already deleted)
 		if !strings.Contains(string(output), "not found") {
-			log.Printf("Failed to delete model from Ollama: %v, output: %s", err, output)
+			logging.Errorf("Failed to delete model from Ollama: %v, output: %s", err, output)
 			http.Error(w, "Failed to delete model", http.StatusInternalServerError)
 			return
 		}
@@ -707,7 +707,7 @@ func (s *Server) handleAPIModelDelete(w http.ResponseWriter, _ *http.Request, mo
 	// Reset model status in database
 	err = ollama.UpdateModelStatus(s.db, modelName, ollama.StatusNotDownloaded, 0)
 	if err != nil {
-		log.Printf("Failed to update model status: %v", err)
+		logging.Errorf("Failed to update model status: %v", err)
 		http.Error(w, "Failed to update database", http.StatusInternalServerError)
 		return
 	}
@@ -725,7 +725,7 @@ func (s *Server) handleAPIModelCancel(w http.ResponseWriter, _ *http.Request, mo
 	// Check if model exists
 	model, err := ollama.GetModel(s.db, modelName)
 	if err != nil {
-		log.Printf("Failed to get model: %v", err)
+		logging.Errorf("Failed to get model: %v", err)
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
 	}
@@ -745,7 +745,7 @@ func (s *Server) handleAPIModelCancel(w http.ResponseWriter, _ *http.Request, mo
 	if s.ollamaWorker != nil {
 		err = s.ollamaWorker.CancelDownload(modelName)
 		if err != nil {
-			log.Printf("Failed to cancel download: %v", err)
+			logging.Errorf("Failed to cancel download: %v", err)
 			http.Error(w, "Failed to cancel download", http.StatusInternalServerError)
 			return
 		}
@@ -760,17 +760,17 @@ func (s *Server) handleAPIModelCancel(w http.ResponseWriter, _ *http.Request, mo
 		if err != nil {
 			// Only log if it's not a "model not found" error
 			if !strings.Contains(string(output), "not found") {
-				log.Printf("Note: Could not clean up partial model %s: %v", modelName, err)
+				logging.Infof("Note: Could not clean up partial model %s: %v", modelName, err)
 			}
 		} else {
-			log.Printf("Cleaned up partial download for model %s", modelName)
+			logging.Infof("Cleaned up partial download for model %s", modelName)
 		}
 	}
 
 	// Update model status in database
 	err = ollama.UpdateModelStatus(s.db, modelName, ollama.StatusNotDownloaded, 0)
 	if err != nil {
-		log.Printf("Failed to update model status: %v", err)
+		logging.Errorf("Failed to update model status: %v", err)
 		// Continue anyway, the cancel was successful
 	}
 
@@ -800,7 +800,7 @@ func (s *Server) handleModelDetail(w http.ResponseWriter, r *http.Request) {
 	// Get model from database
 	model, err := ollama.GetModel(s.db, modelName)
 	if err != nil {
-		log.Printf("Failed to get model: %v", err)
+		logging.Errorf("Failed to get model: %v", err)
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
 	}
@@ -864,7 +864,7 @@ func (s *Server) handleModelDetail(w http.ResponseWriter, r *http.Request) {
 			}
 		} else {
 			// Log the error for debugging
-			log.Printf("Could not read manifest file %s: %v", registryPath, err)
+			logging.Infof("Could not read manifest file %s: %v", registryPath, err)
 		}
 	}
 
@@ -879,13 +879,13 @@ func (s *Server) handleModelDetail(w http.ResponseWriter, r *http.Request) {
 	// Render the template
 	tmpl, ok := s.templates["model_detail"]
 	if !ok {
-		log.Printf("Model detail template not found")
+		logging.Infof("Model detail template not found")
 		http.Error(w, "Template not found", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
-		log.Printf("Failed to execute model detail template: %v", err)
+		logging.Errorf("Failed to execute model detail template: %v", err)
 	}
 }

@@ -13,7 +13,7 @@ func TestSystemVitalsFunctions(t *testing.T) {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
 	defer os.Remove(tempFile.Name()) //nolint:errcheck // Test cleanup
-	tempFile.Close()                //nolint:errcheck,gosec // Test cleanup
+	tempFile.Close()                 //nolint:errcheck,gosec // Test cleanup
 
 	// Initialize the database
 	err = Initialize(tempFile.Name())

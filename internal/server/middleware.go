@@ -2,10 +2,10 @@ package server
 
 import (
 	"database/sql"
-	"log"
 	"net/http"
 	"strings"
 	"treeos/internal/database"
+	"treeos/internal/logging"
 	"treeos/internal/telemetry"
 
 	"go.opentelemetry.io/otel/attribute"
@@ -102,7 +102,7 @@ func (s *Server) AuthRequiredMiddleware(next http.HandlerFunc) http.HandlerFunc 
 					session.Values["next"] = r.URL.Path
 				}
 				if err := session.Save(r, w); err != nil {
-					log.Printf("Error saving session: %v", err)
+					logging.Errorf("Error saving session: %v", err)
 				}
 				http.Redirect(w, r, "/login", http.StatusFound)
 				return
@@ -114,7 +114,7 @@ func (s *Server) AuthRequiredMiddleware(next http.HandlerFunc) http.HandlerFunc 
 				// Invalid session, clear it
 				delete(session.Values, "user_id")
 				if err := session.Save(r, w); err != nil {
-					log.Printf("Error saving session: %v", err)
+					logging.Errorf("Error saving session: %v", err)
 				}
 				http.Redirect(w, r, "/login", http.StatusFound)
 				return

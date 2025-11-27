@@ -166,7 +166,7 @@ func GetMainServiceName(compose *ComposeFile) string {
 
 	// Priority list for common main service names
 	mainServiceNames := []string{"app", "web", "webapp", "frontend", "main", "server", "api"}
-	
+
 	// Check if any service matches our priority list
 	for _, preferred := range mainServiceNames {
 		for _, service := range services {

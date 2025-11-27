@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"log"
 	"net"
 	"net/http"
 	"os"
@@ -19,6 +18,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"treeos/internal/logging"
 
 	"github.com/gorilla/sessions"
 	"treeos/internal/cache"
@@ -106,7 +106,7 @@ func New(cfg *config.Config, versionInfo version.Info) (*Server, error) {
 	}
 
 	// Initialize database with migration verification
-	log.Printf("Initializing database at %s...", cfg.DatabasePath)
+	logging.Infof("Initializing database at %s...", cfg.DatabasePath)
 	db, err := database.New(cfg.DatabasePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize database: %w", err)
@@ -118,12 +118,12 @@ func New(cfg *config.Config, versionInfo version.Info) (*Server, error) {
 	if err := s.verifyMigrationsComplete(); err != nil {
 		return nil, fmt.Errorf("database migrations incomplete: %w", err)
 	}
-	log.Printf("Database initialized and migrations verified")
+	logging.Infof("Database initialized and migrations verified")
 
 	// Initialize container runtime client
 	runtimeClient, err := dockerruntime.NewClient()
 	if err != nil {
-		log.Printf("Warning: Failed to initialize container runtime client: %v", err)
+		logging.Warnf("Warning: Failed to initialize container runtime client: %v", err)
 		// Continue without container runtime support
 	} else {
 		s.runtimeClient = runtimeClient
@@ -133,7 +133,7 @@ func New(cfg *config.Config, versionInfo version.Info) (*Server, error) {
 	// Initialize runtime service
 	runtimeSvc, err := dockerruntime.NewService(cfg.AppsDir)
 	if err != nil {
-		log.Printf("Warning: Failed to initialize container runtime service: %v", err)
+		logging.Warnf("Warning: Failed to initialize container runtime service: %v", err)
 		// Continue without container runtime support
 	} else {
 		s.runtimeSvc = runtimeSvc
@@ -143,7 +143,7 @@ func New(cfg *config.Config, versionInfo version.Info) (*Server, error) {
 	// Initialize Compose service
 	composeSvc, err := compose.NewService()
 	if err != nil {
-		log.Printf("Warning: Failed to initialize Compose service: %v", err)
+		logging.Warnf("Warning: Failed to initialize Compose service: %v", err)
 		// Continue without Compose support
 	} else {
 		s.composeSvc = composeSvc
@@ -152,7 +152,7 @@ func New(cfg *config.Config, versionInfo version.Info) (*Server, error) {
 
 	// Load configuration from database if not set by environment
 	if err := s.loadConfigFromDatabase(); err != nil {
-		log.Printf("Warning: Failed to load config from database: %v", err)
+		logging.Warnf("Warning: Failed to load config from database: %v", err)
 	}
 
 	// Initialize Caddy client only on Linux
@@ -161,7 +161,7 @@ func New(cfg *config.Config, versionInfo version.Info) (*Server, error) {
 		// Check Caddy availability
 		s.checkCaddyHealth()
 	} else {
-		log.Printf("Caddy integration is not supported on %s platform", runtime.GOOS)
+		logging.Infof("Caddy integration is not supported on %s platform", runtime.GOOS)
 		s.caddyAvailable = false
 	}
 
@@ -179,14 +179,14 @@ func New(cfg *config.Config, versionInfo version.Info) (*Server, error) {
 
 // Shutdown gracefully shuts down the server
 func (s *Server) Shutdown() {
-	log.Println("Starting graceful shutdown...")
+	logging.Info("Starting graceful shutdown...")
 
 	// First, shutdown the HTTP server to stop accepting new requests
 	if s.httpServer != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		if err := s.httpServer.Shutdown(ctx); err != nil {
-			log.Printf("HTTP server shutdown error: %v", err)
+			logging.Errorf("HTTP server shutdown error: %v", err)
 		}
 	}
 
@@ -197,27 +197,27 @@ func (s *Server) Shutdown() {
 	})
 	if s.runtimeSvc != nil {
 		if err := s.runtimeSvc.Close(); err != nil {
-			log.Printf("Error closing container runtime service: %v", err)
+			logging.Errorf("Error closing container runtime service: %v", err)
 		}
 	}
 	if s.runtimeClient != nil {
 		if err := s.runtimeClient.Close(); err != nil {
-			log.Printf("Error closing container runtime client: %v", err)
+			logging.Errorf("Error closing container runtime client: %v", err)
 		}
 	}
 	if s.db != nil {
 		// Checkpoint the database before closing to ensure WAL is written
-		log.Println("Checkpointing database before shutdown...")
+		logging.Info("Checkpointing database before shutdown...")
 		if _, err := s.db.Exec("PRAGMA wal_checkpoint(TRUNCATE)"); err != nil {
-			log.Printf("Warning: Failed to checkpoint database during shutdown: %v", err)
+			logging.Warnf("Warning: Failed to checkpoint database during shutdown: %v", err)
 		}
 		// Close the global database connection, not just the local one
-		log.Println("Closing database connection...")
+		logging.Info("Closing database connection...")
 		if err := database.Close(); err != nil {
-			log.Printf("Error closing database: %v", err)
+			logging.Errorf("Error closing database: %v", err)
 		}
 	}
-	log.Println("Graceful shutdown complete")
+	logging.Info("Graceful shutdown complete")
 }
 
 // loadTemplates loads all HTML templates
@@ -458,7 +458,7 @@ func (s *Server) getUpdateChannel() update.UpdateChannel {
 	err := s.db.QueryRow(`SELECT update_channel FROM system_setup WHERE id = 1`).Scan(&channel)
 	if err != nil {
 		if err != sql.ErrNoRows && !strings.Contains(err.Error(), "no such column") {
-			log.Printf("Failed to get update channel: %v", err)
+			logging.Errorf("Failed to get update channel: %v", err)
 		}
 		return update.ChannelStable
 	}
@@ -589,7 +589,7 @@ func (s *Server) Start() error {
 		addr = config.DefaultPort
 	}
 
-	log.Printf("Starting server on %s", addr)
+	logging.Infof("Starting server on %s", addr)
 
 	// Create server with proper timeouts
 	s.httpServer = &http.Server{
@@ -605,7 +605,7 @@ func (s *Server) Start() error {
 
 // startVitalsCleanup runs a background job to clean up old system vital logs
 func (s *Server) startVitalsCleanup() {
-	log.Printf("System vitals cleanup job started")
+	logging.Infof("System vitals cleanup job started")
 
 	// Run cleanup every hour
 	ticker := time.NewTicker(1 * time.Hour)
@@ -631,24 +631,24 @@ func (s *Server) cleanupOldVitals() {
 
 	result, err := db.Exec(query)
 	if err != nil {
-		log.Printf("Failed to cleanup old vitals: %v", err)
+		logging.Errorf("Failed to cleanup old vitals: %v", err)
 		return
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		log.Printf("Failed to get rows affected: %v", err)
+		logging.Errorf("Failed to get rows affected: %v", err)
 		return
 	}
 
 	if rowsAffected > 0 {
-		log.Printf("Cleaned up %d old vital log records", rowsAffected)
+		logging.Infof("Cleaned up %d old vital log records", rowsAffected)
 	}
 }
 
 // startProgressCleanup runs a background job to clean up old progress tracking operations
 func (s *Server) startProgressCleanup() {
-	log.Printf("Progress tracking cleanup job started")
+	logging.Infof("Progress tracking cleanup job started")
 
 	// Run cleanup every 5 minutes
 	ticker := time.NewTicker(5 * time.Minute)
@@ -662,7 +662,7 @@ func (s *Server) startProgressCleanup() {
 
 // startVitalsCollection periodically collects and stores system vitals to the database
 func (s *Server) startVitalsCollection() {
-	log.Printf("System vitals collection started (storing to database every 30 seconds)")
+	logging.Infof("System vitals collection started (storing to database every 30 seconds)")
 
 	// Collect and store vitals every 30 seconds
 	ticker := time.NewTicker(30 * time.Second)
@@ -678,7 +678,7 @@ func (s *Server) startVitalsCollection() {
 
 func (s *Server) startAutoUpdateScheduler() {
 	if !s.config.AutoUpdateEnabled {
-		log.Printf("Automatic updates disabled (AUTO_UPDATE_ENABLED=false)")
+		logging.Infof("Automatic updates disabled (AUTO_UPDATE_ENABLED=false)")
 		return
 	}
 
@@ -686,7 +686,7 @@ func (s *Server) startAutoUpdateScheduler() {
 }
 
 func (s *Server) autoUpdateLoop() {
-	log.Printf("Automatic update scheduler started")
+	logging.Infof("Automatic update scheduler started")
 
 	s.runAutoUpdate("startup")
 
@@ -698,7 +698,7 @@ func (s *Server) autoUpdateLoop() {
 			s.runAutoUpdate("scheduled")
 		case <-s.stopCh:
 			timer.Stop()
-			log.Printf("Automatic update scheduler stopping")
+			logging.Infof("Automatic update scheduler stopping")
 			return
 		}
 	}
@@ -725,7 +725,7 @@ func (s *Server) runAutoUpdate(trigger string) {
 
 	info, err := updateSvc.CheckForUpdate()
 	if err != nil {
-		log.Printf("Auto-update check failed: %v", err)
+		logging.Errorf("Auto-update check failed: %v", err)
 		return
 	}
 
@@ -742,11 +742,11 @@ func (s *Server) runAutoUpdate(trigger string) {
 
 	current := GetUpdateStatus()
 	if current.RestartRequired && current.AvailableVersion == info.LatestVersion {
-		log.Printf("Update %s already applied and awaiting restart", info.LatestVersion)
+		logging.Infof("Update %s already applied and awaiting restart", info.LatestVersion)
 		return
 	}
 
-	log.Printf("Automatic update found: %s -> %s (trigger=%s)", info.CurrentVersion, info.LatestVersion, trigger)
+	logging.Infof("Automatic update found: %s -> %s (trigger=%s)", info.CurrentVersion, info.LatestVersion, trigger)
 
 	started := time.Now()
 	SetUpdateStatus(UpdateStatus{
@@ -771,7 +771,7 @@ func (s *Server) runAutoUpdate(trigger string) {
 	})
 
 	if err != nil {
-		log.Printf("Automatic update failed: %v", err)
+		logging.Errorf("Automatic update failed: %v", err)
 		SetUpdateStatus(UpdateStatus{
 			Failed:           true,
 			Error:            "Automatic update failed. See logs for details.",
@@ -783,7 +783,7 @@ func (s *Server) runAutoUpdate(trigger string) {
 		return
 	}
 
-	log.Printf("Automatic update to %s applied. Restart required.", info.LatestVersion)
+	logging.Infof("Automatic update to %s applied. Restart required.", info.LatestVersion)
 	SetUpdateStatus(UpdateStatus{
 		Success:          true,
 		RestartRequired:  true,
@@ -806,7 +806,7 @@ func (s *Server) runAutoUpdate(trigger string) {
 func (s *Server) storeVitals() {
 	vitals, err := system.GetVitals()
 	if err != nil {
-		log.Printf("Failed to get system vitals for storage: %v", err)
+		logging.Errorf("Failed to get system vitals for storage: %v", err)
 		return
 	}
 
@@ -819,19 +819,19 @@ func (s *Server) storeVitals() {
 		vitals.DownloadRate,
 	)
 	if err != nil {
-		log.Printf("Failed to store system vitals: %v", err)
+		logging.Errorf("Failed to store system vitals: %v", err)
 		return
 	}
 
 	// Log successful storage for debugging (can be removed in production)
-	log.Printf("Stored system vitals: CPU=%.1f%%, Mem=%.1f%%, Disk=%.1f%%, GPU=%.1f%%, Upload=%d B/s, Download=%d B/s",
+	logging.Infof("Stored system vitals: CPU=%.1f%%, Mem=%.1f%%, Disk=%.1f%%, GPU=%.1f%%, Upload=%d B/s, Download=%d B/s",
 		vitals.CPUPercent, vitals.MemPercent, vitals.DiskPercent, vitals.GPULoad,
 		vitals.UploadRate, vitals.DownloadRate)
 }
 
 // startRealtimeMetricsCollection collects CPU and network metrics every second for real-time display
 func (s *Server) startRealtimeMetricsCollection() {
-	log.Printf("Real-time metrics collection started")
+	logging.Infof("Real-time metrics collection started")
 
 	// Run collection every second
 	ticker := time.NewTicker(1 * time.Second)
@@ -841,7 +841,7 @@ func (s *Server) startRealtimeMetricsCollection() {
 		// Get current system vitals
 		vitals, err := system.GetVitals()
 		if err != nil {
-			log.Printf("Failed to collect real-time metrics: %v", err)
+			logging.Errorf("Failed to collect real-time metrics: %v", err)
 			continue
 		}
 
@@ -985,9 +985,9 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	runtimeApps, err := s.scanApps()
 	if err != nil {
 		if errors.Is(err, errRuntimeUnavailable) {
-			log.Printf("Container runtime not available: %v", err)
+			logging.Infof("Container runtime not available: %v", err)
 		} else {
-			log.Printf("Error scanning apps: %v", err)
+			logging.Errorf("Error scanning apps: %v", err)
 		}
 	} else {
 		for _, app := range runtimeApps {
@@ -1011,7 +1011,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 			composeSvc, composeErr := s.getComposeService()
 			if composeErr != nil {
 				if !errors.Is(composeErr, errComposeUnavailable) {
-					log.Printf("Compose service unavailable: %v", composeErr)
+					logging.Infof("Compose service unavailable: %v", composeErr)
 				}
 			} else {
 				appDir := filepath.Join(s.config.AppsDir, app.Name)
@@ -1024,7 +1024,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 						if isRuntimeUnavailableError(psErr) {
 							s.markComposeUnhealthy()
 						}
-						log.Printf("Failed to get compose status for %s: %v", app.Name, psErr)
+						logging.Errorf("Failed to get compose status for %s: %v", app.Name, psErr)
 					} else if len(containers) > 0 {
 						containerInfos := make([]ContainerInfo, 0)
 						for _, container := range containers {
@@ -1096,7 +1096,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	// Get latest monitoring data from database
 	latest, err := database.GetLatestMetric("")
 	if err != nil {
-		log.Printf("Failed to get latest metric for dashboard: %v", err)
+		logging.Errorf("Failed to get latest metric for dashboard: %v", err)
 	}
 
 	// Get historical data for sparklines (last 24 hours)
@@ -1104,7 +1104,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	dayAgo := now.Add(-24 * time.Hour)
 	historicalData, err := database.GetMetricsForTimeRange(dayAgo, now)
 	if err != nil {
-		log.Printf("Failed to get historical metrics for sparklines: %v", err)
+		logging.Errorf("Failed to get historical metrics for sparklines: %v", err)
 	}
 
 	// Generate sparklines for each metric
@@ -1192,7 +1192,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
-		log.Printf("Error rendering template: %v", err)
+		logging.Errorf("Error rendering template: %v", err)
 		http.Error(w, "Error rendering template", http.StatusInternalServerError)
 		return
 	}
@@ -1278,12 +1278,12 @@ func (s *Server) checkCaddyHealth() {
 
 	err := s.caddyClient.HealthCheck()
 	if err != nil {
-		log.Printf("Cannot connect to Caddy Admin API at localhost:2019. Please ensure Caddy is installed and running. Error: %v", err)
+		logging.Errorf("Cannot connect to Caddy Admin API at localhost:2019. Please ensure Caddy is installed and running. Error: %v", err)
 		s.caddyAvailable = false
 		return
 	}
 
-	log.Printf("Successfully connected to Caddy Admin API")
+	logging.Infof("Successfully connected to Caddy Admin API")
 	s.caddyAvailable = true
 
 	// Sync exposed apps if database is available
@@ -1436,7 +1436,7 @@ func (s *Server) testLLMConnection(apiKey, apiURL, model string) (string, error)
 func (s *Server) syncExposedApps() {
 	// Skip if Docker service is not available
 	if s.runtimeSvc == nil {
-		log.Printf("Docker service not available, skipping app sync")
+		logging.Infof("Docker service not available, skipping app sync")
 		return
 	}
 
@@ -1446,7 +1446,7 @@ func (s *Server) syncExposedApps() {
 		if isRuntimeUnavailableError(err) {
 			s.markRuntimeUnhealthy()
 		}
-		log.Printf("Failed to list apps: %v", err)
+		logging.Errorf("Failed to list apps: %v", err)
 		return
 	}
 
@@ -1457,7 +1457,7 @@ func (s *Server) syncExposedApps() {
 		// Read metadata from compose file
 		metadata, err := yamlutil.ReadComposeMetadata(app.Path)
 		if err != nil {
-			log.Printf("Failed to read metadata for app %s: %v", app.Name, err)
+			logging.Errorf("Failed to read metadata for app %s: %v", app.Name, err)
 			continue
 		}
 
@@ -1475,9 +1475,9 @@ func (s *Server) syncExposedApps() {
 		// Add route to Caddy
 		err = s.caddyClient.AddOrUpdateRoute(routeConfig)
 		if err != nil {
-			log.Printf("Failed to sync app %s to Caddy: %v", app.Name, err)
+			logging.Errorf("Failed to sync app %s to Caddy: %v", app.Name, err)
 		} else {
-			log.Printf("Successfully synced app %s to Caddy", app.Name)
+			logging.Infof("Successfully synced app %s to Caddy", app.Name)
 		}
 	}
 }
@@ -1488,7 +1488,7 @@ func (s *Server) routeApps(w http.ResponseWriter, r *http.Request) {
 
 	// Debug logging
 	if strings.Contains(path, "expose") {
-		log.Printf("[routeApps] Request: method=%s path=%s", r.Method, path)
+		logging.Infof("[routeApps] Request: method=%s path=%s", r.Method, path)
 	}
 
 	// Route based on the path pattern
@@ -1598,7 +1598,7 @@ func (s *Server) handleVersion(w http.ResponseWriter, _ *http.Request) {
 	}
 
 	if err := json.NewEncoder(w).Encode(versionData); err != nil {
-		log.Printf("Error encoding version response: %v", err)
+		logging.Errorf("Error encoding version response: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -1678,7 +1678,7 @@ func (s *Server) verifyMigrationsComplete() error {
 	// This is crucial after a self-update when the database file might be in WAL mode
 	if _, err := s.db.Exec("PRAGMA wal_checkpoint(TRUNCATE)"); err != nil {
 		// Log but don't fail - not all SQLite builds support WAL
-		log.Printf("Warning: Could not checkpoint WAL: %v", err)
+		logging.Warnf("Warning: Could not checkpoint WAL: %v", err)
 	}
 
 	// Check for the most recently added columns to ensure all migrations ran

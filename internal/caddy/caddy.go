@@ -6,9 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"time"
+	"treeos/internal/logging"
 )
 
 // Client represents a client for interacting with Caddy's Admin API
@@ -82,7 +82,7 @@ func (c *Client) AddOrUpdateRoute(route *RouteConfig) error {
 		return fmt.Errorf("failed to marshal route config: %w", err)
 	}
 
-	log.Printf("[Caddy] Adding/updating route %s with config: %s", route.ID, string(jsonData))
+	logging.Infof("[Caddy] Adding/updating route %s with config: %s", route.ID, string(jsonData))
 
 	url := c.baseURL + "/config/apps/http/servers/srv0/routes"
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(jsonData))
@@ -100,14 +100,14 @@ func (c *Client) AddOrUpdateRoute(route *RouteConfig) error {
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
-			log.Printf("[Caddy] ERROR: Failed to add/update route. Status: %d, failed to read response body: %v", resp.StatusCode, err)
+			logging.Errorf("[Caddy] ERROR: Failed to add/update route. Status: %d, failed to read response body: %v", resp.StatusCode, err)
 			return fmt.Errorf("caddy returned status %d when adding/updating route (failed to read body: %w)", resp.StatusCode, err)
 		}
-		log.Printf("[Caddy] ERROR: Failed to add/update route. Status: %d, Response: %s", resp.StatusCode, string(body))
+		logging.Errorf("[Caddy] ERROR: Failed to add/update route. Status: %d, Response: %s", resp.StatusCode, string(body))
 		return fmt.Errorf("caddy returned status %d when adding/updating route: %s", resp.StatusCode, string(body))
 	}
 
-	log.Printf("[Caddy] Successfully added/updated route %s", route.ID)
+	logging.Infof("[Caddy] Successfully added/updated route %s", route.ID)
 
 	return nil
 }
@@ -127,7 +127,7 @@ func (c *Client) ensureHTTPApp() error {
 	}
 
 	// Create the HTTP app with a default server
-	log.Printf("[Caddy] HTTP app not found, initializing...")
+	logging.Infof("[Caddy] HTTP app not found, initializing...")
 
 	// Define the HTTP app configuration
 	httpApp := map[string]interface{}{
@@ -165,13 +165,13 @@ func (c *Client) ensureHTTPApp() error {
 		return fmt.Errorf("failed to create HTTP app, status %d: %s", resp.StatusCode, string(body))
 	}
 
-	log.Printf("[Caddy] Successfully initialized HTTP app")
+	logging.Infof("[Caddy] Successfully initialized HTTP app")
 	return nil
 }
 
 // DeleteRoute deletes a route from Caddy's configuration by its ID
 func (c *Client) DeleteRoute(routeID string) error {
-	log.Printf("[Caddy] Deleting route %s", routeID)
+	logging.Infof("[Caddy] Deleting route %s", routeID)
 	url := c.baseURL + "/id/" + routeID
 	req, err := http.NewRequest(http.MethodDelete, url, nil)
 	if err != nil {
@@ -188,17 +188,17 @@ func (c *Client) DeleteRoute(routeID string) error {
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNotFound {
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
-			log.Printf("[Caddy] ERROR: Failed to delete route. Status: %d, failed to read response body: %v", resp.StatusCode, err)
+			logging.Errorf("[Caddy] ERROR: Failed to delete route. Status: %d, failed to read response body: %v", resp.StatusCode, err)
 			return fmt.Errorf("caddy returned status %d when deleting route (failed to read body: %w)", resp.StatusCode, err)
 		}
-		log.Printf("[Caddy] ERROR: Failed to delete route. Status: %d, Response: %s", resp.StatusCode, string(body))
+		logging.Errorf("[Caddy] ERROR: Failed to delete route. Status: %d, Response: %s", resp.StatusCode, string(body))
 		return fmt.Errorf("caddy returned status %d when deleting route: %s", resp.StatusCode, string(body))
 	}
 
 	if resp.StatusCode == http.StatusNotFound {
-		log.Printf("[Caddy] Route %s not found (already deleted)", routeID)
+		logging.Infof("[Caddy] Route %s not found (already deleted)", routeID)
 	} else {
-		log.Printf("[Caddy] Successfully deleted route %s", routeID)
+		logging.Infof("[Caddy] Successfully deleted route %s", routeID)
 	}
 
 	return nil

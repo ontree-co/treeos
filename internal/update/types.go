@@ -20,14 +20,14 @@ const (
 //
 //nolint:revive // Name is intentional - clearer than "Info" in this context
 type UpdateInfo struct {
-	CurrentVersion string    `json:"current_version"`
-	LatestVersion  string    `json:"latest_version"`
-	UpdateAvailable bool     `json:"update_available"`
-	ReleaseNotes   string    `json:"release_notes,omitempty"`
-	ReleaseDate    time.Time `json:"release_date,omitempty"`
-	DownloadURL    string    `json:"download_url,omitempty"`
-	DownloadSize   int64     `json:"download_size,omitempty"`
-	SHA256         string    `json:"sha256,omitempty"`
+	CurrentVersion  string    `json:"current_version"`
+	LatestVersion   string    `json:"latest_version"`
+	UpdateAvailable bool      `json:"update_available"`
+	ReleaseNotes    string    `json:"release_notes,omitempty"`
+	ReleaseDate     time.Time `json:"release_date,omitempty"`
+	DownloadURL     string    `json:"download_url,omitempty"`
+	DownloadSize    int64     `json:"download_size,omitempty"`
+	SHA256          string    `json:"sha256,omitempty"`
 }
 
 // UpdateManifest represents the JSON structure from the update server

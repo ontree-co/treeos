@@ -3,7 +3,6 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -11,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"treeos/internal/logging"
 
 	"gopkg.in/yaml.v3"
 )
@@ -83,14 +83,14 @@ func (s *Server) handleTemplates(w http.ResponseWriter, r *http.Request) {
 	// Get available templates
 	templates, err := s.templateSvc.GetAvailableTemplates()
 	if err != nil {
-		log.Printf("Error getting templates: %v", err)
+		logging.Errorf("Error getting templates: %v", err)
 		http.Error(w, "Failed to load templates", http.StatusInternalServerError)
 		return
 	}
 
-	log.Printf("DEBUG: Loaded %d templates", len(templates))
+	logging.Infof("DEBUG: Loaded %d templates", len(templates))
 	for i, t := range templates {
-		log.Printf("DEBUG: Template %d: %s (%s)", i, t.Name, t.Filename)
+		logging.Infof("DEBUG: Template %d: %s (%s)", i, t.Name, t.Filename)
 	}
 
 	// Group templates by category tags (dynamically discovered)
@@ -134,7 +134,7 @@ func (s *Server) handleTemplates(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
-		log.Printf("Error rendering template: %v", err)
+		logging.Errorf("Error rendering template: %v", err)
 		http.Error(w, "Error rendering template", http.StatusInternalServerError)
 		return
 	}
@@ -159,7 +159,7 @@ func (s *Server) handleCreateFromTemplate(w http.ResponseWriter, r *http.Request
 	// Get the template
 	template, err := s.templateSvc.GetTemplateByID(templateID)
 	if err != nil {
-		log.Printf("Error getting template %s: %v", templateID, err)
+		logging.Errorf("Error getting template %s: %v", templateID, err)
 		http.NotFound(w, r)
 		return
 	}
@@ -184,7 +184,7 @@ func (s *Server) handleCreateFromTemplate(w http.ResponseWriter, r *http.Request
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
-			log.Printf("Error rendering template: %v", err)
+			logging.Errorf("Error rendering template: %v", err)
 			http.Error(w, "Error rendering template", http.StatusInternalServerError)
 			return
 		}
@@ -209,7 +209,7 @@ func (s *Server) handleCreateFromTemplate(w http.ResponseWriter, r *http.Request
 		// Get template content
 		content, err := s.templateSvc.GetTemplateContent(template)
 		if err != nil {
-			log.Printf("Error getting template content: %v", err)
+			logging.Errorf("Error getting template content: %v", err)
 			http.Error(w, "Failed to read template", http.StatusInternalServerError)
 			return
 		}
@@ -221,7 +221,7 @@ func (s *Server) handleCreateFromTemplate(w http.ResponseWriter, r *http.Request
 		if customPort != "" {
 			processedContent, err = s.replacePortsInYAML(processedContent, customPort)
 			if err != nil {
-				log.Printf("Error replacing ports in YAML: %v", err)
+				logging.Errorf("Error replacing ports in YAML: %v", err)
 				http.Error(w, "Failed to update port configuration", http.StatusInternalServerError)
 				return
 			}
@@ -230,17 +230,17 @@ func (s *Server) handleCreateFromTemplate(w http.ResponseWriter, r *http.Request
 		// Get .env.example content if it exists for this template
 		envContent, err := s.templateSvc.GetTemplateEnvExample(templateID)
 		if err != nil {
-			log.Printf("Error reading .env.example for template %s: %v", templateID, err)
+			logging.Errorf("Error reading .env.example for template %s: %v", templateID, err)
 			http.Error(w, "Failed to read template environment file", http.StatusInternalServerError)
 			return
 		}
 		if envContent != "" {
-			log.Printf("Found .env.example for template %s, will use default environment variables", templateID)
+			logging.Infof("Found .env.example for template %s, will use default environment variables", templateID)
 		}
 
 		// Create the app using scaffold logic with template flag
 		if err := s.createAppScaffoldFromTemplate(appName, processedContent, envContent, emoji); err != nil {
-			log.Printf("Error creating app from template: %v", err)
+			logging.Errorf("Error creating app from template: %v", err)
 			http.Error(w, fmt.Sprintf("Failed to create application: %v", err), http.StatusInternalServerError)
 			return
 		}
@@ -250,7 +250,7 @@ func (s *Server) handleCreateFromTemplate(w http.ResponseWriter, r *http.Request
 			appPath := filepath.Join(s.config.AppsDir, appName)
 			configDir := filepath.Join(appPath, "shared", "config")
 			if err := os.MkdirAll(configDir, 0755); err != nil { //nolint:gosec // Config directory needs group read access
-				log.Printf("Warning: Failed to create config directory for %s: %v", appName, err)
+				logging.Warnf("Warning: Failed to create config directory for %s: %v", appName, err)
 			} else {
 				configPath := filepath.Join(configDir, "librechat.yaml")
 
@@ -285,7 +285,7 @@ endpoints:
 
 				// #nosec G306 -- LibreChat needs this config mounted read-only inside the container
 				if err := os.WriteFile(configPath, []byte(librechatConfig), 0644); err != nil {
-					log.Printf("Warning: Failed to create librechat.yaml for %s: %v", appName, err)
+					logging.Warnf("Warning: Failed to create librechat.yaml for %s: %v", appName, err)
 				}
 			}
 		}

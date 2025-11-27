@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"html/template"
 	"io/fs"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
+	"treeos/internal/logging"
 )
 
 // extractHostPort extracts the host port from a "hostPort:containerPort" string
@@ -28,14 +28,14 @@ func main() {
 
 	// Check if templates directory exists
 	if _, err := os.Stat(templatesDir); os.IsNotExist(err) {
-		log.Fatalf("Templates directory not found: %s", templatesDir)
+		logging.Fatalf("Templates directory not found: %s", templatesDir)
 	}
 
 	baseTemplatePath := filepath.Join(templatesDir, "layouts", "base.html")
 
 	// Check if base template exists
 	if _, err := os.Stat(baseTemplatePath); os.IsNotExist(err) {
-		log.Fatalf("Base template not found: %s", baseTemplatePath)
+		logging.Fatalf("Base template not found: %s", baseTemplatePath)
 	}
 
 	errors := []string{}
@@ -89,7 +89,7 @@ func main() {
 	})
 
 	if err != nil {
-		log.Fatalf("Error walking templates: %v", err)
+		logging.Fatalf("Error walking templates: %v", err)
 	}
 
 	// Report results

@@ -4,11 +4,11 @@ import (
 	"bufio"
 	"database/sql"
 	"fmt"
-	"log"
 	"os/exec"
 	"strings"
 	"sync"
 	"time"
+	"treeos/internal/logging"
 )
 
 // Worker manages the background processing of Ollama model downloads
@@ -20,7 +20,7 @@ type Worker struct {
 	wg            sync.WaitGroup
 	containerName string
 	// Track active downloads for cancellation
-	activeMu      sync.Mutex
+	activeMu        sync.Mutex
 	activeDownloads map[string]*exec.Cmd
 }
 
@@ -32,11 +32,11 @@ func NewWorker(db *sql.DB, containerName string) *Worker {
 	}
 
 	return &Worker{
-		db:            db,
-		jobQueue:      make(chan DownloadJob, 100),
-		updates:       make(chan ProgressUpdate, 1000),
-		stopCh:        make(chan struct{}),
-		containerName: containerName,
+		db:              db,
+		jobQueue:        make(chan DownloadJob, 100),
+		updates:         make(chan ProgressUpdate, 1000),
+		stopCh:          make(chan struct{}),
+		containerName:   containerName,
 		activeDownloads: make(map[string]*exec.Cmd),
 	}
 }
@@ -45,13 +45,13 @@ func NewWorker(db *sql.DB, containerName string) *Worker {
 func (w *Worker) SetContainerName(containerName string) {
 	if containerName != "" {
 		w.containerName = containerName
-		log.Printf("Updated Ollama worker container name to: %s", containerName)
+		logging.Infof("Updated Ollama worker container name to: %s", containerName)
 	}
 }
 
 // Start initializes and starts the worker pool
 func (w *Worker) Start(numWorkers int) {
-	log.Printf("Starting Ollama worker pool with %d workers", numWorkers)
+	logging.Infof("Starting Ollama worker pool with %d workers", numWorkers)
 
 	// Start worker goroutines
 	for i := 0; i < numWorkers; i++ {
@@ -68,7 +68,7 @@ func (w *Worker) Start(numWorkers int) {
 
 // Stop gracefully shuts down the worker pool
 func (w *Worker) Stop() {
-	log.Println("Stopping Ollama worker pool")
+	logging.Info("Stopping Ollama worker pool")
 	close(w.stopCh)
 	w.wg.Wait()
 	close(w.jobQueue)
@@ -79,9 +79,9 @@ func (w *Worker) Stop() {
 func (w *Worker) AddJob(job DownloadJob) {
 	select {
 	case w.jobQueue <- job:
-		log.Printf("Added job %s for model %s to queue", job.ID, job.ModelName)
+		logging.Infof("Added job %s for model %s to queue", job.ID, job.ModelName)
 	default:
-		log.Printf("Job queue is full, job %s for model %s dropped", job.ID, job.ModelName)
+		logging.Infof("Job queue is full, job %s for model %s dropped", job.ID, job.ModelName)
 	}
 }
 
@@ -116,15 +116,15 @@ func (w *Worker) CancelDownload(modelName string) error {
 		killInsideCmd := exec.Command("docker", "exec", containerName, "sh", "-c",
 			fmt.Sprintf("pkill -f 'ollama pull %s' || true", modelName))
 		if err := killInsideCmd.Run(); err != nil {
-			log.Printf("Warning: Failed to kill ollama process inside container: %v", err)
+			logging.Warnf("Warning: Failed to kill ollama process inside container: %v", err)
 		}
 	} else {
-		log.Printf("Warning: No container name available to kill ollama process inside container")
+		logging.Warnf("Warning: No container name available to kill ollama process inside container")
 	}
 
 	// Then kill the container exec process
 	if cmd.Process != nil {
-		log.Printf("Cancelling download for model %s (PID: %d)", modelName, cmd.Process.Pid)
+		logging.Infof("Cancelling download for model %s (PID: %d)", modelName, cmd.Process.Pid)
 		err := cmd.Process.Kill()
 		if err != nil {
 			return fmt.Errorf("failed to kill download process: %v", err)
@@ -145,9 +145,9 @@ func (w *Worker) CancelDownload(modelName string) error {
 	cleanupCmd := exec.Command("docker", "exec", w.containerName, "ollama", "rm", modelName) //nolint:gosec // containerName and modelName are validated
 	cleanupOutput, cleanupErr := cleanupCmd.CombinedOutput()
 	if cleanupErr == nil {
-		log.Printf("Worker cleaned up partial download for model %s", modelName)
+		logging.Infof("Worker cleaned up partial download for model %s", modelName)
 	} else if !strings.Contains(string(cleanupOutput), "not found") {
-		log.Printf("Worker could not clean up partial model %s: %v", modelName, cleanupErr)
+		logging.Infof("Worker could not clean up partial model %s: %v", modelName, cleanupErr)
 	}
 
 	// Send cancellation update
@@ -164,20 +164,20 @@ func (w *Worker) CancelDownload(modelName string) error {
 // processJobs is the main worker loop
 func (w *Worker) processJobs(workerID int) {
 	defer w.wg.Done()
-	log.Printf("Worker %d started", workerID)
+	logging.Infof("Worker %d started", workerID)
 
 	for {
 		select {
 		case job, ok := <-w.jobQueue:
 			if !ok {
-				log.Printf("Worker %d: job queue closed, exiting", workerID)
+				logging.Infof("Worker %d: job queue closed, exiting", workerID)
 				return
 			}
-			log.Printf("Worker %d: processing job %s for model %s", workerID, job.ID, job.ModelName)
+			logging.Infof("Worker %d: processing job %s for model %s", workerID, job.ID, job.ModelName)
 			w.processDownload(job)
 
 		case <-w.stopCh:
-			log.Printf("Worker %d: received stop signal, exiting", workerID)
+			logging.Infof("Worker %d: received stop signal, exiting", workerID)
 			return
 		}
 	}
@@ -207,7 +207,7 @@ func (w *Worker) discoverOllamaContainer() (string, error) {
 	}
 
 	containerName := strings.TrimSpace(containerList[0])
-	log.Printf("Discovered Ollama container: %s", containerName)
+	logging.Infof("Discovered Ollama container: %s", containerName)
 	return containerName, nil
 }
 
@@ -216,7 +216,7 @@ func (w *Worker) processDownload(job DownloadJob) {
 	// Update job status to processing
 	err := UpdateJobStatus(w.db, job.ID, "processing")
 	if err != nil {
-		log.Printf("Failed to update job status: %v", err)
+		logging.Errorf("Failed to update job status: %v", err)
 	}
 
 	// Discover the Ollama container dynamically
@@ -229,7 +229,7 @@ func (w *Worker) processDownload(job DownloadJob) {
 	// Update model status to downloading
 	err = UpdateModelStatus(w.db, job.ModelName, StatusDownloading, 0)
 	if err != nil {
-		log.Printf("Failed to update model status: %v", err)
+		logging.Errorf("Failed to update model status: %v", err)
 	}
 
 	// Send initial update
@@ -277,7 +277,7 @@ func (w *Worker) processDownload(job DownloadJob) {
 		b, err := reader.ReadByte()
 		if err != nil {
 			if err.Error() != "EOF" {
-				log.Printf("Error reading output: %v", err)
+				logging.Errorf("Error reading output: %v", err)
 			}
 			break
 		}
@@ -290,14 +290,14 @@ func (w *Worker) processDownload(job DownloadJob) {
 				// Parse progress from the output
 				progress := ParseProgress(line)
 				if progress > 0 {
-					log.Printf("Parsed progress: %d%%", progress)
+					logging.Infof("Parsed progress: %d%%", progress)
 					if progress != lastProgress {
 						lastProgress = progress
 
 						// Update database
 						err = UpdateModelStatus(w.db, job.ModelName, StatusDownloading, progress)
 						if err != nil {
-							log.Printf("Failed to update progress: %v", err)
+							logging.Errorf("Failed to update progress: %v", err)
 						}
 
 						// Send progress update
@@ -311,7 +311,7 @@ func (w *Worker) processDownload(job DownloadJob) {
 					// Log raw line for debugging non-progress lines
 					cleanedLine := strings.TrimSpace(line)
 					if cleanedLine != "" && !strings.Contains(cleanedLine, "[K") {
-						log.Printf("Ollama output: %s", cleanedLine)
+						logging.Infof("Ollama output: %s", cleanedLine)
 					}
 				}
 				buffer = buffer[:0]
@@ -331,7 +331,7 @@ func (w *Worker) processDownload(job DownloadJob) {
 
 		if !stillActive {
 			// This was cancelled, don't treat as error
-			log.Printf("Download cancelled for model %s", job.ModelName)
+			logging.Infof("Download cancelled for model %s", job.ModelName)
 			return
 		}
 
@@ -342,12 +342,12 @@ func (w *Worker) processDownload(job DownloadJob) {
 	// Mark as completed
 	err = UpdateModelStatus(w.db, job.ModelName, StatusCompleted, 100)
 	if err != nil {
-		log.Printf("Failed to update model completion: %v", err)
+		logging.Errorf("Failed to update model completion: %v", err)
 	}
 
 	err = UpdateJobStatus(w.db, job.ID, "completed")
 	if err != nil {
-		log.Printf("Failed to update job completion: %v", err)
+		logging.Errorf("Failed to update job completion: %v", err)
 	}
 
 	// Send completion update
@@ -357,23 +357,23 @@ func (w *Worker) processDownload(job DownloadJob) {
 		Progress:  100,
 	})
 
-	log.Printf("Successfully downloaded model %s", job.ModelName)
+	logging.Infof("Successfully downloaded model %s", job.ModelName)
 }
 
 // handleError handles download errors
 func (w *Worker) handleError(job DownloadJob, errorMsg string) {
-	log.Printf("Error downloading model %s: %s", job.ModelName, errorMsg)
+	logging.Errorf("Error downloading model %s: %s", job.ModelName, errorMsg)
 
 	// Update model error state
 	err := UpdateModelError(w.db, job.ModelName, errorMsg)
 	if err != nil {
-		log.Printf("Failed to update model error: %v", err)
+		logging.Errorf("Failed to update model error: %v", err)
 	}
 
 	// Update job status
 	err = UpdateJobStatus(w.db, job.ID, "failed")
 	if err != nil {
-		log.Printf("Failed to update job failure: %v", err)
+		logging.Errorf("Failed to update job failure: %v", err)
 	}
 
 	// Send error update
@@ -387,16 +387,16 @@ func (w *Worker) handleError(job DownloadJob, errorMsg string) {
 
 // sendUpdate sends a progress update through the updates channel
 func (w *Worker) sendUpdate(update ProgressUpdate) {
-	log.Printf("Sending update for model %s: status=%s, progress=%d%%",
+	logging.Infof("Sending update for model %s: status=%s, progress=%d%%",
 		update.ModelName, update.Status, update.Progress)
 
 	select {
 	case w.updates <- update:
 		// Update sent successfully
-		log.Printf("Update sent successfully for model %s", update.ModelName)
+		logging.Infof("Update sent successfully for model %s", update.ModelName)
 	case <-time.After(100 * time.Millisecond):
 		// Update channel is blocked, skip this update
-		log.Printf("Failed to send update for model %s (channel blocked)", update.ModelName)
+		logging.Errorf("Failed to send update for model %s (channel blocked)", update.ModelName)
 	}
 }
 
@@ -404,12 +404,12 @@ func (w *Worker) sendUpdate(update ProgressUpdate) {
 func (w *Worker) recoverPendingJobs() {
 	jobs, err := GetPendingJobs(w.db)
 	if err != nil {
-		log.Printf("Failed to recover pending jobs: %v", err)
+		logging.Errorf("Failed to recover pending jobs: %v", err)
 		return
 	}
 
 	for _, job := range jobs {
-		log.Printf("Recovering pending job %s for model %s", job.ID, job.ModelName)
+		logging.Infof("Recovering pending job %s for model %s", job.ID, job.ModelName)
 		w.AddJob(job)
 	}
 }
@@ -424,7 +424,7 @@ func (w *Worker) startCleanupTask() {
 		case <-ticker.C:
 			err := CleanupOldJobs(w.db, 7*24*time.Hour) // Clean jobs older than 7 days
 			if err != nil {
-				log.Printf("Failed to cleanup old jobs: %v", err)
+				logging.Errorf("Failed to cleanup old jobs: %v", err)
 			}
 		case <-w.stopCh:
 			return
@@ -461,7 +461,7 @@ func ParseProgress(line string) int {
 		!strings.Contains(line, "⠼") && !strings.Contains(line, "⠴") &&
 		!strings.Contains(line, "⠦") && !strings.Contains(line, "⠧") &&
 		!strings.Contains(line, "⠇") && !strings.Contains(line, "⠏") {
-		log.Printf("ParseProgress: cleaned line = '%s'", line)
+		logging.Infof("ParseProgress: cleaned line = '%s'", line)
 	}
 
 	// Check for percentage in the format "pulling 74701a8c35f6... 100%"

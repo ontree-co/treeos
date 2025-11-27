@@ -4,8 +4,8 @@ package database
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"time"
+	"treeos/internal/logging"
 
 	_ "github.com/mattn/go-sqlite3" // SQLite driver
 )
@@ -33,7 +33,7 @@ func Initialize(dbPath string) error {
 		db, err = sql.Open("sqlite3", dbPath)
 		if err != nil {
 			if i < retryCount-1 {
-				log.Printf("Attempt %d: Failed to open database, retrying in 1 second: %v", i+1, err)
+				logging.Errorf("Attempt %d: Failed to open database, retrying in 1 second: %v", i+1, err)
 				time.Sleep(1 * time.Second)
 				continue
 			}
@@ -49,24 +49,24 @@ func Initialize(dbPath string) error {
 
 	// Force a checkpoint first to recover from any WAL issues after restart
 	if _, err := db.Exec("PRAGMA wal_checkpoint(RESTART)"); err != nil {
-		log.Printf("Warning: Could not checkpoint on startup: %v", err)
+		logging.Warnf("Warning: Could not checkpoint on startup: %v", err)
 	}
 
 	// Enable WAL mode for better concurrency (if not already enabled)
 	if _, err := db.Exec("PRAGMA journal_mode=WAL"); err != nil {
-		log.Printf("Warning: Could not enable WAL mode: %v", err)
+		logging.Warnf("Warning: Could not enable WAL mode: %v", err)
 	}
 
 	// Set synchronous to NORMAL for better performance while maintaining safety
 	if _, err := db.Exec("PRAGMA synchronous=NORMAL"); err != nil {
-		log.Printf("Warning: Could not set synchronous mode: %v", err)
+		logging.Warnf("Warning: Could not set synchronous mode: %v", err)
 	}
 
 	// Retry ping with backoff
 	for i := 0; i < retryCount; i++ {
 		if err := db.Ping(); err != nil {
 			if i < retryCount-1 {
-				log.Printf("Attempt %d: Failed to ping database, retrying: %v", i+1, err)
+				logging.Errorf("Attempt %d: Failed to ping database, retrying: %v", i+1, err)
 				time.Sleep(time.Duration(i+1) * time.Second)
 				continue
 			}
@@ -82,10 +82,10 @@ func Initialize(dbPath string) error {
 
 	// Force a checkpoint to ensure all changes are written
 	if _, err := db.Exec("PRAGMA wal_checkpoint(TRUNCATE)"); err != nil {
-		log.Printf("Warning: Could not checkpoint after migrations: %v", err)
+		logging.Warnf("Warning: Could not checkpoint after migrations: %v", err)
 	}
 
-	log.Printf("Database initialized successfully at %s", dbPath)
+	logging.Infof("Database initialized successfully at %s", dbPath)
 	return nil
 }
 
@@ -278,7 +278,7 @@ func migrateColumnsIfNeeded() error {
 			if _, err := db.Exec(m.query); err != nil {
 				return fmt.Errorf("failed to add column %s.%s: %w", m.table, m.column, err)
 			}
-			log.Printf("Added column %s.%s", m.table, m.column)
+			logging.Infof("Added column %s.%s", m.table, m.column)
 		}
 	}
 

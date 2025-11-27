@@ -157,9 +157,4 @@ In production (default):
 
 ## Local Development Credentials
 
-For testing and development purposes, the following credentials are available:
-
-- Username: `ontree`
-- Password: `_g8CYFF27yURWBo4`
-
-These credentials are stored in the `.env` file and should be used when testing authenticated endpoints or simulating user interactions.
+Use the credentials defined in your local `.env` (`TREEOS_TEST_USER` / `TREEOS_TEST_PASSWORD`). They may differ between machines; do not rely on hard-coded values here.

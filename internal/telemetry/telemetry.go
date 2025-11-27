@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"go.opentelemetry.io/otel"
@@ -16,6 +17,7 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 	"go.opentelemetry.io/otel/trace"
+	"treeos/internal/logging"
 )
 
 var tracer trace.Tracer
@@ -97,21 +99,31 @@ func InitializeFromEnv(ctx context.Context) (func(context.Context) error, error)
 	serviceVersion := getEnvOrDefault("OTEL_SERVICE_VERSION", "unknown")
 	environment := getEnvOrDefault("OTEL_ENVIRONMENT", "development")
 
+	honeycombKey := os.Getenv("HONEYCOMB_API_KEY")
+	otelEndpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+
+	// No configuration: disable silently.
+	if honeycombKey == "" && otelEndpoint == "" {
+		logging.Infof("Telemetry disabled (set HONEYCOMB_API_KEY or OTEL_EXPORTER_OTLP_ENDPOINT to enable)")
+		return func(context.Context) error { return nil }, nil
+	}
+
 	// Determine endpoint and headers based on environment
 	var endpoint string
 	var headers map[string]string
 	var insecure bool
 
-	if honeycombKey := os.Getenv("HONEYCOMB_API_KEY"); honeycombKey != "" {
+	switch {
+	case honeycombKey != "":
 		// Honeycomb configuration
 		endpoint = getEnvOrDefault("HONEYCOMB_ENDPOINT", "api.honeycomb.io")
 		headers = map[string]string{
 			"x-honeycomb-team": honeycombKey,
 		}
 		insecure = false
-	} else {
-		// Default to Jaeger for local development
-		endpoint = getEnvOrDefault("OTEL_EXPORTER_OTLP_ENDPOINT", "localhost:4318")
+	case otelEndpoint != "":
+		// Manual OTLP configuration
+		endpoint = otelEndpoint
 		headers = nil
 		insecure = true
 	}

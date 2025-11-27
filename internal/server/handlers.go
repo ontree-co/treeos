@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
-	"log"
 	"net/http"
 	"os"
 	"os/exec"
@@ -15,6 +14,7 @@ import (
 	"runtime"
 	"strings"
 	"time"
+	"treeos/internal/logging"
 
 	"treeos/internal/caddy"
 	"treeos/internal/database"
@@ -170,12 +170,12 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == "POST" {
-		log.Printf("[DEBUG] Setup POST request received")
+		logging.Debugf("Setup POST request received")
 
 		// Parse form
 		err := r.ParseForm()
 		if err != nil {
-			log.Printf("[DEBUG] Failed to parse form: %v", err)
+			logging.Debugf("Failed to parse form: %v", err)
 			http.Error(w, "Failed to parse form", http.StatusBadRequest)
 			return
 		}
@@ -186,7 +186,7 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 		nodeName := r.FormValue("node_name")
 		nodeIcon := r.FormValue("node_icon")
 
-		log.Printf("[DEBUG] Form values - username: %s, nodeName: %s, nodeIcon: %s, password length: %d",
+		logging.Debugf("Form values - username: %s, nodeName: %s, nodeIcon: %s, password length: %d",
 			username, nodeName, nodeIcon, len(password))
 
 		// Default icon if none selected - use first icon to match frontend
@@ -212,14 +212,14 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 			nodeName = "OnTree Node"
 		}
 
-		log.Printf("[DEBUG] Validation complete. Errors: %v", errors)
+		logging.Debugf("Validation complete. Errors: %v", errors)
 
 		if len(errors) == 0 {
-			log.Printf("[DEBUG] No validation errors, proceeding with session storage")
+			logging.Debugf("No validation errors, proceeding with session storage")
 			// Store setup data in session and redirect to system check
 			session, err := s.sessionStore.Get(r, "ontree-session")
 			if err != nil {
-				log.Printf("Failed to get session: %v", err)
+				logging.Errorf("Failed to get session: %v", err)
 				http.Error(w, "Session error", http.StatusInternalServerError)
 				return
 			}
@@ -231,16 +231,16 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 			session.Values["setup_node_icon"] = nodeIcon
 
 			if err := session.Save(r, w); err != nil {
-				log.Printf("[DEBUG] Failed to save session with setup data: %v", err)
+				logging.Debugf("Failed to save session with setup data: %v", err)
 				http.Error(w, "Session error", http.StatusInternalServerError)
 				return
 			}
 
-			log.Printf("[DEBUG] Setup data stored in session successfully, redirecting to system check")
+			logging.Debugf("Setup data stored in session successfully, redirecting to system check")
 			http.Redirect(w, r, "/systemcheck", http.StatusFound)
 			return
 		}
-		log.Printf("[DEBUG] Validation failed, re-rendering form with errors")
+		logging.Debugf("Validation failed, re-rendering form with errors")
 
 		// Render with errors
 		data := s.baseTemplateData(nil) // nil for user since not logged in
@@ -254,7 +254,7 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 		tmpl := s.templates["setup"]
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
-			log.Printf("Failed to execute template: %v", err)
+			logging.Errorf("Failed to execute template: %v", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		}
 		return
@@ -270,7 +270,7 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 	tmpl := s.templates["setup"]
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
-		log.Printf("Failed to execute template: %v", err)
+		logging.Errorf("Failed to execute template: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
 }
@@ -299,7 +299,7 @@ func (s *Server) handleSetupSystemCheck(w http.ResponseWriter, r *http.Request) 
 	// Get session to retrieve setup data
 	session, err := s.sessionStore.Get(r, "ontree-session")
 	if err != nil {
-		log.Printf("Failed to get session: %v", err)
+		logging.Errorf("Failed to get session: %v", err)
 		http.Redirect(w, r, "/setup", http.StatusFound)
 		return
 	}
@@ -312,7 +312,7 @@ func (s *Server) handleSetupSystemCheck(w http.ResponseWriter, r *http.Request) 
 		nodeIcon, _ := session.Values["setup_node_icon"].(string) //nolint:errcheck
 
 		if !usernameOk || !passwordOk || username == "" || password == "" {
-			log.Printf("Incomplete setup data in session, redirecting to setup")
+			logging.Infof("Incomplete setup data in session, redirecting to setup")
 			http.Redirect(w, r, "/setup", http.StatusFound)
 			return
 		}
@@ -335,7 +335,7 @@ func (s *Server) handleSetupSystemCheck(w http.ResponseWriter, r *http.Request) 
 		// Complete the setup process
 		user, err := s.createUser(username, password, "", true, true)
 		if err != nil {
-			log.Printf("Failed to create user during system check: %v", err)
+			logging.Errorf("Failed to create user during system check: %v", err)
 			http.Error(w, "Failed to create user", http.StatusInternalServerError)
 			return
 		}
@@ -355,7 +355,7 @@ func (s *Server) handleSetupSystemCheck(w http.ResponseWriter, r *http.Request) 
 		}
 
 		if err != nil {
-			log.Printf("Failed to update system setup: %v", err)
+			logging.Errorf("Failed to update system setup: %v", err)
 		}
 
 		// Log the user in
@@ -366,10 +366,10 @@ func (s *Server) handleSetupSystemCheck(w http.ResponseWriter, r *http.Request) 
 		delete(session.Values, "setup_node_name")
 		delete(session.Values, "setup_node_icon")
 		if err := session.Save(r, w); err != nil {
-			log.Printf("Failed to save session: %v", err)
+			logging.Errorf("Failed to save session: %v", err)
 		}
 
-		log.Printf("Setup completed via system check. Admin user: %s, Node: %s, Action: %s", user.Username, nodeName, action)
+		logging.Infof("Setup completed via system check. Admin user: %s, Node: %s, Action: %s", user.Username, nodeName, action)
 
 		http.Redirect(w, r, "/", http.StatusFound)
 		return
@@ -384,7 +384,7 @@ func (s *Server) handleSetupSystemCheck(w http.ResponseWriter, r *http.Request) 
 	tmpl := s.templates["systemcheck"]
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
-		log.Printf("Failed to execute template: %v", err)
+		logging.Errorf("Failed to execute template: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
 }
@@ -394,7 +394,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	// Check if user is already authenticated
 	session, err := s.sessionStore.Get(r, "ontree-session")
 	if err != nil {
-		log.Printf("Failed to get session: %v", err)
+		logging.Errorf("Failed to get session: %v", err)
 		// Continue anyway - not critical for most operations
 	}
 	if userID, ok := session.Values["user_id"].(int); ok && userID > 0 {
@@ -424,7 +424,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 			tmpl := s.templates["login"]
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
-				log.Printf("Error rendering login template: %v", err)
+				logging.Errorf("Error rendering login template: %v", err)
 				http.Error(w, "Error rendering template", http.StatusInternalServerError)
 			}
 			return
@@ -433,10 +433,10 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		// Set session
 		session.Values["user_id"] = user.ID
 		if err := session.Save(r, w); err != nil {
-			log.Printf("Failed to save session: %v", err)
+			logging.Errorf("Failed to save session: %v", err)
 		}
 
-		log.Printf("User %s logged in successfully with user_id=%d", username, user.ID)
+		logging.Infof("User %s logged in successfully with user_id=%d", username, user.ID)
 
 		// Redirect to next URL or dashboard
 		next := session.Values["next"]
@@ -444,7 +444,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 			// Clear the next value
 			delete(session.Values, "next")
 			if err := session.Save(r, w); err != nil {
-				log.Printf("Failed to save session: %v", err)
+				logging.Errorf("Failed to save session: %v", err)
 			}
 
 			// Skip deprecated/old routes and go to dashboard instead
@@ -474,7 +474,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	tmpl := s.templates["login"]
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
-		log.Printf("Error rendering login template: %v", err)
+		logging.Errorf("Error rendering login template: %v", err)
 		http.Error(w, "Error rendering template", http.StatusInternalServerError)
 	}
 }
@@ -483,7 +483,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 	session, err := s.sessionStore.Get(r, "ontree-session")
 	if err != nil {
-		log.Printf("Failed to get session: %v", err)
+		logging.Errorf("Failed to get session: %v", err)
 		// Continue anyway - not critical for most operations
 	}
 
@@ -491,10 +491,10 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 	session.Values["user_id"] = nil
 	session.Options.MaxAge = -1
 	if err := session.Save(r, w); err != nil {
-		log.Printf("Failed to save session: %v", err)
+		logging.Errorf("Failed to save session: %v", err)
 	}
 
-	log.Printf("User logged out")
+	logging.Infof("User logged out")
 
 	http.Redirect(w, r, "/login", http.StatusFound)
 }
@@ -528,7 +528,7 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 	composePath := filepath.Join(app.Path, "docker-compose.yml")
 	composeContent, err := os.ReadFile(composePath) //nolint:gosec // Path from trusted app directory
 	if err != nil {
-		log.Printf("Failed to read docker-compose.yml: %v", err)
+		logging.Errorf("Failed to read docker-compose.yml: %v", err)
 		composeContent = []byte("Failed to read docker-compose.yml")
 		warnings = append(warnings, "Unable to read docker-compose.yml; displaying placeholder content.")
 	}
@@ -537,7 +537,7 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 	envPath := filepath.Join(app.Path, ".env")
 	envContent, err := os.ReadFile(envPath) //nolint:gosec // Path from trusted app directory
 	if err != nil {
-		log.Printf("Failed to read .env: %v", err)
+		logging.Errorf("Failed to read .env: %v", err)
 		envContent = []byte("# No .env file found")
 		warnings = append(warnings, ".env file not found.")
 	}
@@ -546,7 +546,7 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 	appYmlPath := filepath.Join(app.Path, "app.yml")
 	appYmlContent, err := os.ReadFile(appYmlPath) //nolint:gosec // Path from trusted app directory
 	if err != nil {
-		log.Printf("Failed to read app.yml: %v", err)
+		logging.Errorf("Failed to read app.yml: %v", err)
 		appYmlContent = []byte("# No app.yml file found")
 		warnings = append(warnings, "app.yml file not found.")
 	}
@@ -562,7 +562,7 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 
 		containers, err := s.composeSvc.PS(ctx, opts)
 		if err != nil {
-			log.Printf("Failed to get status for app %s: %v", appName, err)
+			logging.Errorf("Failed to get status for app %s: %v", appName, err)
 		} else {
 			// Build status response
 			appStatus = &AppStatusResponse{
@@ -636,14 +636,14 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 	// Clear any flash messages from session without displaying them
 	session, err := s.sessionStore.Get(r, "ontree-session")
 	if err != nil {
-		log.Printf("Failed to get session: %v", err)
+		logging.Errorf("Failed to get session: %v", err)
 		// Continue anyway - not critical for most operations
 	}
 	session.Flashes("error")
 	session.Flashes("success")
 	session.Flashes("info")
 	if err := session.Save(r, w); err != nil {
-		log.Printf("Failed to save session: %v", err)
+		logging.Errorf("Failed to save session: %v", err)
 	}
 
 	// Don't pass messages to the template
@@ -653,7 +653,7 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 	metadata, err := yamlutil.ReadComposeMetadata(app.Path)
 	hasMetadata := err == nil && metadata != nil
 	if err != nil {
-		log.Printf("Failed to read compose metadata for app %s: %v", appName, err)
+		logging.Errorf("Failed to read compose metadata for app %s: %v", appName, err)
 		warnings = append(warnings, "Unable to read x-ontree metadata; using defaults.")
 	}
 
@@ -791,10 +791,10 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
 		// Log the full error for debugging
-		log.Printf("Error rendering app_detail template for app %s: %v", appName, err)
+		logging.Errorf("Error rendering app_detail template for app %s: %v", appName, err)
 		// Also check if it's a network error (broken pipe) and log differently
 		if !strings.Contains(err.Error(), "broken pipe") && !strings.Contains(err.Error(), "connection reset") {
-			log.Printf("Template execution error (not network): %v", err)
+			logging.Errorf("Template execution error (not network): %v", err)
 		}
 		http.Error(w, "Error rendering template", http.StatusInternalServerError)
 		return
@@ -860,7 +860,7 @@ func (s *Server) handleAppComposeEdit(w http.ResponseWriter, r *http.Request) {
 	tmpl := s.templates["app_compose_edit"]
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
-		log.Printf("Failed to render edit template: %v", err)
+		logging.Errorf("Failed to render edit template: %v", err)
 		http.Error(w, "Failed to render template", http.StatusInternalServerError)
 	}
 }
@@ -909,7 +909,7 @@ func (s *Server) handleAppComposeUpdate(w http.ResponseWriter, r *http.Request) 
 		// Show error in edit form
 		appDetails, detailErr := s.getAppDetails(appName)
 		if detailErr != nil {
-			log.Printf("Failed to load app details for %s during compose validation: %v", appName, detailErr)
+			logging.Errorf("Failed to load app details for %s during compose validation: %v", appName, detailErr)
 			appDetails = &containerruntime.App{
 				Name: appName,
 				Path: filepath.Join(s.config.AppsDir, appName),
@@ -925,7 +925,7 @@ func (s *Server) handleAppComposeUpdate(w http.ResponseWriter, r *http.Request) 
 		tmpl := s.templates["app_compose_edit"]
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
-			log.Printf("Failed to render template: %v", err)
+			logging.Errorf("Failed to render template: %v", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 		}
 		return
@@ -938,7 +938,7 @@ func (s *Server) handleAppComposeUpdate(w http.ResponseWriter, r *http.Request) 
 			// Show error in edit form
 			appDetails, detailErr := s.getAppDetails(appName)
 			if detailErr != nil {
-				log.Printf("Failed to load app details for %s during app.yml validation: %v", appName, detailErr)
+				logging.Errorf("Failed to load app details for %s during app.yml validation: %v", appName, detailErr)
 				appDetails = &containerruntime.App{
 					Name: appName,
 					Path: filepath.Join(s.config.AppsDir, appName),
@@ -954,7 +954,7 @@ func (s *Server) handleAppComposeUpdate(w http.ResponseWriter, r *http.Request) 
 			tmpl := s.templates["app_compose_edit"]
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
-				log.Printf("Failed to render template: %v", err)
+				logging.Errorf("Failed to render template: %v", err)
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 			}
 			return
@@ -971,7 +971,7 @@ func (s *Server) handleAppComposeUpdate(w http.ResponseWriter, r *http.Request) 
 	composePath := filepath.Join(appDetails.Path, "docker-compose.yml")
 	// Use 0644 for docker-compose.yml files as they need to be readable by docker daemon
 	if err := os.WriteFile(composePath, []byte(composeContent), 0644); err != nil { //nolint:gosec // Compose files need to be world-readable
-		log.Printf("Failed to write compose file: %v", err)
+		logging.Errorf("Failed to write compose file: %v", err)
 		http.Error(w, "Failed to save docker-compose.yml", http.StatusInternalServerError)
 		return
 	}
@@ -979,7 +979,7 @@ func (s *Server) handleAppComposeUpdate(w http.ResponseWriter, r *http.Request) 
 	// Write .env file (can be empty)
 	envPath := filepath.Join(appDetails.Path, ".env")
 	if err := os.WriteFile(envPath, []byte(envContent), 0640); err != nil { //nolint:gosec // Env file permissions appropriate
-		log.Printf("Failed to write .env file: %v", err)
+		logging.Errorf("Failed to write .env file: %v", err)
 		// Don't fail the whole operation if .env fails
 	}
 
@@ -987,7 +987,7 @@ func (s *Server) handleAppComposeUpdate(w http.ResponseWriter, r *http.Request) 
 	if appYmlContent != "" {
 		appYmlPath := filepath.Join(appDetails.Path, "app.yml")
 		if err := os.WriteFile(appYmlPath, []byte(appYmlContent), 0644); err != nil { //nolint:gosec // App yml needs to be readable
-			log.Printf("Failed to write app.yml file: %v", err)
+			logging.Errorf("Failed to write app.yml file: %v", err)
 			// Don't fail the whole operation if app.yml fails
 		}
 	}
@@ -998,7 +998,7 @@ func (s *Server) handleAppComposeUpdate(w http.ResponseWriter, r *http.Request) 
 	// Get session for flash message
 	session, err := s.sessionStore.Get(r, "ontree-session")
 	if err != nil {
-		log.Printf("Failed to get session: %v", err)
+		logging.Errorf("Failed to get session: %v", err)
 	}
 
 	if containerRunning {
@@ -1008,7 +1008,7 @@ func (s *Server) handleAppComposeUpdate(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if err := session.Save(r, w); err != nil {
-		log.Printf("Failed to save session: %v", err)
+		logging.Errorf("Failed to save session: %v", err)
 	}
 
 	// Redirect to app detail page
@@ -1036,11 +1036,11 @@ func (s *Server) handleAppExpose(w http.ResponseWriter, r *http.Request) {
 	if !s.caddyAvailable || s.caddyClient == nil {
 		session, err := s.sessionStore.Get(r, "ontree-session")
 		if err != nil {
-			log.Printf("Failed to get session: %v", err)
+			logging.Errorf("Failed to get session: %v", err)
 		}
 		session.AddFlash("Cannot expose app: Caddy is not available. Please ensure Caddy is installed and running.", "error")
 		if err := session.Save(r, w); err != nil {
-			log.Printf("Failed to save session: %v", err)
+			logging.Errorf("Failed to save session: %v", err)
 		}
 		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
 		return
@@ -1049,10 +1049,10 @@ func (s *Server) handleAppExpose(w http.ResponseWriter, r *http.Request) {
 	// Get app details from container runtime
 	appDetails, err := s.getAppDetails(appName)
 	if err != nil {
-		log.Printf("Failed to get app details: %v", err)
+		logging.Errorf("Failed to get app details: %v", err)
 		session, sessErr := s.sessionStore.Get(r, "ontree-session")
 		if sessErr != nil {
-			log.Printf("Failed to get session: %v", sessErr)
+			logging.Errorf("Failed to get session: %v", sessErr)
 		}
 		message := "Failed to expose app: app not found"
 		if errors.Is(err, errRuntimeUnavailable) {
@@ -1060,7 +1060,7 @@ func (s *Server) handleAppExpose(w http.ResponseWriter, r *http.Request) {
 		}
 		session.AddFlash(message, "error")
 		if err := session.Save(r, w); err != nil {
-			log.Printf("Failed to save session: %v", err)
+			logging.Errorf("Failed to save session: %v", err)
 		}
 		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
 		return
@@ -1069,7 +1069,7 @@ func (s *Server) handleAppExpose(w http.ResponseWriter, r *http.Request) {
 	// Get metadata from compose file
 	metadata, err := yamlutil.ReadComposeMetadata(appDetails.Path)
 	if err != nil {
-		log.Printf("Failed to read compose metadata: %v", err)
+		logging.Errorf("Failed to read compose metadata: %v", err)
 		// Initialize with defaults if metadata doesn't exist
 		metadata = &yamlutil.OnTreeMetadata{
 			Subdomain: "",
@@ -1091,11 +1091,11 @@ func (s *Server) handleAppExpose(w http.ResponseWriter, r *http.Request) {
 	if metadata.IsExposed {
 		session, err := s.sessionStore.Get(r, "ontree-session")
 		if err != nil {
-			log.Printf("Failed to get session: %v", err)
+			logging.Errorf("Failed to get session: %v", err)
 		}
 		session.AddFlash("App is already exposed", "info")
 		if err := session.Save(r, w); err != nil {
-			log.Printf("Failed to save session: %v", err)
+			logging.Errorf("Failed to save session: %v", err)
 		}
 		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
 		return
@@ -1115,7 +1115,7 @@ func (s *Server) handleAppExpose(w http.ResponseWriter, r *http.Request) {
 								parts := strings.Split(portStr, ":")
 								if len(parts) >= 1 {
 									if _, err := fmt.Sscanf(parts[0], "%d", &metadata.HostPort); err != nil {
-										log.Printf("Failed to parse port from %s: %v", parts[0], err)
+										logging.Errorf("Failed to parse port from %s: %v", parts[0], err)
 									}
 									break
 								}
@@ -1129,23 +1129,23 @@ func (s *Server) handleAppExpose(w http.ResponseWriter, r *http.Request) {
 
 	// Use lowercase app name as ID for route
 	appID := strings.ToLower(appName)
-	log.Printf("[Expose] Exposing app %s with subdomain %s on port %d", appName, metadata.Subdomain, metadata.HostPort)
+	logging.Infof("[Expose] Exposing app %s with subdomain %s on port %d", appName, metadata.Subdomain, metadata.HostPort)
 
 	// Create route config (only for public domain, Tailscale handled separately)
 	routeConfig := caddy.CreateRouteConfig(appID, metadata.Subdomain, metadata.HostPort, s.config.PublicBaseDomain, "")
 
 	// Add route to Caddy
-	log.Printf("[Expose] Sending route config to Caddy for app %s", appName)
+	logging.Infof("[Expose] Sending route config to Caddy for app %s", appName)
 	err = s.caddyClient.AddOrUpdateRoute(routeConfig)
 	if err != nil {
-		log.Printf("[Expose] Failed to add route to Caddy: %v", err)
+		logging.Errorf("[Expose] Failed to add route to Caddy: %v", err)
 		session, err := s.sessionStore.Get(r, "ontree-session")
 		if err != nil {
-			log.Printf("Failed to get session: %v", err)
+			logging.Errorf("Failed to get session: %v", err)
 		}
 		session.AddFlash(fmt.Sprintf("Failed to expose app: %v", err), "error")
 		if err := session.Save(r, w); err != nil {
-			log.Printf("Failed to save session: %v", err)
+			logging.Errorf("Failed to save session: %v", err)
 		}
 		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
 		return
@@ -1155,31 +1155,31 @@ func (s *Server) handleAppExpose(w http.ResponseWriter, r *http.Request) {
 	metadata.IsExposed = true
 	err = yamlutil.UpdateComposeMetadata(appDetails.Path, metadata)
 	if err != nil {
-		log.Printf("Failed to update compose metadata: %v", err)
+		logging.Errorf("Failed to update compose metadata: %v", err)
 		// Try to rollback Caddy change
 		_ = s.caddyClient.DeleteRoute(fmt.Sprintf("route-for-%s", appID))
 		session, err := s.sessionStore.Get(r, "ontree-session")
 		if err != nil {
-			log.Printf("Failed to get session: %v", err)
+			logging.Errorf("Failed to get session: %v", err)
 		}
 		session.AddFlash("Failed to expose app: could not update metadata", "error")
 		if err := session.Save(r, w); err != nil {
-			log.Printf("Failed to save session: %v", err)
+			logging.Errorf("Failed to save session: %v", err)
 		}
 		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
 		return
 	}
 
-	log.Printf("Successfully exposed app %s", appName)
+	logging.Infof("Successfully exposed app %s", appName)
 	session, err := s.sessionStore.Get(r, "ontree-session")
 	if err != nil {
-		log.Printf("Failed to get session: %v", err)
+		logging.Errorf("Failed to get session: %v", err)
 	}
 
 	publicURL := fmt.Sprintf("https://%s.%s", metadata.Subdomain, s.config.PublicBaseDomain)
 	session.AddFlash(fmt.Sprintf("App exposed successfully at: %s", publicURL), "success")
 	if err := session.Save(r, w); err != nil {
-		log.Printf("Failed to save session: %v", err)
+		logging.Errorf("Failed to save session: %v", err)
 	}
 
 	http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
@@ -1205,10 +1205,10 @@ func (s *Server) handleAppUnexpose(w http.ResponseWriter, r *http.Request) {
 	// Get app details from container runtime
 	appDetails, err := s.getAppDetails(appName)
 	if err != nil {
-		log.Printf("Failed to get app details: %v", err)
+		logging.Errorf("Failed to get app details: %v", err)
 		session, sessErr := s.sessionStore.Get(r, "ontree-session")
 		if sessErr != nil {
-			log.Printf("Failed to get session: %v", sessErr)
+			logging.Errorf("Failed to get session: %v", sessErr)
 		}
 		message := "Failed to unexpose app: app not found"
 		if errors.Is(err, errRuntimeUnavailable) {
@@ -1216,7 +1216,7 @@ func (s *Server) handleAppUnexpose(w http.ResponseWriter, r *http.Request) {
 		}
 		session.AddFlash(message, "error")
 		if err := session.Save(r, w); err != nil {
-			log.Printf("Failed to save session: %v", err)
+			logging.Errorf("Failed to save session: %v", err)
 		}
 		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
 		return
@@ -1225,14 +1225,14 @@ func (s *Server) handleAppUnexpose(w http.ResponseWriter, r *http.Request) {
 	// Get metadata from compose file
 	metadata, err := yamlutil.ReadComposeMetadata(appDetails.Path)
 	if err != nil {
-		log.Printf("Failed to read compose metadata: %v", err)
+		logging.Errorf("Failed to read compose metadata: %v", err)
 		session, err := s.sessionStore.Get(r, "ontree-session")
 		if err != nil {
-			log.Printf("Failed to get session: %v", err)
+			logging.Errorf("Failed to get session: %v", err)
 		}
 		session.AddFlash("Failed to unexpose app: could not read metadata", "error")
 		if err := session.Save(r, w); err != nil {
-			log.Printf("Failed to save session: %v", err)
+			logging.Errorf("Failed to save session: %v", err)
 		}
 		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
 		return
@@ -1242,11 +1242,11 @@ func (s *Server) handleAppUnexpose(w http.ResponseWriter, r *http.Request) {
 	if !metadata.IsExposed {
 		session, err := s.sessionStore.Get(r, "ontree-session")
 		if err != nil {
-			log.Printf("Failed to get session: %v", err)
+			logging.Errorf("Failed to get session: %v", err)
 		}
 		session.AddFlash("App is not exposed", "info")
 		if err := session.Save(r, w); err != nil {
-			log.Printf("Failed to save session: %v", err)
+			logging.Errorf("Failed to save session: %v", err)
 		}
 		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
 		return
@@ -1258,7 +1258,7 @@ func (s *Server) handleAppUnexpose(w http.ResponseWriter, r *http.Request) {
 		routeID := fmt.Sprintf("route-for-%s", appID)
 		err = s.caddyClient.DeleteRoute(routeID)
 		if err != nil {
-			log.Printf("Failed to delete route from Caddy: %v", err)
+			logging.Errorf("Failed to delete route from Caddy: %v", err)
 			// Continue anyway - we'll update the metadata
 		}
 	}
@@ -1267,27 +1267,27 @@ func (s *Server) handleAppUnexpose(w http.ResponseWriter, r *http.Request) {
 	metadata.IsExposed = false
 	err = yamlutil.UpdateComposeMetadata(appDetails.Path, metadata)
 	if err != nil {
-		log.Printf("Failed to update compose metadata: %v", err)
+		logging.Errorf("Failed to update compose metadata: %v", err)
 		session, err := s.sessionStore.Get(r, "ontree-session")
 		if err != nil {
-			log.Printf("Failed to get session: %v", err)
+			logging.Errorf("Failed to get session: %v", err)
 		}
 		session.AddFlash("Failed to unexpose app: could not update metadata", "error")
 		if err := session.Save(r, w); err != nil {
-			log.Printf("Failed to save session: %v", err)
+			logging.Errorf("Failed to save session: %v", err)
 		}
 		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
 		return
 	}
 
-	log.Printf("Successfully unexposed app %s", appName)
+	logging.Infof("Successfully unexposed app %s", appName)
 	session, err := s.sessionStore.Get(r, "ontree-session")
 	if err != nil {
-		log.Printf("Failed to get session: %v", err)
+		logging.Errorf("Failed to get session: %v", err)
 	}
 	session.AddFlash("App unexposed successfully", "success")
 	if err := session.Save(r, w); err != nil {
-		log.Printf("Failed to save session: %v", err)
+		logging.Errorf("Failed to save session: %v", err)
 	}
 
 	http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
@@ -1316,7 +1316,7 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 		&setup.UptimeKumaBaseURL, &setup.UpdateChannel, &nodeIcon, &nodeName)
 
 	if err != nil && err != sql.ErrNoRows {
-		log.Printf("Failed to get system setup: %v", err)
+		logging.Errorf("Failed to get system setup: %v", err)
 		http.Error(w, "Failed to load settings", http.StatusInternalServerError)
 		return
 	}
@@ -1324,7 +1324,7 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	// Get flash messages
 	session, err := s.sessionStore.Get(r, "ontree-session")
 	if err != nil {
-		log.Printf("Failed to get session: %v", err)
+		logging.Errorf("Failed to get session: %v", err)
 	}
 
 	var messages []interface{}
@@ -1345,7 +1345,7 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if err := session.Save(r, w); err != nil {
-		log.Printf("Failed to save session: %v", err)
+		logging.Errorf("Failed to save session: %v", err)
 	}
 
 	// Prepare template data
@@ -1406,7 +1406,7 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	// Get completed models for dropdown
 	completedModels, err := ollama.GetCompletedModels(s.db)
 	if err != nil {
-		log.Printf("Failed to get completed models: %v", err)
+		logging.Errorf("Failed to get completed models: %v", err)
 		completedModels = []ollama.OllamaModel{} // Empty list if error
 	}
 	data["CompletedModels"] = completedModels
@@ -1437,7 +1437,7 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
-		log.Printf("Error rendering template: %v", err)
+		logging.Errorf("Error rendering template: %v", err)
 		http.Error(w, "Error rendering template", http.StatusInternalServerError)
 		return
 	}
@@ -1465,7 +1465,7 @@ func (s *Server) handleSettingsUpdate(w http.ResponseWriter, r *http.Request) {
 		VALUES (1, 1)
 	`)
 	if err != nil {
-		log.Printf("Failed to ensure system_setup exists: %v", err)
+		logging.Errorf("Failed to ensure system_setup exists: %v", err)
 	}
 
 	// Handle different actions
@@ -1479,25 +1479,25 @@ func (s *Server) handleSettingsUpdate(w http.ResponseWriter, r *http.Request) {
 		`, nodeName)
 
 		if err != nil {
-			log.Printf("Failed to update node name: %v", err)
+			logging.Errorf("Failed to update node name: %v", err)
 			session, sessionErr := s.sessionStore.Get(r, "ontree-session")
 			if sessionErr != nil {
-				log.Printf("Failed to get session: %v", sessionErr)
+				logging.Errorf("Failed to get session: %v", sessionErr)
 			} else {
 				session.AddFlash("Failed to save node name", "error")
 				if saveErr := session.Save(r, w); saveErr != nil {
-					log.Printf("Failed to save session: %v", saveErr)
+					logging.Errorf("Failed to save session: %v", saveErr)
 				}
 			}
 		} else {
 			// Success message
 			session, sessionErr := s.sessionStore.Get(r, "ontree-session")
 			if sessionErr != nil {
-				log.Printf("Failed to get session: %v", sessionErr)
+				logging.Errorf("Failed to get session: %v", sessionErr)
 			} else {
 				session.AddFlash("Node name updated successfully", "success")
 				if saveErr := session.Save(r, w); saveErr != nil {
-					log.Printf("Failed to save session: %v", saveErr)
+					logging.Errorf("Failed to save session: %v", saveErr)
 				}
 			}
 		}
@@ -1518,25 +1518,25 @@ func (s *Server) handleSettingsUpdate(w http.ResponseWriter, r *http.Request) {
 		`, nodeIcon)
 
 		if err != nil {
-			log.Printf("Failed to update node icon: %v", err)
+			logging.Errorf("Failed to update node icon: %v", err)
 			session, sessionErr := s.sessionStore.Get(r, "ontree-session")
 			if sessionErr != nil {
-				log.Printf("Failed to get session: %v", sessionErr)
+				logging.Errorf("Failed to get session: %v", sessionErr)
 			} else {
 				session.AddFlash("Failed to save node icon", "error")
 				if saveErr := session.Save(r, w); saveErr != nil {
-					log.Printf("Failed to save session: %v", saveErr)
+					logging.Errorf("Failed to save session: %v", saveErr)
 				}
 			}
 		} else {
 			// Success message
 			session, sessionErr := s.sessionStore.Get(r, "ontree-session")
 			if sessionErr != nil {
-				log.Printf("Failed to get session: %v", sessionErr)
+				logging.Errorf("Failed to get session: %v", sessionErr)
 			} else {
 				session.AddFlash("Node icon updated successfully", "success")
 				if saveErr := session.Save(r, w); saveErr != nil {
-					log.Printf("Failed to save session: %v", saveErr)
+					logging.Errorf("Failed to save session: %v", saveErr)
 				}
 			}
 		}
@@ -1612,14 +1612,14 @@ func (s *Server) handleSettingsUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		log.Printf("Failed to update settings: %v", err)
+		logging.Errorf("Failed to update settings: %v", err)
 		session, sessionErr := s.sessionStore.Get(r, "ontree-session")
 		if sessionErr != nil {
-			log.Printf("Failed to get session: %v", sessionErr)
+			logging.Errorf("Failed to get session: %v", sessionErr)
 		} else {
 			session.AddFlash("Failed to save settings", "error")
 			if saveErr := session.Save(r, w); saveErr != nil {
-				log.Printf("Failed to save session: %v", saveErr)
+				logging.Errorf("Failed to save session: %v", saveErr)
 			}
 		}
 		http.Redirect(w, r, "/settings", http.StatusFound)
@@ -1655,11 +1655,11 @@ func (s *Server) handleSettingsUpdate(w http.ResponseWriter, r *http.Request) {
 	// Success message
 	session, err := s.sessionStore.Get(r, "ontree-session")
 	if err != nil {
-		log.Printf("Failed to get session: %v", err)
+		logging.Errorf("Failed to get session: %v", err)
 	} else {
 		session.AddFlash("Settings saved successfully", "success")
 		if err := session.Save(r, w); err != nil {
-			log.Printf("Failed to save session: %v", err)
+			logging.Errorf("Failed to save session: %v", err)
 		}
 	}
 
@@ -1904,11 +1904,11 @@ func (s *Server) handleAppExposeTailscale(w http.ResponseWriter, r *http.Request
 	if s.config.TailscaleAuthKey == "" {
 		session, err := s.sessionStore.Get(r, "ontree-session")
 		if err != nil {
-			log.Printf("Failed to get session: %v", err)
+			logging.Errorf("Failed to get session: %v", err)
 		}
 		session.AddFlash("Cannot expose app via Tailscale: Auth key not configured in settings", "error")
 		if err := session.Save(r, w); err != nil {
-			log.Printf("Failed to save session: %v", err)
+			logging.Errorf("Failed to save session: %v", err)
 		}
 		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
 		return
@@ -1917,10 +1917,10 @@ func (s *Server) handleAppExposeTailscale(w http.ResponseWriter, r *http.Request
 	// Get app details from container runtime
 	appDetails, err := s.getAppDetails(appName)
 	if err != nil {
-		log.Printf("Failed to get app details: %v", err)
+		logging.Errorf("Failed to get app details: %v", err)
 		session, sessErr := s.sessionStore.Get(r, "ontree-session")
 		if sessErr != nil {
-			log.Printf("Failed to get session: %v", sessErr)
+			logging.Errorf("Failed to get session: %v", sessErr)
 		}
 		message := "Failed to expose app: app not found"
 		if errors.Is(err, errRuntimeUnavailable) {
@@ -1928,7 +1928,7 @@ func (s *Server) handleAppExposeTailscale(w http.ResponseWriter, r *http.Request
 		}
 		session.AddFlash(message, "error")
 		if err := session.Save(r, w); err != nil {
-			log.Printf("Failed to save session: %v", err)
+			logging.Errorf("Failed to save session: %v", err)
 		}
 		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
 		return
@@ -1937,7 +1937,7 @@ func (s *Server) handleAppExposeTailscale(w http.ResponseWriter, r *http.Request
 	// Get metadata from compose file
 	metadata, err := yamlutil.ReadComposeMetadata(appDetails.Path)
 	if err != nil {
-		log.Printf("Failed to read compose metadata: %v", err)
+		logging.Errorf("Failed to read compose metadata: %v", err)
 		// Initialize with defaults if metadata doesn't exist
 		metadata = &yamlutil.OnTreeMetadata{}
 	}
@@ -1946,11 +1946,11 @@ func (s *Server) handleAppExposeTailscale(w http.ResponseWriter, r *http.Request
 	if metadata.TailscaleExposed {
 		session, err := s.sessionStore.Get(r, "ontree-session")
 		if err != nil {
-			log.Printf("Failed to get session: %v", err)
+			logging.Errorf("Failed to get session: %v", err)
 		}
 		session.AddFlash("App is already exposed via Tailscale", "info")
 		if err := session.Save(r, w); err != nil {
-			log.Printf("Failed to save session: %v", err)
+			logging.Errorf("Failed to save session: %v", err)
 		}
 		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
 		return
@@ -1962,19 +1962,19 @@ func (s *Server) handleAppExposeTailscale(w http.ResponseWriter, r *http.Request
 		hostname = appName
 	}
 
-	log.Printf("[Tailscale Expose] Exposing app %s with hostname %s", appName, hostname)
+	logging.Infof("[Tailscale Expose] Exposing app %s with hostname %s", appName, hostname)
 
 	// Modify compose file to add Tailscale sidecar
 	err = yamlutil.ModifyComposeForTailscale(appDetails.Path, appName, hostname, s.config.TailscaleAuthKey)
 	if err != nil {
-		log.Printf("[Tailscale Expose] Failed to modify compose file: %v", err)
+		logging.Errorf("[Tailscale Expose] Failed to modify compose file: %v", err)
 		session, err := s.sessionStore.Get(r, "ontree-session")
 		if err != nil {
-			log.Printf("Failed to get session: %v", err)
+			logging.Errorf("Failed to get session: %v", err)
 		}
 		session.AddFlash(fmt.Sprintf("Failed to expose app via Tailscale: %v", err), "error")
 		if err := session.Save(r, w); err != nil {
-			log.Printf("Failed to save session: %v", err)
+			logging.Errorf("Failed to save session: %v", err)
 		}
 		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
 		return
@@ -1985,32 +1985,32 @@ func (s *Server) handleAppExposeTailscale(w http.ResponseWriter, r *http.Request
 	metadata.TailscaleExposed = true
 	err = yamlutil.UpdateComposeMetadata(appDetails.Path, metadata)
 	if err != nil {
-		log.Printf("Failed to update compose metadata: %v", err)
+		logging.Errorf("Failed to update compose metadata: %v", err)
 	}
 
 	// Restart containers with new configuration
-	log.Printf("[Tailscale Expose] Restarting containers for app %s", appName)
+	logging.Infof("[Tailscale Expose] Restarting containers for app %s", appName)
 	cmd := fmt.Sprintf("cd '%s' && docker compose down && docker compose up -d", appDetails.Path)
 	output, err := s.executeCommand(cmd)
 	if err != nil {
-		log.Printf("[Tailscale Expose] Failed to restart containers: %v, output: %s", err, output)
+		logging.Errorf("[Tailscale Expose] Failed to restart containers: %v, output: %s", err, output)
 		// Try to rollback
 		if err := yamlutil.RestoreComposeFromTailscale(appDetails.Path); err != nil {
-			log.Printf("Failed to restore compose from Tailscale: %v", err)
+			logging.Errorf("Failed to restore compose from Tailscale: %v", err)
 		}
 		metadata.TailscaleHostname = ""
 		metadata.TailscaleExposed = false
 		if err := yamlutil.UpdateComposeMetadata(appDetails.Path, metadata); err != nil {
-			log.Printf("Failed to update compose metadata: %v", err)
+			logging.Errorf("Failed to update compose metadata: %v", err)
 		}
 
 		session, err := s.sessionStore.Get(r, "ontree-session")
 		if err != nil {
-			log.Printf("Failed to get session: %v", err)
+			logging.Errorf("Failed to get session: %v", err)
 		}
 		session.AddFlash("Failed to restart containers after adding Tailscale", "error")
 		if err := session.Save(r, w); err != nil {
-			log.Printf("Failed to save session: %v", err)
+			logging.Errorf("Failed to save session: %v", err)
 		}
 		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
 		return
@@ -2019,7 +2019,7 @@ func (s *Server) handleAppExposeTailscale(w http.ResponseWriter, r *http.Request
 	// Success
 	session, err := s.sessionStore.Get(r, "ontree-session")
 	if err != nil {
-		log.Printf("Failed to get session: %v", err)
+		logging.Errorf("Failed to get session: %v", err)
 	}
 
 	tailscaleURL := fmt.Sprintf("https://%s", hostname)
@@ -2029,7 +2029,7 @@ func (s *Server) handleAppExposeTailscale(w http.ResponseWriter, r *http.Request
 
 	session.AddFlash(fmt.Sprintf("App exposed via Tailscale at: %s", tailscaleURL), "success")
 	if err := session.Save(r, w); err != nil {
-		log.Printf("Failed to save session: %v", err)
+		logging.Errorf("Failed to save session: %v", err)
 	}
 
 	http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
@@ -2055,10 +2055,10 @@ func (s *Server) handleAppUnexposeTailscale(w http.ResponseWriter, r *http.Reque
 	// Get app details from container runtime
 	appDetails, err := s.getAppDetails(appName)
 	if err != nil {
-		log.Printf("Failed to get app details: %v", err)
+		logging.Errorf("Failed to get app details: %v", err)
 		session, sessErr := s.sessionStore.Get(r, "ontree-session")
 		if sessErr != nil {
-			log.Printf("Failed to get session: %v", sessErr)
+			logging.Errorf("Failed to get session: %v", sessErr)
 		}
 		message := "Failed to unexpose app: app not found"
 		if errors.Is(err, errRuntimeUnavailable) {
@@ -2066,7 +2066,7 @@ func (s *Server) handleAppUnexposeTailscale(w http.ResponseWriter, r *http.Reque
 		}
 		session.AddFlash(message, "error")
 		if err := session.Save(r, w); err != nil {
-			log.Printf("Failed to save session: %v", err)
+			logging.Errorf("Failed to save session: %v", err)
 		}
 		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
 		return
@@ -2075,14 +2075,14 @@ func (s *Server) handleAppUnexposeTailscale(w http.ResponseWriter, r *http.Reque
 	// Get metadata from compose file
 	metadata, err := yamlutil.ReadComposeMetadata(appDetails.Path)
 	if err != nil {
-		log.Printf("Failed to read compose metadata: %v", err)
+		logging.Errorf("Failed to read compose metadata: %v", err)
 		session, err := s.sessionStore.Get(r, "ontree-session")
 		if err != nil {
-			log.Printf("Failed to get session: %v", err)
+			logging.Errorf("Failed to get session: %v", err)
 		}
 		session.AddFlash("Failed to unexpose app: could not read metadata", "error")
 		if err := session.Save(r, w); err != nil {
-			log.Printf("Failed to save session: %v", err)
+			logging.Errorf("Failed to save session: %v", err)
 		}
 		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
 		return
@@ -2092,36 +2092,36 @@ func (s *Server) handleAppUnexposeTailscale(w http.ResponseWriter, r *http.Reque
 	if !metadata.TailscaleExposed {
 		session, err := s.sessionStore.Get(r, "ontree-session")
 		if err != nil {
-			log.Printf("Failed to get session: %v", err)
+			logging.Errorf("Failed to get session: %v", err)
 		}
 		session.AddFlash("App is not exposed via Tailscale", "info")
 		if err := session.Save(r, w); err != nil {
-			log.Printf("Failed to save session: %v", err)
+			logging.Errorf("Failed to save session: %v", err)
 		}
 		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
 		return
 	}
 
-	log.Printf("[Tailscale Unexpose] Removing Tailscale from app %s", appName)
+	logging.Infof("[Tailscale Unexpose] Removing Tailscale from app %s", appName)
 
 	// Stop containers first
 	cmd := fmt.Sprintf("cd '%s' && docker compose down", appDetails.Path)
 	output, err := s.executeCommand(cmd)
 	if err != nil {
-		log.Printf("[Tailscale Unexpose] Warning: Failed to stop containers: %v, output: %s", err, output)
+		logging.Errorf("[Tailscale Unexpose] Warning: Failed to stop containers: %v, output: %s", err, output)
 	}
 
 	// Remove Tailscale sidecar from container runtime-compose.yml
 	err = yamlutil.RestoreComposeFromTailscale(appDetails.Path)
 	if err != nil {
-		log.Printf("[Tailscale Unexpose] Failed to restore compose file: %v", err)
+		logging.Errorf("[Tailscale Unexpose] Failed to restore compose file: %v", err)
 		session, err := s.sessionStore.Get(r, "ontree-session")
 		if err != nil {
-			log.Printf("Failed to get session: %v", err)
+			logging.Errorf("Failed to get session: %v", err)
 		}
 		session.AddFlash(fmt.Sprintf("Failed to remove Tailscale: %v", err), "error")
 		if err := session.Save(r, w); err != nil {
-			log.Printf("Failed to save session: %v", err)
+			logging.Errorf("Failed to save session: %v", err)
 		}
 		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
 		return
@@ -2132,22 +2132,22 @@ func (s *Server) handleAppUnexposeTailscale(w http.ResponseWriter, r *http.Reque
 	metadata.TailscaleExposed = false
 	err = yamlutil.UpdateComposeMetadata(appDetails.Path, metadata)
 	if err != nil {
-		log.Printf("Failed to update compose metadata: %v", err)
+		logging.Errorf("Failed to update compose metadata: %v", err)
 	}
 
 	// Restart containers with original configuration
-	log.Printf("[Tailscale Unexpose] Restarting containers for app %s", appName)
+	logging.Infof("[Tailscale Unexpose] Restarting containers for app %s", appName)
 	cmd = fmt.Sprintf("cd '%s' && docker compose up -d", appDetails.Path)
 	output, err = s.executeCommand(cmd)
 	if err != nil {
-		log.Printf("[Tailscale Unexpose] Failed to restart containers: %v, output: %s", err, output)
+		logging.Errorf("[Tailscale Unexpose] Failed to restart containers: %v, output: %s", err, output)
 		session, err := s.sessionStore.Get(r, "ontree-session")
 		if err != nil {
-			log.Printf("Failed to get session: %v", err)
+			logging.Errorf("Failed to get session: %v", err)
 		}
 		session.AddFlash("Warning: Tailscale removed but failed to restart containers", "warning")
 		if err := session.Save(r, w); err != nil {
-			log.Printf("Failed to save session: %v", err)
+			logging.Errorf("Failed to save session: %v", err)
 		}
 		http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
 		return
@@ -2156,12 +2156,12 @@ func (s *Server) handleAppUnexposeTailscale(w http.ResponseWriter, r *http.Reque
 	// Success
 	session, err := s.sessionStore.Get(r, "ontree-session")
 	if err != nil {
-		log.Printf("Failed to get session: %v", err)
+		logging.Errorf("Failed to get session: %v", err)
 	}
 
 	session.AddFlash("App removed from Tailscale successfully", "success")
 	if err := session.Save(r, w); err != nil {
-		log.Printf("Failed to save session: %v", err)
+		logging.Errorf("Failed to save session: %v", err)
 	}
 
 	http.Redirect(w, r, fmt.Sprintf("/apps/%s", appName), http.StatusFound)
@@ -2188,7 +2188,7 @@ func (s *Server) handleTestLLMConnection(w http.ResponseWriter, r *http.Request)
 			"success": false,
 			"error":   "Invalid request format",
 		}); err != nil {
-			log.Printf("Error encoding response: %v", err)
+			logging.Errorf("Error encoding response: %v", err)
 		}
 		return
 	}
@@ -2203,7 +2203,7 @@ func (s *Server) handleTestLLMConnection(w http.ResponseWriter, r *http.Request)
 			"success": false,
 			"error":   err.Error(),
 		}); err != nil {
-			log.Printf("Error encoding response: %v", err)
+			logging.Errorf("Error encoding response: %v", err)
 		}
 		return
 	}
@@ -2212,6 +2212,6 @@ func (s *Server) handleTestLLMConnection(w http.ResponseWriter, r *http.Request)
 		"success":  true,
 		"response": response,
 	}); err != nil {
-		log.Printf("Error encoding response: %v", err)
+		logging.Errorf("Error encoding response: %v", err)
 	}
 }

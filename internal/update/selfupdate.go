@@ -5,11 +5,11 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"runtime"
 	"strconv"
 	"strings"
+	"treeos/internal/logging"
 
 	"github.com/minio/selfupdate"
 	"treeos/internal/version"
@@ -36,7 +36,7 @@ func NewService(channel UpdateChannel) *Service {
 func (s *Service) SetChannel(channel UpdateChannel) {
 	s.updateChannel = channel
 	// GitHub source doesn't need to be recreated when channel changes
-	log.Printf("Update channel changed to: %s", channel)
+	logging.Infof("Update channel changed to: %s", channel)
 }
 
 // GetChannel returns the current update channel
@@ -46,7 +46,7 @@ func (s *Service) GetChannel() UpdateChannel {
 
 // CheckForUpdate checks if an update is available
 func (s *Service) CheckForUpdate() (*UpdateInfo, error) {
-	log.Printf("Checking for updates on channel: %s", s.updateChannel)
+	logging.Infof("Checking for updates on channel: %s", s.updateChannel)
 
 	manifest, err := s.source.FetchManifest(s.updateChannel)
 	if err != nil {
@@ -70,7 +70,7 @@ func (s *Service) CheckForUpdate() (*UpdateInfo, error) {
 		SHA256:          asset.SHA256,
 	}
 
-	log.Printf("Update check complete. Current: %s, Latest: %s, Available: %v",
+	logging.Infof("Update check complete. Current: %s, Latest: %s, Available: %v",
 		info.CurrentVersion, info.LatestVersion, info.UpdateAvailable)
 
 	return info, nil
@@ -78,7 +78,7 @@ func (s *Service) CheckForUpdate() (*UpdateInfo, error) {
 
 // ApplyUpdate downloads and applies the update
 func (s *Service) ApplyUpdate(progressCallback func(stage string, percentage float64, message string)) error {
-	log.Printf("Starting update process...")
+	logging.Infof("Starting update process...")
 
 	if progressCallback != nil {
 		progressCallback("checking", 0, "Checking for updates...")
@@ -139,7 +139,7 @@ func (s *Service) ApplyUpdate(progressCallback func(stage string, percentage flo
 		progressCallback("complete", 100, "Update applied successfully!")
 	}
 
-	log.Printf("Successfully updated to version %s", manifest.Version)
+	logging.Infof("Successfully updated to version %s", manifest.Version)
 	return nil
 }
 
@@ -165,7 +165,6 @@ func (s *Service) downloadAndExtractBinary(asset *Asset, progressCallback func(d
 	// Return nil for archive data since we don't have it (and don't need it)
 	return nil, binaryData, nil
 }
-
 
 // isNewerVersion compares version strings
 func (s *Service) isNewerVersion(latestVersion string) bool {
@@ -317,7 +316,7 @@ func (s *Service) BackupCurrentBinary() (string, error) {
 		return "", fmt.Errorf("failed to write backup: %w", err)
 	}
 
-	log.Printf("Created backup at: %s", backupPath)
+	logging.Infof("Created backup at: %s", backupPath)
 	return backupPath, nil
 }
 
@@ -340,7 +339,7 @@ func (s *Service) RestoreBackup(backupPath string) error {
 		return fmt.Errorf("failed to restore backup: %w", err)
 	}
 
-	log.Printf("Restored backup from: %s", backupPath)
+	logging.Infof("Restored backup from: %s", backupPath)
 	return nil
 }
 

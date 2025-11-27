@@ -6,11 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
+	"treeos/internal/logging"
 
 	"treeos/internal/config"
 )
@@ -92,7 +92,7 @@ func SyncDatabaseWithSharedModels(db *sql.DB) error {
 		if _, exists := existingByName[candidate]; !exists {
 			modelRecord := buildModelRecordForInstalled(candidate)
 			if err := CreateModel(db, modelRecord); err != nil {
-				log.Printf("Failed to create database record for discovered model %s: %v", candidate, err)
+				logging.Errorf("Failed to create database record for discovered model %s: %v", candidate, err)
 				continue
 			}
 			existingByName[candidate] = *modelRecord
@@ -100,7 +100,7 @@ func SyncDatabaseWithSharedModels(db *sql.DB) error {
 		}
 
 		if err := UpdateModelStatus(db, candidate, StatusCompleted, 100); err != nil {
-			log.Printf("Failed to mark model %s as completed during sync: %v", candidate, err)
+			logging.Errorf("Failed to mark model %s as completed during sync: %v", candidate, err)
 		}
 	}
 
@@ -114,7 +114,7 @@ func SyncDatabaseWithSharedModels(db *sql.DB) error {
 		}
 
 		if err := UpdateModelStatus(db, record.Name, StatusNotDownloaded, 0); err != nil {
-			log.Printf("Failed to reset model %s to not_downloaded during sync: %v", record.Name, err)
+			logging.Errorf("Failed to reset model %s to not_downloaded during sync: %v", record.Name, err)
 		}
 	}
 
@@ -160,7 +160,7 @@ func discoverModelsOnDisk(sharedBase string) (map[string]struct{}, string, error
 				continue
 			}
 			if errors.Is(err, fs.ErrPermission) {
-				log.Printf("Skipping shared Ollama manifest path %s due to permission error: %v", manifestsRoot, err)
+				logging.Errorf("Skipping shared Ollama manifest path %s due to permission error: %v", manifestsRoot, err)
 				continue
 			}
 			return nil, "", err
@@ -178,7 +178,7 @@ func discoverModelsOnDisk(sharedBase string) (map[string]struct{}, string, error
 			if walkErr != nil {
 				if os.IsNotExist(walkErr) || errors.Is(walkErr, fs.ErrPermission) {
 					if errors.Is(walkErr, fs.ErrPermission) {
-						log.Printf("Skipping %s during model discovery due to permission error: %v", path, walkErr)
+						logging.Errorf("Skipping %s during model discovery due to permission error: %v", path, walkErr)
 					}
 					return nil
 				}
@@ -210,13 +210,13 @@ func discoverModelsOnDisk(sharedBase string) (map[string]struct{}, string, error
 func extractModelNameFromManifest(path, manifestsRoot string) string {
 	data, err := os.ReadFile(path) //nolint:gosec // File path from Ollama manifests directory
 	if err != nil {
-		log.Printf("Failed to read manifest %s: %v", path, err)
+		logging.Errorf("Failed to read manifest %s: %v", path, err)
 		return fallbackModelNameFromPath(path, manifestsRoot)
 	}
 
 	var metadata manifestMetadata
 	if err := json.Unmarshal(data, &metadata); err != nil {
-		log.Printf("Failed to parse manifest %s: %v", path, err)
+		logging.Errorf("Failed to parse manifest %s: %v", path, err)
 		return fallbackModelNameFromPath(path, manifestsRoot)
 	}
 

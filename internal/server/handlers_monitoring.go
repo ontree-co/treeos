@@ -3,10 +3,10 @@ package server
 import (
 	"fmt"
 	"html/template"
-	"log"
 	"net/http"
 	"strings"
 	"time"
+	"treeos/internal/logging"
 
 	"treeos/internal/charts"
 	"treeos/internal/database"
@@ -59,7 +59,7 @@ func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, _ *http.
 		// Get fresh memory data
 		vitals, err := system.GetVitals()
 		if err != nil {
-			log.Printf("Failed to get vitals: %v", err)
+			logging.Errorf("Failed to get vitals: %v", err)
 		}
 		if vitals != nil {
 			memoryValue = vitals.MemPercent
@@ -95,7 +95,7 @@ func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, _ *http.
 		// Get fresh disk data
 		vitals, err := system.GetVitals()
 		if err != nil {
-			log.Printf("Failed to get vitals: %v", err)
+			logging.Errorf("Failed to get vitals: %v", err)
 		}
 		if vitals != nil {
 			diskValue = vitals.DiskPercent
@@ -119,7 +119,7 @@ func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, _ *http.
 	// Get real-time data for CPU, GPU, and Network (updated every second)
 	vitals, err := system.GetVitals()
 	if err != nil {
-		log.Printf("Failed to get system vitals: %v", err)
+		logging.Errorf("Failed to get system vitals: %v", err)
 		http.Error(w, "Failed to get system vitals", http.StatusInternalServerError)
 		return
 	}
@@ -291,7 +291,7 @@ func (s *Server) handleMonitoringCPUPartial(w http.ResponseWriter, _ *http.Reque
 		// Fallback to system vitals if no real-time data
 		vitals, err := system.GetVitals()
 		if err != nil {
-			log.Printf("Failed to get system vitals: %v", err)
+			logging.Errorf("Failed to get system vitals: %v", err)
 			http.Error(w, "Failed to get system vitals", http.StatusInternalServerError)
 			return
 		}
@@ -309,7 +309,7 @@ func (s *Server) handleMonitoringCPUPartial(w http.ResponseWriter, _ *http.Reque
 	oneMinuteAgo := now.Add(-60 * time.Second)
 	historicalData, err := database.GetMetricsForTimeRange(startTime, oneMinuteAgo)
 	if err != nil {
-		log.Printf("Failed to get historical CPU data: %v", err)
+		logging.Errorf("Failed to get historical CPU data: %v", err)
 		historicalData = []database.SystemVitalLog{}
 	}
 
@@ -350,7 +350,7 @@ func (s *Server) handleMonitoringCPUPartial(w http.ResponseWriter, _ *http.Reque
 	// Get the CPU card template
 	tmpl, ok := s.templates["_cpu_card"]
 	if !ok {
-		log.Printf("CPU card template not found")
+		logging.Infof("CPU card template not found")
 		http.Error(w, "Template not found", http.StatusInternalServerError)
 		return
 	}
@@ -358,7 +358,7 @@ func (s *Server) handleMonitoringCPUPartial(w http.ResponseWriter, _ *http.Reque
 	// Render the partial template
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "cpu-card-partial", data); err != nil {
-		log.Printf("Error rendering CPU card template: %v", err)
+		logging.Errorf("Error rendering CPU card template: %v", err)
 		http.Error(w, "Error rendering template", http.StatusInternalServerError)
 		return
 	}
@@ -369,7 +369,7 @@ func (s *Server) handleMonitoringMemoryPartial(w http.ResponseWriter, _ *http.Re
 	// Get current memory usage
 	vitals, err := system.GetVitals()
 	if err != nil {
-		log.Printf("Failed to get system vitals: %v", err)
+		logging.Errorf("Failed to get system vitals: %v", err)
 		http.Error(w, "Failed to get system vitals", http.StatusInternalServerError)
 		return
 	}
@@ -382,7 +382,7 @@ func (s *Server) handleMonitoringMemoryPartial(w http.ResponseWriter, _ *http.Re
 		if svg, ok := cached.(template.HTML); ok {
 			sparklineSVG = svg
 		} else {
-			log.Printf("Invalid type in sparkline cache for key %s", cacheKey)
+			logging.Infof("Invalid type in sparkline cache for key %s", cacheKey)
 		}
 	} else {
 		// Get historical memory data for the last 24 hours
@@ -391,7 +391,7 @@ func (s *Server) handleMonitoringMemoryPartial(w http.ResponseWriter, _ *http.Re
 
 		historicalData, err := database.GetMetricsLast24Hours("memory")
 		if err != nil {
-			log.Printf("Failed to get historical memory data: %v", err)
+			logging.Errorf("Failed to get historical memory data: %v", err)
 			historicalData = []database.SystemVitalLog{}
 		}
 
@@ -424,7 +424,7 @@ func (s *Server) handleMonitoringMemoryPartial(w http.ResponseWriter, _ *http.Re
 	// Get the memory card template
 	tmpl, ok := s.templates["_memory_card"]
 	if !ok {
-		log.Printf("Memory card template not found")
+		logging.Infof("Memory card template not found")
 		http.Error(w, "Template not found", http.StatusInternalServerError)
 		return
 	}
@@ -432,7 +432,7 @@ func (s *Server) handleMonitoringMemoryPartial(w http.ResponseWriter, _ *http.Re
 	// Render the partial template
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "memory-card-partial", data); err != nil {
-		log.Printf("Error rendering memory card template: %v", err)
+		logging.Errorf("Error rendering memory card template: %v", err)
 		http.Error(w, "Error rendering template", http.StatusInternalServerError)
 		return
 	}
@@ -443,7 +443,7 @@ func (s *Server) handleMonitoringDiskPartial(w http.ResponseWriter, _ *http.Requ
 	// Get current disk usage
 	vitals, err := system.GetVitals()
 	if err != nil {
-		log.Printf("Failed to get system vitals: %v", err)
+		logging.Errorf("Failed to get system vitals: %v", err)
 		http.Error(w, "Failed to get system vitals", http.StatusInternalServerError)
 		return
 	}
@@ -456,7 +456,7 @@ func (s *Server) handleMonitoringDiskPartial(w http.ResponseWriter, _ *http.Requ
 		if svg, ok := cached.(template.HTML); ok {
 			sparklineSVG = svg
 		} else {
-			log.Printf("Invalid type in sparkline cache for key %s", cacheKey)
+			logging.Infof("Invalid type in sparkline cache for key %s", cacheKey)
 		}
 	} else {
 		// Get historical disk data for the last 24 hours
@@ -465,7 +465,7 @@ func (s *Server) handleMonitoringDiskPartial(w http.ResponseWriter, _ *http.Requ
 
 		historicalData, err := database.GetMetricsLast24Hours("disk")
 		if err != nil {
-			log.Printf("Failed to get historical disk data: %v", err)
+			logging.Errorf("Failed to get historical disk data: %v", err)
 			historicalData = []database.SystemVitalLog{}
 		}
 
@@ -500,7 +500,7 @@ func (s *Server) handleMonitoringDiskPartial(w http.ResponseWriter, _ *http.Requ
 	// Get the disk card template
 	tmpl, ok := s.templates["_disk_card"]
 	if !ok {
-		log.Printf("Disk card template not found")
+		logging.Infof("Disk card template not found")
 		http.Error(w, "Template not found", http.StatusInternalServerError)
 		return
 	}
@@ -508,7 +508,7 @@ func (s *Server) handleMonitoringDiskPartial(w http.ResponseWriter, _ *http.Requ
 	// Render the partial template
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "disk-card-partial", data); err != nil {
-		log.Printf("Error rendering disk card template: %v", err)
+		logging.Errorf("Error rendering disk card template: %v", err)
 		http.Error(w, "Error rendering template", http.StatusInternalServerError)
 		return
 	}
@@ -559,7 +559,7 @@ func (s *Server) handleMonitoringNetworkPartial(w http.ResponseWriter, _ *http.R
 		// Fallback to database if no real-time data
 		recentMetrics, err := database.GetMetricsForTimeRange(now.Add(-2*time.Minute), now)
 		if err != nil {
-			log.Printf("Failed to get recent network metrics: %v", err)
+			logging.Errorf("Failed to get recent network metrics: %v", err)
 			recentMetrics = []database.SystemVitalLog{}
 		}
 
@@ -597,7 +597,7 @@ func (s *Server) handleMonitoringNetworkPartial(w http.ResponseWriter, _ *http.R
 	oneMinuteAgo := now.Add(-60 * time.Second)
 	historicalData, err := database.GetMetricsForTimeRange(startTime, oneMinuteAgo)
 	if err != nil {
-		log.Printf("Failed to get historical network data: %v", err)
+		logging.Errorf("Failed to get historical network data: %v", err)
 		historicalData = []database.SystemVitalLog{}
 	}
 
@@ -693,7 +693,7 @@ func (s *Server) handleMonitoringNetworkPartial(w http.ResponseWriter, _ *http.R
 	// Get the network card template
 	tmpl, ok := s.templates["_network_card"]
 	if !ok {
-		log.Printf("Network card template not found")
+		logging.Infof("Network card template not found")
 		http.Error(w, "Template not found", http.StatusInternalServerError)
 		return
 	}
@@ -701,7 +701,7 @@ func (s *Server) handleMonitoringNetworkPartial(w http.ResponseWriter, _ *http.R
 	// Render the partial template
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "network-card-partial", data); err != nil {
-		log.Printf("Error rendering network card template: %v", err)
+		logging.Errorf("Error rendering network card template: %v", err)
 		http.Error(w, "Error rendering template", http.StatusInternalServerError)
 		return
 	}
@@ -758,13 +758,13 @@ func (s *Server) handleMonitoringCharts(w http.ResponseWriter, r *http.Request) 
 		if svg, ok := cached.(template.HTML); ok {
 			chartSVG = svg
 		} else {
-			log.Printf("Invalid type in sparkline cache for key %s", cacheKey)
+			logging.Infof("Invalid type in sparkline cache for key %s", cacheKey)
 		}
 	} else {
 		// Batch query for all metrics
 		batch, err := database.GetMetricsBatch(startTime, endTime)
 		if err != nil {
-			log.Printf("Failed to get metrics batch: %v", err)
+			logging.Errorf("Failed to get metrics batch: %v", err)
 			batch = &database.MetricsBatch{Metrics: []database.SystemVitalLog{}}
 		}
 
@@ -924,7 +924,7 @@ function loadChart(metric, range) {
 	`, timeRangeButtons, chartSVG)
 
 	if _, err := w.Write([]byte(html)); err != nil {
-		log.Printf("Failed to write response: %v", err)
+		logging.Errorf("Failed to write response: %v", err)
 	}
 }
 
@@ -936,14 +936,12 @@ func ifElse(condition bool, trueVal, falseVal string) string {
 	return falseVal
 }
 
-
-
 // handleMonitoringGPUPartial returns the GPU monitoring card partial
 func (s *Server) handleMonitoringGPUPartial(w http.ResponseWriter, _ *http.Request) {
 	// Get latest metric from database
 	latest, err := database.GetLatestMetric("")
 	if err != nil {
-		log.Printf("Failed to get latest GPU metric: %v", err)
+		logging.Errorf("Failed to get latest GPU metric: %v", err)
 		latest = &database.SystemVitalLog{GPULoad: 0}
 	}
 
@@ -953,7 +951,7 @@ func (s *Server) handleMonitoringGPUPartial(w http.ResponseWriter, _ *http.Reque
 
 	historicalData, err := database.GetMetricsLast24Hours("gpu")
 	if err != nil {
-		log.Printf("Failed to get historical GPU data: %v", err)
+		logging.Errorf("Failed to get historical GPU data: %v", err)
 		historicalData = []database.SystemVitalLog{}
 	}
 
@@ -982,7 +980,7 @@ func (s *Server) handleMonitoringGPUPartial(w http.ResponseWriter, _ *http.Reque
 	// Get the GPU card template
 	tmpl, ok := s.templates["_gpu_card"]
 	if !ok {
-		log.Printf("GPU card template not found")
+		logging.Infof("GPU card template not found")
 		http.Error(w, "Template not found", http.StatusInternalServerError)
 		return
 	}
@@ -990,7 +988,7 @@ func (s *Server) handleMonitoringGPUPartial(w http.ResponseWriter, _ *http.Reque
 	// Render the partial template
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "gpu-card-partial", data); err != nil {
-		log.Printf("Error rendering GPU card template: %v", err)
+		logging.Errorf("Error rendering GPU card template: %v", err)
 		http.Error(w, "Error rendering template", http.StatusInternalServerError)
 		return
 	}
@@ -1001,7 +999,7 @@ func (s *Server) handleMonitoringDownloadPartial(w http.ResponseWriter, _ *http.
 	// Get latest metric from database
 	latest, err := database.GetLatestMetric("")
 	if err != nil {
-		log.Printf("Failed to get latest download metric: %v", err)
+		logging.Errorf("Failed to get latest download metric: %v", err)
 		latest = &database.SystemVitalLog{DownloadRate: 0}
 	}
 
@@ -1011,7 +1009,7 @@ func (s *Server) handleMonitoringDownloadPartial(w http.ResponseWriter, _ *http.
 
 	historicalData, err := database.GetMetricsForTimeRange(startTime, now)
 	if err != nil {
-		log.Printf("Failed to get historical download data: %v", err)
+		logging.Errorf("Failed to get historical download data: %v", err)
 		historicalData = []database.SystemVitalLog{}
 	}
 
@@ -1041,7 +1039,7 @@ func (s *Server) handleMonitoringDownloadPartial(w http.ResponseWriter, _ *http.
 	// Get the download card template
 	tmpl, ok := s.templates["_download_card"]
 	if !ok {
-		log.Printf("Download card template not found")
+		logging.Infof("Download card template not found")
 		http.Error(w, "Template not found", http.StatusInternalServerError)
 		return
 	}
@@ -1049,7 +1047,7 @@ func (s *Server) handleMonitoringDownloadPartial(w http.ResponseWriter, _ *http.
 	// Render the partial template
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "download-card-partial", data); err != nil {
-		log.Printf("Error rendering download card template: %v", err)
+		logging.Errorf("Error rendering download card template: %v", err)
 		http.Error(w, "Error rendering template", http.StatusInternalServerError)
 		return
 	}
@@ -1060,7 +1058,7 @@ func (s *Server) handleMonitoringUploadPartial(w http.ResponseWriter, _ *http.Re
 	// Get latest metric from database
 	latest, err := database.GetLatestMetric("")
 	if err != nil {
-		log.Printf("Failed to get latest upload metric: %v", err)
+		logging.Errorf("Failed to get latest upload metric: %v", err)
 		latest = &database.SystemVitalLog{UploadRate: 0}
 	}
 
@@ -1070,7 +1068,7 @@ func (s *Server) handleMonitoringUploadPartial(w http.ResponseWriter, _ *http.Re
 
 	historicalData, err := database.GetMetricsForTimeRange(startTime, now)
 	if err != nil {
-		log.Printf("Failed to get historical upload data: %v", err)
+		logging.Errorf("Failed to get historical upload data: %v", err)
 		historicalData = []database.SystemVitalLog{}
 	}
 
@@ -1100,7 +1098,7 @@ func (s *Server) handleMonitoringUploadPartial(w http.ResponseWriter, _ *http.Re
 	// Get the upload card template
 	tmpl, ok := s.templates["_upload_card"]
 	if !ok {
-		log.Printf("Upload card template not found")
+		logging.Infof("Upload card template not found")
 		http.Error(w, "Template not found", http.StatusInternalServerError)
 		return
 	}
@@ -1108,7 +1106,7 @@ func (s *Server) handleMonitoringUploadPartial(w http.ResponseWriter, _ *http.Re
 	// Render the partial template
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "upload-card-partial", data); err != nil {
-		log.Printf("Error rendering upload card template: %v", err)
+		logging.Errorf("Error rendering upload card template: %v", err)
 		http.Error(w, "Error rendering template", http.StatusInternalServerError)
 		return
 	}

@@ -182,13 +182,13 @@ func (v *Validator) validateBindMounts(serviceName string, service ServiceConfig
 						// Check if path is in one of the allowed directories
 						// Allow ./volumes/, ./mnt/, and ../../shared/ (relative parent path for shared)
 						if !strings.HasPrefix(hostPath, volumesPath) &&
-						   !strings.HasPrefix(hostPath, mntPath) &&
-						   !strings.HasPrefix(hostPath, "../../shared/") &&
-						   !strings.HasPrefix(hostPath, "./shared/") {
+							!strings.HasPrefix(hostPath, mntPath) &&
+							!strings.HasPrefix(hostPath, "../../shared/") &&
+							!strings.HasPrefix(hostPath, "./shared/") {
 							return ValidationError{
 								Service: serviceName,
 								Rule:    "bind mount path",
-								Detail:  fmt.Sprintf("bind mount path '%s' is not allowed. Use paths within '%s', '%s', or '../../shared/'",
+								Detail: fmt.Sprintf("bind mount path '%s' is not allowed. Use paths within '%s', '%s', or '../../shared/'",
 									hostPath, volumesPath, mntPath),
 							}
 						}
@@ -205,12 +205,12 @@ func (v *Validator) validateBindMounts(serviceName string, service ServiceConfig
 						// Check if path is in one of the allowed directories
 						sharedPath := fmt.Sprintf("%s/", config.GetSharedPath())
 						if !strings.HasPrefix(hostPath, volumesPath) &&
-						   !strings.HasPrefix(hostPath, mntPath) &&
-						   !strings.HasPrefix(hostPath, sharedPath) {
+							!strings.HasPrefix(hostPath, mntPath) &&
+							!strings.HasPrefix(hostPath, sharedPath) {
 							return ValidationError{
 								Service: serviceName,
 								Rule:    "bind mount path",
-								Detail:  fmt.Sprintf("bind mount path '%s' is not allowed. Use paths within '%s', '%s', or '%s'",
+								Detail: fmt.Sprintf("bind mount path '%s' is not allowed. Use paths within '%s', '%s', or '%s'",
 									hostPath, volumesPath, mntPath, sharedPath),
 							}
 						}
@@ -243,13 +243,13 @@ func (v *Validator) validateBindMounts(serviceName string, service ServiceConfig
 						// Check if path is in one of the allowed directories
 						// Allow ./volumes/, ./mnt/, and ../../shared/ (relative parent path for shared)
 						if !strings.HasPrefix(source, volumesPath) &&
-						   !strings.HasPrefix(source, mntPath) &&
-						   !strings.HasPrefix(source, "../../shared/") &&
-						   !strings.HasPrefix(source, "./shared/") {
+							!strings.HasPrefix(source, mntPath) &&
+							!strings.HasPrefix(source, "../../shared/") &&
+							!strings.HasPrefix(source, "./shared/") {
 							return ValidationError{
 								Service: serviceName,
 								Rule:    "bind mount path",
-								Detail:  fmt.Sprintf("bind mount path '%s' is not allowed. Use paths within '%s', '%s', or '../../shared/'",
+								Detail: fmt.Sprintf("bind mount path '%s' is not allowed. Use paths within '%s', '%s', or '../../shared/'",
 									source, volumesPath, mntPath),
 							}
 						}
@@ -266,12 +266,12 @@ func (v *Validator) validateBindMounts(serviceName string, service ServiceConfig
 						// Check if path is in one of the allowed directories
 						sharedPath := fmt.Sprintf("%s/", config.GetSharedPath())
 						if !strings.HasPrefix(source, volumesPath) &&
-						   !strings.HasPrefix(source, mntPath) &&
-						   !strings.HasPrefix(source, sharedPath) {
+							!strings.HasPrefix(source, mntPath) &&
+							!strings.HasPrefix(source, sharedPath) {
 							return ValidationError{
 								Service: serviceName,
 								Rule:    "bind mount path",
-								Detail:  fmt.Sprintf("bind mount path '%s' is not allowed. Use paths within '%s', '%s', or '%s'",
+								Detail: fmt.Sprintf("bind mount path '%s' is not allowed. Use paths within '%s', '%s', or '%s'",
 									source, volumesPath, mntPath, sharedPath),
 							}
 						}

@@ -285,15 +285,15 @@ func (s *Service) Logs(ctx context.Context, opts Options, services []string, fol
 // --- helper functions ---
 
 type dockerContainer struct {
-	ID         string      `json:"Id"`
-	Name       string      `json:"Name"`
-	Names      interface{} `json:"Names"` // Can be string or []string
-	State      string      `json:"State"`
-	Status     string      `json:"Status"`
-	Image      string      `json:"Image"`
-	LabelsRaw  interface{} `json:"Labels"` // Can be string or map[string]string
-	Ports      interface{} `json:"Ports"`  // Can be string or array
-	Health     string      `json:"Health"`
+	ID        string      `json:"Id"`
+	Name      string      `json:"Name"`
+	Names     interface{} `json:"Names"` // Can be string or []string
+	State     string      `json:"State"`
+	Status    string      `json:"Status"`
+	Image     string      `json:"Image"`
+	LabelsRaw interface{} `json:"Labels"` // Can be string or map[string]string
+	Ports     interface{} `json:"Ports"`  // Can be string or array
+	Health    string      `json:"Health"`
 }
 
 // parseLabels parses the labels from various Docker formats

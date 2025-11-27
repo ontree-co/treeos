@@ -3,9 +3,9 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"sync"
 	"time"
+	"treeos/internal/logging"
 )
 
 // SSEClient represents a connected SSE client
@@ -87,7 +87,7 @@ func (m *SSEManager) BroadcastMessage(appID string, messageData interface{}) {
 	// Convert message to JSON
 	jsonData, err := json.Marshal(messageData)
 	if err != nil {
-		log.Printf("Failed to marshal SSE message: %v", err)
+		logging.Errorf("Failed to marshal SSE message: %v", err)
 		return
 	}
 
@@ -104,7 +104,7 @@ func (m *SSEManager) BroadcastMessage(appID string, messageData interface{}) {
 			// Message sent successfully
 		case <-time.After(500 * time.Millisecond): // Increased timeout for better reliability
 			// Client is not receiving, likely disconnected
-			log.Printf("SSE client for app %s is not receiving messages, marking for cleanup", appID)
+			logging.Infof("SSE client for app %s is not receiving messages, marking for cleanup", appID)
 			clientsToRemove = append(clientsToRemove, client)
 		}
 	}
@@ -126,7 +126,7 @@ func (m *SSEManager) BroadcastMessage(appID string, messageData interface{}) {
 			}
 		}
 		m.mu.Unlock()
-		log.Printf("Cleaned up %d unresponsive SSE clients for app %s", len(clientsToRemove), appID)
+		logging.Infof("Cleaned up %d unresponsive SSE clients for app %s", len(clientsToRemove), appID)
 	}
 }
 
@@ -170,7 +170,7 @@ func (m *SSEManager) SendToAll(eventType string, messageData interface{}) {
 	// Convert message to JSON
 	jsonData, err := json.Marshal(messageData)
 	if err != nil {
-		log.Printf("Failed to marshal SSE message: %v", err)
+		logging.Errorf("Failed to marshal SSE message: %v", err)
 		return
 	}
 
@@ -184,7 +184,7 @@ func (m *SSEManager) SendToAll(eventType string, messageData interface{}) {
 			// Message sent successfully
 		case <-time.After(100 * time.Millisecond):
 			// Client is not receiving, likely disconnected
-			log.Printf("SSE client is not receiving, will be cleaned up")
+			logging.Infof("SSE client is not receiving, will be cleaned up")
 		}
 	}
 }

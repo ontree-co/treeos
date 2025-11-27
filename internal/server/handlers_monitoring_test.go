@@ -4,12 +4,12 @@ import (
 	"html/template"
 	"net/http"
 	"net/http/httptest"
-	"treeos/internal/cache"
-	"treeos/internal/config"
-	"treeos/internal/realtime"
 	"strings"
 	"testing"
 	"time"
+	"treeos/internal/cache"
+	"treeos/internal/config"
+	"treeos/internal/realtime"
 )
 
 // TestMonitoringDashboard tests the main monitoring dashboard handler

@@ -2,10 +2,10 @@ package yamlutil
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"sync"
+	"treeos/internal/logging"
 
 	"gopkg.in/yaml.v3"
 )
@@ -87,7 +87,7 @@ type OnTreeMetadata struct {
 	TailscaleHostname string `yaml:"tailscale_hostname,omitempty"` // e.g., "jellyfin"
 	TailscaleExposed  bool   `yaml:"tailscale_exposed"`            // Separate from public exposure
 	Emoji             string `yaml:"emoji,omitempty"`
-	BypassSecurity    bool   `yaml:"bypass_security"`              // Skip security validation for this app
+	BypassSecurity    bool   `yaml:"bypass_security"` // Skip security validation for this app
 }
 
 // ComposeFile represents a docker-compose.yml file structure
@@ -179,7 +179,7 @@ func WriteComposeWithMetadata(path string, compose *ComposeFile) error {
 	// Rename to final location
 	if err := os.Rename(tempFile, path); err != nil {
 		if removeErr := os.Remove(tempFile); removeErr != nil {
-			log.Printf("Failed to remove temp file %s: %v", tempFile, removeErr)
+			logging.Errorf("Failed to remove temp file %s: %v", tempFile, removeErr)
 		}
 		return fmt.Errorf("failed to rename file: %w", err)
 	}

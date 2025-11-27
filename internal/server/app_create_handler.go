@@ -4,12 +4,12 @@ package server
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+	"treeos/internal/logging"
 
 	"gopkg.in/yaml.v3"
 	"treeos/internal/config"
@@ -68,17 +68,17 @@ func (s *Server) handleAppCreate(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				errors = append(errors, fmt.Sprintf("Failed to create application: %v", err))
 			} else {
-				log.Printf("Successfully created application: %s", appName)
+				logging.Infof("Successfully created application: %s", appName)
 
 				// Set success message
 				session, err := s.sessionStore.Get(r, "ontree-session")
 				if err != nil {
-					log.Printf("Failed to get session: %v", err)
+					logging.Errorf("Failed to get session: %v", err)
 					// Continue anyway - not critical
 				}
 				session.AddFlash(fmt.Sprintf("Application '%s' has been created successfully! You can now manage it from the app detail page.", appName), "success")
 				if err := session.Save(r, w); err != nil {
-					log.Printf("Failed to save session: %v", err)
+					logging.Errorf("Failed to save session: %v", err)
 				}
 
 				// Redirect to app detail page
@@ -103,7 +103,7 @@ func (s *Server) handleAppCreate(w http.ResponseWriter, r *http.Request) {
 		tmpl := s.templates["app_create"]
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
-			log.Printf("Failed to execute template: %v", err)
+			logging.Errorf("Failed to execute template: %v", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		}
 		return
@@ -120,7 +120,7 @@ func (s *Server) handleAppCreate(w http.ResponseWriter, r *http.Request) {
 	tmpl := s.templates["app_create"]
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
-		log.Printf("Failed to execute template: %v", err)
+		logging.Errorf("Failed to execute template: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
 }
@@ -131,7 +131,7 @@ func isValidAppName(appName string) bool {
 	pattern := `^[a-zA-Z0-9_-]+$`
 	match, err := regexp.MatchString(pattern, appName)
 	if err != nil {
-		log.Printf("Failed to match regex: %v", err)
+		logging.Errorf("Failed to match regex: %v", err)
 		return false
 	}
 	return match && len(appName) <= 50
@@ -148,13 +148,13 @@ func (s *Server) createAppScaffold(appName, composeContent, envContent, emoji st
 
 	// Generate app.yml without template flag
 	if err := s.generateAppYaml(appPath, appName, composeContent); err != nil {
-		log.Printf("Warning: Failed to generate app.yml for %s: %v", appName, err)
+		logging.Warnf("Warning: Failed to generate app.yml for %s: %v", appName, err)
 		// Continue anyway - agent can generate it later
 	}
 
 	// Attempt to start containers after creation (best-effort)
 	if err := s.startContainersForNewApp(appName, appPath, composeContent); err != nil {
-		log.Printf("Warning: Failed to start containers for app %s: %v", appName, err)
+		logging.Warnf("Warning: Failed to start containers for app %s: %v", appName, err)
 		// Don't fail app creation if containers can't be started
 		// User can manually start them later
 	}
@@ -174,7 +174,7 @@ func (s *Server) createAppScaffoldInternal(appPath, appName, composeContent, env
 	// Check if this app uses shared models directory
 	if usesSharedModels(composeContent) {
 		if err := ensureSharedModelsDirectory(); err != nil {
-			log.Printf("Warning: Failed to setup shared models directory: %v", err)
+			logging.Warnf("Warning: Failed to setup shared models directory: %v", err)
 			// Continue anyway - user can create it manually
 		}
 	}
@@ -185,7 +185,7 @@ func (s *Server) createAppScaffoldInternal(appPath, appName, composeContent, env
 	if err != nil {
 		// Clean up on failure
 		if err := os.RemoveAll(appPath); err != nil {
-			log.Printf("Failed to clean up app directory: %v", err)
+			logging.Errorf("Failed to clean up app directory: %v", err)
 		}
 		return fmt.Errorf("failed to create mnt directory: %v", err)
 	}
@@ -196,7 +196,7 @@ func (s *Server) createAppScaffoldInternal(appPath, appName, composeContent, env
 	if err != nil {
 		// Clean up on failure
 		if err := os.RemoveAll(appPath); err != nil {
-			log.Printf("Failed to clean up app directory: %v", err)
+			logging.Errorf("Failed to clean up app directory: %v", err)
 		}
 		return fmt.Errorf("failed to create volumes directory: %v", err)
 	}
@@ -207,7 +207,7 @@ func (s *Server) createAppScaffoldInternal(appPath, appName, composeContent, env
 	if err != nil {
 		// Clean up on failure
 		if err := os.RemoveAll(appPath); err != nil {
-			log.Printf("Failed to clean up app directory: %v", err)
+			logging.Errorf("Failed to clean up app directory: %v", err)
 		}
 		return fmt.Errorf("failed to write docker-compose.yml: %v", err)
 	}
@@ -235,14 +235,14 @@ func (s *Server) createAppScaffoldInternal(appPath, appName, composeContent, env
 	// Extract host port from compose content
 	hostPort, err := extractHostPort(composeContent)
 	if err != nil {
-		log.Printf("Warning: Could not extract host port from docker-compose: %v", err)
+		logging.Warnf("Warning: Could not extract host port from docker-compose: %v", err)
 		// Continue anyway - port will be 0
 	}
 
 	// Add OnTree metadata to the compose file
 	yamlData, err := yamlutil.ReadComposeWithMetadata(composePath)
 	if err != nil {
-		log.Printf("Warning: Failed to read compose file for metadata: %v", err)
+		logging.Warnf("Warning: Failed to read compose file for metadata: %v", err)
 		// Continue anyway - app is created on disk
 	} else {
 		// Set initial metadata
@@ -257,7 +257,7 @@ func (s *Server) createAppScaffoldInternal(appPath, appName, composeContent, env
 		// Write back with metadata
 		err = yamlutil.WriteComposeWithMetadata(composePath, yamlData)
 		if err != nil {
-			log.Printf("Warning: Failed to write compose metadata: %v", err)
+			logging.Warnf("Warning: Failed to write compose metadata: %v", err)
 			// Continue anyway - app is created without metadata
 		}
 	}
@@ -267,7 +267,7 @@ func (s *Server) createAppScaffoldInternal(appPath, appName, composeContent, env
 
 // startContainersForNewApp starts containers for a newly created app
 func (s *Server) startContainersForNewApp(appName, appPath, composeContent string) error {
-	log.Printf("Starting containers for newly created app: %s at path: %s", appName, appPath)
+	logging.Infof("Starting containers for newly created app: %s at path: %s", appName, appPath)
 
 	composeSvc, err := s.getComposeService()
 	if err != nil {
@@ -277,7 +277,7 @@ func (s *Server) startContainersForNewApp(appName, appPath, composeContent strin
 	// Check if security bypass is enabled for this app
 	metadata, err := yamlutil.ReadComposeMetadata(appPath)
 	if err != nil {
-		log.Printf("Failed to read metadata for app %s, assuming security enabled: %v", appName, err)
+		logging.Errorf("Failed to read metadata for app %s, assuming security enabled: %v", appName, err)
 		metadata = &yamlutil.OnTreeMetadata{}
 	}
 
@@ -285,12 +285,12 @@ func (s *Server) startContainersForNewApp(appName, appPath, composeContent strin
 	if !metadata.BypassSecurity {
 		validator := security.NewValidator(appName)
 		if err := validator.ValidateCompose([]byte(composeContent)); err != nil {
-			log.Printf("Security validation failed for app %s: %v", appName, err)
+			logging.Errorf("Security validation failed for app %s: %v", appName, err)
 			// Don't fail app creation, just skip container creation
 			return fmt.Errorf("security validation failed: %v", err)
 		}
 	} else {
-		log.Printf("SECURITY: Bypassing security validation for app '%s' (user-configured)", appName)
+		logging.Infof("SECURITY: Bypassing security validation for app '%s' (user-configured)", appName)
 	}
 
 	// Start the app using compose SDK
@@ -305,18 +305,18 @@ func (s *Server) startContainersForNewApp(appName, appPath, composeContent strin
 		opts.EnvFile = ".env" // Just the filename, not the full path
 	}
 
-	log.Printf("Calling compose.Up with WorkingDir: %s", opts.WorkingDir)
+	logging.Infof("Calling compose.Up with WorkingDir: %s", opts.WorkingDir)
 
 	// Create and start the compose project
 	if err := composeSvc.Up(ctx, opts); err != nil {
-		log.Printf("Failed to start containers for app %s: %v", appName, err)
+		logging.Errorf("Failed to start containers for app %s: %v", appName, err)
 		if isRuntimeUnavailableError(err) {
 			s.markComposeUnhealthy()
 		}
 		return fmt.Errorf("failed to start containers: %v", err)
 	}
 
-	log.Printf("Successfully started containers for app: %s", appName)
+	logging.Infof("Successfully started containers for app: %s", appName)
 	return nil
 }
 
@@ -331,7 +331,7 @@ func (s *Server) createAppScaffoldFromTemplate(appName, composeContent, envConte
 
 	// Generate app.yml with initial_setup_required flag
 	if err := s.generateAppYamlWithFlags(appPath, appName, composeContent, true); err != nil {
-		log.Printf("Warning: Failed to generate app.yml for %s: %v", appName, err)
+		logging.Warnf("Warning: Failed to generate app.yml for %s: %v", appName, err)
 		// Continue anyway - agent can generate it later
 	}
 
@@ -396,7 +396,7 @@ func (s *Server) generateAppYamlWithFlags(appPath, appName, composeContent strin
 		return fmt.Errorf("failed to write app.yml: %w", err)
 	}
 
-	log.Printf("Successfully generated app.yml for %s", appName)
+	logging.Infof("Successfully generated app.yml for %s", appName)
 	return nil
 }
 
@@ -408,7 +408,7 @@ func (s *Server) triggerAgentForApp(appName string) {
 	// 2. Direct channel communication if agent is in same process
 	// 3. HTTP API call to agent endpoint
 	// For now, just log it
-	log.Printf("Agent triggered for app %s - will process on next cycle", appName)
+	logging.Infof("Agent triggered for app %s - will process on next cycle", appName)
 }
 
 // extractHostPort extracts the host port from a docker-compose.yml content
@@ -495,7 +495,7 @@ func ensureSharedModelsDirectory() error {
 			return fmt.Errorf("failed to set ownership: %v", err)
 		}
 
-		log.Printf("Created shared Ollama directory at %s with root:root ownership", path)
+		logging.Infof("Created shared Ollama directory at %s with root:root ownership", path)
 	}
 
 	return nil

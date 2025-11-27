@@ -156,9 +156,9 @@ func TestHandleSettingsUpdate(t *testing.T) {
 		{
 			name: "Update LLM settings",
 			formData: url.Values{
-				"agent_type":           {"cloud"},
-				"agent_llm_api_key":    {"sk-test123"},
-				"agent_llm_api_url":    {"https://api.openai.com/v1/chat/completions"},
+				"agent_type":            {"cloud"},
+				"agent_llm_api_key":     {"sk-test123"},
+				"agent_llm_api_url":     {"https://api.openai.com/v1/chat/completions"},
 				"agent_llm_model_cloud": {"gpt-4"},
 			},
 			expectedStatus: http.StatusFound,

@@ -2,10 +2,10 @@ package server
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
+	"treeos/internal/logging"
 
 	"treeos/internal/database"
 )
@@ -31,7 +31,7 @@ func (s *Server) handleAPIStatusLatest(w http.ResponseWriter, r *http.Request) {
 	// Get the latest metric from database
 	latest, err := database.GetLatestMetric("")
 	if err != nil {
-		log.Printf("Failed to get latest metric: %v", err)
+		logging.Errorf("Failed to get latest metric: %v", err)
 		http.Error(w, "Failed to get latest metric", http.StatusInternalServerError)
 		return
 	}
@@ -57,7 +57,7 @@ func (s *Server) handleAPIStatusLatest(w http.ResponseWriter, r *http.Request) {
 	// Return JSON response
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		log.Printf("Failed to encode response: %v", err)
+		logging.Errorf("Failed to encode response: %v", err)
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 	}
 }
@@ -109,7 +109,7 @@ func (s *Server) handleAPIStatusHistory(w http.ResponseWriter, r *http.Request) 
 	// Get metrics for the time range
 	metrics, err := database.GetMetricsForTimeRange(startTime, endTime)
 	if err != nil {
-		log.Printf("Failed to get metrics for time range: %v", err)
+		logging.Errorf("Failed to get metrics for time range: %v", err)
 		http.Error(w, "Failed to get metrics", http.StatusInternalServerError)
 		return
 	}
@@ -131,7 +131,7 @@ func (s *Server) handleAPIStatusHistory(w http.ResponseWriter, r *http.Request) 
 	// Return JSON response
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		log.Printf("Failed to encode response: %v", err)
+		logging.Errorf("Failed to encode response: %v", err)
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 	}
 }

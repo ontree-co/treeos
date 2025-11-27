@@ -6,13 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
+	"treeos/internal/logging"
 
 	"treeos/internal/progress"
 	"treeos/internal/security"
@@ -119,13 +119,13 @@ func (s *Server) handleCreateApp(w http.ResponseWriter, r *http.Request) {
 
 	// Create directories
 	if err := os.MkdirAll(appDir, 0755); err != nil { //nolint:gosec // App directory needs group read access
-		log.Printf("Failed to create app directory: %v", err)
+		logging.Errorf("Failed to create app directory: %v", err)
 		http.Error(w, "Failed to create app directory", http.StatusInternalServerError)
 		return
 	}
 
 	if err := os.MkdirAll(mountDir, 0755); err != nil { //nolint:gosec // Mount directory needs group read access
-		log.Printf("Failed to create mount directory: %v", err)
+		logging.Errorf("Failed to create mount directory: %v", err)
 		// Clean up app directory
 		os.RemoveAll(appDir) //nolint:errcheck,gosec // Best effort cleanup
 		http.Error(w, "Failed to create mount directory", http.StatusInternalServerError)
@@ -135,7 +135,7 @@ func (s *Server) handleCreateApp(w http.ResponseWriter, r *http.Request) {
 	// Write docker-compose.yml
 	composeFile := filepath.Join(appDir, "docker-compose.yml")
 	if err := os.WriteFile(composeFile, []byte(req.ComposeYAML), 0600); err != nil { // #nosec G306 - compose files need to be readable
-		log.Printf("Failed to write docker-compose.yml: %v", err)
+		logging.Errorf("Failed to write docker-compose.yml: %v", err)
 		// Clean up directories
 		os.RemoveAll(appDir)   //nolint:errcheck,gosec // Best effort cleanup
 		os.RemoveAll(mountDir) //nolint:errcheck,gosec // Best effort cleanup
@@ -147,7 +147,7 @@ func (s *Server) handleCreateApp(w http.ResponseWriter, r *http.Request) {
 	if req.EnvContent != "" {
 		envFile := filepath.Join(appDir, ".env")
 		if err := os.WriteFile(envFile, []byte(req.EnvContent), 0600); err != nil { // #nosec G306 - env files need to be readable
-			log.Printf("Failed to write .env file: %v", err)
+			logging.Errorf("Failed to write .env file: %v", err)
 			// Clean up
 			os.RemoveAll(appDir)   //nolint:errcheck,gosec // Best effort cleanup
 			os.RemoveAll(mountDir) //nolint:errcheck,gosec // Best effort cleanup
@@ -159,15 +159,15 @@ func (s *Server) handleCreateApp(w http.ResponseWriter, r *http.Request) {
 	// Attempt to start containers if compose service is available
 	if composeSvc, composeErr := s.getComposeService(); composeErr != nil {
 		if !errors.Is(composeErr, errComposeUnavailable) {
-			log.Printf("Compose service unavailable for app %s: %v", req.Name, composeErr)
+			logging.Infof("Compose service unavailable for app %s: %v", req.Name, composeErr)
 		}
 	} else {
-		log.Printf("Starting containers for newly created app: %s at path: %s", req.Name, appDir)
+		logging.Infof("Starting containers for newly created app: %s at path: %s", req.Name, appDir)
 
 		// Check if security bypass is enabled for this app
 		metadata, err := yamlutil.ReadComposeMetadata(appDir)
 		if err != nil {
-			log.Printf("Failed to read metadata for app %s, assuming security enabled: %v", req.Name, err)
+			logging.Errorf("Failed to read metadata for app %s, assuming security enabled: %v", req.Name, err)
 			metadata = &yamlutil.OnTreeMetadata{}
 		}
 
@@ -176,13 +176,13 @@ func (s *Server) handleCreateApp(w http.ResponseWriter, r *http.Request) {
 		if !metadata.BypassSecurity {
 			validator := security.NewValidator(req.Name)
 			if err := validator.ValidateCompose([]byte(req.ComposeYAML)); err != nil {
-				log.Printf("Security validation failed for app %s: %v", req.Name, err)
+				logging.Errorf("Security validation failed for app %s: %v", req.Name, err)
 				// Don't fail app creation, just skip container creation
 			} else {
 				shouldStart = true
 			}
 		} else {
-			log.Printf("SECURITY: Bypassing security validation for app '%s' (user-configured)", req.Name)
+			logging.Infof("SECURITY: Bypassing security validation for app '%s' (user-configured)", req.Name)
 			shouldStart = true
 		}
 
@@ -194,16 +194,16 @@ func (s *Server) handleCreateApp(w http.ResponseWriter, r *http.Request) {
 				opts.EnvFile = ".env"
 			}
 
-			log.Printf("Calling compose.Up with WorkingDir: %s", opts.WorkingDir)
+			logging.Infof("Calling compose.Up with WorkingDir: %s", opts.WorkingDir)
 
 			if err := composeSvc.Up(ctx, opts); err != nil {
-				log.Printf("Failed to start containers for app %s: %v", req.Name, err)
+				logging.Errorf("Failed to start containers for app %s: %v", req.Name, err)
 				if isRuntimeUnavailableError(err) {
 					s.markComposeUnhealthy()
 				}
 				// Don't fail app creation if containers can't be started
 			} else {
-				log.Printf("Successfully started containers for app: %s", req.Name)
+				logging.Infof("Successfully started containers for app: %s", req.Name)
 			}
 		}
 	}
@@ -220,7 +220,7 @@ func (s *Server) handleCreateApp(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		log.Printf("Failed to encode response: %v", err)
+		logging.Errorf("Failed to encode response: %v", err)
 	}
 }
 
@@ -276,7 +276,7 @@ func (s *Server) handleUpdateApp(w http.ResponseWriter, r *http.Request) {
 	// Write docker-compose.yml
 	composeFile := filepath.Join(appDir, "docker-compose.yml")
 	if err := os.WriteFile(composeFile, []byte(req.ComposeYAML), 0600); err != nil { // #nosec G306 - compose files need to be readable
-		log.Printf("Failed to write docker-compose.yml: %v", err)
+		logging.Errorf("Failed to write docker-compose.yml: %v", err)
 		http.Error(w, "Failed to write docker-compose.yml", http.StatusInternalServerError)
 		return
 	}
@@ -286,7 +286,7 @@ func (s *Server) handleUpdateApp(w http.ResponseWriter, r *http.Request) {
 	if req.EnvContent != "" {
 		// Write or update .env file
 		if err := os.WriteFile(envFile, []byte(req.EnvContent), 0600); err != nil { // #nosec G306 - env files need to be readable
-			log.Printf("Failed to write .env file: %v", err)
+			logging.Errorf("Failed to write .env file: %v", err)
 			http.Error(w, "Failed to write .env file", http.StatusInternalServerError)
 			return
 		}
@@ -294,7 +294,7 @@ func (s *Server) handleUpdateApp(w http.ResponseWriter, r *http.Request) {
 		// If env content is empty, remove the .env file if it exists
 		if _, err := os.Stat(envFile); err == nil {
 			if err := os.Remove(envFile); err != nil {
-				log.Printf("Failed to remove .env file: %v", err)
+				logging.Errorf("Failed to remove .env file: %v", err)
 				// Non-critical error, continue
 			}
 		}
@@ -311,7 +311,7 @@ func (s *Server) handleUpdateApp(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		log.Printf("Failed to encode response: %v", err)
+		logging.Errorf("Failed to encode response: %v", err)
 	}
 }
 
@@ -352,7 +352,7 @@ func (s *Server) handleAPIAppStart(w http.ResponseWriter, r *http.Request) {
 		if os.IsNotExist(err) {
 			http.Error(w, fmt.Sprintf("App '%s' not found", appName), http.StatusNotFound)
 		} else {
-			log.Printf("Failed to read docker-compose.yml for app %s: %v", appName, err)
+			logging.Errorf("Failed to read docker-compose.yml for app %s: %v", appName, err)
 			http.Error(w, "Failed to read app configuration", http.StatusInternalServerError)
 		}
 		return
@@ -361,7 +361,7 @@ func (s *Server) handleAPIAppStart(w http.ResponseWriter, r *http.Request) {
 	// Check if security bypass is enabled for this app
 	metadata, err := yamlutil.ReadComposeMetadata(appDir)
 	if err != nil {
-		log.Printf("Failed to read metadata for app %s, assuming security enabled: %v", appName, err)
+		logging.Errorf("Failed to read metadata for app %s, assuming security enabled: %v", appName, err)
 		metadata = &yamlutil.OnTreeMetadata{}
 	}
 
@@ -369,12 +369,12 @@ func (s *Server) handleAPIAppStart(w http.ResponseWriter, r *http.Request) {
 	if !metadata.BypassSecurity {
 		validator := security.NewValidator(appName)
 		if err := validator.ValidateCompose(yamlContent); err != nil {
-			log.Printf("Security validation failed for app %s: %v", appName, err)
+			logging.Errorf("Security validation failed for app %s: %v", appName, err)
 			http.Error(w, fmt.Sprintf("Security validation failed: %v", err), http.StatusBadRequest)
 			return
 		}
 	} else {
-		log.Printf("SECURITY: Bypassing security validation for app '%s' (user-configured)", appName)
+		logging.Infof("SECURITY: Bypassing security validation for app '%s' (user-configured)", appName)
 	}
 
 	// Initialize progress tracking
@@ -399,7 +399,7 @@ func (s *Server) handleAPIAppStart(w http.ResponseWriter, r *http.Request) {
 
 	// Create progress callback function
 	progressCallback := func(line string) {
-		log.Printf("[Progress] %s: %s", appName, line)
+		logging.Infof("[Progress] %s: %s", appName, line)
 		parser.ParseLine(appName, line)
 
 		// Send SSE update after each progress update
@@ -423,7 +423,7 @@ func (s *Server) handleAPIAppStart(w http.ResponseWriter, r *http.Request) {
 	case err := <-startChan:
 		// Operation completed within time
 		if err != nil {
-			log.Printf("Failed to start app %s: %v", appName, err)
+			logging.Errorf("Failed to start app %s: %v", appName, err)
 			s.progressTracker.SetError(appName, err.Error())
 
 			// Send SSE error update
@@ -455,13 +455,13 @@ func (s *Server) handleAPIAppStart(w http.ResponseWriter, r *http.Request) {
 	case <-time.After(3 * time.Second):
 		// If it takes more than 3 seconds, return immediately with progress status
 		// The operation continues in the background
-		log.Printf("App %s is starting in background (pulling images)...", appName)
+		logging.Infof("App %s is starting in background (pulling images)...", appName)
 
 		// Set up background completion handler
 		go func() {
 			err := <-startChan
 			if err != nil {
-				log.Printf("Background start failed for app %s: %v", appName, err)
+				logging.Errorf("Background start failed for app %s: %v", appName, err)
 				s.progressTracker.SetError(appName, err.Error())
 
 				// Send SSE error update
@@ -477,7 +477,7 @@ func (s *Server) handleAPIAppStart(w http.ResponseWriter, r *http.Request) {
 					s.markComposeUnhealthy()
 				}
 			} else {
-				log.Printf("Background start completed successfully for app %s", appName)
+				logging.Infof("Background start completed successfully for app %s", appName)
 				s.progressTracker.CompleteOperation(appName, fmt.Sprintf("App '%s' started successfully", appName))
 
 				// Send SSE completion update
@@ -502,7 +502,7 @@ func (s *Server) handleAPIAppStart(w http.ResponseWriter, r *http.Request) {
 			},
 		}
 		if err := json.NewEncoder(w).Encode(response); err != nil {
-			log.Printf("Failed to encode response: %v", err)
+			logging.Errorf("Failed to encode response: %v", err)
 		}
 		return
 	}
@@ -519,7 +519,7 @@ func (s *Server) handleAPIAppStart(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		log.Printf("Failed to encode response: %v", err)
+		logging.Errorf("Failed to encode response: %v", err)
 	}
 }
 
@@ -565,7 +565,7 @@ func (s *Server) handleAPIAppStop(w http.ResponseWriter, r *http.Request) {
 
 	// Stop the compose project without removing volumes
 	if err := composeSvc.Down(ctx, opts, false); err != nil {
-		log.Printf("Failed to stop app %s: %v", appName, err)
+		logging.Errorf("Failed to stop app %s: %v", appName, err)
 		if isRuntimeUnavailableError(err) {
 			s.markComposeUnhealthy()
 		}
@@ -585,7 +585,7 @@ func (s *Server) handleAPIAppStop(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		log.Printf("Failed to encode response: %v", err)
+		logging.Errorf("Failed to encode response: %v", err)
 	}
 }
 
@@ -631,7 +631,7 @@ func (s *Server) handleAPIAppDelete(w http.ResponseWriter, r *http.Request) {
 
 	// Stop the compose project and remove volumes
 	if err := composeSvc.Down(ctx, opts, true); err != nil {
-		log.Printf("Failed to delete app %s: %v", appName, err)
+		logging.Errorf("Failed to delete app %s: %v", appName, err)
 		if isRuntimeUnavailableError(err) {
 			s.markComposeUnhealthy()
 		}
@@ -641,14 +641,14 @@ func (s *Server) handleAPIAppDelete(w http.ResponseWriter, r *http.Request) {
 
 	// Remove the app directory
 	if err := os.RemoveAll(appDir); err != nil {
-		log.Printf("Failed to remove app directory for %s: %v", appName, err)
+		logging.Errorf("Failed to remove app directory for %s: %v", appName, err)
 		// Continue, as Docker resources are already cleaned up
 	}
 
 	// Remove the mount directory
 	mountDir := filepath.Join(s.config.AppsDir, "mount", appName)
 	if err := os.RemoveAll(mountDir); err != nil {
-		log.Printf("Failed to remove mount directory for %s: %v", appName, err)
+		logging.Errorf("Failed to remove mount directory for %s: %v", appName, err)
 		// Continue, as this is not critical
 	}
 
@@ -660,7 +660,7 @@ func (s *Server) handleAPIAppDelete(w http.ResponseWriter, r *http.Request) {
 		"message": fmt.Sprintf("App '%s' deleted successfully", appName),
 	}
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		log.Printf("Failed to encode response: %v", err)
+		logging.Errorf("Failed to encode response: %v", err)
 	}
 }
 
@@ -699,7 +699,7 @@ func (s *Server) handleAPIAppSecurityBypass(w http.ResponseWriter, r *http.Reque
 	// Read current metadata
 	metadata, err := yamlutil.ReadComposeMetadata(appDir)
 	if err != nil {
-		log.Printf("Failed to read metadata for app %s: %v", appName, err)
+		logging.Errorf("Failed to read metadata for app %s: %v", appName, err)
 		// Initialize with empty metadata if file doesn't exist
 		metadata = &yamlutil.OnTreeMetadata{}
 	}
@@ -709,16 +709,16 @@ func (s *Server) handleAPIAppSecurityBypass(w http.ResponseWriter, r *http.Reque
 
 	// Write updated metadata back
 	if err := yamlutil.UpdateComposeMetadata(appDir, metadata); err != nil {
-		log.Printf("Failed to update metadata for app %s: %v", appName, err)
+		logging.Errorf("Failed to update metadata for app %s: %v", appName, err)
 		http.Error(w, "Failed to update security settings", http.StatusInternalServerError)
 		return
 	}
 
 	// Log the security bypass change for audit purposes
 	if request.BypassSecurity {
-		log.Printf("SECURITY: Security validation BYPASSED for app '%s'", appName)
+		logging.Infof("SECURITY: Security validation BYPASSED for app '%s'", appName)
 	} else {
-		log.Printf("SECURITY: Security validation ENABLED for app '%s'", appName)
+		logging.Infof("SECURITY: Security validation ENABLED for app '%s'", appName)
 	}
 
 	// Return success response
@@ -729,7 +729,7 @@ func (s *Server) handleAPIAppSecurityBypass(w http.ResponseWriter, r *http.Reque
 		"message":        fmt.Sprintf("Security settings updated for app '%s'", appName),
 	}
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		log.Printf("Failed to encode response: %v", err)
+		logging.Errorf("Failed to encode response: %v", err)
 	}
 }
 
@@ -775,7 +775,7 @@ func (s *Server) handleAPIAppStatus(w http.ResponseWriter, r *http.Request) {
 
 	containers, err := composeSvc.PS(ctx, opts)
 	if err != nil {
-		log.Printf("Failed to get status for app %s: %v", appName, err)
+		logging.Errorf("Failed to get status for app %s: %v", appName, err)
 		if isRuntimeUnavailableError(err) {
 			s.markComposeUnhealthy()
 		}
@@ -789,7 +789,7 @@ func (s *Server) handleAPIAppStatus(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
 		if err := json.NewEncoder(w).Encode(response); err != nil {
-			log.Printf("Failed to encode response: %v", err)
+			logging.Errorf("Failed to encode response: %v", err)
 		}
 		return
 	}
@@ -850,7 +850,7 @@ func (s *Server) handleAPIAppStatus(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		log.Printf("Failed to encode response: %v", err)
+		logging.Errorf("Failed to encode response: %v", err)
 	}
 }
 
@@ -941,7 +941,7 @@ func (s *Server) handleGetApp(w http.ResponseWriter, r *http.Request) {
 	composeFile := filepath.Join(appDir, "docker-compose.yml")
 	composeContent, err := os.ReadFile(composeFile) //nolint:gosec // Path from trusted app directory
 	if err != nil {
-		log.Printf("Failed to read docker-compose.yml for app %s: %v", appName, err)
+		logging.Errorf("Failed to read docker-compose.yml for app %s: %v", appName, err)
 		http.Error(w, "Failed to read app configuration", http.StatusInternalServerError)
 		return
 	}
@@ -952,7 +952,7 @@ func (s *Server) handleGetApp(w http.ResponseWriter, r *http.Request) {
 	if _, err := os.Stat(envFile); err == nil {
 		envContent, err = os.ReadFile(envFile) //nolint:gosec // Path from trusted app directory
 		if err != nil {
-			log.Printf("Failed to read .env file for app %s: %v", appName, err)
+			logging.Errorf("Failed to read .env file for app %s: %v", appName, err)
 			// Non-critical error, continue without env content
 		}
 	}
@@ -968,7 +968,7 @@ func (s *Server) handleGetApp(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		log.Printf("Failed to encode response: %v", err)
+		logging.Errorf("Failed to encode response: %v", err)
 	}
 }
 
@@ -1053,7 +1053,7 @@ func (s *Server) handleAPIAppLogs(w http.ResponseWriter, r *http.Request) {
 		}
 		// If we haven't written anything yet, we can send an error
 		if !follow {
-			log.Printf("Failed to get logs for app %s: %v", appName, err)
+			logging.Errorf("Failed to get logs for app %s: %v", appName, err)
 			fmt.Fprintf(w, "\nError retrieving logs: %v\n", err) //nolint:errcheck // Best effort logging
 		}
 	}
@@ -1082,7 +1082,7 @@ func (s *Server) handleSystemCheck(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		log.Printf("Failed to encode system check response: %v", err)
+		logging.Errorf("Failed to encode system check response: %v", err)
 	}
 }
 
@@ -1138,7 +1138,7 @@ func (s *Server) handleAPIAppProgress(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(response); err != nil {
-			log.Printf("Failed to encode progress response: %v", err)
+			logging.Errorf("Failed to encode progress response: %v", err)
 		}
 		return
 	}
@@ -1146,7 +1146,7 @@ func (s *Server) handleAPIAppProgress(w http.ResponseWriter, r *http.Request) {
 	// Return current progress
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(progressInfo); err != nil {
-		log.Printf("Failed to encode progress response: %v", err)
+		logging.Errorf("Failed to encode progress response: %v", err)
 	}
 }
 
@@ -1183,10 +1183,10 @@ func (s *Server) handleAPIAppProgressSSE(w http.ResponseWriter, r *http.Request)
 	// Register client with SSE manager
 	if s.sseManager != nil {
 		s.sseManager.RegisterClient("app-progress-"+appName, client)
-		log.Printf("SSE client registered for app %s progress updates", appName)
+		logging.Infof("SSE client registered for app %s progress updates", appName)
 		defer func() {
 			s.sseManager.UnregisterClient("app-progress-"+appName, client)
-			log.Printf("SSE client disconnected for app %s", appName)
+			logging.Infof("SSE client disconnected for app %s", appName)
 		}()
 	} else {
 		http.Error(w, "SSE not available", http.StatusServiceUnavailable)
@@ -1216,7 +1216,7 @@ func (s *Server) handleAPIAppProgressSSE(w http.ResponseWriter, r *http.Request)
 			if isRunning {
 				// Clear any stale progress data
 				s.progressTracker.RemoveOperation(appName)
-				log.Printf("Cleared stale progress data for running app: %s", appName)
+				logging.Infof("Cleared stale progress data for running app: %s", appName)
 			}
 		}
 	}
@@ -1249,21 +1249,21 @@ func (s *Server) handleAPIAppProgressSSE(w http.ResponseWriter, r *http.Request)
 	for {
 		select {
 		case <-ctx.Done():
-			log.Printf("SSE client context cancelled for app %s", appName)
+			logging.Infof("SSE client context cancelled for app %s", appName)
 			return
 		case <-client.Close:
-			log.Printf("SSE client closed for app %s", appName)
+			logging.Infof("SSE client closed for app %s", appName)
 			return
 		case message := <-client.Messages:
 			if _, err := fmt.Fprint(w, message); err != nil {
-				log.Printf("Failed to write SSE message to client for app %s: %v", appName, err)
+				logging.Errorf("Failed to write SSE message to client for app %s: %v", appName, err)
 				return
 			}
 			flusher.Flush()
 		case <-pingTicker.C:
 			// Send keepalive with error handling
 			if _, err := fmt.Fprint(w, ": keepalive\n\n"); err != nil {
-				log.Printf("Failed to send keepalive to SSE client for app %s: %v", appName, err)
+				logging.Errorf("Failed to send keepalive to SSE client for app %s: %v", appName, err)
 				return
 			}
 			flusher.Flush()

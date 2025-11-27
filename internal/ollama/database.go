@@ -4,10 +4,10 @@ package ollama
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"sort"
 	"strings"
 	"time"
+	"treeos/internal/logging"
 
 	"github.com/google/uuid"
 )
@@ -207,7 +207,7 @@ func CreateDownloadJob(db *sql.DB, modelName string) (*DownloadJob, error) {
 	// Also update the model status to queued
 	err = UpdateModelStatus(db, modelName, StatusQueued, 0)
 	if err != nil {
-		log.Printf("Failed to update model status to queued: %v", err)
+		logging.Errorf("Failed to update model status to queued: %v", err)
 	}
 
 	return job, nil
@@ -290,7 +290,7 @@ func CleanupOldJobs(db *sql.DB, olderThan time.Duration) error {
 		return fmt.Errorf("failed to get rows affected: %w", err)
 	}
 	if count > 0 {
-		log.Printf("Cleaned up %d old download jobs", count)
+		logging.Infof("Cleaned up %d old download jobs", count)
 	}
 	return nil
 }
