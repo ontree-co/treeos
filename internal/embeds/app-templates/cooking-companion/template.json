@@ -1,0 +1,12 @@
+{
+  "id": "cooking-companion",
+  "name": "Cooking Companion",
+  "description": "Self-hosted recipe manager with fast search, CRUD workflow, and PostgreSQL persistence.",
+  "category_tags": [
+    "Others"
+  ],
+  "icon": "bi-egg-fried",
+  "port": "8085",
+  "documentation_url": "https://github.com/stefanmunz/cookingcompanion",
+  "filename": "docker-compose.yml"
+}

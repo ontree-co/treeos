@@ -1,0 +1,6 @@
+expected_services:
+  - web
+  - postgres
+id: cooking-companion
+name: cooking-companion
+primary_service: web

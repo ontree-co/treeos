@@ -1,0 +1,42 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${DB_USER:-cookingcompanion}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-test-password-change-me}
+      - POSTGRES_DB=${DB_NAME:-cookingcompanion}
+    volumes:
+      - {{APP_VOLUMES_PATH}}/postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-cookingcompanion}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    image: ${IMAGE_REPOSITORY:-ghcr.io/stefanmunz/cookingcompanion}:${VERSION:-latest}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=${DB_USER:-cookingcompanion}
+      - DB_PASSWORD=${DB_PASSWORD:-test-password-change-me}
+      - DB_NAME=${DB_NAME:-cookingcompanion}
+      - PORT=8080
+    ports:
+      - "${HOST_PORT:-8085}:8080"
+
+volumes:
+  postgres_data:
+
+x-ontree:
+  subdomain: ${APP_SUBDOMAIN:-cooking-companion}
+  host_port: 8085
+  is_exposed: false
+  tailscale_exposed: false
+  emoji: "🍳"
+  description: "Self-hosted recipe manager with fast search and CRUD workflow."
