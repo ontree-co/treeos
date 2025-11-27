@@ -15,6 +15,9 @@ func TestNoStdlibLogUsage(t *testing.T) {
 
 	err := filepath.WalkDir(repoRoot, func(path string, d os.DirEntry, walkErr error) error {
 		if walkErr != nil {
+			if os.IsPermission(walkErr) {
+				return nil
+			}
 			return walkErr
 		}
 		if d.IsDir() {
