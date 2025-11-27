@@ -1,20 +1,21 @@
 ---
-description: Setup TreeOS in production mode with automatic configuration
+description: Setup TreeOS on cloud VPS/dedicated server with CPU inference
 argument-hint:
 ---
 
-# Setup TreeOS Production Environment
+# Setup TreeOS Production Environment (Cloud CPU)
 
 ## IMPORTANT AGENT INSTRUCTIONS
-**DO NOT** copy or create any setup scripts. The production setup script already exists in the repository at `.claude/commands/treeos-setup-production-noconfirm.sh`. Always reference and use this existing script. Never create duplicates or copies.
+**DO NOT** copy or create any setup scripts. The production setup script already exists in the repository at `.claude/commands/treeos-setup-production-cloud-cpu.sh`. Always reference and use this existing script. Never create duplicates or copies.
 
 ## Overview
-This command will set up TreeOS in production mode on your server with proper service management using the existing setup script in the repository's `.claude/commands/` folder.
+This command will set up TreeOS in production mode on a cloud VPS or dedicated server with CPU-only inference. This is a lean installation without GPU drivers or ROCm - just the essentials for running TreeOS with CPU-based AI inference.
 
 ## Prerequisites
 Before running, ensure you have:
 1. Docker and Docker Compose installed
 2. Sudo/root access on the target machine
+3. Linux server (amd64 architecture)
 
 ## What This Setup Does
 
@@ -22,15 +23,19 @@ Before running, ensure you have:
 - User: `ontree` (system service user)
 - Directory: `/opt/ontree/` with proper structure
 - Downloads and installs latest TreeOS release from GitHub to `/opt/ontree/treeos`
-- Sets up systemd (Linux) or launchd (macOS) service
+- Sets up systemd service
 
 ### Automatic Features:
-- Downloads the latest stable TreeOS release for your OS/architecture
-- Backs up existing installations if found (or cleanly removes if backup fails due to permissions)
-- Installs AMD ROCm 7.0.1 if AMD GPU detected (Linux)
-- Configures GPU permissions for container access
+- Downloads the latest stable TreeOS release for Linux amd64
+- Backs up existing installations if found (or cleanly removes if backup fails)
 - Adds ontree user to docker group for container management
 - Starts TreeOS service automatically
+
+### What This Script Does NOT Do (compared to local-amd variant):
+- No AMD ROCm installation
+- No GPU driver configuration
+- No GPU permission setup
+- No macOS support (cloud servers are Linux only)
 
 ### Directory Structure Created:
 ```
@@ -48,7 +53,7 @@ Before running, ensure you have:
 Verify that Docker is installed and running.
 
 ### Step 2: Use Existing Script and Guide User
-NOTE: The treeos-setup-production-noconfirm.sh script is already marked as executable in the repository (chmod +x is committed in git).
+NOTE: The treeos-setup-production-cloud-cpu.sh script is already marked as executable in the repository (chmod +x is committed in git).
 
 1. Check if we can use sudo:
 !sudo -n true 2>/dev/null && echo "SUDO_AVAILABLE" || echo "SUDO_REQUIRED"
@@ -61,21 +66,21 @@ NOTE: The treeos-setup-production-noconfirm.sh script is already marked as execu
 3. Provide the command for the user to run from the repository root directory:
 ```bash
 cd ~/repositories/ontree/treeos
-sudo ./.claude/commands/treeos-setup-production-noconfirm.sh
+sudo ./.claude/commands/treeos-setup-production-cloud-cpu.sh
 ```
 
 4. Ask the user to paste the output back after running the script so you can verify success
 
 ### Step 3: Report Results
 If sudo was available and setup succeeded:
-!echo "TreeOS has been successfully installed in production mode!"
+!echo "TreeOS has been successfully installed in production mode (CPU inference)!"
 !echo "Access the web interface at: http://localhost:3000"
 
 If sudo is required (typical case):
 !echo "Please run the following commands manually on your server with sudo access:"
 !echo ""
 !echo "cd ~/repositories/ontree/treeos"
-!echo "sudo ./.claude/commands/treeos-setup-production-noconfirm.sh"
+!echo "sudo ./.claude/commands/treeos-setup-production-cloud-cpu.sh"
 !echo ""
 !echo "After running, please paste the output back here so I can verify the installation succeeded."
 
@@ -88,19 +93,11 @@ After successful installation:
 
 ## Service Management
 
-### Linux (systemd):
 ```bash
 sudo systemctl status treeos   # Check status
 sudo systemctl stop treeos     # Stop service
 sudo systemctl start treeos    # Start service
 sudo journalctl -u treeos -f   # View logs
-```
-
-### macOS (launchd):
-```bash
-sudo launchctl list | grep com.ontree.treeos  # Check status
-sudo launchctl stop com.ontree.treeos         # Stop service
-sudo launchctl start com.ontree.treeos        # Start service
 ```
 
 ## Troubleshooting
@@ -115,3 +112,4 @@ If installation fails:
 - This is a one-time setup that configures TreeOS as a system service
 - The service will run as the 'ontree' user for security
 - Docker group membership allows container management without sudo
+- This script is for CPU inference only - for GPU support use `treeos-setup-production-local-amd`
