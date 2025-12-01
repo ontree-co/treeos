@@ -176,7 +176,7 @@ func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, _ *http.
 					<div class="card monitoring-card">
 						<div class="card-body">
 							<h6 class="metric-title">CPU Usage</h6>
-							<div class="metric-value">%.1f%%</div>
+							<div class="metric-value">%.0f%%</div>
 							<div class="sparkline-container" data-metric="cpu" title="Click for detailed view">
 								%s
 							</div>
@@ -192,7 +192,7 @@ func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, _ *http.
 					<div class="card monitoring-card">
 						<div class="card-body">
 							<h6 class="metric-title">GPU Load</h6>
-							<div class="metric-value">%.1f%%</div>
+							<div class="metric-value">%.0f%%</div>
 							<div class="sparkline-container" data-metric="gpu" title="Click for detailed view">
 								%s
 							</div>
@@ -208,7 +208,7 @@ func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, _ *http.
 					<div class="card monitoring-card">
 						<div class="card-body">
 							<h6 class="metric-title">Memory Usage</h6>
-							<div class="metric-value">%.1f%%</div>
+							<div class="metric-value">%.0f%%</div>
 							<div class="sparkline-container" data-metric="memory" title="Click for detailed view">
 								%s
 							</div>
@@ -225,7 +225,7 @@ func (s *Server) handleDashboardMonitoringUpdate(w http.ResponseWriter, _ *http.
 					<div class="card monitoring-card">
 						<div class="card-body">
 							<h6 class="metric-title">Disk Usage (/)</h6>
-							<div class="metric-value">%.1f%%</div>
+							<div class="metric-value">%.0f%%</div>
 							<div class="sparkline-container" data-metric="disk" title="Click for detailed view">
 								%s
 							</div>
@@ -343,7 +343,7 @@ func (s *Server) handleMonitoringCPUPartial(w http.ResponseWriter, _ *http.Reque
 		CurrentLoad  string
 		SparklineSVG template.HTML
 	}{
-		CurrentLoad:  fmt.Sprintf("%.1f", currentCPU),
+		CurrentLoad:  fmt.Sprintf("%.0f", currentCPU),
 		SparklineSVG: sparklineSVG,
 	}
 
@@ -417,7 +417,7 @@ func (s *Server) handleMonitoringMemoryPartial(w http.ResponseWriter, _ *http.Re
 		CurrentUsage string
 		SparklineSVG template.HTML
 	}{
-		CurrentUsage: fmt.Sprintf("%.1f", vitals.MemPercent),
+		CurrentUsage: fmt.Sprintf("%.0f", vitals.MemPercent),
 		SparklineSVG: sparklineSVG,
 	}
 
@@ -493,7 +493,7 @@ func (s *Server) handleMonitoringDiskPartial(w http.ResponseWriter, _ *http.Requ
 		SparklineSVG template.HTML
 	}{
 		Path:         "/",
-		CurrentUsage: fmt.Sprintf("%.1f", vitals.DiskPercent),
+		CurrentUsage: fmt.Sprintf("%.0f", vitals.DiskPercent),
 		SparklineSVG: sparklineSVG,
 	}
 
@@ -973,7 +973,7 @@ func (s *Server) handleMonitoringGPUPartial(w http.ResponseWriter, _ *http.Reque
 		CurrentLoad  string
 		SparklineSVG template.HTML
 	}{
-		CurrentLoad:  fmt.Sprintf("%.1f", latest.GPULoad),
+		CurrentLoad:  fmt.Sprintf("%.0f", latest.GPULoad),
 		SparklineSVG: sparklineSVG,
 	}
 
@@ -1115,15 +1115,15 @@ func (s *Server) handleMonitoringUploadPartial(w http.ResponseWriter, _ *http.Re
 // formatNetworkRate formats bytes per second into human-readable format
 func formatNetworkRate(bytesPerSecond float64) string {
 	if bytesPerSecond < 0 {
-		return "0.00 MB/s"
+		return "0.0 MB/s"
 	}
 
 	// Convert bytes per second to megabytes per second
 	// 1 MB = 1,048,576 bytes (using binary convention)
 	megabytesPerSecond := bytesPerSecond / (1024 * 1024)
 
-	// Always display in MB/s with 2 decimal places
-	return fmt.Sprintf("%.2f MB/s", megabytesPerSecond)
+	// Always display in MB/s with 1 decimal place
+	return fmt.Sprintf("%.1f MB/s", megabytesPerSecond)
 }
 
 // normalizeNetworkRates normalizes network rate values to percentages for sparkline display

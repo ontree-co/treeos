@@ -1147,10 +1147,10 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	var monitoringData map[string]interface{}
 	if latest != nil {
 		monitoringData = map[string]interface{}{
-			"CPUPercent":        fmt.Sprintf("%.1f", latest.CPUPercent),
-			"MemoryPercent":     fmt.Sprintf("%.1f", latest.MemoryPercent),
-			"DiskUsagePercent":  fmt.Sprintf("%.1f", latest.DiskUsagePercent),
-			"GPULoad":           fmt.Sprintf("%.1f", latest.GPULoad),
+			"CPUPercent":        fmt.Sprintf("%.0f", latest.CPUPercent),
+			"MemoryPercent":     fmt.Sprintf("%.0f", latest.MemoryPercent),
+			"DiskUsagePercent":  fmt.Sprintf("%.0f", latest.DiskUsagePercent),
+			"GPULoad":           fmt.Sprintf("%.0f", latest.GPULoad),
 			"UploadRate":        formatNetworkRate(float64(latest.UploadRate)),
 			"DownloadRate":      formatNetworkRate(float64(latest.DownloadRate)),
 			"CPUSparkline":      cpuSparkline,
@@ -1163,10 +1163,10 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// Default values if no data available
 		monitoringData = map[string]interface{}{
-			"CPUPercent":        "0.0",
-			"MemoryPercent":     "0.0",
-			"DiskUsagePercent":  "0.0",
-			"GPULoad":           "0.0",
+			"CPUPercent":        "0",
+			"MemoryPercent":     "0",
+			"DiskUsagePercent":  "0",
+			"GPULoad":           "0",
 			"UploadRate":        "0 B/s",
 			"DownloadRate":      "0 B/s",
 			"CPUSparkline":      template.HTML(""),
