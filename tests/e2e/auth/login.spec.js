@@ -44,7 +44,7 @@ test.describe('Authentication Flow', () => {
 
       if (!page.url().includes('/login')) {
         // If we're logged in automatically, logout first
-        await page.click('.settings-icon');
+        await page.click('.settings-trigger');
         await page.click('a:has-text("Logout")');
         await page.waitForURL('**/login', { timeout: 10000 });
       }
@@ -88,7 +88,7 @@ test.describe('Authentication Flow', () => {
 
       if (!page.url().includes('/login')) {
         // If we're logged in automatically, logout first
-        await page.click('.settings-icon');
+        await page.click('.settings-trigger');
         await page.click('a:has-text("Logout")');
         await page.waitForURL('**/login', { timeout: 10000 });
       }
@@ -160,7 +160,7 @@ test.describe('Authentication Flow', () => {
       return url.pathname === '/' || url.toString().includes('/?login=success');
     }, { timeout: 10000 });
 
-    await expect(page.locator('.settings-icon')).toBeVisible();
+    await expect(page.locator('.settings-trigger')).toBeVisible();
   });
 
   test('should persist session across page reloads', async ({ page }) => {
@@ -168,7 +168,7 @@ test.describe('Authentication Flow', () => {
     
     await page.reload();
     
-    await expect(page.locator('.settings-icon')).toBeVisible();
+    await expect(page.locator('.settings-trigger')).toBeVisible();
     
     await expect(page).toHaveURL(url => {
       return url.pathname === '/' || url.includes('/?login=success');
@@ -178,9 +178,9 @@ test.describe('Authentication Flow', () => {
   test('should successfully logout', async ({ page }) => {
     await loginAsAdmin(page);
     
-    await expect(page.locator('.settings-icon')).toBeVisible();
+    await expect(page.locator('.settings-trigger')).toBeVisible();
     
-    await page.click('.settings-icon');
+    await page.click('.settings-trigger');
     
     await page.click('a:has-text("Logout")');
     
@@ -223,7 +223,7 @@ test.describe('Authentication Flow', () => {
 
       if (!page.url().includes('/login')) {
         // If we're logged in automatically, logout first
-        await page.click('.settings-icon');
+        await page.click('.settings-trigger');
         await page.click('a:has-text("Logout")');
         await page.waitForURL('**/login', { timeout: 10000 });
       }
