@@ -10,6 +10,10 @@ GOTEST=$(GO) test
 GOBUILD=$(GO) build
 GOCLEAN=$(GO) clean
 GOLINT=$(shell go env GOPATH)/bin/golangci-lint
+PACKAGES=./cmd/... ./internal/... ./pkg/...
+CACHE_DIR?=$(PWD)/.cache
+GOCACHE?=$(CACHE_DIR)/go
+GOLANGCI_LINT_CACHE?=$(CACHE_DIR)/golangci-lint
 
 # Platform detection for local builds
 GOOS ?= $(shell go env GOOS)
@@ -77,23 +81,23 @@ build-all: embed-assets
 .PHONY: test
 test:
 	$(call vecho,"Running unit and integration tests...")
-	@$(GOTEST) -v -coverprofile=coverage.out ./internal/... ./cmd/...
+	@GOCACHE=$(GOCACHE) $(GOTEST) -v -coverprofile=coverage.out $(PACKAGES)
 	$(call vecho,"Tests complete")
 
 # Run tests with race detector
 .PHONY: test-race
 test-race:
 	$(call vecho,"Running tests with race detector...")
-	@$(GOTEST) -v -race ./internal/... ./cmd/...
+	@GOCACHE=$(GOCACHE) $(GOTEST) -v -race $(PACKAGES)
 	$(call vecho,"Race tests complete")
 
 # Run tests and generate coverage report
 .PHONY: test-coverage
 test-coverage:
 	$(call vecho,"Running tests with coverage...")
-	@$(GOTEST) -v -coverprofile=coverage.out -covermode=atomic ./internal/... ./cmd/...
+	@GOCACHE=$(GOCACHE) $(GOTEST) -v -coverprofile=coverage.out -covermode=atomic $(PACKAGES)
 	$(call vecho,"Generating coverage report...")
-	@$(GO) tool cover -html=coverage.out -o coverage.html
+	@GOCACHE=$(GOCACHE) $(GO) tool cover -html=coverage.out -o coverage.html
 	$(call vecho,"Coverage report generated: coverage.html")
 
 # Run Playwright E2E tests
@@ -157,7 +161,7 @@ lint: embed-assets
 		echo "Run: make install-tools or use asdf install"; \
 		exit 1; \
 	fi
-	golangci-lint run ./...
+	GOCACHE=$(GOCACHE) GOLANGCI_LINT_CACHE=$(GOLANGCI_LINT_CACHE) golangci-lint run $(PACKAGES)
 	$(call vecho,"Linting complete")
 
 # Clean build artifacts
