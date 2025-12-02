@@ -9,10 +9,10 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"treeos/internal/logging"
+	"github.com/ontree-co/treeos/internal/logging"
 
 	"github.com/minio/selfupdate"
-	"treeos/internal/version"
+	"github.com/ontree-co/treeos/internal/version"
 )
 
 // Service handles self-update operations

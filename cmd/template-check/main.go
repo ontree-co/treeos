@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"treeos/internal/logging"
+	"github.com/ontree-co/treeos/internal/logging"
 )
 
 // extractHostPort extracts the host port from a "hostPort:containerPort" string

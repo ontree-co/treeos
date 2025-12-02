@@ -2,7 +2,7 @@ package server
 
 import (
 	"context"
-	"treeos/internal/database"
+	"github.com/ontree-co/treeos/internal/database"
 )
 
 type contextKey string

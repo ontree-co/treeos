@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"time"
-	"treeos/internal/logging"
+	"github.com/ontree-co/treeos/internal/logging"
 
 	_ "github.com/mattn/go-sqlite3" // SQLite driver
 )

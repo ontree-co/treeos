@@ -8,7 +8,7 @@ import (
 	"io"
 	"net/http"
 	"time"
-	"treeos/internal/logging"
+	"github.com/ontree-co/treeos/internal/logging"
 )
 
 // Client represents a client for interacting with Caddy's Admin API

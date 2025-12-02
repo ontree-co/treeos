@@ -10,7 +10,7 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"gopkg.in/yaml.v3"
-	"treeos/internal/naming"
+	"github.com/ontree-co/treeos/internal/naming"
 )
 
 // App represents a discovered application managed by Docker.

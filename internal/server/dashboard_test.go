@@ -9,10 +9,10 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"treeos/internal/config"
-	"treeos/internal/database"
-	"treeos/internal/runtime"
-	"treeos/internal/version"
+	"github.com/ontree-co/treeos/internal/config"
+	"github.com/ontree-co/treeos/internal/database"
+	"github.com/ontree-co/treeos/internal/runtime"
+	"github.com/ontree-co/treeos/internal/version"
 )
 
 func TestHandleDashboard_DisplaysApps(t *testing.T) {

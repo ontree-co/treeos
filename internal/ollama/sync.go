@@ -10,9 +10,9 @@ import (
 	"path/filepath"
 	"strings"
 	"sync/atomic"
-	"treeos/internal/logging"
+	"github.com/ontree-co/treeos/internal/logging"
 
-	"treeos/internal/config"
+	"github.com/ontree-co/treeos/internal/config"
 )
 
 var sharedModelsDir atomic.Value

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"treeos/internal/logging"
+	"github.com/ontree-co/treeos/internal/logging"
 )
 
 // Worker manages the background processing of Ollama model downloads

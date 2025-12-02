@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync"
 	"time"
-	"treeos/internal/logging"
+	"github.com/ontree-co/treeos/internal/logging"
 )
 
 // SSEClient represents a connected SSE client

@@ -9,10 +9,10 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-	"treeos/internal/logging"
+	"github.com/ontree-co/treeos/internal/logging"
 
-	"treeos/internal/config"
-	"treeos/internal/ollama"
+	"github.com/ontree-co/treeos/internal/config"
+	"github.com/ontree-co/treeos/internal/ollama"
 )
 
 // handleModelTemplates handles the /models page showing all available models

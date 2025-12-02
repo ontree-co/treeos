@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"treeos/internal/naming"
+	"github.com/ontree-co/treeos/internal/naming"
 )
 
 func TestProjectNameCandidates(t *testing.T) {

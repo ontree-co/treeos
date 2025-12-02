@@ -4,9 +4,9 @@ import (
 	"database/sql"
 	"net/http"
 	"strings"
-	"treeos/internal/database"
-	"treeos/internal/logging"
-	"treeos/internal/telemetry"
+	"github.com/ontree-co/treeos/internal/database"
+	"github.com/ontree-co/treeos/internal/logging"
+	"github.com/ontree-co/treeos/internal/telemetry"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"

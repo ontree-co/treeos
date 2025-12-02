@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"treeos/internal/logging"
+	"github.com/ontree-co/treeos/internal/logging"
 
 	"gopkg.in/yaml.v3"
 )

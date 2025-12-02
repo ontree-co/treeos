@@ -14,14 +14,14 @@ import (
 	"runtime"
 	"strings"
 	"time"
-	"treeos/internal/logging"
+	"github.com/ontree-co/treeos/internal/logging"
 
-	"treeos/internal/caddy"
-	"treeos/internal/database"
-	"treeos/internal/ollama"
-	containerruntime "treeos/internal/runtime"
-	"treeos/internal/yamlutil"
-	"treeos/pkg/compose"
+	"github.com/ontree-co/treeos/internal/caddy"
+	"github.com/ontree-co/treeos/internal/database"
+	"github.com/ontree-co/treeos/internal/ollama"
+	containerruntime "github.com/ontree-co/treeos/internal/runtime"
+	"github.com/ontree-co/treeos/internal/yamlutil"
+	"github.com/ontree-co/treeos/pkg/compose"
 
 	"gopkg.in/yaml.v3"
 )

@@ -15,13 +15,13 @@ import (
 	"syscall"
 
 	"github.com/joho/godotenv"
-	"treeos/internal/config"
-	"treeos/internal/database"
-	"treeos/internal/logging"
-	"treeos/internal/migration"
-	"treeos/internal/server"
-	"treeos/internal/telemetry"
-	"treeos/internal/version"
+	"github.com/ontree-co/treeos/internal/config"
+	"github.com/ontree-co/treeos/internal/database"
+	"github.com/ontree-co/treeos/internal/logging"
+	"github.com/ontree-co/treeos/internal/migration"
+	"github.com/ontree-co/treeos/internal/server"
+	"github.com/ontree-co/treeos/internal/telemetry"
+	"github.com/ontree-co/treeos/internal/version"
 )
 
 func main() {

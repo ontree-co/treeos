@@ -1,7 +1,7 @@
 package server
 
 import (
-	"treeos/internal/logging"
+	"github.com/ontree-co/treeos/internal/logging"
 	// "context"  // Commented out - used by handleAppCheckUpdate
 	"fmt"
 	// "io"       // Commented out - used by handleAppCheckUpdate

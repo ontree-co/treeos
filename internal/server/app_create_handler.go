@@ -9,13 +9,13 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"treeos/internal/logging"
+	"github.com/ontree-co/treeos/internal/logging"
 
 	"gopkg.in/yaml.v3"
-	"treeos/internal/config"
-	"treeos/internal/security"
-	"treeos/internal/yamlutil"
-	"treeos/pkg/compose"
+	"github.com/ontree-co/treeos/internal/config"
+	"github.com/ontree-co/treeos/internal/security"
+	"github.com/ontree-co/treeos/internal/yamlutil"
+	"github.com/ontree-co/treeos/pkg/compose"
 )
 
 // handleAppCreate handles the application creation page

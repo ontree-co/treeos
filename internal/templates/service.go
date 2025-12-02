@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"treeos/internal/config"
-	"treeos/internal/embeds"
+	"github.com/ontree-co/treeos/internal/config"
+	"github.com/ontree-co/treeos/internal/embeds"
 )
 
 // Template represents an application template

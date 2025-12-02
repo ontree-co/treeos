@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 	"time"
-	"treeos/internal/cache"
-	"treeos/internal/config"
-	"treeos/internal/realtime"
+	"github.com/ontree-co/treeos/internal/cache"
+	"github.com/ontree-co/treeos/internal/config"
+	"github.com/ontree-co/treeos/internal/realtime"
 )
 
 // TestMonitoringDashboard tests the main monitoring dashboard handler

@@ -7,10 +7,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"treeos/internal/logging"
+	"github.com/ontree-co/treeos/internal/logging"
 
-	"treeos/internal/config"
-	"treeos/internal/naming"
+	"github.com/ontree-co/treeos/internal/config"
+	"github.com/ontree-co/treeos/internal/naming"
 )
 
 func main() {

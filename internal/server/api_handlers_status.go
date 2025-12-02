@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"strconv"
 	"time"
-	"treeos/internal/logging"
+	"github.com/ontree-co/treeos/internal/logging"
 
-	"treeos/internal/database"
+	"github.com/ontree-co/treeos/internal/database"
 )
 
 // SystemStatusResponse represents the response for system status endpoints

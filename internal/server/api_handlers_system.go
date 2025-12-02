@@ -7,10 +7,10 @@ import (
 	"os"
 	"strings"
 	"time"
-	"treeos/internal/logging"
+	"github.com/ontree-co/treeos/internal/logging"
 
-	"treeos/internal/database"
-	"treeos/internal/update"
+	"github.com/ontree-co/treeos/internal/database"
+	"github.com/ontree-co/treeos/internal/update"
 )
 
 // handleSystemUpdateCheck checks for available system updates

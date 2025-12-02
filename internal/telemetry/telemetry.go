@@ -16,7 +16,7 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 	"go.opentelemetry.io/otel/trace"
-	"treeos/internal/logging"
+	"github.com/ontree-co/treeos/internal/logging"
 )
 
 var tracer trace.Tracer

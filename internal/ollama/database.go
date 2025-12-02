@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 	"time"
-	"treeos/internal/logging"
+	"github.com/ontree-co/treeos/internal/logging"
 
 	"github.com/google/uuid"
 )

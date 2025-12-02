@@ -1,4 +1,4 @@
-module treeos
+module github.com/ontree-co/treeos
 
 go 1.24.4
 

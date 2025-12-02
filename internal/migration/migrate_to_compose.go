@@ -6,11 +6,11 @@ import (
 	"os"
 	"path/filepath"
 	"time"
-	"treeos/internal/logging"
+	"github.com/ontree-co/treeos/internal/logging"
 
-	"treeos/internal/config"
-	"treeos/internal/database"
-	"treeos/internal/yamlutil"
+	"github.com/ontree-co/treeos/internal/config"
+	"github.com/ontree-co/treeos/internal/database"
+	"github.com/ontree-co/treeos/internal/yamlutil"
 )
 
 // DeployedApp represents the old deployed_apps table structure

@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-	"treeos/internal/logging"
+	"github.com/ontree-co/treeos/internal/logging"
 )
 
 // LogEntry represents a log entry from the browser

@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"strings"
 	"time"
-	"treeos/internal/logging"
+	"github.com/ontree-co/treeos/internal/logging"
 
-	"treeos/internal/yamlutil"
+	"github.com/ontree-co/treeos/internal/yamlutil"
 )
 
 // routeComponents routes all /components/* requests to the appropriate handler

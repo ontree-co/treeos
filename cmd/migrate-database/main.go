@@ -6,10 +6,10 @@ import (
 	"flag"
 	"fmt"
 	"strings"
-	"treeos/internal/logging"
+	"github.com/ontree-co/treeos/internal/logging"
 
 	_ "github.com/mattn/go-sqlite3"
-	"treeos/internal/config"
+	"github.com/ontree-co/treeos/internal/config"
 )
 
 func main() {

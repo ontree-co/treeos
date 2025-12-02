@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"time"
-	"treeos/internal/database"
+	"github.com/ontree-co/treeos/internal/database"
 
 	"golang.org/x/crypto/bcrypt"
 )

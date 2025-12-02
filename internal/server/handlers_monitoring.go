@@ -6,11 +6,11 @@ import (
 	"net/http"
 	"strings"
 	"time"
-	"treeos/internal/logging"
+	"github.com/ontree-co/treeos/internal/logging"
 
-	"treeos/internal/charts"
-	"treeos/internal/database"
-	"treeos/internal/system"
+	"github.com/ontree-co/treeos/internal/charts"
+	"github.com/ontree-co/treeos/internal/database"
+	"github.com/ontree-co/treeos/internal/system"
 )
 
 // handleMonitoring handles the main monitoring dashboard page

@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v3"
-	"treeos/internal/config"
+	"github.com/ontree-co/treeos/internal/config"
 )
 
 // DangerousCapabilities defines the list of container capabilities that are not allowed

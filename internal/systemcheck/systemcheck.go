@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"treeos/internal/config"
+	"github.com/ontree-co/treeos/internal/config"
 )
 
 // Status represents the health status of a system check.

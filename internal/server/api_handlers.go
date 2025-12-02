@@ -12,13 +12,13 @@ import (
 	"regexp"
 	"strings"
 	"time"
-	"treeos/internal/logging"
+	"github.com/ontree-co/treeos/internal/logging"
 
-	"treeos/internal/progress"
-	"treeos/internal/security"
-	"treeos/internal/systemcheck"
-	"treeos/internal/yamlutil"
-	"treeos/pkg/compose"
+	"github.com/ontree-co/treeos/internal/progress"
+	"github.com/ontree-co/treeos/internal/security"
+	"github.com/ontree-co/treeos/internal/systemcheck"
+	"github.com/ontree-co/treeos/internal/yamlutil"
+	"github.com/ontree-co/treeos/pkg/compose"
 )
 
 // appNameRegex validates app names - only lowercase letters, numbers, and hyphens
