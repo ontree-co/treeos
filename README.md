@@ -3,6 +3,7 @@
 </p>
 
 [![GitHub Actions](https://github.com/ontree-co/treeos/actions/workflows/test.yml/badge.svg)](https://github.com/ontree-co/treeos/actions)
+[![Go Report Card](https://goreportcard.com/badge/github.com/ontree-co/treeos)](https://goreportcard.com/report/github.com/ontree-co/treeos)
 
 ## What is TreeOS?
 
