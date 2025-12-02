@@ -1,4 +1,6 @@
-# TreeOS
+<p align="left">
+  <img src="documentation/static/img/treeos-logo.png" alt="TreeOS logo" width="240">
+</p>
 
 [![GitHub Actions](https://github.com/stefanmunz/treeos/actions/workflows/test.yml/badge.svg)](https://github.com/stefanmunz/treeos/actions)
 
@@ -17,10 +19,6 @@ Browse a curated catalog of apps, click to install, and watch your apps deploy a
 
 ## Recommended Hardware
 
-<div align="center">
-  <img src="https://raw.githubusercontent.com/stefanmunz/treeos/main/documentation/static/img/framework.png" alt="Framework Desktop" width="600">
-</div>
-
 TreeOS is optimized for the **AMD Ryzen™ AI Max+ 395** with 128GB of RAM. This powerful APU allows local inference and application hosting to share the same machine gracefully, eliminating the need for separate GPU servers.
 
 Our preferred hardware vendor is [Framework](https://frame.work/desktop) with their Desktop machine, starting at **$1,999 USD** (€2,329 in Germany). The Framework Desktop combines:
@@ -31,6 +29,13 @@ Our preferred hardware vendor is [Framework](https://frame.work/desktop) with th
 - **Perfect for Home Labs** – Quiet, compact, and energy-efficient, with a high WAF factor!
 
 This is the perfect machine for a team or a household to become independent from cloud providers.
+
+<div align="center">
+  <a href="https://frame.work/desktop">
+    <img src="documentation/static/img/framework_desktop.png" alt="Framework Desktop" width="600">
+  </a>
+  <p><a href="https://frame.work/desktop">Framework Desktop</a></p>
+</div>
 
 ## Architecture
 
