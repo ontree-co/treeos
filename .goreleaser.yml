@@ -58,16 +58,14 @@ archives:
       {{- if .Arm }}v{{ .Arm }}{{ end }}
     # Include setup files with the binary
     files:
-      - src: .claude/commands/treeos-setup-production-noconfirm.sh
-        dst: setup-production.sh
+      - src: .claude/commands/treeos-setup-production-cloud-cpu.sh
+        dst: setup-production-cloud-cpu.sh
+      - src: .claude/commands/treeos-setup-production-local-amd.sh
+        dst: setup-production-local-amd.sh
       - src: init/systemd/treeos.service
         dst: treeos.service
       - src: init/launchd/com.ontree.treeos.plist
         dst: com.ontree.treeos.plist
-      - src: README.setup.md
-        dst: README.md
-        info:
-          mode: 0644
 
 checksum:
   name_template: 'checksums.txt'
@@ -130,11 +128,14 @@ release:
     tar -xzf treeos_{{ .Version }}_<platform>.tar.gz
     cd treeos_{{ .Version }}_<platform>
 
-    # Run the setup script (requires sudo)
-    sudo ./setup-production.sh
+    # For cloud VPS/dedicated servers (CPU inference):
+    sudo ./setup-production-cloud-cpu.sh
+
+    # For local AMD AI 395+ desktops (GPU support):
+    sudo ./setup-production-local-amd.sh
     ```
 
-    The setup script will:
+    The setup scripts will:
     - Create the `ontree` user
     - Set up directories at `/opt/ontree`
     - Install the binary
