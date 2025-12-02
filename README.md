@@ -42,7 +42,7 @@ This is the perfect machine for a team or a household to become independent from
 TreeOS is architected from the ground up to make use of agentic assistants. This is our stack for fast and iterative agentic software development:
 
 - **Backend**: Go, bundling the whole app into one big binary for painless deploys
-- **Frontend**: HTML & HTMX for dynamic UI, keeping it deliberately simple here
+- **Frontend**: HTML, HTMX & Plain Javascript for dynamic UI, keeping it deliberately simple here
 - **Database**: SQLite for metadata storage
 - **Container Management**: Docker and Docker Compose
 - **Connectivity**: : Leveraging Tailscale and MagicDNS to create beautiful HTTPS domains for your apps with no headaches
