@@ -68,3 +68,15 @@ jobs:
           gh release view ${{ github.ref_name }} || echo "Release not found"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Update Go Report Card after successful release
+  go-report-card:
+    name: Update Go Report Card
+    needs: release
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Trigger Go Report Card refresh
+      run: |
+        curl -X POST "https://goreportcard.com/checks?repo=github.com/ontree-co/treeos" || true
+        echo "Go Report Card refresh triggered"
