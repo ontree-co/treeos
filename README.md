@@ -2,7 +2,7 @@
   <img src="documentation/static/img/treeos-logo.png" alt="TreeOS logo" width="240">
 </p>
 
-[![GitHub Actions](https://github.com/stefanmunz/treeos/actions/workflows/test.yml/badge.svg)](https://github.com/stefanmunz/treeos/actions)
+[![GitHub Actions](https://github.com/ontree-co/treeos/actions/workflows/test.yml/badge.svg)](https://github.com/ontree-co/treeos/actions)
 
 ## What is TreeOS?
 
@@ -154,7 +154,7 @@ TreeOS has a development mode where everything runs locally without requiring sy
 
 ```bash
 # Clone repository
-git clone https://github.com/stefanmunz/treeos.git
+git clone https://github.com/ontree-co/treeos.git
 cd treeos
 
 # Copy environment template

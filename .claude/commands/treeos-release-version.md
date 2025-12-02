@@ -176,8 +176,8 @@ if [ $? -eq 0 ]; then
     echo "✅ Release $NEXT_VERSION created successfully!"
     echo ""
     echo "Next steps:"
-    echo "  1. Check GitHub Actions: https://github.com/stefanmunz/treeos/actions"
-    echo "  2. View release: https://github.com/stefanmunz/treeos/releases/tag/$NEXT_VERSION"
+    echo "  1. Check GitHub Actions: https://github.com/ontree-co/treeos/actions"
+    echo "  2. View release: https://github.com/ontree-co/treeos/releases/tag/$NEXT_VERSION"
     echo "  3. Edit release notes if needed"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 else

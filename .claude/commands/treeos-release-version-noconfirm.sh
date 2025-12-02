@@ -92,7 +92,7 @@ echo -e "${GREEN}✅ Release $NEXT_VERSION created successfully!${NC}"
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 echo "The GitHub Actions workflow should now be triggered automatically."
-echo "Check the progress at: https://github.com/stefanmunz/treeos/actions"
+echo "Check the progress at: https://github.com/ontree-co/treeos/actions"
 echo ""
 
 # Check if we should also push the current branch

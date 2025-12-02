@@ -7,6 +7,6 @@
   ],
   "icon": "bi-egg-fried",
   "port": "8085",
-  "documentation_url": "https://github.com/stefanmunz/cookingcompanion",
+  "documentation_url": "https://github.com/ontree-co/cookingcompanion",
   "filename": "docker-compose.yml"
 }
