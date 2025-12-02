@@ -74,23 +74,23 @@ TreeOS is currently in **Developer Preview**. While it is stable enough to run i
 - Optimized for fulfilling our demands in production
 - learned a lot about agentic coding and the demands it poses on the architecture
 
-- **CLI Tool**: TreeOS becomes available as a command-line interface tool in addition to the web interface
-
 ### Upcoming Releases
 
 **0.2 - Works For Agents**
 
 - Rebuild architecture to optimize for agents, since they do most of the heavy lifting around here
-- cli-based e2e-testing suite. Because agents love cli tools.
+- cli-based e2e-testing suite, because agents love cli tools. TreeOS will be usable via web and cli, to each their own.
 
 **0.3 - Works For You**
 
 - Space for your feature wishes: Tell us what you'd like to see implemented!
-- We'd love to integrate Tailscale more deeply, making it a truly seamless private networking experience
+- We'd love to integrate Tailscale more deeply, making it a truly seamless private networking experience. [Tailscale Services](https://tailscale.com/blog/services-beta) are plain awesome and complement TreeOS perfectly
 
 ## Quick Start
 
 Watch the video to see how easy it is to setup TreeOS on your node.
+
+PUT VIDEO HERE
 
 ### Production Setup (with Binaries)
 
