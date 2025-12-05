@@ -8,6 +8,12 @@ argument-hint:
 ## IMPORTANT AGENT INSTRUCTIONS
 **DO NOT** copy or create any setup scripts. The production setup script already exists in the repository at `.claude/commands/treeos-setup-production-cloud-cpu.sh`. Always reference and use this existing script. Never create duplicates or copies.
 
+## Conversation Flow (be welcoming)
+- Start with a friendly greeting: e.g., "Hey! Awesome that you're installing TreeOS. This script will set up your production environment."
+- Give a super-short summary before running: installs/starts Docker if missing, installs TreeOS binary, sets up systemd service, starts TreeOS.
+- Ask for consent before executing: "If that sounds good, I'll proceed with the install. Continue? (yes/no)"
+- After running, give a brief success summary, include a party emoji (🎉), and remind them where to access TreeOS.
+
 ## Overview
 This command will set up TreeOS in production mode on a cloud VPS or dedicated server with CPU-only inference. This is a lean installation without GPU drivers or ROCm - just the essentials for running TreeOS with CPU-based AI inference.
 
@@ -72,7 +78,7 @@ sudo ./.claude/commands/treeos-setup-production-cloud-cpu.sh
 3. Ask the user to paste the output back after running the script so you can verify success
 
 ### Step 3: Report Results
-If sudo was available and setup succeeded:
+If sudo was available and setup succeeded (include a short summary and a party emoji 🎉):
 !echo "TreeOS has been successfully installed in production mode (CPU inference)!"
 !echo "Access the web interface at: http://localhost:3000"
 
