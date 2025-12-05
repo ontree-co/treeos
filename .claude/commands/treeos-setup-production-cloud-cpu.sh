@@ -152,38 +152,99 @@ download_binary() {
     print_success "TreeOS $VERSION downloaded and extracted successfully"
 }
 
-# Ensure Docker and Docker Compose are available
-check_docker() {
-    if ! command -v docker >/dev/null 2>&1; then
-        print_error "Docker is required but not found in PATH."
-        echo "Install Docker: https://docs.docker.com/engine/install/"
+# Install Docker (including Compose v2) using available package manager
+install_docker() {
+    print_info "Docker not detected. Installing Docker and Compose v2..."
+
+    if command -v apt-get >/dev/null 2>&1; then
+        # Debian/Ubuntu
+        apt-get update
+        apt-get install -y ca-certificates curl gnupg lsb-release
+
+        install -m 0755 -d /etc/apt/keyrings
+        curl -fsSL "https://download.docker.com/linux/$(. /etc/os-release && echo "$ID")/gpg" | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+        chmod a+r /etc/apt/keyrings/docker.gpg
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/$(. /etc/os-release && echo "$ID") $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | tee /etc/apt/sources.list.d/docker.list >/dev/null
+
+        apt-get update
+        apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+    elif command -v dnf >/dev/null 2>&1; then
+        # Fedora/RHEL
+        dnf -y install dnf-plugins-core
+        dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+        dnf install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+    elif command -v yum >/dev/null 2>&1; then
+        # CentOS/older RHEL
+        yum install -y yum-utils
+        yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+        yum install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+    else
+        print_error "Unsupported package manager. Please install Docker manually: https://docs.docker.com/engine/install/"
         exit 1
     fi
 
-    # Check for Docker Compose v2 support (required)
+    print_success "Docker installed successfully"
+}
+
+# Ensure Docker Compose plugin exists if Docker was installed previously
+install_docker_compose_plugin() {
+    print_info "Installing Docker Compose v2 plugin..."
+
+    if command -v apt-get >/dev/null 2>&1; then
+        apt-get update
+        apt-get install -y ca-certificates curl gnupg lsb-release
+        install -m 0755 -d /etc/apt/keyrings
+        curl -fsSL "https://download.docker.com/linux/$(. /etc/os-release && echo "$ID")/gpg" | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+        chmod a+r /etc/apt/keyrings/docker.gpg
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/$(. /etc/os-release && echo "$ID") $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | tee /etc/apt/sources.list.d/docker.list >/dev/null
+        apt-get update
+        apt-get install -y docker-compose-plugin docker-buildx-plugin
+    elif command -v dnf >/dev/null 2>&1; then
+        dnf -y install dnf-plugins-core
+        dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+        dnf install -y docker-compose-plugin docker-buildx-plugin
+    elif command -v yum >/dev/null 2>&1; then
+        yum install -y yum-utils
+        yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+        yum install -y docker-compose-plugin docker-buildx-plugin
+    else
+        print_error "Unsupported package manager. Install Docker Compose v2 manually."
+        exit 1
+    fi
+}
+
+# Ensure Docker and Docker Compose are available
+ensure_docker() {
+    if command -v docker >/dev/null 2>&1; then
+        print_success "Docker is already installed"
+    else
+        install_docker
+    fi
+
     if docker compose version >/dev/null 2>&1; then
         print_success "Docker Compose v2 is available"
     elif command -v docker-compose >/dev/null 2>&1; then
-        print_error "Docker Compose v2 is required (found v1 standalone)"
-        echo "TreeOS requires Docker Compose v2 (plugin version), not the standalone v1"
-        echo "Install Docker Compose v2:"
-        echo "  Ubuntu/Debian: sudo apt update && sudo apt install docker-compose-v2"
-        echo "  Via Docker repo: sudo apt update && sudo apt install docker-compose-plugin"
-        exit 1
+        print_warning "Found Docker Compose v1. Installing Compose v2 plugin..."
+        install_docker_compose_plugin
     else
-        print_error "Docker Compose v2 is required but not found."
-        echo "Install Docker Compose v2:"
-        echo "  Ubuntu/Debian: sudo apt update && sudo apt install docker-compose-v2"
-        echo "  Via Docker repo: sudo apt update && sudo apt install docker-compose-plugin"
+        install_docker_compose_plugin
+    fi
+
+    if ! systemctl is-active --quiet docker; then
+        print_info "Starting and enabling Docker service..."
+        systemctl enable --now docker || {
+            print_error "Failed to start Docker service"
+            exit 1
+        }
+    fi
+
+    if ! docker info >/dev/null 2>&1; then
+        print_error "Docker daemon is not running or not accessible."
+        echo "Please check Docker logs: sudo journalctl -u docker -xe"
         exit 1
     fi
 
-    # Check if Docker daemon is running
-    if ! docker info >/dev/null 2>&1; then
-        print_error "Docker daemon is not running or not accessible."
-        echo "Please start Docker: sudo systemctl start docker"
-        exit 1
-    fi
+    print_success "Docker daemon is running and Compose v2 is ready"
 }
 
 # Create ontree user if it doesn't exist
@@ -356,7 +417,7 @@ main() {
     # Perform checks
     check_root
     check_existing_installation
-    check_docker
+    ensure_docker
 
     echo ""
     print_info "Starting automatic installation..."

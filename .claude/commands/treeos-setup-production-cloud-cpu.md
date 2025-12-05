@@ -13,9 +13,8 @@ This command will set up TreeOS in production mode on a cloud VPS or dedicated s
 
 ## Prerequisites
 Before running, ensure you have:
-1. Docker and Docker Compose installed
-2. Sudo/root access on the target machine
-3. Linux server (amd64 architecture)
+1. Sudo/root access on the target machine
+2. Linux server (amd64 architecture) with internet access
 
 ## What This Setup Does
 
@@ -28,6 +27,7 @@ Before running, ensure you have:
 ### Automatic Features:
 - Downloads the latest stable TreeOS release for Linux amd64
 - Backs up existing installations if found (or cleanly removes if backup fails)
+- Installs Docker and Docker Compose v2 if missing and starts the Docker service
 - Adds ontree user to docker group for container management
 - Starts TreeOS service automatically
 
@@ -49,27 +49,27 @@ Before running, ensure you have:
 
 ## Setup Process
 
-### Step 1: Check Prerequisites
-Verify that Docker is installed and running.
-
-### Step 2: Use Existing Script and Guide User
-NOTE: The treeos-setup-production-cloud-cpu.sh script is already marked as executable in the repository (chmod +x is committed in git).
-
+### Step 1: Confirm Sudo Access
 1. Check if we can use sudo:
 !sudo -n true 2>/dev/null && echo "SUDO_AVAILABLE" || echo "SUDO_REQUIRED"
 
 2. If sudo is not available (which is typical in Claude Code), inform the user:
-   - This script requires sudo privileges to create user, directories, and install services
+   - This script requires sudo privileges to create user, directories, install Docker, and configure services
    - Claude Code cannot provide sudo passwords for security reasons
    - The user needs to run this command manually from the repository root
 
-3. Provide the command for the user to run from the repository root directory:
+### Step 2: Use Existing Script and Guide User
+NOTE: The treeos-setup-production-cloud-cpu.sh script is already marked as executable in the repository (chmod +x is committed in git).
+
+1. The script installs Docker and Docker Compose v2 automatically if they are not present.
+
+2. Provide the command for the user to run from the repository root directory:
 ```bash
 cd ~/repositories/ontree/treeos
 sudo ./.claude/commands/treeos-setup-production-cloud-cpu.sh
 ```
 
-4. Ask the user to paste the output back after running the script so you can verify success
+3. Ask the user to paste the output back after running the script so you can verify success
 
 ### Step 3: Report Results
 If sudo was available and setup succeeded:
@@ -103,8 +103,8 @@ sudo journalctl -u treeos -f   # View logs
 ## Troubleshooting
 
 If installation fails:
-1. Ensure Docker is running
-2. Verify sudo access
+1. Verify sudo access
+2. Check Docker service status if the automatic Docker install reported issues
 3. Review error messages in the output (download failures will be shown)
 
 **IMPORTANT REMINDERS**:
