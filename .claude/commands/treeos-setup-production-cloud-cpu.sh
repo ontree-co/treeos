@@ -39,6 +39,25 @@ print_warning() {
     echo -e "${YELLOW}Warning: $1${NC}"
 }
 
+# Determine primary non-loopback IP for user-facing URL
+get_primary_ip() {
+    local ip_addr=""
+
+    if command -v hostname >/dev/null 2>&1; then
+        ip_addr=$(hostname -I 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i !~ /^127\\./){print $i; exit}}')
+    fi
+
+    if [ -z "$ip_addr" ] && command -v ip >/dev/null 2>&1; then
+        ip_addr=$(ip route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="src"){print $(i+1); exit}}')
+    fi
+
+    if [ -z "$ip_addr" ]; then
+        ip_addr="localhost"
+    fi
+
+    echo "$ip_addr"
+}
+
 # Check if running with root privileges
 check_root() {
     if [ "$EUID" -ne 0 ]; then
@@ -441,7 +460,8 @@ main() {
     echo "TreeOS is now running in production mode (CPU inference)."
     echo ""
     echo "Access the web interface at:"
-    echo "  http://localhost:3000"
+    ACCESS_HOST=$(get_primary_ip)
+    echo "  http://${ACCESS_HOST}:3000"
     echo ""
     echo "Service management commands:"
     echo "  Start:   sudo systemctl start $SERVICE_NAME"

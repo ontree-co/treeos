@@ -80,7 +80,7 @@ sudo ./.claude/commands/treeos-setup-production-cloud-cpu.sh
 ### Step 3: Report Results
 If sudo was available and setup succeeded (include a short summary and a party emoji 🎉):
 !echo "TreeOS has been successfully installed in production mode (CPU inference)!"
-!echo "Access the web interface at: http://localhost:3000"
+!echo "Access the web interface at: http://<server-ip>:3000 (auto-detected and printed by the script)"
 
 If sudo is required (typical case):
 !echo "Please run the following commands manually on your server with sudo access:"
