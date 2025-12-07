@@ -1,0 +1,12 @@
+{
+  "id": "immich",
+  "name": "Immich",
+  "description": "Photo and video backup with mobile apps, sharing, and smart search. Keeps media stored within the app folder by default.",
+  "category_tags": [
+    "Others"
+  ],
+  "icon": "bi-images",
+  "port": "2283",
+  "documentation_url": "https://docs.immich.app/overview/quick-start/",
+  "filename": "docker-compose.yml"
+}

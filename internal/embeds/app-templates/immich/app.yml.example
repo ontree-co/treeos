@@ -1,0 +1,9 @@
+expected_services:
+  - immich-server
+  - immich-microservices
+  - immich-machine-learning
+  - database
+  - redis
+id: immich
+name: immich
+primary_service: immich-server

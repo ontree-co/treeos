@@ -1,0 +1,61 @@
+# PhotoPrism self-hosted photo management for TreeOS
+version: '3.8'
+
+services:
+  mariadb:
+    image: mariadb:10.11
+    restart: unless-stopped
+    environment:
+      - MARIADB_AUTO_UPGRADE=1
+      - MARIADB_INITDB_SKIP_TZINFO=1
+      - MARIADB_DATABASE=${PHOTOPRISM_DATABASE:-photoprism}
+      - MARIADB_USER=${PHOTOPRISM_DB_USER:-photoprism}
+      - MARIADB_PASSWORD=${PHOTOPRISM_DB_PASSWORD:-photoprism_db_password_change_me}
+      - MARIADB_ROOT_PASSWORD=${PHOTOPRISM_DB_ROOT_PASSWORD:-photoprism_root_password_change_me}
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u${PHOTOPRISM_DB_USER:-photoprism}", "-p${PHOTOPRISM_DB_PASSWORD:-photoprism_db_password_change_me}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    volumes:
+      - {{APP_VOLUMES_PATH}}/mariadb:/var/lib/mysql
+
+  photoprism:
+    image: photoprism/photoprism:latest
+    restart: unless-stopped
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    environment:
+      - PHOTOPRISM_ADMIN_PASSWORD=${PHOTOPRISM_ADMIN_PASSWORD:-change-me}
+      - PHOTOPRISM_SITE_URL=${PHOTOPRISM_SITE_URL:-http://localhost:2342/}
+      - PHOTOPRISM_STORAGE_PATH=/photoprism/storage
+      - PHOTOPRISM_ORIGINALS_PATH=/photoprism/originals
+      - PHOTOPRISM_DATABASE_DRIVER=mysql
+      - PHOTOPRISM_DATABASE_SERVER=mariadb:3306
+      - PHOTOPRISM_DATABASE_NAME=${PHOTOPRISM_DATABASE:-photoprism}
+      - PHOTOPRISM_DATABASE_USER=${PHOTOPRISM_DB_USER:-photoprism}
+      - PHOTOPRISM_DATABASE_PASSWORD=${PHOTOPRISM_DB_PASSWORD:-photoprism_db_password_change_me}
+      - PHOTOPRISM_READONLY=${PHOTOPRISM_READONLY:-false}
+      - TZ=${TZ:-UTC}
+    ports:
+      - "${PHOTOPRISM_PORT:-2342}:2342"
+    volumes:
+      - {{APP_VOLUMES_PATH}}/photoprism/originals:/photoprism/originals
+      - {{APP_VOLUMES_PATH}}/photoprism/storage:/photoprism/storage
+
+x-ontree:
+  subdomain: ${APP_SUBDOMAIN:-photoprism}
+  host_port: 2342
+  is_exposed: false
+  tailscale_exposed: false
+  emoji: "📸"
+  description: "PhotoPrism - private photo library with AI-powered search and labeling."
+  notes: |
+    Photos and database data are stored inside this app's folder:
+    - Originals: {{APP_VOLUMES_PATH}}/photoprism/originals
+    - App storage (thumbnails, cache, metadata): {{APP_VOLUMES_PATH}}/photoprism/storage
+    - MariaDB: {{APP_VOLUMES_PATH}}/mariadb
+
+    Access the web UI on the configured port (default 2342).

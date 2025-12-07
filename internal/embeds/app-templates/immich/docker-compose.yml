@@ -1,0 +1,111 @@
+# Immich self-hosted photo and video backup for TreeOS
+version: '3.8'
+
+services:
+  database:
+    image: ghcr.io/tensorchord/pgvecto-rs:pg14-v0.2.0
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${DB_DATABASE:-immich}
+      - POSTGRES_USER=${DB_USERNAME:-immich}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-immich_db_password_change_me}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-immich} -d ${DB_DATABASE:-immich}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    volumes:
+      - {{APP_VOLUMES_PATH}}/database:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - {{APP_VOLUMES_PATH}}/redis:/data
+
+  immich-server:
+    image: ghcr.io/immich-app/immich-server:release
+    restart: unless-stopped
+    command: ["start.sh", "server"]
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      immich-machine-learning:
+        condition: service_started
+    environment:
+      - NODE_ENV=production
+      - DB_HOST=database
+      - DB_PORT=5432
+      - DB_USERNAME=${DB_USERNAME:-immich}
+      - DB_PASSWORD=${DB_PASSWORD:-immich_db_password_change_me}
+      - DB_DATABASE=${DB_DATABASE:-immich}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - IMMICH_MEDIA_LOCATION=/usr/src/app/upload
+      - IMMICH_MACHINE_LEARNING_URL=http://immich-machine-learning:3003
+      - SERVER_PORT=${IMMICH_PORT:-2283}
+      - JWT_SECRET=${JWT_SECRET:-change-me-secret}
+      - LOG_LEVEL=${LOG_LEVEL:-log}
+      - TZ=${TZ:-UTC}
+    ports:
+      - "${IMMICH_PORT:-2283}:${IMMICH_PORT:-2283}"
+    volumes:
+      - {{APP_VOLUMES_PATH}}/uploads:/usr/src/app/upload
+
+  immich-microservices:
+    image: ghcr.io/immich-app/immich-server:release
+    restart: unless-stopped
+    command: ["start.sh", "microservices"]
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    command: ["start-microservices"]
+    environment:
+      - NODE_ENV=production
+      - DB_HOST=database
+      - DB_PORT=5432
+      - DB_USERNAME=${DB_USERNAME:-immich}
+      - DB_PASSWORD=${DB_PASSWORD:-immich_db_password_change_me}
+      - DB_DATABASE=${DB_DATABASE:-immich}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - IMMICH_MEDIA_LOCATION=/usr/src/app/upload
+      - IMMICH_MACHINE_LEARNING_URL=http://immich-machine-learning:3003
+      - JWT_SECRET=${JWT_SECRET:-change-me-secret}
+      - LOG_LEVEL=${LOG_LEVEL:-log}
+      - TZ=${TZ:-UTC}
+    volumes:
+      - {{APP_VOLUMES_PATH}}/uploads:/usr/src/app/upload
+
+  immich-machine-learning:
+    image: ghcr.io/immich-app/immich-machine-learning:release
+    restart: unless-stopped
+    environment:
+      - MACHINE_LEARNING_HOST=0.0.0.0
+      - MACHINE_LEARNING_PORT=3003
+      - MACHINE_LEARNING_CACHE_FOLDER=/cache
+      - TZ=${TZ:-UTC}
+    volumes:
+      - {{APP_VOLUMES_PATH}}/ml-cache:/cache
+
+x-ontree:
+  subdomain: ${APP_SUBDOMAIN:-immich}
+  host_port: 2283
+  is_exposed: false
+  tailscale_exposed: false
+  emoji: "🖼️"
+  description: "Immich - photo and video backup with mobile apps, sharing, and smart search."
+  notes: |
+    All uploaded photos, videos, AI caches, and database/redis data stay within this app folder:
+    - Upload library: {{APP_VOLUMES_PATH}}/uploads
+    - Machine learning cache: {{APP_VOLUMES_PATH}}/ml-cache
+    - Postgres: {{APP_VOLUMES_PATH}}/database
+    - Redis: {{APP_VOLUMES_PATH}}/redis
+
+    Access the web UI on the configured port (default 2283).

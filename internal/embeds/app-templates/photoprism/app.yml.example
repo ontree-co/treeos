@@ -1,0 +1,6 @@
+expected_services:
+  - photoprism
+  - mariadb
+id: photoprism
+name: photoprism
+primary_service: photoprism

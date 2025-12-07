@@ -1,0 +1,12 @@
+{
+  "id": "photoprism",
+  "name": "PhotoPrism",
+  "description": "Self-hosted photo management with AI-powered search, face recognition, and a clean web UI.",
+  "category_tags": [
+    "Others"
+  ],
+  "icon": "bi-camera",
+  "port": "2342",
+  "documentation_url": "https://docs.photoprism.app/getting-started/",
+  "filename": "docker-compose.yml"
+}
