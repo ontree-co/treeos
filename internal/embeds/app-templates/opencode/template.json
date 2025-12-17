@@ -1,0 +1,13 @@
+{
+  "id": "opencode",
+  "name": "OpenCode Server",
+  "description": "Headless OpenCode API server for remote agent control and IDE integrations.",
+  "category_tags": [
+    "Developer Tools"
+  ],
+  "category": "Developer Tools",
+  "icon": "bi-braces",
+  "port": "4096",
+  "documentation_url": "https://opencode.ai/docs/server/",
+  "filename": "docker-compose.yml"
+}

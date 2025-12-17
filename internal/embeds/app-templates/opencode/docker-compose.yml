@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  opencode:
+    image: alpine:3.20
+    container_name: ${COMPOSE_PROJECT_NAME}-opencode-1
+    restart: unless-stopped
+    environment:
+      - OPENCODE_VERSION=${OPENCODE_VERSION:-1.0.150}
+    ports:
+      - "${OPENCODE_PORT:-4096}:4096"
+    volumes:
+      - {{APP_VOLUMES_PATH}}/data:/root/.local/share/opencode
+      - {{APP_VOLUMES_PATH}}/config:/root/.config/opencode
+      - {{APP_VOLUMES_PATH}}/state:/root/.local/state/opencode
+      - {{APP_VOLUMES_PATH}}/cache:/root/.cache/opencode
+    command: >
+      /bin/sh -c "
+        set -e;
+        apk add --no-cache curl ca-certificates tar;
+        ARCH=$$(uname -m);
+        case \"$$ARCH\" in
+          x86_64) BIN_ARCH=x64 ;;
+          aarch64) BIN_ARCH=arm64 ;;
+          *) echo \"Unsupported architecture: $$ARCH\"; exit 1 ;;
+        esac;
+        VERSION=${OPENCODE_VERSION:-1.0.150};
+        URL=https://github.com/sst/opencode/releases/download/v$${VERSION}/opencode-linux-$${BIN_ARCH}-musl.tar.gz;
+        if [ ! -x /usr/local/bin/opencode ]; then
+          echo \"Downloading opencode $${VERSION} for $${BIN_ARCH}\";
+          curl -fsSL \"$${URL}\" | tar -xz -C /usr/local/bin;
+          chmod +x /usr/local/bin/opencode;
+        fi;
+        mkdir -p /root/.local/share/opencode/log /root/.config/opencode /root/.local/state/opencode /root/.cache/opencode;
+        exec /usr/local/bin/opencode serve --hostname 0.0.0.0 --port ${OPENCODE_PORT:-4096};
+      "
+    healthcheck:
+      test: ["CMD", "/bin/sh", "-c", "curl -sf http://localhost:4096/doc >/dev/null"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 25s
+
+x-ontree:
+  subdomain: ${APP_SUBDOMAIN:-opencode}
+  host_port: 4096
+  is_exposed: false
