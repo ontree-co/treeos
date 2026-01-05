@@ -10,8 +10,11 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+# Normalize LOG_LEVEL to lowercase for compatibility with older Bash versions
+log_level_lower="$(printf '%s' "${LOG_LEVEL:-}" | tr '[:upper:]' '[:lower:]')"
+
 # Determine quiet mode: default to true when LOG_LEVEL=error (override with QUIET)
-if [ "${LOG_LEVEL,,}" == "error" ]; then
+if [ "$log_level_lower" = "error" ]; then
     QUIET="${QUIET:-true}"
 else
     QUIET="${QUIET:-false}"
@@ -19,7 +22,7 @@ fi
 
 # Default DEBUG aligns with LOG_LEVEL unless explicitly set
 if [ -z "${DEBUG+x}" ]; then
-    if [ "${LOG_LEVEL,,}" == "error" ]; then
+    if [ "$log_level_lower" = "error" ]; then
         DEBUG="false"
     else
         DEBUG="true"
