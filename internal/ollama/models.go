@@ -139,7 +139,7 @@ var CuratedModels = []OllamaModel{
 	{
 		Name:         "MichelRosselli/GLM-4.5-Air:Q4_K_M",
 		DisplayName:  "GLM-4.5 Air Q4",
-		SizeEstimate: "5.8 GB",
+		SizeEstimate: "73 GB",
 		Description:  "Quantized bilingual model with strong Chinese-English capabilities",
 		Category:     "chat",
 		Status:       StatusNotDownloaded,
