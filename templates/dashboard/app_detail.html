@@ -83,6 +83,36 @@
         font-size: 0.9rem;
     }
 
+    /* Overall progress spinner */
+    .overall-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 2px solid #dee2e6;
+        border-top-color: #0d6efd;
+        border-radius: 50%;
+        animation: spinner-rotate 0.8s linear infinite;
+    }
+
+    .overall-spinner.downloading {
+        border-top-color: #198754;
+    }
+
+    .overall-spinner.extracting {
+        border-top-color: #fd7e14;
+    }
+
+    .overall-spinner.error {
+        border-top-color: #dc3545;
+        animation: none;
+    }
+
+    @keyframes spinner-rotate {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
     
     .log-entry {
         padding: 8px 12px;
@@ -503,15 +533,13 @@
                         <!-- Overall Progress -->
                         <div class="mb-3">
                             <div class="d-flex justify-content-between align-items-center mb-2">
-                                <h6 class="mb-0" id="overall-status">Downloading images...</h6>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span id="overall-spinner" class="overall-spinner"></span>
+                                    <h6 class="mb-0" id="overall-status">Downloading images...</h6>
+                                </div>
                                 <small id="progress-eta" class="text-muted"></small>
                             </div>
-                            <div class="progress" style="height: 8px;">
-                                <div id="overall-progress-bar" class="progress-bar bg-primary"
-                                     role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
-                                </div>
-                            </div>
-                            <small id="overall-details" class="text-muted mt-1 d-block">Initializing...</small>
+                            <small id="overall-details" class="text-muted d-block">Initializing...</small>
                         </div>
 
                         <!-- Individual Image Progress Bars -->
@@ -571,14 +599,25 @@
                                     {{end}}
                                 </td>
                                 <td>
-                                    {{if and .Ports $view.TailscaleDNS}}
+                                    {{if .Ports}}
                                         {{$firstPort := index .Ports 0}}
                                         {{$hostPort := extractHostPort $firstPort}}
-                                        <a href="http://{{$view.TailscaleDNS}}:{{$hostPort}}"
-                                           target="_blank"
-                                           class="btn btn-sm btn-primary">
-                                            <i class="bi bi-box-arrow-up-right"></i> Visit
-                                        </a>
+                                        <div class="d-flex gap-1 flex-wrap">
+                                            <a href="http://{{$view.RequestHost}}:{{$hostPort}}"
+                                               target="_blank"
+                                               class="btn btn-sm btn-outline-primary"
+                                               title="Visit via IP">
+                                                <i class="bi bi-globe"></i> IP
+                                            </a>
+                                            {{if $view.TailscaleDNS}}
+                                            <a href="http://{{$view.TailscaleDNS}}:{{$hostPort}}"
+                                               target="_blank"
+                                               class="btn btn-sm btn-primary"
+                                               title="Visit via Tailscale">
+                                                <i class="bi bi-hdd-network"></i> Tailscale
+                                            </a>
+                                            {{end}}
+                                        </div>
                                     {{else}}
                                         <span class="text-muted">-</span>
                                     {{end}}
@@ -1026,23 +1065,52 @@ function updateProgressBar(progressData) {
     }
 }
 
-// Update overall progress bar and status
+// Update overall progress spinner and status
 function updateOverallProgress(progress) {
-    const overallBar = document.getElementById('overall-progress-bar');
+    const overallSpinner = document.getElementById('overall-spinner');
     const overallStatus = document.getElementById('overall-status');
     const overallDetails = document.getElementById('overall-details');
     const progressETA = document.getElementById('progress-eta');
 
-    if (!overallBar || !overallStatus || !overallDetails) return;
+    if (!overallSpinner || !overallStatus || !overallDetails) return;
 
-    // Update overall progress percentage
-    const percentage = Math.round(progress.overall_progress || 0);
-    overallBar.style.width = percentage + '%';
-    overallBar.setAttribute('aria-valuenow', percentage);
+    // Determine the simplified status message based on operation
+    let statusMessage = 'Processing...';
+    if (progress.operation === 'downloading') {
+        statusMessage = 'Downloading...';
+    } else if (progress.operation === 'extracting') {
+        statusMessage = 'Extracting...';
+    } else if (progress.operation === 'starting') {
+        statusMessage = 'Starting...';
+    } else if (progress.operation === 'complete') {
+        statusMessage = 'Complete';
+    } else if (progress.operation === 'error') {
+        statusMessage = 'Error';
+    }
+    overallStatus.textContent = statusMessage;
 
-    // Update overall status message
-    overallStatus.textContent = progress.message || 'Processing...';
-    overallDetails.textContent = progress.details || '';
+    // Calculate total downloaded and total bytes from all images
+    let totalDownloaded = 0;
+    let totalBytes = 0;
+    if (progress.images) {
+        Object.values(progress.images).forEach(img => {
+            if (img.downloaded && img.downloaded > 0) {
+                totalDownloaded += img.downloaded;
+            }
+            if (img.total && img.total > 0) {
+                totalBytes += img.total;
+            }
+        });
+    }
+
+    // Format the total progress details
+    if (totalBytes > 0) {
+        overallDetails.textContent = formatBytesDisplay(totalDownloaded) + ' / ' + formatBytesDisplay(totalBytes);
+    } else if (progress.details) {
+        overallDetails.textContent = progress.details;
+    } else {
+        overallDetails.textContent = 'Initializing...';
+    }
 
     // Update ETA
     if (progressETA) {
@@ -1053,17 +1121,27 @@ function updateOverallProgress(progress) {
         }
     }
 
-    // Update progress bar color based on operation
-    overallBar.className = 'progress-bar';
+    // Update spinner color based on operation
+    overallSpinner.className = 'overall-spinner';
     if (progress.operation === 'downloading') {
-        overallBar.classList.add('bg-success');
+        overallSpinner.classList.add('downloading');
     } else if (progress.operation === 'extracting') {
-        overallBar.classList.add('bg-warning');
+        overallSpinner.classList.add('extracting');
     } else if (progress.operation === 'error') {
-        overallBar.classList.add('bg-danger');
-    } else {
-        overallBar.classList.add('bg-primary');
+        overallSpinner.classList.add('error');
     }
+}
+
+// Format bytes for display (e.g., "123.4 MB")
+function formatBytesDisplay(bytes) {
+    if (bytes >= 1024 * 1024 * 1024) {
+        return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+    } else if (bytes >= 1024 * 1024) {
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    } else if (bytes >= 1024) {
+        return (bytes / 1024).toFixed(1) + ' KB';
+    }
+    return bytes + ' B';
 }
 
 // Update individual image progress bars

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ontree-co/treeos/internal/logging"
 	"html/template"
 	"net/http"
 	"os"
@@ -14,7 +15,6 @@ import (
 	"runtime"
 	"strings"
 	"time"
-	"github.com/ontree-co/treeos/internal/logging"
 
 	"github.com/ontree-co/treeos/internal/caddy"
 	"github.com/ontree-co/treeos/internal/database"
@@ -36,6 +36,7 @@ type appDetailView struct {
 	ServiceOptions []string
 	HasServices    bool
 	TailscaleDNS   string
+	RequestHost    string // Host from the current request (for "Visit via IP" button)
 	ComposeContent string
 	EnvContent     string
 	AppYmlContent  string
@@ -657,6 +658,15 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 		warnings = append(warnings, "Unable to read x-ontree metadata; using defaults.")
 	}
 
+	// Extract host from request (strip port if present)
+	requestHost := r.Host
+	if colonIdx := strings.LastIndex(requestHost, ":"); colonIdx != -1 {
+		// Check if this is an IPv6 address (contains brackets)
+		if !strings.Contains(requestHost, "]") || strings.LastIndex(requestHost, "]") < colonIdx {
+			requestHost = requestHost[:colonIdx]
+		}
+	}
+
 	view := appDetailView{
 		Name:           app.Name,
 		Emoji:          app.Emoji,
@@ -671,6 +681,7 @@ func (s *Server) handleAppDetail(w http.ResponseWriter, r *http.Request) {
 		AppYmlPath:     appYmlPath,
 		AppPath:        app.Path,
 		TailscaleDNS:   strings.TrimSuffix(getTailscaleDNS(), "."),
+		RequestHost:    requestHost,
 		Security:       securityView{BypassEnabled: app.BypassSecurity},
 	}
 
