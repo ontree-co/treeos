@@ -62,7 +62,7 @@ get_primary_ip() {
 check_root() {
     if [ "$EUID" -ne 0 ]; then
         print_error "This script must be run with sudo or as root"
-        echo "Usage: sudo ./.claude/commands/treeos-setup-production-cloud-cpu.sh"
+        echo "Usage: sudo ./skills/treeos-setup-production-cloud-cpu/run.sh"
         exit 1
     fi
 }

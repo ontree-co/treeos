@@ -108,7 +108,7 @@ Fire up Claude Code on your node and execute the correct skill for your platform
 Or, if you already have your Framework Desktop, use this skill
 
 ```
-/treeos-setup-production-cloud-cpu
+/treeos-setup-production-local-amd
 ```
 
 This command will:
@@ -127,11 +127,38 @@ If you prefer to run the setup script directly:
 
 ```bash
 cd /path/to/treeos
-sudo ./.claude/commands/treeos-setup-production-cloud-cpu.sh
-sudo ./.claude/commands/treeos-setup-production-local-amd.sh
+sudo ./skills/treeos-setup-production-cloud-cpu/run.sh
+sudo ./skills/treeos-setup-production-local-amd/run.sh
 ```
 
 Once installed, access TreeOS at `http://localhost:3000`
+
+### Skills (Claude + Codex)
+
+Available skills:
+- `treeos-setup-production-cloud-cpu`
+- `treeos-setup-production-local-amd`
+- `treeos-setup-development-environment`
+- `treeos-clean-demo-data`
+- `treeos-clean-demo-data-deep`
+- `treeos-clean-production-data`
+- `treeos-clean-production-data-deep`
+- `treeos-release-version`
+
+Codex install (symlink into your Codex skills folder):
+
+```bash
+mkdir -p ~/.codex/skills
+ln -s /path/to/treeos/skills/treeos-release-version ~/.codex/skills/treeos-release-version
+```
+
+Repeat the symlink command for any other skills you want Codex to load.
+
+Or run the helper script to link all skills at once:
+
+```bash
+./scripts/install-codex-skills.sh
+```
 
 ### Development Setup
 
@@ -179,5 +206,5 @@ Development mode creates local directories (`./apps`, `./shared`, `./logs`) and 
 Use the `/treeos-release-version` skill in Claude Code:
 
 ```
-/treeos-release-version <type>
+/treeos-release-version
 ```
