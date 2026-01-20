@@ -61,12 +61,6 @@ GitHub Actions is configured to use the same versions specified in `.tool-versio
 
 **DO NOT overlook or skip past version errors.** Pre-commit hooks require correct versions per Rule #2.
 
-## Working with Graphite instead of Git Directly
-
-Unless explicitly asked otherwise, use the gt CLI for interacting with PRs and create stacks. Stacks are easier to review because each PR is smaller and logically focused.
-Instead of git commit, use gt create. This will create a commit and a branch with the current changes.
-Instead of git push, use gt submit --no-interactive. This will submit the current branch & all downstack branches to Graphite.
-
 ## Docker Container Naming Scheme v1.0
 
 ### Core Pattern
