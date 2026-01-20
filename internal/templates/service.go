@@ -11,6 +11,7 @@ import (
 
 	"github.com/ontree-co/treeos/internal/config"
 	"github.com/ontree-co/treeos/internal/embeds"
+	"github.com/ontree-co/treeos/internal/logging"
 )
 
 // Template represents an application template
@@ -59,18 +60,18 @@ func (s *Service) GetAvailableTemplates() ([]Template, error) {
 
 		dirName := entry.Name()
 		jsonPath := filepath.Join(s.templatesPath, dirName, "template.json")
-		fmt.Printf("DEBUG: Looking for template metadata at: %s\n", jsonPath)
+		logging.Debugf("Looking for template metadata at: %s", jsonPath)
 
 		data, err := fs.ReadFile(templateFS, jsonPath)
 		if err != nil {
 			// Skip directories without template.json
-			fmt.Printf("DEBUG: Skipping %s (no template.json)\n", dirName)
+			logging.Debugf("Skipping %s (no template.json)", dirName)
 			continue
 		}
 
 		var tmpl Template
 		if err := json.Unmarshal(data, &tmpl); err != nil {
-			fmt.Printf("DEBUG: Failed to unmarshal %s: %v\n", jsonPath, err)
+			logging.Debugf("Failed to unmarshal %s: %v", jsonPath, err)
 			continue
 		}
 

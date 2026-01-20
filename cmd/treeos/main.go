@@ -15,10 +15,12 @@ import (
 	"syscall"
 
 	"github.com/joho/godotenv"
+	"github.com/ontree-co/treeos/internal/cli"
 	"github.com/ontree-co/treeos/internal/config"
 	"github.com/ontree-co/treeos/internal/database"
 	"github.com/ontree-co/treeos/internal/logging"
 	"github.com/ontree-co/treeos/internal/migration"
+	"github.com/ontree-co/treeos/internal/ontree"
 	"github.com/ontree-co/treeos/internal/server"
 	"github.com/ontree-co/treeos/internal/telemetry"
 	"github.com/ontree-co/treeos/internal/version"
@@ -34,6 +36,10 @@ func main() {
 		}
 	}
 	logging.ConfigureLevelFromEnv()
+
+	if isCLICommand(os.Args[1:]) {
+		os.Exit(runCLI(os.Args[1:]))
+	}
 
 	// Parse CLI flags before handling subcommands
 	demoMode := false
@@ -216,6 +222,53 @@ func setupDirs() error {
 	default:
 		return fmt.Errorf("unsupported platform: %s", runtime.GOOS)
 	}
+}
+
+func isCLICommand(args []string) bool {
+	for _, arg := range args {
+		if strings.HasPrefix(arg, "-") {
+			continue
+		}
+		switch arg {
+		case "app", "model", "setup":
+			return true
+		default:
+			return false
+		}
+	}
+	return false
+}
+
+func runCLI(args []string) int {
+	demoMode := false
+	filtered := make([]string, 0, len(args))
+	for _, arg := range args {
+		if arg == "--demo" {
+			demoMode = true
+			continue
+		}
+		filtered = append(filtered, arg)
+	}
+
+	if demoMode {
+		os.Setenv("TREEOS_RUN_MODE", "demo") //nolint:errcheck,gosec // Config override
+	}
+
+	cfg, err := config.Load()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to load configuration: %v\n", err)
+		return 1
+	}
+
+	manager, err := ontree.NewManager(cfg)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to initialize manager: %v\n", err)
+		return 1
+	}
+	defer manager.Close()
+
+	cliManager := cli.NewManagerAdapter(manager)
+	return cli.Execute(filtered, cliManager, os.Stdout, os.Stderr)
 }
 
 func getAppsDir() string {
